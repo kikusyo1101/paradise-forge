@@ -1,0 +1,7 @@
+# Paradise
+node_modules/
+*.log
+.DS_Store
+# Knowledge graph store lives in ~/.claude/paradise-kg by default (global),
+# but if PARADISE_KG points into the repo, keep the raw store local:
+graph/kg-store/
