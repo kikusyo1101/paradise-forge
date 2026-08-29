@@ -160,6 +160,78 @@ test('observe is order-independent (observe A B == observe B A)', () => {
   try { fs.rmSync(r1, { recursive: true, force: true }); fs.rmSync(r2, { recursive: true, force: true }); } catch {}
 });
 
+// --- Forge: the creation pipeline ---
+console.log('Forge (creation pipeline):');
+const forge = require(path.join(DIR, '..', 'graph', 'forge.js'));
+const engineF = require(path.join(DIR, '..', 'graph', 'graph-engine.js'));
+
+test('chooses scale from the wish (quick / standard / full)', () => {
+  assert.strictEqual(forge.chooseScale('fix login bug'), 'quick');
+  assert.strictEqual(forge.chooseScale('add a dark mode toggle'), 'standard');
+  assert.strictEqual(forge.chooseScale('build a habit tracker app'), 'full');
+});
+
+test('forges a gated SDLC DAG that graph-engine can schedule', () => {
+  const dag = forge.buildDag('add a dark mode toggle', 'standard');
+  assert.ok(dag.meta.constitution.length >= 5, 'constitution embedded');
+  assert.ok(dag.meta.gates.includes('verdict'), 'verdict is a gate');
+  // must be a valid schedulable graph
+  const tmpF = path.join(os.tmpdir(), 'paradise-forge-dag.json');
+  fs.writeFileSync(tmpF, JSON.stringify(dag));
+  const loaded = engineF.loadDag(tmpF);
+  const v = engineF.validate(loaded);
+  assert.strictEqual(v.ok, true, 'forged DAG must be valid: ' + v.errors.join('; '));
+  const waves = engineF.schedule(loaded);
+  assert.ok(waves.length >= 5, 'standard SDLC spans multiple waves');
+  assert.deepStrictEqual(waves[0], ['specify'], 'specify runs first');
+  assert.strictEqual(waves[waves.length - 1][0], 'verdict', 'verdict runs last');
+});
+
+test('every phase has an agent and gates are marked', () => {
+  const dag = forge.buildDag('x', 'full');
+  for (const t of dag.tasks) assert.ok(t.agent, `phase ${t.id} needs an agent`);
+  const gated = dag.tasks.filter(t => t.gate).map(t => t.id);
+  assert.deepStrictEqual(gated, dag.meta.gates, 'meta.gates matches gate flags');
+});
+
+// --- Verdict: the gate of judgment ---
+console.log('Verdict (judgment):');
+const verdict = require(path.join(DIR, '..', 'graph', 'verdict.js'));
+
+test('SHIP when every gate passes and no breach', () => {
+  const v = verdict.judge({ build: 'pass', types: { status: 'pass' }, lint: { status: 'pass' },
+    tests: { passed: 14, failed: 0, total: 14, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } });
+  assert.strictEqual(v.verdict, 'SHIP');
+});
+
+test('REWORK on fixable defects (failing tests / low coverage)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 8, failed: 3, total: 11, coverage: 61 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } });
+  assert.strictEqual(v.verdict, 'REWORK');
+  assert.ok(v.defects.some(d => /test/.test(d)) && v.defects.some(d => /coverage/.test(d)));
+});
+
+test('BLOCK on constitutional breach (secret or spec unmet)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 14, failed: 0, total: 14, coverage: 95 },
+    security: { issues: 1, secrets: 1 }, spec: { satisfied: false, unmet: ['logout missing'] } });
+  assert.strictEqual(v.verdict, 'BLOCK');
+  assert.ok(v.breaches.length >= 2, 'both secret and spec breaches reported');
+});
+
+test('security breach BLOCKS even when all tests pass', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 20, failed: 0, total: 20, coverage: 100 },
+    security: { issues: 1, secrets: 0 } });
+  assert.strictEqual(v.verdict, 'BLOCK', 'passing tests never override a security breach');
+});
+
+test('coverage floor is configurable', () => {
+  const report = { build: 'pass', tests: { passed: 10, failed: 0, total: 10, coverage: 75 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } };
+  assert.strictEqual(verdict.judge(report, { floor: 80 }).verdict, 'REWORK', '75 < 80 => REWORK');
+  assert.strictEqual(verdict.judge(report, { floor: 70 }).verdict, 'SHIP', '75 >= 70 => SHIP');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

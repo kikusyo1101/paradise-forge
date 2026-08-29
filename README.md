@@ -95,11 +95,39 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 14/14 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 22/22 pass
 ```
 検証内容: wave分割・並列判定・サイクル検出・欠落依存検出・CLI exit code・
 知識グラフのupsert・リンク・近傍・スナップショット・冪等リンク・
-co-change学習（observe/predict・順序非依存・ランキング）。
+co-change学習（observe/predict・順序非依存・ランキング）・
+forge（scale適応・gated DAG生成）・verdict（SHIP/REWORK/BLOCK裁定・coverage floor）。
+
+---
+
+## 創造の楽園（The Forge）
+小さき声から創造物を生む、完全な gated SDLC パイプライン。
+
+```
+wish → specify → design → detail → build → verify → ⚖️VERDICT → creation
+```
+
+| ツール | 役割 |
+|--------|------|
+| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華（quick/standard/full）。憲法を meta に埋込 |
+| `graph/verdict.js` | **裁きの門**。検証結果を憲法に照らし SHIP / REWORK / BLOCK を裁定（exit 0/1/2） |
+| `CONSTITUTION.md` | **楽園憲法 7条** — spec is truth・gated phases・no secrets・evidence-based |
+| `/forge` コマンド | 小さき声を受ける玉座 |
+| agents | requirements-analyst（仕様化）・creation-judge（裁き） |
+
+```bash
+node ~/Documents/workspace/paradise/graph/forge.js plan "<wish>" --out <dag.json>
+node ~/Documents/workspace/paradise/graph/verdict.js judge <report.json>
+# Claude Code 内では: /forge <小さき希望>
+```
+
+**実証:** 「ポモドーロタイマーが欲しい」→ 9フェーズSDLC → 並列build+tests →
+受入基準AC-1〜AC-7を実コードで検証 → 裁定 **SHIP** →
+動く創造物 `creations/pomodoro/`。世界の叡智（Spec Kit・BMAD・Kiro）を吸収して結晶。
 
 ---
 
