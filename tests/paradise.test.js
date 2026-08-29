@@ -115,7 +115,53 @@ test('link is idempotent (no duplicate edges)', () => {
   assert.strictEqual(stats.edges, 1, 'duplicate link must not add an edge');
 });
 
+// --- Co-change learning: (isolated store) ---
+console.log('Co-change learning:');
+const ccRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-cc-'));
+const ccEnv = Object.assign({}, process.env, { PARADISE_KG: ccRoot });
+const runCc = (...args) => execFileSync('node', [KG, ...args], { encoding: 'utf8', env: ccEnv });
+
+test('observing A,B then A,B,C increments pair counts correctly', () => {
+  runCc('observe', 'A', 'B');
+  runCc('observe', 'A', 'B', 'C');
+  // reload counts directly against the isolated store
+  const out = execFileSync('node', ['-e',
+    `const kg=require(${JSON.stringify(KG)});const c=kg.cochangeCounts();` +
+    `const o={};for(const [k,v] of c)o[k.split('\\u0000').join('|')]=v;console.log(JSON.stringify(o));`],
+    { encoding: 'utf8', env: ccEnv });
+  const counts = JSON.parse(out);
+  assert.strictEqual(counts['A|B'], 2, 'A~B seen in both events');
+  assert.strictEqual(counts['A|C'], 1, 'A~C seen once');
+  assert.strictEqual(counts['B|C'], 1, 'B~C seen once');
+});
+
+test('predict A returns B ranked appropriately', () => {
+  const out = runCc('predict', 'A');
+  const lines = out.trim().split('\n');
+  assert.ok(/^B\s+\(2 co-changes\)/.test(lines[0]), 'B should rank first with 2 co-changes');
+  assert.ok(out.includes('C'), 'C should also appear');
+});
+
+test('predict on an unknown id returns no matches gracefully', () => {
+  const out = runCc('predict', 'nonexistent');
+  assert.ok(out.includes('(no matches)'), 'unknown id yields no matches');
+});
+
+test('observe is order-independent (observe A B == observe B A)', () => {
+  const r1 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-cc1-'));
+  const r2 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-cc2-'));
+  const e1 = Object.assign({}, process.env, { PARADISE_KG: r1 });
+  const e2 = Object.assign({}, process.env, { PARADISE_KG: r2 });
+  execFileSync('node', [KG, 'observe', 'A', 'B'], { encoding: 'utf8', env: e1 });
+  execFileSync('node', [KG, 'observe', 'B', 'A'], { encoding: 'utf8', env: e2 });
+  const p1 = execFileSync('node', [KG, 'predict', 'A'], { encoding: 'utf8', env: e1 });
+  const p2 = execFileSync('node', [KG, 'predict', 'A'], { encoding: 'utf8', env: e2 });
+  assert.strictEqual(p1.trim(), p2.trim(), 'pair order must not matter');
+  try { fs.rmSync(r1, { recursive: true, force: true }); fs.rmSync(r2, { recursive: true, force: true }); } catch {}
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
+try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}
 process.exit(fail === 0 ? 0 : 1);

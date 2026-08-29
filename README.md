@@ -95,10 +95,11 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 10/10 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 14/14 pass
 ```
 検証内容: wave分割・並列判定・サイクル検出・欠落依存検出・CLI exit code・
-知識グラフのupsert・リンク・近傍・スナップショット・冪等リンク。
+知識グラフのupsert・リンク・近傍・スナップショット・冪等リンク・
+co-change学習（observe/predict・順序非依存・ランキング）。
 
 ---
 

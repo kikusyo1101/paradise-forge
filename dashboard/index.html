@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🏛️ Paradise — Live Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-elev: #161b22;
+    --bg-elev-2: #1c2230;
+    --border: #2a3242;
+    --border-soft: #222834;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --text-faint: #6e7681;
+    --cyan: #22d3ee;
+    --violet: #a78bfa;
+    --accent-grad: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
+    --green: #3fb950;
+    --red: #f85149;
+    --amber: #d29922;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+      "Yu Gothic", Meiryo, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(34,211,238,0.08), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(167,139,250,0.10), transparent 55%),
+      var(--bg);
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+  }
+
+  /* ---- Header ---- */
+  header.hero {
+    margin-bottom: 36px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  header.hero h1 {
+    margin: 0;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header.hero .subtitle {
+    margin-top: 8px;
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .grad-text {
+    background: var(--accent-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* ---- Section labels ---- */
+  .section-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+    font-weight: 700;
+    margin: 40px 0 16px;
+  }
+
+  /* ---- Layer cards ---- */
+  .layers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 860px) { .layers { grid-template-columns: 1fr; } }
+
+  .card {
+    background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .card:hover { transform: translateY(-3px); border-color: #3a4658; }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--accent-grad);
+    opacity: 0.9;
+  }
+  .card .layer-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border: 1px solid rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.08);
+    border-radius: 999px;
+    padding: 2px 10px;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .card h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  .card .card-sub {
+    margin: 6px 0 16px;
+    font-size: 0.86rem;
+    color: var(--text-dim);
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: rgba(167,139,250,0.08);
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-width: 62px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat .v {
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--violet);
+  }
+  .stat .k {
+    font-size: 0.66rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 0.74rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+
+  /* ---- Graph execution panel ---- */
+  .panel {
+    background: linear-gradient(180deg, var(--bg-elev) 0%, #12161f 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .panel-head h2 { margin: 0; font-size: 1.35rem; font-weight: 700; }
+  .count-line {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  .count-line .num { color: var(--cyan); font-weight: 700; }
+  .goal-line { font-size: 0.85rem; color: var(--text-faint); margin-bottom: 20px; }
+
+  .waves {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .wave-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 190px;
+    flex: 1 1 0;
+    padding: 0 14px;
+    position: relative;
+  }
+  .wave-col:not(:last-child)::after {
+    content: "→";
+    position: absolute;
+    right: -8px;
+    top: 40px;
+    color: var(--text-faint);
+    font-size: 1.3rem;
+    z-index: 2;
+  }
+  .wave-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    font-weight: 700;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 4px;
+  }
+  .wave-title .badge {
+    color: var(--cyan);
+    font-weight: 800;
+  }
+
+  .node {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .node:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.25), 0 6px 18px rgba(0,0,0,0.35);
+  }
+  .node .node-id {
+    font-weight: 700;
+    font-size: 0.95rem;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    color: var(--text);
+  }
+  .node .node-agent {
+    font-size: 0.75rem;
+    color: var(--violet);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .node .node-goal {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .node .node-deps {
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    margin-top: 6px;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  .node .node-deps .arrow { color: var(--cyan); }
+  .node .node-deps.root { color: var(--green); }
+
+  .errors {
+    margin-top: 16px;
+    color: var(--red);
+    font-size: 0.85rem;
+    font-family: monospace;
+  }
+
+  footer {
+    margin-top: 48px;
+    color: var(--text-faint);
+    font-size: 0.78rem;
+    text-align: center;
+  }
+
+  .fatal {
+    color: var(--red);
+    background: rgba(248,81,73,0.08);
+    border: 1px solid rgba(248,81,73,0.35);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1><span class="grad-text">🏛️ Paradise</span></h1>
+      <div class="subtitle">Harness → Loop → Graph Engineering</div>
+    </header>
+
+    <div class="section-label">System Layers</div>
+    <section id="layers" class="layers"><!-- layer cards injected --></section>
+
+    <div class="section-label">Execution</div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>⚡ Live Graph Execution</h2>
+        <div id="count-line" class="count-line"></div>
+      </div>
+      <div id="goal-line" class="goal-line"></div>
+      <div id="waves" class="waves"><!-- waves injected --></div>
+      <div id="errors" class="errors"></div>
+    </section>
+
+    <footer>Rendered live from <code>window.PARADISE</code> · paradise.js · no build step</footer>
+  </div>
+
+  <script src="paradise.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var root = document.querySelector('.wrap');
+
+      if (!window.PARADISE) {
+        root.insertAdjacentHTML('beforeend',
+          '<div class="fatal">⚠ paradise.js failed to load — window.PARADISE is undefined.</div>');
+        return;
+      }
+      var P = window.PARADISE;
+
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      // ---- Layer cards from INVENTORY ----
+      var layerOrder = ['harness', 'loop', 'graph'];
+      var layersEl = document.getElementById('layers');
+      layerOrder.forEach(function (key) {
+        var L = P.INVENTORY[key];
+        if (!L) return;
+        var stats = (L.metrics || []).map(function (m) {
+          return '<div class="stat"><span class="v">' + esc(m.v) +
+                 '</span><span class="k">' + esc(m.k) + '</span></div>';
+        }).join('');
+        var chips = (L.items || []).map(function (it) {
+          return '<span class="chip">' + esc(it) + '</span>';
+        }).join('');
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.id = 'layer-' + key;
+        card.innerHTML =
+          '<span class="layer-tag">' + esc(key) + '</span>' +
+          '<h2>' + esc(L.title) + '</h2>' +
+          '<div class="card-sub">' + esc(L.subtitle) + '</div>' +
+          '<div class="stats">' + stats + '</div>' +
+          '<div class="chips">' + chips + '</div>';
+        layersEl.appendChild(card);
+      });
+
+      // ---- Live graph execution from SELF_DAG ----
+      var dag = P.SELF_DAG;
+      var plan = P.planWaves(dag);
+      var tasks = Array.isArray(dag) ? dag : dag.tasks;
+      var taskCount = tasks.length;
+      var waveCount = plan.waves.length;
+
+      document.getElementById('count-line').innerHTML =
+        '<span class="num">' + taskCount + '</span> tasks → ' +
+        '<span class="num">' + waveCount + '</span> waves' +
+        (plan.ok ? ' · <span style="color:var(--green)">ok</span>'
+                 : ' · <span style="color:var(--red)">errors</span>');
+
+      if (dag && dag.meta && dag.meta.goal) {
+        document.getElementById('goal-line').textContent = '🎯 ' + dag.meta.goal;
+      }
+
+      var wavesEl = document.getElementById('waves');
+      plan.waves.forEach(function (wave, i) {
+        var col = document.createElement('div');
+        col.className = 'wave-col';
+        var html = '<div class="wave-title">Wave <span class="badge">' + (i + 1) +
+                   '</span> · ' + wave.length + '</div>';
+        wave.forEach(function (id) {
+          var t = plan.byId.get(id) || { id: id };
+          var deps = t.deps && t.deps.length
+            ? '<div class="node-deps"><span class="arrow">← deps:</span> ' +
+              t.deps.map(esc).join(', ') + '</div>'
+            : '<div class="node-deps root">● root (no deps)</div>';
+          var goal = t.goal ? '<div class="node-goal">' + esc(t.goal) + '</div>' : '';
+          html += '<div class="node">' +
+            '<div class="node-id">' + esc(t.id) + '</div>' +
+            '<div class="node-agent">@' + esc(t.agent || 'general') + '</div>' +
+            goal + deps + '</div>';
+        });
+        col.innerHTML = html;
+        wavesEl.appendChild(col);
+      });
+
+      if (plan.errors && plan.errors.length) {
+        document.getElementById('errors').textContent = '⚠ ' + plan.errors.join(' · ');
+      }
+    })();
+  </script>
+</body>
+</html>

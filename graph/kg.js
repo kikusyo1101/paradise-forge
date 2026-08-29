@@ -31,10 +31,11 @@ const path = require('path');
 const ROOT = process.env.PARADISE_KG || path.join(os.homedir(), '.claude', 'paradise-kg');
 const NODES = path.join(ROOT, 'nodes.jsonl');
 const EDGES = path.join(ROOT, 'edges.jsonl');
+const COCHANGE = path.join(ROOT, 'cochange.jsonl');
 
 function ensure() {
   fs.mkdirSync(ROOT, { recursive: true });
-  for (const f of [NODES, EDGES]) if (!fs.existsSync(f)) fs.writeFileSync(f, '');
+  for (const f of [NODES, EDGES, COCHANGE]) if (!fs.existsSync(f)) fs.writeFileSync(f, '');
 }
 function readJsonl(f) {
   if (!fs.existsSync(f)) return [];
@@ -94,6 +95,12 @@ function snapshot() {
     lines.push('\nKey nodes (most connected):');
     for (const [id, d] of hubs) { const n = getNode(id); lines.push(`  ${id} (${d} links)${n ? ' — ' + n.label : ''}`); }
   }
+  // surface the strongest evidence-based co-change pairs (learned relationships)
+  const cc = [...cochangeCounts().entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
+  if (cc.length) {
+    lines.push('\nPredicted related (co-change):');
+    for (const [k, c] of cc) { const [a, b] = k.split('\u0000'); lines.push(`  ${a} ~ ${b} (${c} co-changes)`); }
+  }
   lines.push('===================================');
   return lines.join('\n');
 }
@@ -102,6 +109,42 @@ function stats() {
   const byType = {};
   for (const n of nodes) byType[n.type] = (byType[n.type] || 0) + 1;
   return { root: ROOT, nodes: nodes.length, edges: edges.length, byType };
+}
+
+// --- Evidence-based co-change learning ---------------------------------
+// Record that a set of nodes were touched in the same unit of work, then
+// tally how often each unordered pair co-occurs to predict related nodes.
+function pairKey(a, b) { return a < b ? a + '\u0000' + b : b + '\u0000' + a; }
+/** Observe a set of nodes changed together; appends one event to cochange.jsonl. */
+function observe(ids) {
+  ensure();
+  const uniq = [...new Set((ids || []).filter(Boolean))];
+  if (uniq.length < 2) return { ids: uniq, pairs: 0 };
+  appendJsonl(COCHANGE, { ids: uniq, ts: now() });
+  return { ids: uniq, pairs: uniq.length * (uniq.length - 1) / 2 };
+}
+/** Tally every unordered pair across all observed events. */
+function cochangeCounts() {
+  const counts = new Map();
+  for (const rec of readJsonl(COCHANGE)) {
+    const ids = [...new Set((rec.ids || []).filter(Boolean))];
+    for (let i = 0; i < ids.length; i++)
+      for (let j = i + 1; j < ids.length; j++) {
+        const k = pairKey(ids[i], ids[j]);
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+  }
+  return counts;
+}
+/** Nodes most frequently co-changed with <id>, sorted by count desc. */
+function predict(id) {
+  const out = [];
+  for (const [k, c] of cochangeCounts()) {
+    const [a, b] = k.split('\u0000');
+    if (a === id) out.push([b, c]);
+    else if (b === id) out.push([a, c]);
+  }
+  return out.sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
 }
 
 function main() {
@@ -124,10 +167,18 @@ function main() {
     case 'neighbors': { console.log(JSON.stringify(neighbors(args[0]), null, 2)); break; }
     case 'snapshot': console.log(snapshot()); break;
     case 'stats': console.log(JSON.stringify(stats(), null, 2)); break;
+    case 'observe': { const ids = args.filter(Boolean);
+      if (ids.length < 2) { console.error('usage: kg.js observe <idA> <idB> [...more ids]'); process.exit(2); }
+      console.log('OK ' + JSON.stringify(observe(ids))); break; }
+    case 'predict': { const id = args[0];
+      if (!id) { console.error('usage: kg.js predict <id>'); process.exit(2); }
+      const p = predict(id);
+      if (!p.length) console.log('(no matches)');
+      else p.forEach(([other, c]) => console.log(`${other}  (${c} co-changes)`)); break; }
     default:
-      console.error('commands: remember | link | query | node | neighbors | snapshot | stats');
+      console.error('commands: remember | link | query | node | neighbors | snapshot | stats | observe | predict');
       process.exit(2);
   }
 }
 if (require.main === module) main();
-module.exports = { remember, link, query, getNode, neighbors, snapshot, stats };
+module.exports = { remember, link, query, getNode, neighbors, snapshot, stats, observe, predict, cochangeCounts };

@@ -1,0 +1,9 @@
+{
+  "meta": { "goal": "Build the Paradise Live Dashboard — a self-contained visualization of the paradise system" },
+  "tasks": [
+    { "id": "scaffold", "agent": "architect", "goal": "Define shared paradise.js: system inventory data + planWaves(dag) + renderMermaid(dag)" },
+    { "id": "ui",       "agent": "frontend",  "goal": "Build index.html dark dashboard against paradise.js API", "deps": ["scaffold"] },
+    { "id": "kg-learn", "agent": "architect",  "goal": "Add evidence-based co-change learning to kg.js + tests", "deps": ["scaffold"] },
+    { "id": "verify",   "agent": "verification-loop", "goal": "Run full self-test, preview dashboard, persist to KG", "deps": ["ui", "kg-learn"] }
+  ]
+}
