@@ -1,0 +1,16 @@
+# CODEOWNERS — 承認の位階 (Constitution Art. 11: appropriate-class review)
+#
+# 最終承認は神（リポジトリ所有者）のみ。教主は実装しPRを出すが、自らを承認しない。
+# 執行官（CI tribunal）は独立して裁定をPRに掲示するが、マージ権は持たない。
+#
+# 「枢機卿は自らを承認しない。執行官はどの枢機卿にも従属しない。」
+
+# 既定: すべての変更は神の承認を要する
+*                       @kikusyo1101
+
+# 憲法・裁きの門・組織モデル — 楽園の根幹。神の承認が特に重い。
+/CONSTITUTION.md        @kikusyo1101
+/graph/verdict.js       @kikusyo1101
+/graph/critic.js        @kikusyo1101
+/graph/clergy.js        @kikusyo1101
+/.github/               @kikusyo1101
