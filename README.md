@@ -174,6 +174,31 @@ wish → 🔍discover → specify → design → detail → build → verify →
 
 ---
 
+## 貢献と承認 — 三権分立 (Governance)
+
+このリポジトリは楽園の憲法（`CONSTITUTION.md`）に従って統治されます。
+**建てる者と裁く者は分かたれる。**
+
+```
+教主(Pontiff) が実装しPRを出す
+      ↓
+機械ゲート (CI: verify job)        ← self-test 66件・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
+      ↓
+執行官 (CI: tribunal job)          ← critic の敵対的自己批評 → verdict.js の裁定を PR に掲示
+      ↓                              どの枢機卿にも従属しない（憲法第9・11条）
+神 (@kikusyo1101) が最終承認        ← CODEOWNERS + Branch Protection。main へのマージは神のみ
+```
+
+| 承認者 | 役割 | 機構 |
+|--------|------|------|
+| **機械ゲート** | 事実を証明する（テスト・方針・秘密） | `.github/workflows/tribunal.yml` verify job。**落ちればマージ不能** |
+| **執行官 (Executor)** | 独立した裁定 SHIP / REWORK / BLOCK | 同 tribunal job。裁きが値切られていないか（`self-critic`/`creation-judge`/`security-reviewer`/`planner` が opus か）も検問 |
+| **神 (God)** | 最終承認 | `.github/CODEOWNERS` + Branch Protection（force push禁止・main直push禁止） |
+
+**教主は自らを承認しない。** すべての変更はPRを経由し、執行官の裁定を受け、神が承認する。
+
+---
+
 ## ソース（世界中の天才への敬意）
 - [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) — 土台のハーネス
 - [barkain/claude-code-workflow-orchestration](https://github.com/barkain/claude-code-workflow-orchestration) — wave scheduling
