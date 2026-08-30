@@ -47,9 +47,25 @@ function appendJsonl(f, obj) { fs.appendFileSync(f, JSON.stringify(obj) + '\n');
 function now() { return new Date().toISOString(); }
 
 /** Upsert a node: last-write-wins by id (compacts on read). */
+/** A lesson's CHECK lives in the body, encoded as "<check>|applies:<scope>".
+ * If a caller crams that spec into the LABEL (easy to do from the CLI, where a
+ * quoted phrase lands in <label> when [body] is omitted), the scope would be
+ * lost and the lesson would fire on EVERY creation. Normalize at write time so
+ * a malformed lesson can never become a global false-positive. */
+function normalizeLesson(label, body) {
+  const carriesSpec = s => typeof s === 'string' && s.includes('|applies:');
+  if (!carriesSpec(body) && carriesSpec(label)) {
+    const spec = label;
+    const cleanLabel = spec.split('|applies:')[0].replace(/^check:/, '').trim();
+    return { label: cleanLabel || spec, body: spec };
+  }
+  return { label, body: body || '' };
+}
+
 function remember(type, id, label, body) {
   ensure();
   const nodes = readJsonl(NODES).filter(n => n.id !== id);
+  if (type === 'lesson') ({ label, body } = normalizeLesson(label, body));
   const node = { id, type, label, body: body || '', ts: now(),
     evidence: process.env.PARADISE_EVIDENCE || null };
   nodes.push(node);

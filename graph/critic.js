@@ -140,6 +140,15 @@ function looseIncludes(hay, needle) {
   const hit = words.filter(w => h.includes(w)).length;
   return hit >= Math.ceil(words.length * 0.5);
 }
+/** STRICT scope match: the scope term must appear as a whole term (word-boundary,
+ * case-insensitive). Unlike looseIncludes this never accepts a partial/majority
+ * word hit, so scoping stays a hard fence rather than a fuzzy suggestion. */
+function scopeMatches(hay, scope) {
+  const s = String(scope).trim().toLowerCase();
+  if (!s) return true;
+  const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, 'i').test(String(hay).toLowerCase());
+}
 function extractMustHaves(findings) {
   // pull the labels from lines/rows marked with the red must-have marker
   const out = [];
@@ -189,7 +198,10 @@ function lessonChecks(lessons) {
       const spec = ctx.requirements + ctx.findings + ctx.prd;
       // Scope guard: if the lesson declares an `applies` term and it's absent
       // from THIS creation's spec, the lesson is out of scope — skip it.
-      if (l.applies && !looseIncludes(spec, String(l.applies))) {
+      // The scope term is matched STRICTLY (whole term, case-insensitive), never
+      // fuzzily: a loose match lets an incidental word ("internally") drag a
+      // "paradise-internal" lesson into an unrelated creation and false-REWORK it.
+      if (l.applies && !scopeMatches(spec, String(l.applies))) {
         return { ok: true, note: `lesson out of scope here (applies: ${l.applies})`, soft: true };
       }
       const hay = ctx.codeBlob + ctx.requirements + ctx.findings;
@@ -259,4 +271,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks };
+module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks, scopeMatches };
