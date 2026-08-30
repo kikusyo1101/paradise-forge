@@ -78,8 +78,14 @@ function main() {
     },
   };
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, JSON.stringify(state, null, 2));
-  console.error(`state exported -> ${out}  (nodes:${state.graph.nodeCount} edges:${state.graph.edgeCount} lessons:${lessons.length} creations:${state.creations.length})`);
+  const json = JSON.stringify(state, null, 2);
+  fs.writeFileSync(out, json);
+  // Also write the browser-inlined companion (state.js) so file:// dashboards
+  // render offline without a manual regen step (Constitution Art. 10: no manual
+  // hand-off in the pipeline). Sits beside state.json.
+  const jsPath = path.join(path.dirname(out), 'state.js');
+  fs.writeFileSync(jsPath, 'window.PARADISE_STATE = ' + json + ';\n');
+  console.error(`state exported -> ${out}  (+ state.js)  (nodes:${state.graph.nodeCount} edges:${state.graph.edgeCount} lessons:${lessons.length} creations:${state.creations.length})`);
 }
 if (require.main === module) main();
 module.exports = { readGraph };

@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T15:24:57.829Z",
+  "generated": "2026-08-30T15:27:22.163Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,7 +99,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 36,
+    "nodeCount": 38,
     "edgeCount": 31,
     "nodes": [
       {
@@ -317,6 +317,18 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "spec充足は文字列一致でなくAC実駆動で裁け",
         "degree": 0
+      },
+      {
+        "id": "lww",
+        "type": "t",
+        "label": "second",
+        "degree": 0
+      },
+      {
+        "id": "temp-b",
+        "type": "t",
+        "label": "B",
+        "degree": 0
       }
     ],
     "edges": [
@@ -483,7 +495,8 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 4,
       "verdict": 1,
-      "lesson": 8
+      "lesson": 8,
+      "t": 2
     }
   },
   "lessons": [
