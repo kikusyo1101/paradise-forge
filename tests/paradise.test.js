@@ -437,6 +437,26 @@ test('reconcile refuses an external handle unless explicitly allowed', () => {
   assert.strictEqual(contract.reconcile(claim, { allowExternal: true }).accepted, true, 'accepted when caller opts in');
 });
 
+test('checkPayload rejects malformed JSON cleanly (fail-closed, no crash)', () => {
+  const rec = contract.checkPayload('{ this is not: valid json ');
+  assert.strictEqual(rec.accepted, false, 'garbage from a subagent must be rejected, not crash');
+  assert.ok(/malformed/.test(rec.reason), 'reason names the malformed payload: ' + rec.reason);
+});
+
+test('checkPayload rejects an empty payload (a silent subagent proves nothing)', () => {
+  assert.strictEqual(contract.checkPayload('').accepted, false, 'empty string rejected');
+  assert.strictEqual(contract.checkPayload('   ').accepted, false, 'whitespace-only rejected');
+  assert.strictEqual(contract.checkPayload(null).accepted, false, 'null rejected');
+});
+
+test('checkPayload reconciles a well-formed payload just like reconcile', () => {
+  const f = path.join(os.tmpdir(), 'paradise-payload-' + Math.random().toString(36).slice(2) + '.txt');
+  fs.writeFileSync(f, 'real evidence on disk');
+  const rec = contract.checkPayload(JSON.stringify({ phase: 'build', status: 'done', artifact: f }));
+  assert.strictEqual(rec.accepted, true, 'valid payload with a real artifact accepted: ' + rec.reason);
+  fs.rmSync(f, { force: true });
+});
+
 // --- Clergy & Conclave: the ecclesiastical hierarchy ---
 console.log('Clergy (hierarchy):');
 const clergy = require(path.join(DIR, '..', 'graph', 'clergy.js'));

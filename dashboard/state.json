@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-30T15:31:27.186Z",
+  "generated": "2026-08-30T20:06:12.089Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,7 +99,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 39,
+    "nodeCount": 40,
     "edgeCount": 31,
     "nodes": [
       {
@@ -319,6 +319,12 @@
         "degree": 0
       },
       {
+        "id": "skill-paradise",
+        "type": "decision",
+        "label": "楽園運用スキル化",
+        "degree": 0
+      },
+      {
         "id": "lww",
         "type": "t",
         "label": "second",
@@ -331,9 +337,9 @@
         "degree": 0
       },
       {
-        "id": "skill-paradise",
-        "type": "decision",
-        "label": "楽園運用スキル化",
+        "id": "contract-failclosed",
+        "type": "lesson",
+        "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
         "degree": 0
       }
     ],
@@ -501,7 +507,7 @@
       "run": 3,
       "creation": 4,
       "verdict": 1,
-      "lesson": 8,
+      "lesson": 9,
       "t": 2
     }
   },
@@ -545,6 +551,11 @@
       "id": "critic-synonym",
       "label": "spec充足は文字列一致でなくAC実駆動で裁け",
       "check": "musthaves|applies:paradise-internal"
+    },
+    {
+      "id": "contract-failclosed",
+      "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
+      "check": ""
     }
   ],
   "creations": [

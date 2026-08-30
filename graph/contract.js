@@ -79,6 +79,22 @@ function reconcileWave(results, opts = {}) {
   return results.map(r => ({ phase: r.phase, ...reconcile(r, opts) }));
 }
 
+/**
+ * Parse an untrusted raw payload (a subagent's returned string) and reconcile it.
+ * This is the WHOLE POINT of the contract: the input is untrusted, so malformed
+ * JSON must be REJECTED cleanly (fail-closed, Art. 5) — never crash the reconciler
+ * with an unhandled exception. A subagent that returns garbage does not get a pass.
+ */
+function checkPayload(raw, opts = {}) {
+  if (raw == null || String(raw).trim() === '') {
+    return { accepted: false, reason: 'empty payload: no result to reconcile' };
+  }
+  let result;
+  try { result = JSON.parse(raw); }
+  catch (e) { return { accepted: false, reason: 'malformed result JSON: ' + e.message }; }
+  return reconcile(result, opts);
+}
+
 function main() {
   const [cmd] = process.argv.slice(2);
   if (cmd === 'schema') {
@@ -91,10 +107,9 @@ function main() {
     return;
   }
   if (cmd === 'check') {
-    // read a JSON result from stdin, validate + reconcile
+    // read a JSON result from stdin, validate + reconcile (fail-closed on garbage)
     let d = ''; process.stdin.on('data', c => d += c); process.stdin.on('end', () => {
-      const result = JSON.parse(d);
-      const rec = reconcile(result);
+      const rec = checkPayload(d);
       console.log(JSON.stringify(rec, null, 2));
       process.exit(rec.accepted ? 0 : 1);
     });
@@ -104,4 +119,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { validate, reconcile, reconcileWave };
+module.exports = { validate, reconcile, reconcileWave, checkPayload };
