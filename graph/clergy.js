@@ -26,12 +26,62 @@
 
 const RANKS = {
   god:       { level: 0, title: 'God 神',        role: 'issues the wish, receives only answers' },
-  pontiff:   { level: 1, title: 'Pontiff 教主',   role: 'governs the whole; the session itself' },
-  cardinal:  { level: 2, title: 'Cardinal 枢機卿', role: 'domain supervisor; owns a sub-DAG + inner PDCA' },
-  priest:    { level: 3, title: 'Priest 神官',    role: 'large subagent dispatched by a cardinal' },
-  believer:  { level: 4, title: 'Believer 信徒',   role: 'small subagent for fine-grained work' },
-  executor:  { level: -1, title: 'Executor 執行官', role: 'independent tribunal; judges on demand' },
+  pontiff:   { level: 1, title: 'Pontiff 教主',   role: 'governs the whole; the session itself',
+               model: 'claude-opus-5', effort: 'max',
+               why: 'holds the entire plan, reconciles every result, renders the final decision' },
+  cardinal:  { level: 2, title: 'Cardinal 枢機卿', role: 'domain supervisor; owns a sub-DAG + inner PDCA',
+               model: 'opus', effort: 'high',
+               why: 'ratify/reject decides quality; low token volume, high stakes' },
+  priest:    { level: 3, title: 'Priest 神官',    role: 'large subagent dispatched by a cardinal',
+               model: 'sonnet', effort: 'high',
+               why: 'the bulk of generation flows here; balanced capability against cost' },
+  believer:  { level: 4, title: 'Believer 信徒',   role: 'small subagent for fine-grained work',
+               model: 'haiku', effort: 'low',
+               why: 'mechanical, high-volume, low-judgment work (search, lint, scan)' },
+  executor:  { level: -1, title: 'Executor 執行官', role: 'independent tribunal; judges on demand',
+               model: 'opus', effort: 'max',
+               why: 'a missed verdict ships a broken creation — the judge is NEVER cheapened' },
 };
+
+/**
+ * Model policy (Constitution Art. 12): capability is assigned by RANK.
+ * Judgment ranks (pontiff / cardinal / executor) get the strongest model;
+ * generative work scales to sonnet; mechanical volume to haiku.
+ * EXCEPTIONS override a rank's default where a miss is unrecoverable.
+ */
+const MODEL_EXCEPTIONS = {
+  // A security miss is a constitutional BLOCK-level breach — never run it cheap.
+  'security-reviewer': { model: 'opus', effort: 'high', why: 'a security miss is unrecoverable (BLOCK-level breach)' },
+  // A bad plan poisons every downstream phase — planning is judgment, not generation.
+  'planner': { model: 'opus', effort: 'high', why: 'a flawed plan contaminates every downstream phase' },
+  // Tribunal officers inherit the executor rank, not the priest rank.
+  'self-critic':    { model: 'opus', effort: 'max', why: 'tribunal officer — adversarial critique precedes judgment' },
+  'creation-judge': { model: 'opus', effort: 'max', why: 'tribunal officer — renders the binding verdict' },
+  'cardinal':       { model: 'opus', effort: 'high', why: 'the cardinal rank itself' },
+  'executor':       { model: 'opus', effort: 'max', why: 'the executor rank itself' },
+};
+
+/** Resolve the model+effort for an agent by name, using rank defaults + exceptions. */
+function modelFor(agentName, rank) {
+  if (MODEL_EXCEPTIONS[agentName]) return { agent: agentName, ...MODEL_EXCEPTIONS[agentName], source: 'exception' };
+  const r = RANKS[rank || 'priest'];
+  return { agent: agentName, model: r.model, effort: r.effort, why: r.why, source: 'rank:' + (rank || 'priest') };
+}
+
+/** Every believer role in the college (they run at the believer rank). */
+function allBelievers() {
+  const out = new Set();
+  for (const c of Object.values(COLLEGE)) (c.believers || []).forEach(b => out.add(b));
+  return [...out];
+}
+
+/** Every priest role in the college. */
+function allPriests() {
+  const out = new Set();
+  for (const c of Object.values(COLLEGE)) (c.priests || []).forEach(p => out.add(p));
+  for (const o of TRIBUNAL.officers) out.add(o);
+  return [...out];
+}
 
 /**
  * The College of Cardinals. Each cardinal owns a DOMAIN of the creation
@@ -173,6 +223,26 @@ function main() {
     if (!arg) { console.error('usage: clergy.js marshal <phaseId>'); process.exit(2); }
     console.log(JSON.stringify(marshalPlan(arg), null, 2)); return;
   }
+  if (cmd === 'models') {
+    console.log('MODEL POLICY BY RANK (Constitution Art. 12)');
+    console.log('═'.repeat(72));
+    for (const [k, r] of Object.entries(RANKS)) {
+      if (!r.model) { console.log(`  L${r.level}  ${r.title.padEnd(20)} —        (${r.role})`); continue; }
+      console.log(`  L${String(r.level).padEnd(2)} ${r.title.padEnd(20)} ${r.model.padEnd(15)} effort:${r.effort}`);
+      console.log(`       ↳ ${r.why}`);
+    }
+    console.log('\nEXCEPTIONS (a miss here is unrecoverable):');
+    for (const [name, e] of Object.entries(MODEL_EXCEPTIONS))
+      console.log(`  ${name.padEnd(20)} ${e.model.padEnd(8)} effort:${String(e.effort).padEnd(6)} — ${e.why}`);
+    console.log('\nRESOLVED AGENTS:');
+    for (const p of allPriests()) { const m = modelFor(p, 'priest'); console.log(`  神官 ${p.padEnd(22)} ${m.model.padEnd(8)} effort:${m.effort}  [${m.source}]`); }
+    for (const b of allBelievers()) { const m = modelFor(b, 'believer'); console.log(`  信徒 ${b.padEnd(22)} ${m.model.padEnd(8)} effort:${m.effort}  [${m.source}]`); }
+    return;
+  }
+  if (cmd === 'model-for') {
+    if (!arg) { console.error('usage: clergy.js model-for <agentName> [rank]'); process.exit(2); }
+    console.log(JSON.stringify(modelFor(arg, process.argv[4]), null, 2)); return;
+  }
   if (cmd === 'college') {
     for (const [name, c] of Object.entries(COLLEGE))
       console.log(`枢機卿 ${name}: ${c.domain}\n  governs: ${c.governs.join(', ')}\n  priests: ${c.priests.join(', ')}\n  reviewed-by: ${c.reviewClass}\n  PDCA: ${c.pdca}\n`);
@@ -183,4 +253,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, COLLEGE, TRIBUNAL, cardinalFor, marshalPlan, believerRole, groupByCardinal, orgChart };
+module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };

@@ -562,6 +562,58 @@ test('clergy marshals believers under a priest (priest→believer layer)', () =>
   assert.ok(plan.division.every(d => d.does), 'each believer has a defined role');
 });
 
+// --- Model policy by rank (Constitution Art. 12) ---
+console.log('Model policy (rank → model):');
+
+test('every rank that works declares a model and effort', () => {
+  for (const r of ['pontiff', 'cardinal', 'priest', 'believer', 'executor']) {
+    assert.ok(clergy.RANKS[r].model, `${r} must declare a model`);
+    assert.ok(clergy.RANKS[r].effort, `${r} must declare an effort`);
+  }
+});
+
+test('capability descends with rank: judgment ranks outrank workers', () => {
+  assert.strictEqual(clergy.RANKS.cardinal.model, 'opus', 'cardinals decide → strongest');
+  assert.strictEqual(clergy.RANKS.priest.model, 'sonnet', 'priests generate → balanced');
+  assert.strictEqual(clergy.RANKS.believer.model, 'haiku', 'believers do mechanical volume → fastest');
+  assert.strictEqual(clergy.RANKS.executor.model, 'opus', 'the judge is never cheapened');
+  assert.strictEqual(clergy.RANKS.executor.effort, 'max');
+});
+
+test('the tribunal, security and planner are exempt from thrift', () => {
+  for (const name of ['self-critic', 'creation-judge', 'security-reviewer', 'planner']) {
+    const m = clergy.modelFor(name, 'priest'); // even asked as a priest…
+    assert.strictEqual(m.model, 'opus', `${name} must run at full strength`);
+    assert.strictEqual(m.source, 'exception');
+  }
+});
+
+test('a believer resolves to the cheap fast model, a priest to the balanced one', () => {
+  assert.strictEqual(clergy.modelFor('web-scout', 'believer').model, 'haiku');
+  assert.strictEqual(clergy.modelFor('architect', 'priest').model, 'sonnet');
+});
+
+test('apply-models resolves each agent to its rank (policy is mechanised)', () => {
+  const am = require(path.join(DIR, '..', 'graph', 'apply-models.js'));
+  assert.strictEqual(am.rankOf('cardinal'), 'cardinal');
+  assert.strictEqual(am.rankOf('executor'), 'executor');
+  assert.strictEqual(am.rankOf('self-critic'), 'executor', 'tribunal officers hold the executor rank');
+  assert.strictEqual(am.rankOf('web-scout'), 'believer');
+  assert.strictEqual(am.rankOf('architect'), 'priest');
+});
+
+test('apply-models rewrites frontmatter without touching the body', () => {
+  const am = require(path.join(DIR, '..', 'graph', 'apply-models.js'));
+  const src = '---\nname: x\ndescription: d\n---\n\nBODY STAYS\n';
+  const out = am.setFrontmatterKey(am.setFrontmatterKey(src, 'model', 'haiku'), 'effort', 'low');
+  assert.ok(/model: haiku/.test(out) && /effort: low/.test(out), 'keys written');
+  assert.ok(/BODY STAYS/.test(out), 'body untouched');
+  assert.strictEqual(am.readFrontmatterKey(out, 'model'), 'haiku');
+  // idempotent: applying twice does not duplicate the key
+  const twice = am.setFrontmatterKey(out, 'model', 'haiku');
+  assert.strictEqual((twice.match(/model:/g) || []).length, 1, 'no duplicate keys');
+});
+
 // --- Synod: the planning cycle between pontiff and cardinals ---
 console.log('Synod (planning cycle):');
 const synod = require(path.join(DIR, '..', 'graph', 'synod.js'));

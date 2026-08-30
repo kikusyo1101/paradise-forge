@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T20:06:12.089Z",
+  "generated": "2026-08-30T20:27:54.848Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,8 +99,8 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 40,
-    "edgeCount": 31,
+    "nodeCount": 43,
+    "edgeCount": 33,
     "nodes": [
       {
         "id": "paradise",
@@ -274,7 +274,7 @@ window.PARADISE_STATE = {
         "id": "clergy",
         "type": "component",
         "label": "Clergy org model",
-        "degree": 1
+        "degree": 2
       },
       {
         "id": "article-11",
@@ -325,6 +325,12 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
+        "id": "contract-failclosed",
+        "type": "lesson",
+        "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
+        "degree": 0
+      },
+      {
         "id": "lww",
         "type": "t",
         "label": "second",
@@ -337,9 +343,21 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
-        "id": "contract-failclosed",
+        "id": "article-12",
+        "type": "decision",
+        "label": "憲法第12条: 位階別モデル方針",
+        "degree": 2
+      },
+      {
+        "id": "apply-models",
+        "type": "component",
+        "label": "位階モデル適用機構",
+        "degree": 1
+      },
+      {
+        "id": "model-by-rank",
         "type": "lesson",
-        "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
+        "label": "モデルは位階で割り当て、裁きは値切るな",
         "degree": 0
       }
     ],
@@ -498,16 +516,26 @@ window.PARADISE_STATE = {
         "from": "coin",
         "rel": "grounded-in",
         "to": "market-researcher"
+      },
+      {
+        "from": "clergy",
+        "rel": "enforces",
+        "to": "article-12"
+      },
+      {
+        "from": "apply-models",
+        "rel": "enforces",
+        "to": "article-12"
       }
     ],
     "byType": {
       "system": 4,
-      "component": 10,
-      "decision": 7,
+      "component": 11,
+      "decision": 8,
       "run": 3,
       "creation": 4,
       "verdict": 1,
-      "lesson": 9,
+      "lesson": 10,
       "t": 2
     }
   },
@@ -556,6 +584,11 @@ window.PARADISE_STATE = {
       "id": "contract-failclosed",
       "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
       "check": ""
+    },
+    {
+      "id": "model-by-rank",
+      "label": "モデルは位階で割り当て、裁きは値切るな",
+      "check": "model|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -588,27 +621,42 @@ window.PARADISE_STATE = {
       "pontiff": {
         "level": 1,
         "title": "Pontiff 教主",
-        "role": "governs the whole; the session itself"
+        "role": "governs the whole; the session itself",
+        "model": "claude-opus-5",
+        "effort": "max",
+        "why": "holds the entire plan, reconciles every result, renders the final decision"
       },
       "cardinal": {
         "level": 2,
         "title": "Cardinal 枢機卿",
-        "role": "domain supervisor; owns a sub-DAG + inner PDCA"
+        "role": "domain supervisor; owns a sub-DAG + inner PDCA",
+        "model": "opus",
+        "effort": "high",
+        "why": "ratify/reject decides quality; low token volume, high stakes"
       },
       "priest": {
         "level": 3,
         "title": "Priest 神官",
-        "role": "large subagent dispatched by a cardinal"
+        "role": "large subagent dispatched by a cardinal",
+        "model": "sonnet",
+        "effort": "high",
+        "why": "the bulk of generation flows here; balanced capability against cost"
       },
       "believer": {
         "level": 4,
         "title": "Believer 信徒",
-        "role": "small subagent for fine-grained work"
+        "role": "small subagent for fine-grained work",
+        "model": "haiku",
+        "effort": "low",
+        "why": "mechanical, high-volume, low-judgment work (search, lint, scan)"
       },
       "executor": {
         "level": -1,
         "title": "Executor 執行官",
-        "role": "independent tribunal; judges on demand"
+        "role": "independent tribunal; judges on demand",
+        "model": "opus",
+        "effort": "max",
+        "why": "a missed verdict ships a broken creation — the judge is NEVER cheapened"
       }
     },
     "college": {

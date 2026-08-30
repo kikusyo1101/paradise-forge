@@ -56,6 +56,17 @@ way to change what "complete" means.
     the tribunal answers to no cardinal. Every level is bounded by its own
     loop-guard and escalates upward rather than burning.
 
+12. **Capability is assigned by rank; judgment is never cheapened.** Each rank
+    runs the model its work demands — the pontiff and the cardinals hold the
+    strongest reasoning because they decide; priests run a balanced model because
+    generation flows through them; believers run the fastest model because their
+    work is mechanical and high-volume. Three offices are exempt from thrift and
+    always run at full strength: the **tribunal** (a missed verdict ships a broken
+    creation), the **security review** (a missed breach is unrecoverable), and the
+    **planner** (a flawed plan contaminates every downstream phase). The policy
+    lives in `clergy.js` and is written into the agents by `apply-models.js` — a
+    declaration is not a mechanism (Art. 10); `apply-models.js verify` must pass.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
