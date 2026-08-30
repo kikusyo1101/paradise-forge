@@ -661,6 +661,54 @@ test('kg forget removes a node and its edges (memory is correctable)', () => {
   assert.ok(!nb.in.some(e => e.from === 'temp-a'), 'dangling edge cleaned');
 });
 
+// --- Lesson scoping (a scoped lesson must never false-fire elsewhere) ---
+console.log('Lesson scoping (the fence around a past-miss):');
+
+test('kg normalizes a lesson whose check|applies spec was crammed into the label', () => {
+  const kg = require(path.join(DIR, '..', 'graph', 'kg.js'));
+  // The CLI form `kg.js remember lesson <id> "<check>|applies:<scope>"` omits [body];
+  // the spec lands in the label. It must still end up parseable, not global.
+  kg.remember('lesson', 'scoped-lesson', 'contract must fail closed|applies:paradise-internal');
+  const n = kg.getNode('scoped-lesson');
+  assert.ok(n.body.includes('|applies:paradise-internal'), 'the spec is preserved in the body');
+  assert.ok(!n.label.includes('|applies:'), 'the label is cleaned of the spec');
+});
+
+test('lessons export recovers the scope so the lesson is not global', () => {
+  const lessons = require(path.join(DIR, '..', 'graph', 'lessons.js'));
+  const out = path.join(kgRoot, 'lessons-test.json');
+  const exported = lessons.exportLessons(out);
+  const l = exported.find(x => x.id === 'scoped-lesson');
+  assert.ok(l, 'the lesson exported');
+  assert.strictEqual(l.applies, 'paradise-internal', 'scope is parsed, not null');
+  assert.ok(!l.check.includes('|applies:'), 'check is the check alone');
+});
+
+test('scope matching is strict: "internally" does not satisfy "paradise-internal"', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  assert.strictEqual(critic.scopeMatches('durations are held internally in seconds', 'paradise-internal'),
+    false, 'an incidental word must not drag a scoped lesson into scope');
+  assert.strictEqual(critic.scopeMatches('this is a paradise-internal engine change', 'paradise-internal'),
+    true, 'the whole scope term does match');
+});
+
+test('an out-of-scope lesson does not report a regression', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const [chk] = critic.lessonChecks([{ id: 'x', label: 'L', check: 'forget', applies: 'paradise-internal' }]);
+  const ctx = { requirements: 'a pomodoro timer held internally in seconds',
+    findings: '', prd: '', codeBlob: '' };
+  const r = chk.run(ctx);
+  assert.strictEqual(r.ok, true, 'out of scope, so no false REWORK');
+  assert.ok(/out of scope/.test(r.note), 'and it says why');
+});
+
+test('an in-scope lesson still catches a real regression', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const [chk] = critic.lessonChecks([{ id: 'x', label: 'L', check: 'forget', applies: 'paradise-internal' }]);
+  const ctx = { requirements: 'a paradise-internal engine change', findings: '', prd: '', codeBlob: '' };
+  assert.strictEqual(chk.run(ctx).ok, false, 'in scope and unaddressed = regression');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

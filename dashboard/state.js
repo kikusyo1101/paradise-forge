@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T20:27:54.848Z",
+  "generated": "2026-08-30T20:53:49.372Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,7 +99,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 43,
+    "nodeCount": 45,
     "edgeCount": 33,
     "nodes": [
       {
@@ -325,24 +325,6 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
-        "id": "contract-failclosed",
-        "type": "lesson",
-        "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
-        "degree": 0
-      },
-      {
-        "id": "lww",
-        "type": "t",
-        "label": "second",
-        "degree": 0
-      },
-      {
-        "id": "temp-b",
-        "type": "t",
-        "label": "B",
-        "degree": 0
-      },
-      {
         "id": "article-12",
         "type": "decision",
         "label": "憲法第12条: 位階別モデル方針",
@@ -358,6 +340,36 @@ window.PARADISE_STATE = {
         "id": "model-by-rank",
         "type": "lesson",
         "label": "モデルは位階で割り当て、裁きは値切るな",
+        "degree": 0
+      },
+      {
+        "id": "contract-failclosed",
+        "type": "lesson",
+        "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
+        "degree": 0
+      },
+      {
+        "id": "lww",
+        "type": "t",
+        "label": "second",
+        "degree": 0
+      },
+      {
+        "id": "temp-b",
+        "type": "t",
+        "label": "B",
+        "degree": 0
+      },
+      {
+        "id": "scoped-lesson",
+        "type": "lesson",
+        "label": "contract must fail closed",
+        "degree": 0
+      },
+      {
+        "id": "lesson-scope-strict",
+        "type": "lesson",
+        "label": "スコープは厳密一致で守れ（偽REWORKは見逃しと同罪）",
         "degree": 0
       }
     ],
@@ -535,7 +547,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 4,
       "verdict": 1,
-      "lesson": 10,
+      "lesson": 12,
       "t": 2
     }
   },
@@ -581,14 +593,24 @@ window.PARADISE_STATE = {
       "check": "musthaves|applies:paradise-internal"
     },
     {
-      "id": "contract-failclosed",
-      "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
-      "check": ""
-    },
-    {
       "id": "model-by-rank",
       "label": "モデルは位階で割り当て、裁きは値切るな",
       "check": "model|applies:paradise-internal"
+    },
+    {
+      "id": "contract-failclosed",
+      "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
+      "check": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal"
+    },
+    {
+      "id": "scoped-lesson",
+      "label": "contract must fail closed",
+      "check": "contract must fail closed|applies:paradise-internal"
+    },
+    {
+      "id": "lesson-scope-strict",
+      "label": "スコープは厳密一致で守れ（偽REWORKは見逃しと同罪）",
+      "check": "scopeMatches|applies:paradise-internal"
     }
   ],
   "creations": [

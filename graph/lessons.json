@@ -56,17 +56,31 @@
     "ts": "2026-08-30T15:24:57.708Z"
   },
   {
-    "id": "contract-failclosed",
-    "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
-    "check": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse|applies:paradise-internal",
-    "applies": null,
-    "ts": "2026-08-30T20:06:09.698Z"
-  },
-  {
     "id": "model-by-rank",
     "label": "モデルは位階で割り当て、裁きは値切るな",
     "check": "model",
     "applies": "paradise-internal",
     "ts": "2026-08-30T20:27:54.685Z"
+  },
+  {
+    "id": "contract-failclosed",
+    "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
+    "check": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T20:52:20.817Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T20:53:31.737Z"
+  },
+  {
+    "id": "lesson-scope-strict",
+    "label": "スコープは厳密一致で守れ（偽REWORKは見逃しと同罪）",
+    "check": "scopeMatches",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T20:53:49.283Z"
   }
 ]

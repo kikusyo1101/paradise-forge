@@ -67,6 +67,18 @@ way to change what "complete" means.
     lives in `clergy.js` and is written into the agents by `apply-models.js` — a
     declaration is not a mechanism (Art. 10); `apply-models.js verify` must pass.
 
+13. **A lesson is bound to its scope, and the fence is exact.** Memory that
+    corrects the future must not corrupt it: every persisted lesson carries an
+    explicit scope (`<check>|applies:<scope>`), and a lesson fires ONLY where that
+    scope truly holds. The scope is matched **strictly** — as a whole term, never
+    fuzzily — because a loose match lets an incidental word drag an unrelated
+    lesson into a creation and condemn it falsely. A false REWORK is as grave a
+    failure as a missed one: it teaches the paradise to distrust its own memory.
+    The binding is enforced at write time (`kg.js` normalizes a malformed lesson
+    rather than storing a global one), at export (`lessons.js` recovers the scope
+    from wherever it was written), and at judgment (`critic.js scopeMatches`).
+    An unscoped lesson is a global law and must be intended as one.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
