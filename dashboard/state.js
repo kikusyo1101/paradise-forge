@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T15:27:22.163Z",
+  "generated": "2026-08-30T15:31:27.186Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,7 +99,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 38,
+    "nodeCount": 39,
     "edgeCount": 31,
     "nodes": [
       {
@@ -329,6 +329,12 @@ window.PARADISE_STATE = {
         "type": "t",
         "label": "B",
         "degree": 0
+      },
+      {
+        "id": "skill-paradise",
+        "type": "decision",
+        "label": "楽園運用スキル化",
+        "degree": 0
       }
     ],
     "edges": [
@@ -491,7 +497,7 @@ window.PARADISE_STATE = {
     "byType": {
       "system": 4,
       "component": 10,
-      "decision": 6,
+      "decision": 7,
       "run": 3,
       "creation": 4,
       "verdict": 1,
