@@ -46,6 +46,16 @@ way to change what "complete" means.
     evidence). Loops are bounded: the loop-guard escalates to a human rather than
     burning on the same phase forever.
 
+11. **The paradise is an ecclesiastical hierarchy of nested cycles.** God issues
+    the wish; the pontiff (the session) governs; cardinals supervise domains;
+    priests (large subagents) do large work and marshal believers (small
+    subagents) for fine work; the tribunal (executor) judges, independent of all.
+    Great circles contain small circles: the conclave turns a PDCA ring over
+    domains, and each cardinal turns its own PDCA ring over its phases. Review and
+    approval are done by the APPROPRIATE CLASS — a domain never ratifies itself;
+    the tribunal answers to no cardinal. Every level is bounded by its own
+    loop-guard and escalates upward rather than burning.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

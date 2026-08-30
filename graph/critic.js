@@ -191,7 +191,16 @@ function lessonChecks(lessons) {
 
 function review(dir, opts = {}) {
   const ctx = collect(dir, opts);
-  const checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
+  // Self-source mode: when reviewing the paradise's OWN engine code (not a
+  // creation), the creation-shaped checks (needs requirements.md / a co-located
+  // test file / findings.md) do not apply — tests live centrally, there is no
+  // per-module spec. Detect via an explicit opt-out marker or the --self flag.
+  const isSelf = opts.self || fs.existsSync(path.join(dir, '.paradise-source'));
+  let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
+  if (isSelf) {
+    const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence']);
+    checks = checks.filter(c => !creationOnly.has(c.id)); // keep security + lessons + hardcode smell
+  }
   const results = checks.map(c => {
     let r;
     try { r = c.run(ctx); } catch (e) { r = { ok: true, note: 'check errored: ' + e.message, soft: true }; }
@@ -199,7 +208,7 @@ function review(dir, opts = {}) {
   });
   const gaps = results.filter(r => !r.ok && r.severity === 'gap' && !r.soft);
   const smells = results.filter(r => !r.ok && r.severity === 'smell' && !r.soft);
-  return { dir, results, gaps, smells, clean: gaps.length === 0 };
+  return { dir, results, gaps, smells, clean: gaps.length === 0, self: isSelf };
 }
 
 function render(rev) {
@@ -227,9 +236,9 @@ function main() {
   }
   if (cmd === 'review') {
     const dir = argv[1];
-    if (!dir) { console.error('usage: critic.js review <dir> [--lessons lessons.json]'); process.exit(2); }
+    if (!dir) { console.error('usage: critic.js review <dir> [--lessons lessons.json] [--self]'); process.exit(2); }
     const opts = {};
-    for (let i = 2; i < argv.length; i++) if (argv[i] === '--lessons') opts.lessons = argv[++i];
+    for (let i = 2; i < argv.length; i++) { if (argv[i] === '--lessons') opts.lessons = argv[++i]; else if (argv[i] === '--self') opts.self = true; }
     const rev = review(dir, opts);
     console.log(render(rev));
     process.exit(rev.clean ? 0 : 1); // exit 1 => the critic found gaps => REWORK

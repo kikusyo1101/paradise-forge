@@ -12,6 +12,7 @@ const path = require('path');
 const os = require('os');
 const kg = require('./kg.js');
 const forge = require('./forge.js');
+const clergy = require('./clergy.js');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -69,6 +70,12 @@ function main() {
     },
     lessons,
     creations: creations(),
+    hierarchy: {
+      ranks: clergy.RANKS,
+      college: Object.fromEntries(Object.entries(clergy.COLLEGE).map(([k, c]) => [k, { domain: c.domain, governs: c.governs, priests: c.priests, believers: c.believers, reviewClass: c.reviewClass, pdca: c.pdca }])),
+      tribunal: clergy.TRIBUNAL,
+      chain: 'god → pontiff → cardinal → priest → believer   ‖   executor (independent)',
+    },
   };
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(state, null, 2));

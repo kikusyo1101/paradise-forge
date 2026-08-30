@@ -437,6 +437,104 @@ test('reconcile refuses an external handle unless explicitly allowed', () => {
   assert.strictEqual(contract.reconcile(claim, { allowExternal: true }).accepted, true, 'accepted when caller opts in');
 });
 
+// --- Clergy & Conclave: the ecclesiastical hierarchy ---
+console.log('Clergy (hierarchy):');
+const clergy = require(path.join(DIR, '..', 'graph', 'clergy.js'));
+const conclave = require(path.join(DIR, '..', 'graph', 'conclave.js'));
+
+test('clergy maps every forge phase to a cardinal or the tribunal', () => {
+  for (const id of ['discover', 'specify', 'design', 'detail', 'build', 'tests', 'review', 'security', 'verify', 'reflect', 'verdict']) {
+    assert.ok(clergy.cardinalFor(id), `${id} must belong to a cardinal/tribunal`);
+  }
+  assert.strictEqual(clergy.cardinalFor('discover'), 'discovery');
+  assert.strictEqual(clergy.cardinalFor('reflect'), 'tribunal');
+  assert.strictEqual(clergy.cardinalFor('verdict'), 'tribunal');
+});
+
+test('clergy groups phases into ordered cardinal domains', () => {
+  const groups = clergy.groupByCardinal(['discover', 'specify', 'design', 'detail', 'build', 'tests', 'reflect', 'verdict']);
+  assert.strictEqual(groups[0].cardinal, 'discovery');
+  assert.strictEqual(groups[groups.length - 1].cardinal, 'tribunal');
+  // architecture domain should hold design+detail together
+  const arch = groups.find(g => g.cardinal === 'architecture');
+  assert.ok(arch.phases.includes('design') && arch.phases.includes('detail'));
+});
+
+function makeConclave() {
+  const dag = forgeO.buildDag('hierarchy test', 'standard');
+  const tmp = path.join(os.tmpdir(), 'paradise-conclave-' + Math.random().toString(36).slice(2) + '.json');
+  fs.writeFileSync(tmp, JSON.stringify(dag));
+  return conclave.convene(tmp);
+}
+
+console.log('Conclave (recursive orchestration):');
+
+test('conclave convenes domains as cardinals with their phases', () => {
+  const run = makeConclave();
+  assert.ok(run.domains.length >= 5, 'at least 5 domains');
+  assert.strictEqual(run.domains[0].cardinal, 'discovery');
+  assert.ok(run.domains[0].phases.some(p => p.id === 'discover'));
+  assert.ok(run.domains.every(d => d.pdca), 'every domain has an inner PDCA');
+});
+
+test('conclave next() dispatches the active domain\'s ready phases', () => {
+  const run = makeConclave();
+  const step = conclave.next(run);
+  assert.strictEqual(step.level, 'domain');
+  assert.strictEqual(step.cardinal, 'discovery');
+  assert.strictEqual(step.phase, 'wave');
+  assert.ok(step.dispatch.some(d => d.id === 'discover'));
+});
+
+test('conclave advances to ratify when a domain\'s phases are all done', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  conclave.markDone(run, 'discover', 'findings.md');
+  const step = conclave.next(run);
+  assert.strictEqual(step.phase, 'ratify');
+  assert.strictEqual(step.reviewClass, 'pontiff', 'discovery is ratified by the pontiff');
+});
+
+test('ratify advances the conclave to the next cardinal', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  conclave.markDone(run, 'discover', 'findings.md');
+  conclave.ratify(run, 'discovery');
+  const step = conclave.next(run);
+  assert.strictEqual(step.cardinal, 'requirements', 'next domain becomes active');
+  // artifact handoff crosses the domain boundary
+  const specify = step.dispatch.find(d => d.id === 'specify');
+  assert.strictEqual(specify.context_from[0].artifact, 'findings.md');
+});
+
+test('domain-level reject triggers an INNER rework (the small circle)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'f.md');
+  conclave.ratify(run, 'discovery');
+  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'r.md');
+  const res = conclave.ratify(run, 'requirements', { reject: true, from: 'specify' });
+  assert.ok(res.reworked.includes('specify'), 'specify reset for inner rework');
+  const d = run.domains.find(x => x.cardinal === 'requirements');
+  assert.strictEqual(d.status, 'active', 'domain re-activates for rework');
+  assert.strictEqual(d.phases.find(p => p.id === 'specify').status, 'rework');
+});
+
+test('domain loop-guard blocks a cardinal after MAX_DOMAIN_REWORK', () => {
+  const run = makeConclave();
+  const d = run.domains.find(x => x.cardinal === 'requirements');
+  d.reworks = conclave.MAX_DOMAIN_REWORK; // at the ceiling
+  const res = conclave.ratify(run, 'requirements', { reject: true, from: 'specify' });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(d.status, 'blocked', 'domain blocks → pontiff escalation');
+});
+
+test('conclave completes when all domains are ratified', () => {
+  const run = makeConclave();
+  for (const d of run.domains) { for (const p of d.phases) p.status = 'done'; d.status = 'ratified'; }
+  const step = conclave.next(run);
+  assert.strictEqual(step.phase, 'complete');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

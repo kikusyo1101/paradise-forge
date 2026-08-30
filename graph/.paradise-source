@@ -1,0 +1,5 @@
+This directory holds the Paradise ENGINE source (graph-engine, kg, forge, verdict,
+critic, orchestrator, conclave, clergy...), not a creation. The critic's
+creation-shaped checks (needs requirements.md, a co-located test file, findings.md)
+do not apply here — tests live centrally in ../tests/paradise.test.js. The critic
+runs in --self mode against this directory (security + lessons + hardcode checks only).

@@ -33,5 +33,12 @@
     "check": "applies",
     "applies": "paradise-internal",
     "ts": "2026-08-30T14:57:41.255Z"
+  },
+  {
+    "id": "critic-self-source",
+    "label": "criticはソースと創造物を区別せよ",
+    "check": "self",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T15:12:45.194Z"
   }
 ]
