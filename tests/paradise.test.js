@@ -241,6 +241,79 @@ test('coverage floor is configurable', () => {
   assert.strictEqual(verdict.judge(report, { floor: 70 }).verdict, 'SHIP', '75 >= 70 => SHIP');
 });
 
+// --- Critic: adversarial self-critique ---
+console.log('Critic (self-critique):');
+const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+
+function makeCreation(spec, code, opts = {}) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-critic-'));
+  if (spec) fs.writeFileSync(path.join(d, 'requirements.md'), spec);
+  if (opts.findings) fs.writeFileSync(path.join(d, 'findings.md'), opts.findings);
+  if (code) fs.writeFileSync(path.join(d, 'app.js'), code);
+  if (opts.test) fs.writeFileSync(path.join(d, 'app.test.js'), opts.test);
+  return d;
+}
+
+test('critic flags a flawed creation (no AC, no tests) as gaps', () => {
+  const d = makeCreation('# Timer\nA 25/5 timer.', 'let r=1500; function t(){r--;}\nmodule.exports=t;');
+  const rev = critic.review(d);
+  assert.strictEqual(rev.clean, false, 'flawed creation must not be clean');
+  assert.ok(rev.gaps.some(g => /acceptance/.test(g.id)), 'missing AC is a gap');
+  assert.ok(rev.gaps.some(g => /tests-exist/.test(g.id)), 'missing tests is a gap');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic passes a complete creation (AC + tests + config + findings)', () => {
+  const spec = '# Timer\n## Acceptance Criteria\n- AC-1 durations are configurable.';
+  const code = 'function createTimer(config){var cfg=config||{};return {work:cfg.workDuration};}\nmodule.exports=createTimer;';
+  const bigTest = 'const t=require("./app.js");' + 'a'.repeat(500) + '\n// asserts...';
+  const findings = '| 🔴 must | **Custom durations** | universal |';
+  const d = makeCreation(spec, code, { test: bigTest, findings });
+  const rev = critic.review(d);
+  assert.ok(rev.gaps.length === 0, 'complete creation should have no gaps: ' + JSON.stringify(rev.gaps.map(g=>g.id)));
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic detects a hardcoded creation (no real config surface)', () => {
+  const spec = '# Timer\n## Acceptance Criteria\n- AC-1 works.';
+  const hardcoded = 'let remaining=1500; function tick(){remaining--;}\nmodule.exports={tick};';
+  const d = makeCreation(spec, hardcoded, { test: 'x'.repeat(500) });
+  const rev = critic.review(d);
+  assert.ok(rev.smells.some(s => /hardcoded/.test(s.id)), 'hardcoded values are a smell');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic extracts must-haves from findings markdown', () => {
+  const findings = '| 🔴 must | **Custom durations** | x |\n| 🔴 must | **Skip button** | y |\n| 🟡 nice | **Themes** | z |';
+  const musts = critic.extractMustHaves(findings);
+  assert.ok(musts.includes('Custom durations') && musts.includes('Skip button'), 'parses red must-haves');
+});
+
+test('lessons become checks: a past-miss recurrence is caught', () => {
+  const d = makeCreation('# App\n## Acceptance Criteria\n- AC-1', 'function createTimer(config){return config;}\nmodule.exports=createTimer;', { test: 'y'.repeat(500) });
+  const lessonsFile = path.join(d, 'lessons.json');
+  fs.writeFileSync(lessonsFile, JSON.stringify([{ id: 'l1', label: 'must have notifications', check: 'notification' }]));
+  const rev = critic.review(d, { lessons: lessonsFile });
+  assert.ok(rev.gaps.some(g => g.id === 'lesson:l1'), 'unaddressed lesson recurs as a gap');
+  // now satisfy the lesson
+  fs.writeFileSync(path.join(d, 'app.js'), 'function createTimer(config){ /* notification support */ return config;}\nmodule.exports=createTimer;');
+  const rev2 = critic.review(d, { lessons: lessonsFile });
+  assert.ok(!rev2.gaps.some(g => g.id === 'lesson:l1'), 'satisfied lesson no longer a gap');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+// --- Forge reflect phase ---
+test('forge inserts a reflect (self-critique) gate before verdict', () => {
+  for (const scale of ['quick', 'standard', 'full']) {
+    const dag = forge.buildDag('x', scale);
+    const ids = dag.tasks.map(t => t.id);
+    assert.ok(ids.includes('reflect'), `${scale} must include reflect`);
+    const verdict = dag.tasks.find(t => t.id === 'verdict');
+    assert.ok(verdict.deps.includes('reflect'), `${scale}: verdict depends on reflect`);
+    assert.ok(dag.meta.gates.includes('reflect'), `${scale}: reflect is a gate`);
+  }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

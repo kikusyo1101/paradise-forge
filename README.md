@@ -95,39 +95,38 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 22/22 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 29/29 pass
 ```
-検証内容: wave分割・並列判定・サイクル検出・欠落依存検出・CLI exit code・
-知識グラフのupsert・リンク・近傍・スナップショット・冪等リンク・
-co-change学習（observe/predict・順序非依存・ランキング）・
-forge（scale適応・gated DAG生成）・verdict（SHIP/REWORK/BLOCK裁定・coverage floor）。
+検証内容: グラフエンジン・知識グラフ・co-change学習・forge（scale適応・discoverゲート・reflectゲート）・
+verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・ハードコード検出・must-have抽出・lesson再発検出）。
 
 ---
 
 ## 創造の楽園（The Forge）
-小さき声から創造物を生む、完全な gated SDLC パイプライン。
+小さき声から創造物を生む、完全な gated SDLC パイプライン。**世界を調べ、自らを疑い、裁く。**
 
 ```
-wish → specify → design → detail → build → verify → ⚖️VERDICT → creation
+wish → 🔍discover → specify → design → detail → build → verify → 🔍reflect → ⚖️VERDICT → creation
+        ↑調査(第8条)                                        ↑自己批評(第9条)  ↑裁き
 ```
 
 | ツール | 役割 |
 |--------|------|
-| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華（quick/standard/full）。憲法を meta に埋込 |
-| `graph/verdict.js` | **裁きの門**。検証結果を憲法に照らし SHIP / REWORK / BLOCK を裁定（exit 0/1/2） |
-| `CONSTITUTION.md` | **楽園憲法 7条** — spec is truth・gated phases・no secrets・evidence-based |
+| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華。discover/reflect/verdict をゲート化 |
+| `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
+| `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定 |
+| `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
+| `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
+| `CONSTITUTION.md` | **楽園憲法 9条**（spec is truth・research first・self-doubt・no secrets…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
-| agents | requirements-analyst（仕様化）・creation-judge（裁き） |
+| agents | market-researcher（調査）・requirements-analyst（仕様）・self-critic（批評）・creation-judge（裁き） |
 
-```bash
-node ~/Documents/workspace/paradise/graph/forge.js plan "<wish>" --out <dag.json>
-node ~/Documents/workspace/paradise/graph/verdict.js judge <report.json>
-# Claude Code 内では: /forge <小さき希望>
-```
+**自己改善ループ（Self-Refine + Reflexion）:** reflect フェーズが verdict の前に
+創造物を敵対的監査し、欠陥があれば REWORK。見逃した欠陥は lesson として知識グラフに
+永久記録され、以後の全創造で自動チェックされる — **楽園は同じ欠陥をユーザーに二度指摘させない。**
 
-**実証:** 「ポモドーロタイマーが欲しい」→ 9フェーズSDLC → 並列build+tests →
-受入基準AC-1〜AC-7を実コードで検証 → 裁定 **SHIP** →
-動く創造物 `creations/pomodoro/`。世界の叡智（Spec Kit・BMAD・Kiro）を吸収して結晶。
+**可視化:** `dashboard/control.html` が創造パイプライン・知識グラフ・lesson・創造物を
+生きた管理盤として表示。
 
 ---
 

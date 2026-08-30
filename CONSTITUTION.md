@@ -32,6 +32,12 @@ way to change what "complete" means.
    exists, what people use, what they expect. The literal wish is the seed, not
    the whole need — table-stakes features are surfaced before they are specified.
 
+9. **The paradise doubts itself before it is judged.** Every creation is
+   adversarially self-critiqued before judgment — assumed incomplete until the
+   artifacts prove otherwise. A flaw only the user would notice must be noticed
+   first. Past misses become permanent lessons: the paradise never depends on the
+   user to find the same flaw twice.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

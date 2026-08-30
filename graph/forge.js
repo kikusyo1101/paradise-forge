@@ -47,7 +47,8 @@ const SCALES = {
     { id: 'specify', agent: 'requirements-analyst', goal: `Capture the intent of: ${wish}`, deps: ['discover'], artifact: 'requirements.md' },
     { id: 'build',   agent: 'architect',   goal: `Implement the change for: ${wish}`, deps: ['specify'], artifact: 'implementation' },
     { id: 'verify',  agent: 'verification-loop', goal: 'Run build/type/lint/test/security gates', deps: ['build'], gate: true, artifact: 'verification-report' },
-    { id: 'verdict', agent: 'creation-judge', goal: 'Judge: SHIP / REWORK / BLOCK', deps: ['verify'], gate: true, artifact: 'verdict' },
+    { id: 'reflect', agent: 'self-critic', goal: 'Adversarially self-critique the creation: run the critic checklist + past-miss lessons, surface gaps', deps: ['verify'], gate: true, artifact: 'critique.md' },
+    { id: 'verdict', agent: 'creation-judge', goal: 'Judge: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
 
   // Standard — a normal feature: discover -> full four-phase SDD + review + judgment
@@ -61,7 +62,8 @@ const SCALES = {
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review of the implementation', deps: ['build', 'tests'], artifact: 'review' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security scan of the change', deps: ['build'], artifact: 'security-report' },
     { id: 'verify',   agent: 'verification-loop', goal: 'Run all verification gates + coverage', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
-    { id: 'verdict',  agent: 'creation-judge', goal: 'Judge against spec, findings & constitution: SHIP / REWORK / BLOCK', deps: ['verify'], gate: true, artifact: 'verdict' },
+    { id: 'reflect',  agent: 'self-critic', goal: 'Adversarially self-critique against findings & spec: run critic checklist + lessons. Any gap => demand REWORK before judgment', deps: ['verify'], gate: true, artifact: 'critique.md' },
+    { id: 'verdict',  agent: 'creation-judge', goal: 'Judge against spec, findings, critique & constitution: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
 
   // Full — a product: deep discovery + analysis, UX, and docs (BMAD full track)
@@ -79,7 +81,8 @@ const SCALES = {
     { id: 'security', agent: 'security-reviewer', goal: 'Security & privacy review', deps: ['build', 'build-ui'], artifact: 'security-report' },
     { id: 'docs',     agent: 'doc-updater', goal: 'Write user & developer documentation', deps: ['build', 'build-ui'], artifact: 'docs' },
     { id: 'verify',   agent: 'verification-loop', goal: 'Full verification: build/type/lint/test/coverage/security', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
-    { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD, findings & constitution: SHIP / REWORK / BLOCK', deps: ['verify', 'docs'], gate: true, artifact: 'verdict' },
+    { id: 'reflect',  agent: 'self-critic', goal: 'Adversarial self-critique against PRD, findings & UX: run critic checklist + lessons. Any gap => REWORK before judgment', deps: ['verify', 'docs'], gate: true, artifact: 'critique.md' },
+    { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD, findings, critique & constitution: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
 };
 

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🏛️ Paradise · Control Panel</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2230;
+    --border: #2a3140;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --cyan: #39d0d8;
+    --cyan-dim: #1f6f74;
+    --violet: #a371f7;
+    --violet-dim: #5a3d8c;
+    --green: #3fb950;
+    --amber: #d29922;
+    --radius: 14px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    padding: 28px 20px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  a { color: var(--cyan); }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, rgba(57,208,216,0.08), rgba(163,113,247,0.08));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 26px 28px;
+    box-shadow: var(--shadow);
+    margin-bottom: 26px;
+  }
+  .header h1 {
+    margin: 0 0 6px;
+    font-size: 30px;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle { color: var(--muted); font-size: 15px; margin-bottom: 4px; }
+  .header .generated { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .badges { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-width: 96px;
+    text-align: center;
+  }
+  .badge .num { font-size: 24px; font-weight: 700; color: var(--cyan); display: block; }
+  .badge .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .badge.violet .num { color: var(--violet); }
+
+  /* Section shell */
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  section > h2 {
+    margin: 0 0 4px;
+    font-size: 19px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  section > .hint { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+  /* Pipeline */
+  .pipeline-flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .flow-terminal {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 14px;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    background: var(--panel-2);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .flow-arrow { display: flex; align-items: center; color: var(--muted); font-size: 18px; padding: 0 2px; }
+  .chip {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    min-width: 92px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .chip .pid { font-weight: 700; font-size: 14px; color: var(--text); }
+  .chip .agent { font-size: 11px; color: var(--cyan); font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .chip.gate {
+    border-color: var(--violet);
+    border-width: 2px;
+    background: linear-gradient(135deg, rgba(163,113,247,0.14), rgba(28,34,48,0.6));
+    box-shadow: 0 0 0 1px rgba(163,113,247,0.25), 0 4px 14px rgba(163,113,247,0.15);
+  }
+  .chip.gate .pid { color: #d9c4ff; }
+  .gate-badge {
+    position: absolute;
+    top: -9px; right: -9px;
+    background: var(--violet);
+    color: #fff;
+    font-size: 11px;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+
+  /* Graph */
+  .graph-wrap { display: flex; flex-wrap: wrap; gap: 20px; }
+  .graph-svg-box {
+    flex: 1 1 560px;
+    min-width: 300px;
+    background: radial-gradient(circle at 50% 45%, #10151f, #0b0e14);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { flex: 0 1 220px; min-width: 180px; }
+  .legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 4px 0 12px; }
+  .legend-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
+  .legend-count { margin-left: auto; color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  .edge-line { stroke: #33404f; stroke-width: 1; }
+  .node-label { fill: var(--text); font-size: 9px; font-family: ui-monospace, Menlo, Consolas, monospace; pointer-events: none; }
+  .node-circle { stroke: #0b0e14; stroke-width: 1.5; }
+
+  /* Lessons + creations */
+  .cols { display: flex; flex-wrap: wrap; gap: 22px; }
+  .lessons-col { flex: 2 1 480px; min-width: 300px; }
+  .creations-col { flex: 1 1 240px; min-width: 220px; }
+  .lesson-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .lesson-card .flow { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .lesson-card .label { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .lesson-card .check {
+    font-size: 12.5px; color: var(--muted);
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .lesson-card .check .kw { color: var(--cyan); }
+  .creation-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .creation-item .cname { font-weight: 700; }
+  .creation-item .cfiles { font-size: 12px; color: var(--muted); }
+  .verdict-badge {
+    margin-left: auto;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .verdict-badge.ship { background: rgba(63,185,80,0.18); color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
+  .verdict-badge.other { background: rgba(210,153,34,0.18); color: var(--amber); border: 1px solid rgba(210,153,34,0.4); }
+  .findings-dot { font-size: 12px; color: var(--cyan); }
+
+  .fallback {
+    background: rgba(210,153,34,0.12);
+    border: 1px solid var(--amber);
+    color: #f0d089;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 14px;
+  }
+  .fallback code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div class="fallback" id="loading">Loading Paradise state…</div>
+  </div>
+
+  <!-- Prefer the inlined companion so the page renders offline over file:// -->
+  <script src="state.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var TYPE_COLORS = {
+      system:    "#39d0d8",
+      component: "#a371f7",
+      decision:  "#d29922",
+      run:       "#58a6ff",
+      creation:  "#3fb950",
+      verdict:   "#f778ba",
+      lesson:    "#ff9d5c"
+    };
+    function colorFor(type) { return TYPE_COLORS[type] || "#8b949e"; }
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function render(state) {
+      var app = document.getElementById("app");
+      var g = state.graph || { nodes: [], edges: [], byType: {} };
+      var pipeline = state.pipeline || [];
+      var lessons = state.lessons || [];
+      var creations = state.creations || [];
+
+      var html = "";
+
+      /* ---- Section 1: Header ---- */
+      html += '<div class="header">';
+      html += '<h1>🏛️ Paradise · Control Panel</h1>';
+      html += '<div class="subtitle">The living state of the creation paradise</div>';
+      html += '<div class="generated">generated: ' + esc(state.generated) + '</div>';
+      html += '<div class="badges">';
+      html += badge(g.nodeCount != null ? g.nodeCount : (g.nodes || []).length, "graph nodes", false);
+      html += badge(g.edgeCount != null ? g.edgeCount : (g.edges || []).length, "edges", true);
+      html += badge(lessons.length, "lessons", false);
+      html += badge(creations.length, "creations", true);
+      html += '</div></div>';
+
+      /* ---- Section 2: Creation Pipeline ---- */
+      html += '<section>';
+      html += '<h2>🔨 Creation Pipeline</h2>';
+      html += '<p class="hint">Reads like <strong>wish</strong> → [phases] → <strong>creation</strong>. Gate phases (⚖️) block advancement until verified.</p>';
+      html += '<div class="pipeline-flow">';
+      html += '<div class="flow-terminal">✨ wish</div>';
+      for (var i = 0; i < pipeline.length; i++) {
+        var p = pipeline[i];
+        html += '<div class="flow-arrow">→</div>';
+        html += '<div class="chip' + (p.gate ? ' gate' : '') + '">';
+        if (p.gate) { html += '<span class="gate-badge" title="Gate phase">⚖️</span>'; }
+        html += '<span class="pid">' + esc(p.id) + '</span>';
+        html += '<span class="agent">@' + esc(p.agent) + '</span>';
+        html += '</div>';
+      }
+      html += '<div class="flow-arrow">→</div>';
+      html += '<div class="flow-terminal">🎁 creation</div>';
+      html += '</div></section>';
+
+      /* ---- Section 3: Knowledge Graph ---- */
+      html += '<section>';
+      html += '<h2>🕸️ Knowledge Graph</h2>';
+      html += '<p class="hint">' + esc((g.nodes || []).length) + ' nodes · ' + esc((g.edges || []).length) + ' edges — radial layout, node size ∝ degree, colored by type.</p>';
+      html += '<div class="graph-wrap">';
+      html += '<div class="graph-svg-box">' + buildGraphSvg(g) + '</div>';
+      html += buildLegend(g.byType || {});
+      html += '</div></section>';
+
+      /* ---- Section 4: Lessons + Creations ---- */
+      html += '<section>';
+      html += '<h2>🧠 Lessons <span style="color:var(--muted);font-size:13px;font-weight:400;">(Reflexion memory)</span></h2>';
+      html += '<p class="hint">Each lesson is a <strong>past-miss → permanent check</strong>.</p>';
+      html += '<div class="cols">';
+
+      html += '<div class="lessons-col">';
+      for (var j = 0; j < lessons.length; j++) {
+        var L = lessons[j];
+        html += '<div class="lesson-card">';
+        html += '<div class="flow">past-miss → permanent check</div>';
+        html += '<div class="label">' + esc(L.label) + '</div>';
+        html += '<div class="check">check: <span class="kw">' + esc(L.check) + '</span></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+
+      html += '<div class="creations-col">';
+      html += '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:4px 0 12px;">Creations</h3>';
+      for (var k = 0; k < creations.length; k++) {
+        var c = creations[k];
+        var isShip = String(c.verdict).toUpperCase() === "SHIP";
+        html += '<div class="creation-item">';
+        html += '<div><span class="cname">' + esc(c.name) + '</span>';
+        html += '<div class="cfiles">' + esc(c.files) + ' files' + (c.hasFindings ? ' · <span class="findings-dot">findings ✓</span>' : '') + '</div></div>';
+        html += '<span class="verdict-badge ' + (isShip ? 'ship' : 'other') + '">' + esc(c.verdict) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+
+      html += '</div></section>';
+
+      app.innerHTML = html;
+    }
+
+    function badge(num, lbl, violet) {
+      return '<div class="badge' + (violet ? ' violet' : '') + '"><span class="num">' + esc(num) + '</span><span class="lbl">' + esc(lbl) + '</span></div>';
+    }
+
+    function buildLegend(byType) {
+      var html = '<div class="legend"><h3>Node types</h3>';
+      var keys = Object.keys(byType);
+      for (var i = 0; i < keys.length; i++) {
+        var t = keys[i];
+        html += '<div class="legend-item">';
+        html += '<span class="legend-swatch" style="background:' + colorFor(t) + '"></span>';
+        html += '<span>' + esc(t) + '</span>';
+        html += '<span class="legend-count">' + esc(byType[t]) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function buildGraphSvg(g) {
+      var nodes = (g.nodes || []).slice();
+      var edges = g.edges || [];
+      var W = 560, H = 460;
+      var cx = W / 2, cy = H / 2;
+      var R = Math.min(W, H) * 0.40;
+
+      // Radial layout, ordered so high-degree nodes are spread out.
+      var pos = {};
+      var n = nodes.length || 1;
+      // Sort a copy for placement: highest degree first for visual balance, but keep index mapping.
+      var order = nodes.map(function (nd, idx) { return { idx: idx, deg: nd.degree || 0, id: nd.id }; });
+      order.sort(function (a, b) { return b.deg - a.deg; });
+
+      // Place highest-degree node near center, rest on ring by alternating.
+      for (var i = 0; i < order.length; i++) {
+        var nd = nodes[order[i].idx];
+        var ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+        // Highest-degree node pulled slightly inward.
+        var ringR = R * (0.55 + 0.45 * (i === 0 ? 0 : 1));
+        pos[nd.id] = {
+          x: cx + Math.cos(ang) * ringR,
+          y: cy + Math.sin(ang) * ringR
+        };
+      }
+      // A tiny relaxation pass to reduce overlap.
+      for (var pass = 0; pass < 40; pass++) {
+        for (var a = 0; a < nodes.length; a++) {
+          for (var b = a + 1; b < nodes.length; b++) {
+            var pa = pos[nodes[a].id], pb = pos[nodes[b].id];
+            var dx = pb.x - pa.x, dy = pb.y - pa.y;
+            var d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+            var minD = 46;
+            if (d < minD) {
+              var push = (minD - d) / d * 0.5;
+              pa.x -= dx * push; pa.y -= dy * push;
+              pb.x += dx * push; pb.y += dy * push;
+            }
+          }
+        }
+      }
+      // Clamp within bounds.
+      for (var id in pos) {
+        pos[id].x = Math.max(30, Math.min(W - 30, pos[id].x));
+        pos[id].y = Math.max(24, Math.min(H - 20, pos[id].y));
+      }
+
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Knowledge graph">';
+
+      // Edges first
+      for (var e = 0; e < edges.length; e++) {
+        var f = pos[edges[e].from], tp = pos[edges[e].to];
+        if (!f || !tp) continue;
+        svg += '<line class="edge-line" x1="' + f.x.toFixed(1) + '" y1="' + f.y.toFixed(1) + '" x2="' + tp.x.toFixed(1) + '" y2="' + tp.y.toFixed(1) + '"><title>' + esc(edges[e].from + ' —' + edges[e].rel + '→ ' + edges[e].to) + '</title></line>';
+      }
+      // Nodes
+      for (var m = 0; m < nodes.length; m++) {
+        var nn = nodes[m];
+        var p = pos[nn.id];
+        var r = 6 + (nn.degree || 0) * 2.2;
+        svg += '<circle class="node-circle" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + colorFor(nn.type) + '"><title>' + esc(nn.id + ' (' + nn.type + ', deg ' + (nn.degree || 0) + ') — ' + nn.label) + '</title></circle>';
+        svg += '<text class="node-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - r - 3).toFixed(1) + '" text-anchor="middle">' + esc(nn.id) + '</text>';
+      }
+      svg += '</svg>';
+      return svg;
+    }
+
+    function showFallback(reason) {
+      var app = document.getElementById("app");
+      app.innerHTML = '<div class="fallback"><strong>⚠️ Could not load Paradise state.</strong><br>' +
+        esc(reason) + '<br><br>The companion <code>state.js</code> (which sets <code>window.PARADISE_STATE</code>) was not found, and <code>fetch(\'state.json\')</code> is blocked over <code>file://</code> in this browser.<br>' +
+        'Fix: keep <code>state.js</code> next to <code>control.html</code>, or serve the folder over HTTP (e.g. <code>python -m http.server</code>).</div>';
+    }
+
+    // 1) Prefer the inlined companion (works offline / file://).
+    if (typeof window.PARADISE_STATE === "object" && window.PARADISE_STATE) {
+      try { render(window.PARADISE_STATE); return; }
+      catch (err) { showFallback("Error rendering embedded state: " + err.message); return; }
+    }
+
+    // 2) Fall back to fetching state.json (works over HTTP).
+    if (typeof fetch === "function") {
+      fetch("state.json")
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function (data) { render(data); })
+        .catch(function (err) { showFallback("fetch failed: " + err.message); });
+    } else {
+      showFallback("No embedded state and fetch() is unavailable.");
+    }
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "discover-gap",
+    "label": "調査フェーズ欠落の教訓",
+    "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化",
+    "ts": "2026-08-30T11:12:20.222Z"
+  },
+  {
+    "id": "require-customization",
+    "label": "設定カスタマイズは必須",
+    "check": "config",
+    "ts": "2026-08-30T13:42:29.268Z"
+  },
+  {
+    "id": "require-discovery",
+    "label": "調査フェーズを飛ばすな",
+    "check": "findings",
+    "ts": "2026-08-30T13:42:29.309Z"
+  }
+]
