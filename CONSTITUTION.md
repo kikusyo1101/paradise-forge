@@ -27,6 +27,11 @@ way to change what "complete" means.
 7. **Small voices, full dignity.** A one-line wish deserves the same rigor as a
    grand plan — scaled appropriately (quick / standard / full), never dismissed.
 
+8. **Research precedes specification.** A spec written without studying the world
+   is a spec built on assumption. Every creation begins with discovery: what
+   exists, what people use, what they expect. The literal wish is the seed, not
+   the whole need — table-stakes features are surfaced before they are specified.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

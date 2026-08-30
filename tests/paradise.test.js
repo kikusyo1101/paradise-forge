@@ -183,8 +183,17 @@ test('forges a gated SDLC DAG that graph-engine can schedule', () => {
   assert.strictEqual(v.ok, true, 'forged DAG must be valid: ' + v.errors.join('; '));
   const waves = engineF.schedule(loaded);
   assert.ok(waves.length >= 5, 'standard SDLC spans multiple waves');
-  assert.deepStrictEqual(waves[0], ['specify'], 'specify runs first');
+  assert.deepStrictEqual(waves[0], ['discover'], 'discovery runs first — research precedes spec');
+  assert.deepStrictEqual(waves[1], ['specify'], 'specify follows discovery');
   assert.strictEqual(waves[waves.length - 1][0], 'verdict', 'verdict runs last');
+});
+
+test('every scale begins with discovery (research precedes specification)', () => {
+  for (const scale of ['quick', 'standard', 'full']) {
+    const dag = forge.buildDag('x', scale);
+    assert.strictEqual(dag.tasks[0].id, 'discover', `${scale} must start with discover`);
+    assert.strictEqual(dag.tasks[0].agent, 'market-researcher', `${scale} discover uses market-researcher`);
+  }
 });
 
 test('every phase has an agent and gates are marked', () => {

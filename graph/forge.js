@@ -41,16 +41,19 @@ const CONSTITUTION = [
  */
 const SCALES = {
   // Quick Flow — bug fixes / tiny clearly-scoped changes (BMAD "quick flow")
+  // Even quick changes get a light-touch discovery: check how it's normally done.
   quick: (wish) => [
-    { id: 'specify', agent: 'requirements-analyst', goal: `Capture the intent of: ${wish}`, artifact: 'requirements.md' },
+    { id: 'discover', agent: 'market-researcher', goal: `Quick scan: how is this normally done, any obvious prior art for: ${wish}`, artifact: 'findings.md' },
+    { id: 'specify', agent: 'requirements-analyst', goal: `Capture the intent of: ${wish}`, deps: ['discover'], artifact: 'requirements.md' },
     { id: 'build',   agent: 'architect',   goal: `Implement the change for: ${wish}`, deps: ['specify'], artifact: 'implementation' },
     { id: 'verify',  agent: 'verification-loop', goal: 'Run build/type/lint/test/security gates', deps: ['build'], gate: true, artifact: 'verification-report' },
     { id: 'verdict', agent: 'creation-judge', goal: 'Judge: SHIP / REWORK / BLOCK', deps: ['verify'], gate: true, artifact: 'verdict' },
   ],
 
-  // Standard — a normal feature: full four-phase SDD + review + judgment
+  // Standard — a normal feature: discover -> full four-phase SDD + review + judgment
   standard: (wish) => [
-    { id: 'specify',  agent: 'requirements-analyst', goal: `Write requirements (what & why) for: ${wish}`, artifact: 'requirements.md' },
+    { id: 'discover', agent: 'market-researcher', goal: `Research prior art, popular solutions, and expected/standard features for: ${wish}. Surface user needs, not just the literal ask.`, gate: true, artifact: 'findings.md' },
+    { id: 'specify',  agent: 'requirements-analyst', goal: 'Write requirements (what & why) grounded in the findings — include the table-stakes features users expect', deps: ['discover'], artifact: 'requirements.md' },
     { id: 'design',   agent: 'architect', goal: 'Basic design: architecture, data model, interfaces', deps: ['specify'], gate: true, artifact: 'design.md' },
     { id: 'detail',   agent: 'architect', goal: 'Detailed design: decompose into ordered testable tasks', deps: ['design'], artifact: 'tasks.md' },
     { id: 'build',    agent: 'architect', goal: 'Implement the tasks', deps: ['detail'], artifact: 'implementation' },
@@ -58,13 +61,14 @@ const SCALES = {
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review of the implementation', deps: ['build', 'tests'], artifact: 'review' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security scan of the change', deps: ['build'], artifact: 'security-report' },
     { id: 'verify',   agent: 'verification-loop', goal: 'Run all verification gates + coverage', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
-    { id: 'verdict',  agent: 'creation-judge', goal: 'Judge against spec & constitution: SHIP / REWORK / BLOCK', deps: ['verify'], gate: true, artifact: 'verdict' },
+    { id: 'verdict',  agent: 'creation-judge', goal: 'Judge against spec, findings & constitution: SHIP / REWORK / BLOCK', deps: ['verify'], gate: true, artifact: 'verdict' },
   ],
 
-  // Full — a product: adds analysis, UX, and docs (BMAD full track)
+  // Full — a product: deep discovery + analysis, UX, and docs (BMAD full track)
   full: (wish) => [
-    { id: 'analyze',  agent: 'requirements-analyst', goal: `Analyze the problem space & constraints behind: ${wish}`, artifact: 'analysis.md' },
-    { id: 'specify',  agent: 'requirements-analyst', goal: 'Write the PRD: requirements, user stories, acceptance criteria', deps: ['analyze'], gate: true, artifact: 'prd.md' },
+    { id: 'discover', agent: 'market-researcher', goal: `Deep market research for: ${wish}. Study popular products, rank features by adoption, identify differentiators and unmet needs.`, gate: true, artifact: 'findings.md' },
+    { id: 'analyze',  agent: 'requirements-analyst', goal: `Analyze the problem space & constraints behind: ${wish}, grounded in the findings`, deps: ['discover'], artifact: 'analysis.md' },
+    { id: 'specify',  agent: 'requirements-analyst', goal: 'Write the PRD: requirements, user stories, acceptance criteria — covering expected features from the research', deps: ['analyze'], gate: true, artifact: 'prd.md' },
     { id: 'ux',       agent: 'frontend', goal: 'UX design: flows, screens, interaction rules', deps: ['specify'], artifact: 'ux.md' },
     { id: 'design',   agent: 'architect', goal: 'Basic design: system architecture & data model', deps: ['specify'], gate: true, artifact: 'design.md' },
     { id: 'detail',   agent: 'architect', goal: 'Detailed design: interfaces + ordered testable tasks', deps: ['design', 'ux'], artifact: 'tasks.md' },
@@ -75,7 +79,7 @@ const SCALES = {
     { id: 'security', agent: 'security-reviewer', goal: 'Security & privacy review', deps: ['build', 'build-ui'], artifact: 'security-report' },
     { id: 'docs',     agent: 'doc-updater', goal: 'Write user & developer documentation', deps: ['build', 'build-ui'], artifact: 'docs' },
     { id: 'verify',   agent: 'verification-loop', goal: 'Full verification: build/type/lint/test/coverage/security', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
-    { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD & constitution: SHIP / REWORK / BLOCK', deps: ['verify', 'docs'], gate: true, artifact: 'verdict' },
+    { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD, findings & constitution: SHIP / REWORK / BLOCK', deps: ['verify', 'docs'], gate: true, artifact: 'verdict' },
   ],
 };
 
