@@ -568,6 +568,27 @@ test('synod ratifies a sound plan and records the refinement trail', () => {
   assert.ok(Array.isArray(res.refinements) && res.refinements.length >= 1, 'the planning cycle is recorded');
 });
 
+test('kg upsert is last-write-wins by id', () => {
+  const kg = require(path.join(DIR, '..', 'graph', 'kg.js'));
+  kg.remember('t', 'lww', 'first', 'a');
+  kg.remember('t', 'lww', 'second', 'b');
+  const n = kg.getNode('lww');
+  assert.strictEqual(n.label, 'second', 'second write wins');
+});
+
+test('kg forget removes a node and its edges (memory is correctable)', () => {
+  const kg = require(path.join(DIR, '..', 'graph', 'kg.js'));
+  kg.remember('t', 'temp-a', 'A', '');
+  kg.remember('t', 'temp-b', 'B', '');
+  kg.link('temp-a', 'rel', 'temp-b');
+  const res = kg.forget('temp-a');
+  assert.strictEqual(res.removedNodes, 1, 'node removed');
+  assert.ok(res.removedEdges >= 1, 'touching edges removed');
+  assert.strictEqual(kg.getNode('temp-a'), null, 'node is gone');
+  const nb = kg.neighbors('temp-b');
+  assert.ok(!nb.in.some(e => e.from === 'temp-a'), 'dangling edge cleaned');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

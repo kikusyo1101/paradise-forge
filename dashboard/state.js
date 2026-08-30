@@ -1,6 +1,5 @@
-// Auto-generated companion for control.html — inlines state.json so the page renders offline (file://).
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T15:15:12.114Z",
+  "generated": "2026-08-30T15:24:57.829Z",
   "pipeline": [
     {
       "id": "discover",
@@ -100,7 +99,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 34,
+    "nodeCount": 36,
     "edgeCount": 31,
     "nodes": [
       {
@@ -173,12 +172,6 @@ window.PARADISE_STATE = {
         "id": "pomodoro-verdict",
         "type": "verdict",
         "label": "Verdict: SHIP",
-        "degree": 1
-      },
-      {
-        "id": "discover-gap",
-        "type": "lesson",
-        "label": "調査フェーズ欠落の教訓",
         "degree": 1
       },
       {
@@ -306,6 +299,24 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "神託を即実装せず計画サイクルを回せ",
         "degree": 0
+      },
+      {
+        "id": "coin",
+        "type": "creation",
+        "label": "コイントス (SHIPPED)",
+        "degree": 1
+      },
+      {
+        "id": "kg-forget",
+        "type": "lesson",
+        "label": "知識グラフは訂正可能であるべき（追記のみは欠陥）",
+        "degree": 0
+      },
+      {
+        "id": "critic-synonym",
+        "type": "lesson",
+        "label": "spec充足は文字列一致でなくAC実駆動で裁け",
+        "degree": 0
       }
     ],
     "edges": [
@@ -385,11 +396,6 @@ window.PARADISE_STATE = {
         "to": "article-8"
       },
       {
-        "from": "discover-gap",
-        "rel": "fixed-by",
-        "to": "market-researcher"
-      },
-      {
         "from": "pomodoro-v2",
         "rel": "supersedes",
         "to": "pomodoro"
@@ -463,6 +469,11 @@ window.PARADISE_STATE = {
         "from": "paradise",
         "rel": "contains",
         "to": "synod"
+      },
+      {
+        "from": "coin",
+        "rel": "grounded-in",
+        "to": "market-researcher"
       }
     ],
     "byType": {
@@ -470,17 +481,12 @@ window.PARADISE_STATE = {
       "component": 10,
       "decision": 6,
       "run": 3,
-      "creation": 3,
+      "creation": 4,
       "verdict": 1,
-      "lesson": 7
+      "lesson": 8
     }
   },
   "lessons": [
-    {
-      "id": "discover-gap",
-      "label": "調査フェーズ欠落の教訓",
-      "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化"
-    },
     {
       "id": "require-discovery",
       "label": "調査フェーズを飛ばすな",
@@ -510,9 +516,25 @@ window.PARADISE_STATE = {
       "id": "plan-before-build",
       "label": "神託を即実装せず計画サイクルを回せ",
       "check": "synod|applies:orchestration"
+    },
+    {
+      "id": "kg-forget",
+      "label": "知識グラフは訂正可能であるべき（追記のみは欠陥）",
+      "check": "forget|applies:paradise-internal"
+    },
+    {
+      "id": "critic-synonym",
+      "label": "spec充足は文字列一致でなくAC実駆動で裁け",
+      "check": "musthaves|applies:paradise-internal"
     }
   ],
   "creations": [
+    {
+      "name": "coin",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
     {
       "name": "pomodoro",
       "files": 10,
