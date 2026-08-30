@@ -709,6 +709,58 @@ test('an in-scope lesson still catches a real regression', () => {
   assert.strictEqual(chk.run(ctx).ok, false, 'in scope and unaddressed = regression');
 });
 
+// --- Self-review scope subject (the paradise must not be blind to its own past) ---
+console.log('Self-review scope subject (the engine judging itself):');
+
+test('a self review declares its own scopes instead of an empty subject', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const subj = critic.selfScopeSubject(path.join(DIR, '..', 'graph'));
+  assert.ok(critic.scopeMatches(subj, 'paradise-internal'), 'the engine IS paradise-internal');
+  assert.ok(critic.scopeMatches(subj, 'orchestration'), 'the engine IS the orchestration layer');
+  assert.ok(!critic.scopeMatches(subj, 'timer'), 'but it is not a timer creation');
+});
+
+test('a paradise-internal lesson actually FIRES on a self review (no silent skip)', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const [chk] = critic.lessonChecks([
+    { id: 'x', label: 'L', check: 'zzznotpresentanywhere', applies: 'paradise-internal' }]);
+  // scopeSubject present = self mode; the spec fields are empty, as on the real engine
+  const r = chk.run({ requirements: '', findings: '', prd: '', codeBlob: '',
+    scopeSubject: critic.selfScopeSubject(path.join(DIR, '..', 'graph')) });
+  assert.strictEqual(r.ok, false, 'the lesson must be judged, not skipped');
+  assert.ok(/LESSON REGRESSION/.test(r.note), 'and reported as a regression');
+});
+
+test('a creation-scoped lesson stays out of scope on a self review', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const [chk] = critic.lessonChecks([
+    { id: 'x', label: 'L', check: 'zzznotpresentanywhere', applies: 'timer' }]);
+  const r = chk.run({ requirements: '', findings: '', prd: '', codeBlob: '',
+    scopeSubject: critic.selfScopeSubject(path.join(DIR, '..', 'graph')) });
+  assert.strictEqual(r.ok, true, 'a timer lesson must not false-fire on the engine');
+  assert.ok(/out of scope/.test(r.note));
+});
+
+test('the real engine self-review evaluates its paradise-internal lessons', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const rev = critic.review(path.join(DIR, '..', 'graph'),
+    { self: true, lessons: path.join(DIR, '..', 'graph', 'lessons.json') });
+  const internal = rev.results.filter(r => /^lesson:/.test(r.id) && /out of scope/.test(r.note || ''));
+  assert.ok(!internal.some(r => /paradise-internal/.test(r.note)),
+    'no paradise-internal lesson may be skipped when the engine judges itself');
+});
+
+test('.paradise-scopes overrides the declared self scopes (a config surface)', () => {
+  const critic = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-scopes-'));
+  try {
+    fs.writeFileSync(path.join(d, '.paradise-scopes'), '# what this module is\nfrontend\n');
+    const subj = critic.selfScopeSubject(d);
+    assert.ok(critic.scopeMatches(subj, 'frontend'), 'the override is honoured');
+    assert.ok(!critic.scopeMatches(subj, 'paradise-internal'), 'and it replaces the defaults');
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
 // --- Daily guard: the once-a-day quota with catch-up ---
 console.log('Daily guard (quota + catch-up):');
 

@@ -195,7 +195,15 @@ function lessonChecks(lessons) {
     run: (ctx) => {
       const needle = (l.check || l.keyword || l.label || '').toString();
       if (!needle) return { ok: true, note: 'lesson has no check' };
-      const spec = ctx.requirements + ctx.findings + ctx.prd;
+      // The SCOPE SUBJECT is what declares "who this target is". For a creation
+      // it is its own spec; for the ENGINE ITSELF (self mode) no spec exists, so
+      // the subject must be the target's DECLARED scopes — otherwise the subject
+      // is the empty string and every scoped lesson silently vanishes exactly
+      // where it was written to fire (Art. 14: a scope without a subject is a
+      // blind spot, not a fence).
+      const spec = ctx.scopeSubject !== undefined
+        ? ctx.scopeSubject
+        : (ctx.requirements + ctx.findings + ctx.prd);
       // Scope guard: if the lesson declares an `applies` term and it's absent
       // from THIS creation's spec, the lesson is out of scope — skip it.
       // The scope term is matched STRICTLY (whole term, case-insensitive), never
@@ -212,6 +220,22 @@ function lessonChecks(lessons) {
   }));
 }
 
+/** The scope subject for a SELF review (the engine judging its own source).
+ * A creation declares who it is via its spec; the engine has none, so it declares
+ * its scopes explicitly. Overridable per-directory by a `.paradise-scopes` file
+ * (one scope per line, `#` comments allowed) so this is a configuration surface,
+ * not a hardcoded assumption. */
+const DEFAULT_SELF_SCOPES = ['paradise-internal', 'orchestration'];
+function selfScopeSubject(dir) {
+  let scopes = DEFAULT_SELF_SCOPES;
+  try {
+    const raw = fs.readFileSync(path.join(dir, '.paradise-scopes'), 'utf8');
+    const parsed = raw.split('\n').map(s => s.replace(/#.*$/, '').trim()).filter(Boolean);
+    if (parsed.length) scopes = parsed;
+  } catch { /* no override: use the declared defaults */ }
+  return ' ' + scopes.join(' ') + ' ';
+}
+
 function review(dir, opts = {}) {
   const ctx = collect(dir, opts);
   // Self-source mode: when reviewing the paradise's OWN engine code (not a
@@ -219,6 +243,10 @@ function review(dir, opts = {}) {
   // test file / findings.md) do not apply — tests live centrally, there is no
   // per-module spec. Detect via an explicit opt-out marker or the --self flag.
   const isSelf = opts.self || fs.existsSync(path.join(dir, '.paradise-source'));
+  // A self-review has no spec, so the scope fence has no subject to match against
+  // and would skip EVERY scoped lesson — the paradise would be blind to exactly
+  // the past misses it recorded about itself. Declare what the engine IS instead.
+  if (isSelf) ctx.scopeSubject = selfScopeSubject(dir);
   let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
   if (isSelf) {
     const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence']);
@@ -271,4 +299,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks, scopeMatches };
+module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks, scopeMatches, selfScopeSubject };

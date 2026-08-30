@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T21:07:49.690Z",
+  "generated": "2026-08-30T22:22:18.810Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,7 +99,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 45,
+    "nodeCount": 46,
     "edgeCount": 33,
     "nodes": [
       {
@@ -371,6 +371,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "contract must fail closed",
         "degree": 0
+      },
+      {
+        "id": "self-scope-subject",
+        "type": "lesson",
+        "label": "自己審査ではスコープの主語を宣言せよ（沈黙を合格と誤るな）",
+        "degree": 0
       }
     ],
     "edges": [
@@ -547,7 +553,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 4,
       "verdict": 1,
-      "lesson": 12,
+      "lesson": 13,
       "t": 2
     }
   },
@@ -611,6 +617,11 @@ window.PARADISE_STATE = {
       "id": "scoped-lesson",
       "label": "contract must fail closed",
       "check": "contract must fail closed|applies:paradise-internal"
+    },
+    {
+      "id": "self-scope-subject",
+      "label": "自己審査ではスコープの主語を宣言せよ（沈黙を合格と誤るな）",
+      "check": "selfScopeSubject|applies:paradise-internal"
     }
   ],
   "creations": [
