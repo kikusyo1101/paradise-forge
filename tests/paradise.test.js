@@ -314,6 +314,105 @@ test('forge inserts a reflect (self-critique) gate before verdict', () => {
   }
 });
 
+// --- Orchestrator: the supervisor state machine ---
+console.log('Orchestrator (supervisor):');
+const orch = require(path.join(DIR, '..', 'graph', 'orchestrator.js'));
+const forgeO = require(path.join(DIR, '..', 'graph', 'forge.js'));
+
+function makeRun(scale) {
+  const dag = forgeO.buildDag('test wish', scale || 'standard');
+  const tmp = path.join(os.tmpdir(), 'paradise-orch-dag-' + Math.random().toString(36).slice(2) + '.json');
+  fs.writeFileSync(tmp, JSON.stringify(dag));
+  return orch.init(tmp);
+}
+
+test('orchestrator computes the first wave as discover only', () => {
+  const run = makeRun('standard');
+  const nw = orch.nextWave(run);
+  assert.deepStrictEqual(nw.wave.map(w => w.id), ['discover'], 'discover runs first');
+  assert.strictEqual(nw.wave[0].context_from.length, 0, 'discover has no upstream');
+});
+
+test('orchestrator hands off an upstream artifact to the next phase', () => {
+  const run = makeRun('standard');
+  orch.markRunning(run, ['discover']);
+  orch.markDone(run, 'discover', 'findings.md');
+  const nw = orch.nextWave(run);
+  const specify = nw.wave.find(w => w.id === 'specify');
+  assert.ok(specify, 'specify becomes ready');
+  assert.strictEqual(specify.context_from[0].from, 'discover');
+  assert.strictEqual(specify.context_from[0].artifact, 'findings.md', 'artifact handed off');
+});
+
+test('orchestrator runs independent phases in the same wave (parallel)', () => {
+  const run = makeRun('standard');
+  for (const id of ['discover', 'specify', 'design', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
+  const nw = orch.nextWave(run);
+  const ids = nw.wave.map(w => w.id).sort();
+  assert.deepStrictEqual(ids, ['build', 'tests'], 'build & tests run in parallel after detail');
+  assert.strictEqual(nw.parallel, 2);
+});
+
+test('REWORK resets the target and its downstream closure', () => {
+  const run = makeRun('standard');
+  for (const t of run.tasks) { run.phases[t.id].status = 'done'; run.phases[t.id].attempts = 1; run.phases[t.id].artifact = t.id + '.x'; }
+  const res = orch.applyVerdict(run, 'REWORK', 'build');
+  assert.strictEqual(res.verdict, 'REWORK');
+  assert.ok(res.reworked.includes('build') && res.reworked.includes('verdict'), 'build + downstream reset');
+  assert.ok(!res.reworked.includes('discover'), 'upstream of build is NOT reset');
+  assert.strictEqual(run.phases.verdict.status, 'rework');
+  assert.ok(!run.phases.verdict.artifact, 'downstream artifacts cleared');
+});
+
+test('loop-guard escalates REWORK to BLOCK after MAX_ATTEMPTS', () => {
+  const run = makeRun('quick');
+  run.phases.build.attempts = orch.MAX_ATTEMPTS; // already at the ceiling
+  const res = orch.applyVerdict(run, 'REWORK', 'build');
+  assert.strictEqual(res.verdict, 'BLOCK', 'loop-guard trips to BLOCK');
+  assert.strictEqual(run.status, 'blocked');
+});
+
+test('SHIP finalizes the run', () => {
+  const run = makeRun('quick');
+  const res = orch.applyVerdict(run, 'SHIP');
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(run.status, 'shipped');
+});
+
+// --- Subagent contract: result reconciliation ---
+console.log('Subagent contract:');
+const contract = require(path.join(DIR, '..', 'graph', 'contract.js'));
+
+test('contract rejects a done result with no artifact', () => {
+  const v = contract.validate({ phase: 'build', status: 'done' });
+  assert.strictEqual(v.ok, false);
+  assert.ok(v.errors.some(e => /artifact/.test(e)));
+});
+
+test('contract accepts a well-formed result', () => {
+  const v = contract.validate({ phase: 'build', status: 'done', artifact: '/x', summary: 'ok' });
+  assert.strictEqual(v.ok, true);
+});
+
+test('reconcile fails a claimed artifact that does not exist (fail-closed)', () => {
+  const rec = contract.reconcile({ phase: 'build', status: 'done', artifact: path.join(os.tmpdir(), 'no-such-' + Math.random()) });
+  assert.strictEqual(rec.accepted, false, 'nonexistent artifact must not be accepted');
+});
+
+test('reconcile accepts a real, non-trivial artifact', () => {
+  const f = path.join(os.tmpdir(), 'paradise-artifact-' + Math.random().toString(36).slice(2) + '.txt');
+  fs.writeFileSync(f, 'real content that is not trivial');
+  const rec = contract.reconcile({ phase: 'build', status: 'done', artifact: f }, { minBytes: 5 });
+  assert.strictEqual(rec.accepted, true, 'real artifact accepted: ' + rec.reason);
+  fs.rmSync(f, { force: true });
+});
+
+test('reconcile refuses an external handle unless explicitly allowed', () => {
+  const claim = { phase: 'deploy', status: 'done', artifact: 'https://example.com/x' };
+  assert.strictEqual(contract.reconcile(claim).accepted, false, 'external not verifiable by default');
+  assert.strictEqual(contract.reconcile(claim, { allowExternal: true }).accepted, true, 'accepted when caller opts in');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

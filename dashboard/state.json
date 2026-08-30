@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-30T13:45:55.859Z",
+  "generated": "2026-08-30T14:21:53.200Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,14 +99,14 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 21,
-    "edgeCount": 21,
+    "nodeCount": 25,
+    "edgeCount": 24,
     "nodes": [
       {
         "id": "paradise",
         "type": "system",
         "label": "The Paradise harness",
-        "degree": 5
+        "degree": 6
       },
       {
         "id": "graph-engine",
@@ -227,6 +227,30 @@
         "type": "decision",
         "label": "憲法第9条: 楽園は裁かれる前に自らを疑う",
         "degree": 0
+      },
+      {
+        "id": "orchestrator",
+        "type": "component",
+        "label": "Supervisor orchestrator",
+        "degree": 3
+      },
+      {
+        "id": "contract",
+        "type": "component",
+        "label": "Subagent contract",
+        "degree": 1
+      },
+      {
+        "id": "article-10",
+        "type": "decision",
+        "label": "憲法第10条: オーケストレーションは明示的状態機械",
+        "degree": 1
+      },
+      {
+        "id": "orchestration-in-prompt",
+        "type": "lesson",
+        "label": "指揮ロジックをpromptに置くな",
+        "degree": 0
       }
     ],
     "edges": [
@@ -334,16 +358,31 @@
         "from": "critic",
         "rel": "applies",
         "to": "require-discovery"
+      },
+      {
+        "from": "paradise",
+        "rel": "contains",
+        "to": "orchestrator"
+      },
+      {
+        "from": "orchestrator",
+        "rel": "enforces",
+        "to": "article-10"
+      },
+      {
+        "from": "orchestrator",
+        "rel": "uses",
+        "to": "contract"
       }
     ],
     "byType": {
       "system": 3,
-      "component": 6,
-      "decision": 4,
+      "component": 8,
+      "decision": 5,
       "run": 2,
       "creation": 2,
       "verdict": 1,
-      "lesson": 3
+      "lesson": 4
     }
   },
   "lessons": [
@@ -361,6 +400,11 @@
       "id": "require-discovery",
       "label": "調査フェーズを飛ばすな",
       "check": "findings"
+    },
+    {
+      "id": "orchestration-in-prompt",
+      "label": "指揮ロジックをpromptに置くな",
+      "check": "orchestrator"
     }
   ],
   "creations": [

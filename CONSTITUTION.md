@@ -38,6 +38,14 @@ way to change what "complete" means.
    first. Past misses become permanent lessons: the paradise never depends on the
    user to find the same flaw twice.
 
+10. **Orchestration is an explicit, durable state machine, not a prompt.** One
+    conductor holds the run state; workers are stateless and focused. Routing
+    remembers what it already tried. Context is handed off compressed — a worker
+    receives its dependencies' artifacts, not the whole history. Every worker
+    result is reconciled against reality before it is believed (a claim is not
+    evidence). Loops are bounded: the loop-guard escalates to a human rather than
+    burning on the same phase forever.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

@@ -16,5 +16,11 @@
     "label": "調査フェーズを飛ばすな",
     "check": "findings",
     "ts": "2026-08-30T13:42:29.309Z"
+  },
+  {
+    "id": "orchestration-in-prompt",
+    "label": "指揮ロジックをpromptに置くな",
+    "check": "orchestrator",
+    "ts": "2026-08-30T14:21:52.954Z"
   }
 ]
