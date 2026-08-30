@@ -709,6 +709,72 @@ test('an in-scope lesson still catches a real regression', () => {
   assert.strictEqual(chk.run(ctx).ok, false, 'in scope and unaddressed = regression');
 });
 
+// --- Daily guard: the once-a-day quota with catch-up ---
+console.log('Daily guard (quota + catch-up):');
+
+function withGuard(fn, hour) {
+  const ledger = path.join(os.tmpdir(), 'paradise-daily-' + Math.random().toString(36).slice(2) + '.json');
+  const prevL = process.env.PARADISE_DAILY_LEDGER, prevH = process.env.PARADISE_DAILY_HOUR;
+  process.env.PARADISE_DAILY_LEDGER = ledger;
+  if (hour !== undefined) process.env.PARADISE_DAILY_HOUR = String(hour);
+  delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'daily-guard.js'))];
+  const guard = require(path.join(DIR, '..', 'graph', 'daily-guard.js'));
+  try { return fn(guard, ledger); }
+  finally {
+    if (prevL === undefined) delete process.env.PARADISE_DAILY_LEDGER; else process.env.PARADISE_DAILY_LEDGER = prevL;
+    if (prevH === undefined) delete process.env.PARADISE_DAILY_HOUR; else process.env.PARADISE_DAILY_HOUR = prevH;
+    try { fs.rmSync(ledger, { force: true }); } catch {}
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'daily-guard.js'))];
+  }
+}
+
+test('guard does not fire before the daily window opens', () => {
+  withGuard((g) => {
+    const r = g.isDue();
+    assert.strictEqual(r.due, false, 'never run, but the window has not opened');
+    assert.ok(/before the/.test(r.reason));
+  }, 99); // an hour that can never be reached
+});
+
+test('guard fires when the window is open and today has not run', () => {
+  withGuard((g) => {
+    const r = g.isDue();
+    assert.strictEqual(r.due, true, 'owed once the window is open');
+  }, 0); // window always open
+});
+
+test('guard fires exactly once per day', () => {
+  withGuard((g) => {
+    assert.strictEqual(g.isDue().due, true, 'owed before running');
+    g.markDone('test');
+    const after = g.isDue();
+    assert.strictEqual(after.due, false, 'not owed again the same day');
+    assert.ok(/already ran today/.test(after.reason));
+  }, 0);
+});
+
+test('guard CATCHES UP when the machine was off for days', () => {
+  withGuard((g, ledger) => {
+    g.markDone('old run');
+    // rewrite the ledger as if the last run was days ago (machine was off)
+    const l = JSON.parse(fs.readFileSync(ledger, 'utf8'));
+    l.lastDate = '2020-01-01';
+    fs.writeFileSync(ledger, JSON.stringify(l));
+    const r = g.isDue();
+    assert.strictEqual(r.due, true, 'a missed day is owed on wake');
+    assert.strictEqual(r.catchUp, true, 'flagged as a catch-up run');
+  }, 0);
+});
+
+test('guard reports JST regardless of the machine timezone', () => {
+  withGuard((g) => {
+    const now = g.nowJst();
+    assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(now.date), 'JST calendar date');
+    assert.ok(now.hour >= 0 && now.hour <= 23, 'JST hour');
+    assert.ok(/JST$/.test(now.stamp));
+  }, 0);
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
