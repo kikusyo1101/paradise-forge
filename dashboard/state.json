@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-30T14:21:53.200Z",
+  "generated": "2026-08-30T14:57:41.428Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,8 +99,8 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 25,
-    "edgeCount": 24,
+    "nodeCount": 28,
+    "edgeCount": 26,
     "nodes": [
       {
         "id": "paradise",
@@ -184,7 +184,7 @@
         "id": "market-researcher",
         "type": "component",
         "label": "Market Researcher agent",
-        "degree": 4
+        "degree": 5
       },
       {
         "id": "article-8",
@@ -197,12 +197,6 @@
         "type": "creation",
         "label": "Pomodoro 完全版 (SHIPPED)",
         "degree": 2
-      },
-      {
-        "id": "require-customization",
-        "type": "lesson",
-        "label": "設定カスタマイズは必須",
-        "degree": 1
       },
       {
         "id": "require-discovery",
@@ -247,9 +241,33 @@
         "degree": 1
       },
       {
+        "id": "require-customization",
+        "type": "lesson",
+        "label": "設定カスタマイズは必須",
+        "degree": 1
+      },
+      {
         "id": "orchestration-in-prompt",
         "type": "lesson",
         "label": "指揮ロジックをpromptに置くな",
+        "degree": 0
+      },
+      {
+        "id": "rps",
+        "type": "creation",
+        "label": "じゃんけんゲーム (SHIPPED)",
+        "degree": 2
+      },
+      {
+        "id": "rps-run",
+        "type": "run",
+        "label": "Forge run: じゃんけん",
+        "degree": 1
+      },
+      {
+        "id": "lesson-scope",
+        "type": "lesson",
+        "label": "lessonにスコープが必要",
         "degree": 0
       }
     ],
@@ -373,16 +391,26 @@
         "from": "orchestrator",
         "rel": "uses",
         "to": "contract"
+      },
+      {
+        "from": "rps-run",
+        "rel": "produced",
+        "to": "rps"
+      },
+      {
+        "from": "rps",
+        "rel": "grounded-in",
+        "to": "market-researcher"
       }
     ],
     "byType": {
       "system": 3,
       "component": 8,
       "decision": 5,
-      "run": 2,
-      "creation": 2,
+      "run": 3,
+      "creation": 3,
       "verdict": 1,
-      "lesson": 4
+      "lesson": 5
     }
   },
   "lessons": [
@@ -392,24 +420,35 @@
       "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化"
     },
     {
-      "id": "require-customization",
-      "label": "設定カスタマイズは必須",
-      "check": "config"
-    },
-    {
       "id": "require-discovery",
       "label": "調査フェーズを飛ばすな",
       "check": "findings"
     },
     {
+      "id": "require-customization",
+      "label": "設定カスタマイズは必須",
+      "check": "config|applies:timer"
+    },
+    {
       "id": "orchestration-in-prompt",
       "label": "指揮ロジックをpromptに置くな",
-      "check": "orchestrator"
+      "check": "orchestrator|applies:orchestration"
+    },
+    {
+      "id": "lesson-scope",
+      "label": "lessonにスコープが必要",
+      "check": "applies|applies:paradise-internal"
     }
   ],
   "creations": [
     {
       "name": "pomodoro",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
+    {
+      "name": "rps",
       "files": 10,
       "verdict": "SHIP",
       "hasFindings": true

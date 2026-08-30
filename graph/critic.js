@@ -162,7 +162,11 @@ function collect(dir, opts = {}) {
   };
 }
 
-/** Turn a persisted lesson into a check: "does <keyword> appear anywhere?" */
+/** Turn a persisted lesson into a check: "does <keyword> appear anywhere?"
+ * Lessons may be SCOPED: a lesson whose `applies` keyword is not present in the
+ * creation's own spec/findings does not apply here (prevents a pomodoro-specific
+ * or paradise-internal lesson from false-firing on an unrelated creation).
+ */
 function lessonChecks(lessons) {
   return (lessons || []).map((l, i) => ({
     id: 'lesson:' + (l.id || i),
@@ -171,6 +175,12 @@ function lessonChecks(lessons) {
     run: (ctx) => {
       const needle = (l.check || l.keyword || l.label || '').toString();
       if (!needle) return { ok: true, note: 'lesson has no check' };
+      const spec = ctx.requirements + ctx.findings + ctx.prd;
+      // Scope guard: if the lesson declares an `applies` term and it's absent
+      // from THIS creation's spec, the lesson is out of scope — skip it.
+      if (l.applies && !looseIncludes(spec, String(l.applies))) {
+        return { ok: true, note: `lesson out of scope here (applies: ${l.applies})`, soft: true };
+      }
       const hay = ctx.codeBlob + ctx.requirements + ctx.findings;
       return looseIncludes(hay, needle)
         ? { ok: true, note: `lesson satisfied: ${needle}` }

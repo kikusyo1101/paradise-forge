@@ -27,7 +27,16 @@ function exportLessons(outPath) {
   const all = kg.query('');            // '' matches everything
   const lessons = all
     .filter(n => n.type === 'lesson')
-    .map(n => ({ id: n.id, label: n.label, check: n.body || n.label, ts: n.ts }));
+    .map(n => {
+      // A lesson body may carry a scope via "applies:<term>|check:<term>" or just the check.
+      // Convention: body "check|applies" (pipe-separated) sets both; else body is the check.
+      let check = n.body || n.label, applies = null;
+      if (n.body && n.body.includes('|applies:')) {
+        const [c, a] = n.body.split('|applies:');
+        check = c.replace(/^check:/, '').trim(); applies = a.trim();
+      }
+      return { id: n.id, label: n.label, check, applies, ts: n.ts };
+    });
   fs.writeFileSync(outPath, JSON.stringify(lessons, null, 2));
   return lessons;
 }

@@ -184,6 +184,20 @@ function statusBoard(run) {
   return lines.join('\n');
 }
 
+/**
+ * Auto-run summary: a compact machine-readable snapshot of what the supervisor
+ * should do next, so the driving agent can loop deterministically without
+ * re-deriving state each turn. Returns {phase: 'wave'|'verdict'|'done'|'blocked', ...}.
+ */
+function autoStep(run) {
+  if (run.status === 'shipped') return { phase: 'done', message: 'Run shipped.' };
+  if (run.status === 'blocked') return { phase: 'blocked', message: 'Run blocked — escalate to human.' };
+  const nw = nextWave(run);
+  if (nw.allDone) return { phase: 'verdict', message: 'All phases done — reflect + render verdict.' };
+  if (!nw.wave.length) return { phase: 'blocked', message: 'No ready phases and not all done — check rework/blocked state.' };
+  return { phase: 'wave', parallel: nw.parallel, dispatch: nw.wave };
+}
+
 // --- CLI ---------------------------------------------------------------
 function parseFlags(argv) {
   const flags = {}; const pos = [];
@@ -222,6 +236,12 @@ function main() {
     const res = applyVerdict(run, v, flags.from); saveRun(runPath, run);
     console.log(JSON.stringify(res, null, 2));
     console.log('\n' + statusBoard(run));
+  } else if (cmd === 'auto') {
+    need(); const run = loadRun(runPath);
+    const step = autoStep(run);
+    // if it's a wave, mark it running so the next 'auto' won't re-dispatch the same phases
+    if (step.phase === 'wave') { markRunning(run, step.dispatch.map(w => w.id)); saveRun(runPath, run); }
+    console.log(JSON.stringify(step, null, 2));
   } else if (cmd === 'status') {
     need(); console.log(statusBoard(loadRun(runPath)));
   } else {
@@ -231,4 +251,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { init, nextWave, markRunning, markDone, applyVerdict, computeReady, downstreamClosure, statusBoard, MAX_ATTEMPTS };
+module.exports = { init, nextWave, autoStep, markRunning, markDone, applyVerdict, computeReady, downstreamClosure, statusBoard, MAX_ATTEMPTS };

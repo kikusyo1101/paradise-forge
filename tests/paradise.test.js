@@ -379,6 +379,30 @@ test('SHIP finalizes the run', () => {
   assert.strictEqual(run.status, 'shipped');
 });
 
+test('autoStep guides the loop: wave -> verdict -> done', () => {
+  const run = makeRun('quick');
+  // fresh: first step is a wave containing discover
+  let step = orch.autoStep(run);
+  assert.strictEqual(step.phase, 'wave');
+  assert.ok(step.dispatch.some(d => d.id === 'discover'));
+  // drive every phase to done
+  for (const t of run.tasks) { run.phases[t.id].status = 'done'; }
+  step = orch.autoStep(run);
+  assert.strictEqual(step.phase, 'verdict', 'all done -> verdict');
+  // ship it
+  orch.applyVerdict(run, 'SHIP');
+  step = orch.autoStep(run);
+  assert.strictEqual(step.phase, 'done', 'shipped -> done');
+});
+
+test('autoStep reports blocked when the loop-guard has tripped', () => {
+  const run = makeRun('quick');
+  run.phases.build.attempts = orch.MAX_ATTEMPTS;
+  orch.applyVerdict(run, 'REWORK', 'build'); // trips loop-guard -> blocked
+  const step = orch.autoStep(run);
+  assert.strictEqual(step.phase, 'blocked');
+});
+
 // --- Subagent contract: result reconciliation ---
 console.log('Subagent contract:');
 const contract = require(path.join(DIR, '..', 'graph', 'contract.js'));

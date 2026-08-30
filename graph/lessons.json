@@ -3,24 +3,35 @@
     "id": "discover-gap",
     "label": "調査フェーズ欠落の教訓",
     "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化",
+    "applies": null,
     "ts": "2026-08-30T11:12:20.222Z"
-  },
-  {
-    "id": "require-customization",
-    "label": "設定カスタマイズは必須",
-    "check": "config",
-    "ts": "2026-08-30T13:42:29.268Z"
   },
   {
     "id": "require-discovery",
     "label": "調査フェーズを飛ばすな",
     "check": "findings",
+    "applies": null,
     "ts": "2026-08-30T13:42:29.309Z"
+  },
+  {
+    "id": "require-customization",
+    "label": "設定カスタマイズは必須",
+    "check": "config",
+    "applies": "timer",
+    "ts": "2026-08-30T14:57:06.000Z"
   },
   {
     "id": "orchestration-in-prompt",
     "label": "指揮ロジックをpromptに置くな",
     "check": "orchestrator",
-    "ts": "2026-08-30T14:21:52.954Z"
+    "applies": "orchestration",
+    "ts": "2026-08-30T14:57:06.042Z"
+  },
+  {
+    "id": "lesson-scope",
+    "label": "lessonにスコープが必要",
+    "check": "applies",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T14:57:41.255Z"
   }
 ]
