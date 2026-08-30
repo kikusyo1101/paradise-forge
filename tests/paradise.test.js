@@ -535,6 +535,39 @@ test('conclave completes when all domains are ratified', () => {
   assert.strictEqual(step.phase, 'complete');
 });
 
+test('clergy marshals believers under a priest (priest→believer layer)', () => {
+  const plan = clergy.marshalPlan('discover');
+  assert.strictEqual(plan.priest, 'market-researcher', 'discover priest is the market-researcher');
+  assert.ok(plan.believers.length >= 1, 'the priest can marshal believers');
+  assert.ok(plan.division.every(d => d.does), 'each believer has a defined role');
+});
+
+// --- Synod: the planning cycle between pontiff and cardinals ---
+console.log('Synod (planning cycle):');
+const synod = require(path.join(DIR, '..', 'graph', 'synod.js'));
+
+test('synod drafts a convocation of cardinals for a wish', () => {
+  const convo = synod.draftConvocation('a todo app', 'standard');
+  const names = convo.cardinals.map(c => c.cardinal);
+  assert.ok(names.includes('discovery') && names.includes('tribunal'), 'discovery + tribunal present');
+  assert.ok(convo.cardinals.every(c => c.phases.length > 0), 'every cardinal owns phases');
+});
+
+test('synod plan-critique flags a plan missing the discovery cardinal', () => {
+  const convo = synod.draftConvocation('x', 'standard');
+  // simulate a broken plan: strip discovery
+  convo.cardinals = convo.cardinals.filter(c => c.cardinal !== 'discovery');
+  const crit = synod.critiquePlan(convo);
+  assert.strictEqual(crit.ok, false);
+  assert.ok(crit.gaps.some(g => /discovery/.test(g)), 'missing discovery is a plan gap');
+});
+
+test('synod ratifies a sound plan and records the refinement trail', () => {
+  const res = synod.convene('a calculator app', 'full');
+  assert.strictEqual(res.ratified, true, 'a full-scale plan for an app ratifies');
+  assert.ok(Array.isArray(res.refinements) && res.refinements.length >= 1, 'the planning cycle is recorded');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

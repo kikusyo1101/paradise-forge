@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-30T15:12:45.436Z",
+  "generated": "2026-08-30T15:15:12.114Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,14 +99,14 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 32,
-    "edgeCount": 29,
+    "nodeCount": 34,
+    "edgeCount": 31,
     "nodes": [
       {
         "id": "paradise",
         "type": "system",
         "label": "The Paradise harness",
-        "degree": 7
+        "degree": 8
       },
       {
         "id": "graph-engine",
@@ -274,7 +274,7 @@
         "id": "conclave",
         "type": "system",
         "label": "Conclave — 聖職位階",
-        "degree": 3
+        "degree": 4
       },
       {
         "id": "clergy",
@@ -292,6 +292,18 @@
         "id": "critic-self-source",
         "type": "lesson",
         "label": "criticはソースと創造物を区別せよ",
+        "degree": 0
+      },
+      {
+        "id": "synod",
+        "type": "component",
+        "label": "Synod — 計画サイクル",
+        "degree": 2
+      },
+      {
+        "id": "plan-before-build",
+        "type": "lesson",
+        "label": "神託を即実装せず計画サイクルを回せ",
         "degree": 0
       }
     ],
@@ -440,16 +452,26 @@
         "from": "conclave",
         "rel": "uses",
         "to": "clergy"
+      },
+      {
+        "from": "conclave",
+        "rel": "uses",
+        "to": "synod"
+      },
+      {
+        "from": "paradise",
+        "rel": "contains",
+        "to": "synod"
       }
     ],
     "byType": {
       "system": 4,
-      "component": 9,
+      "component": 10,
       "decision": 6,
       "run": 3,
       "creation": 3,
       "verdict": 1,
-      "lesson": 6
+      "lesson": 7
     }
   },
   "lessons": [
@@ -482,6 +504,11 @@
       "id": "critic-self-source",
       "label": "criticはソースと創造物を区別せよ",
       "check": "self|applies:paradise-internal"
+    },
+    {
+      "id": "plan-before-build",
+      "label": "神託を即実装せず計画サイクルを回せ",
+      "check": "synod|applies:orchestration"
     }
   ],
   "creations": [

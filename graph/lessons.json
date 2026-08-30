@@ -40,5 +40,12 @@
     "check": "self",
     "applies": "paradise-internal",
     "ts": "2026-08-30T15:12:45.194Z"
+  },
+  {
+    "id": "plan-before-build",
+    "label": "神託を即実装せず計画サイクルを回せ",
+    "check": "synod",
+    "applies": "orchestration",
+    "ts": "2026-08-30T15:15:11.942Z"
   }
 ]
