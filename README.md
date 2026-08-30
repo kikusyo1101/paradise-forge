@@ -95,10 +95,44 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 29/29 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 57/57 pass
 ```
-検証内容: グラフエンジン・知識グラフ・co-change学習・forge（scale適応・discoverゲート・reflectゲート）・
-verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・ハードコード検出・must-have抽出・lesson再発検出）。
+検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
+verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
+orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・
+clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework）・synod（計画サイクル）。
+
+---
+
+## オーケストレーション（The Supervisor）
+神託一つから創造物までを、**永続run状態の指揮者**が自動で回す。
+
+```
+node graph/orchestrator.js auto --run <run.json>   # 次アクション(wave/verdict/done/blocked)を返す
+```
+- **明示的状態機械** — 指揮ロジックはpromptでなく永続JSON。routingが「何を試したか」を記憶
+- **context handoff** — 各フェーズに依存の成果物のみ圧縮して渡す（全履歴を送らない）
+- **REWORKループ＋loop-guard** — 差し戻しは下流のみリセット、3回で自動BLOCK昇格
+- **subagent contract** — `contract.js` が結果を実物と照合（存在しないartifactは拒否＝fail-closed）
+- `/forge` コマンドが discover→verdict まで自動運転
+
+---
+
+## 聖職位階（The Conclave）— 再帰的階層オーケストレーション
+```
+神(あなた) → 教主(私) → 枢機卿(分野指揮) → 神官(大subagent) → 信徒(小subagent)
+                          ↕ 各層PDCA           執行官(独立断罪機関) ⟂
+```
+| ツール | 役割 |
+|--------|------|
+| `graph/clergy.js` | **組織モデル** — 5枢機卿（discovery/requirements/architecture/construction/quality）＋独立執行官。各枢機卿に担当フェーズ・神官・信徒・レビュークラス・内部PDCA |
+| `graph/conclave.js` | **再帰オーケストレーター**（supervisor-of-supervisors）。大きな円=ドメイン間PDCA、小さな円=枢機卿内フェーズPDCA。ratify（適切クラス承認）・ドメイン内rework・各層loop-guard |
+| `graph/synod.js` | **計画サイクル** — 神託→枢機卿編成を計画→plan自己批評→改善してから conclave へ |
+| `/conclave` コマンド | 聖職位階を招集し神託を創造物に変える玉座 |
+
+**大きな円の中に小さな円** — conclave がドメインを PDCA で巡り、各枢機卿が自分のフェーズを
+PDCA で回す。承認は適切なクラスが行い（枢機卿は自らを承認しない）、執行官はどの枢機卿にも属さず
+独立して裁く。各層は loop-guard で境界され、上位へエスカレーションする。
 
 ---
 
@@ -117,7 +151,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定 |
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
-| `CONSTITUTION.md` | **楽園憲法 9条**（spec is truth・research first・self-doubt・no secrets…） |
+| `CONSTITUTION.md` | **楽園憲法 11条**（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
 | agents | market-researcher（調査）・requirements-analyst（仕様）・self-critic（批評）・creation-judge（裁き） |
 
