@@ -79,6 +79,18 @@ way to change what "complete" means.
     from wherever it was written), and at judgment (`critic.js scopeMatches`).
     An unscoped lesson is a global law and must be intended as one.
 
+14. **A scope needs a subject, or the fence becomes a blind spot.** A scoped
+    lesson is matched against the target's declaration of what it IS. A creation
+    declares this through its spec; the paradise's own engine has no spec, so in
+    a self review the subject would be empty and **every scoped lesson would be
+    silently skipped — precisely where it was written to fire.** A memory that
+    excuses itself is worse than no memory: it reports ✓ while checking nothing.
+    Therefore every review target must supply an explicit scope subject: the
+    engine declares its own scopes (`critic.js selfScopeSubject`, overridable per
+    directory by `.paradise-scopes`), and no `paradise-internal` lesson may be
+    reported out of scope when the paradise judges itself. Silence must never be
+    mistaken for compliance (Art. 9: doubt before judgment).
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

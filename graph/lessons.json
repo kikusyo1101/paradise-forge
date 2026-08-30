@@ -70,17 +70,24 @@
     "ts": "2026-08-30T20:52:20.817Z"
   },
   {
-    "id": "scoped-lesson",
-    "label": "contract must fail closed",
-    "check": "contract must fail closed",
-    "applies": "paradise-internal",
-    "ts": "2026-08-30T20:53:31.737Z"
-  },
-  {
     "id": "lesson-scope-strict",
     "label": "スコープは厳密一致で守れ（偽REWORKは見逃しと同罪）",
     "check": "scopeMatches",
     "applies": "paradise-internal",
     "ts": "2026-08-30T20:53:49.283Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T22:22:07.202Z"
+  },
+  {
+    "id": "self-scope-subject",
+    "label": "自己審査ではスコープの主語を宣言せよ（沈黙を合格と誤るな）",
+    "check": "selfScopeSubject",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T22:22:18.724Z"
   }
 ]
