@@ -1,5 +1,6 @@
+// Auto-generated companion for control.html — inlines state.json so the page renders offline (file://).
 window.PARADISE_STATE = {
-  "generated": "2026-08-30T13:43:17.321Z",
+  "generated": "2026-08-30T15:15:12.114Z",
   "pipeline": [
     {
       "id": "discover",
@@ -99,14 +100,14 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 21,
-    "edgeCount": 21,
+    "nodeCount": 34,
+    "edgeCount": 31,
     "nodes": [
       {
         "id": "paradise",
         "type": "system",
         "label": "The Paradise harness",
-        "degree": 5
+        "degree": 8
       },
       {
         "id": "graph-engine",
@@ -184,7 +185,7 @@ window.PARADISE_STATE = {
         "id": "market-researcher",
         "type": "component",
         "label": "Market Researcher agent",
-        "degree": 4
+        "degree": 5
       },
       {
         "id": "article-8",
@@ -197,12 +198,6 @@ window.PARADISE_STATE = {
         "type": "creation",
         "label": "Pomodoro 完全版 (SHIPPED)",
         "degree": 2
-      },
-      {
-        "id": "require-customization",
-        "type": "lesson",
-        "label": "設定カスタマイズは必須",
-        "degree": 1
       },
       {
         "id": "require-discovery",
@@ -226,6 +221,90 @@ window.PARADISE_STATE = {
         "id": "article-9",
         "type": "decision",
         "label": "憲法第9条: 楽園は裁かれる前に自らを疑う",
+        "degree": 0
+      },
+      {
+        "id": "orchestrator",
+        "type": "component",
+        "label": "Supervisor orchestrator",
+        "degree": 3
+      },
+      {
+        "id": "contract",
+        "type": "component",
+        "label": "Subagent contract",
+        "degree": 1
+      },
+      {
+        "id": "article-10",
+        "type": "decision",
+        "label": "憲法第10条: オーケストレーションは明示的状態機械",
+        "degree": 1
+      },
+      {
+        "id": "require-customization",
+        "type": "lesson",
+        "label": "設定カスタマイズは必須",
+        "degree": 1
+      },
+      {
+        "id": "orchestration-in-prompt",
+        "type": "lesson",
+        "label": "指揮ロジックをpromptに置くな",
+        "degree": 0
+      },
+      {
+        "id": "rps",
+        "type": "creation",
+        "label": "じゃんけんゲーム (SHIPPED)",
+        "degree": 2
+      },
+      {
+        "id": "rps-run",
+        "type": "run",
+        "label": "Forge run: じゃんけん",
+        "degree": 1
+      },
+      {
+        "id": "lesson-scope",
+        "type": "lesson",
+        "label": "lessonにスコープが必要",
+        "degree": 0
+      },
+      {
+        "id": "conclave",
+        "type": "system",
+        "label": "Conclave — 聖職位階",
+        "degree": 4
+      },
+      {
+        "id": "clergy",
+        "type": "component",
+        "label": "Clergy org model",
+        "degree": 1
+      },
+      {
+        "id": "article-11",
+        "type": "decision",
+        "label": "憲法第11条: 聖職位階の入れ子サイクル",
+        "degree": 1
+      },
+      {
+        "id": "critic-self-source",
+        "type": "lesson",
+        "label": "criticはソースと創造物を区別せよ",
+        "degree": 0
+      },
+      {
+        "id": "synod",
+        "type": "component",
+        "label": "Synod — 計画サイクル",
+        "degree": 2
+      },
+      {
+        "id": "plan-before-build",
+        "type": "lesson",
+        "label": "神託を即実装せず計画サイクルを回せ",
         "degree": 0
       }
     ],
@@ -334,16 +413,66 @@ window.PARADISE_STATE = {
         "from": "critic",
         "rel": "applies",
         "to": "require-discovery"
+      },
+      {
+        "from": "paradise",
+        "rel": "contains",
+        "to": "orchestrator"
+      },
+      {
+        "from": "orchestrator",
+        "rel": "enforces",
+        "to": "article-10"
+      },
+      {
+        "from": "orchestrator",
+        "rel": "uses",
+        "to": "contract"
+      },
+      {
+        "from": "rps-run",
+        "rel": "produced",
+        "to": "rps"
+      },
+      {
+        "from": "rps",
+        "rel": "grounded-in",
+        "to": "market-researcher"
+      },
+      {
+        "from": "paradise",
+        "rel": "contains",
+        "to": "conclave"
+      },
+      {
+        "from": "conclave",
+        "rel": "enforces",
+        "to": "article-11"
+      },
+      {
+        "from": "conclave",
+        "rel": "uses",
+        "to": "clergy"
+      },
+      {
+        "from": "conclave",
+        "rel": "uses",
+        "to": "synod"
+      },
+      {
+        "from": "paradise",
+        "rel": "contains",
+        "to": "synod"
       }
     ],
     "byType": {
-      "system": 3,
-      "component": 6,
-      "decision": 4,
-      "run": 2,
-      "creation": 2,
+      "system": 4,
+      "component": 10,
+      "decision": 6,
+      "run": 3,
+      "creation": 3,
       "verdict": 1,
-      "lesson": 3
+      "lesson": 7
     }
   },
   "lessons": [
@@ -353,14 +482,34 @@ window.PARADISE_STATE = {
       "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化"
     },
     {
-      "id": "require-customization",
-      "label": "設定カスタマイズは必須",
-      "check": "config"
-    },
-    {
       "id": "require-discovery",
       "label": "調査フェーズを飛ばすな",
       "check": "findings"
+    },
+    {
+      "id": "require-customization",
+      "label": "設定カスタマイズは必須",
+      "check": "config|applies:timer"
+    },
+    {
+      "id": "orchestration-in-prompt",
+      "label": "指揮ロジックをpromptに置くな",
+      "check": "orchestrator|applies:orchestration"
+    },
+    {
+      "id": "lesson-scope",
+      "label": "lessonにスコープが必要",
+      "check": "applies|applies:paradise-internal"
+    },
+    {
+      "id": "critic-self-source",
+      "label": "criticはソースと創造物を区別せよ",
+      "check": "self|applies:paradise-internal"
+    },
+    {
+      "id": "plan-before-build",
+      "label": "神託を即実装せず計画サイクルを回せ",
+      "check": "synod|applies:orchestration"
     }
   ],
   "creations": [
@@ -369,6 +518,151 @@ window.PARADISE_STATE = {
       "files": 10,
       "verdict": "SHIP",
       "hasFindings": true
+    },
+    {
+      "name": "rps",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
     }
-  ]
+  ],
+  "hierarchy": {
+    "ranks": {
+      "god": {
+        "level": 0,
+        "title": "God 神",
+        "role": "issues the wish, receives only answers"
+      },
+      "pontiff": {
+        "level": 1,
+        "title": "Pontiff 教主",
+        "role": "governs the whole; the session itself"
+      },
+      "cardinal": {
+        "level": 2,
+        "title": "Cardinal 枢機卿",
+        "role": "domain supervisor; owns a sub-DAG + inner PDCA"
+      },
+      "priest": {
+        "level": 3,
+        "title": "Priest 神官",
+        "role": "large subagent dispatched by a cardinal"
+      },
+      "believer": {
+        "level": 4,
+        "title": "Believer 信徒",
+        "role": "small subagent for fine-grained work"
+      },
+      "executor": {
+        "level": -1,
+        "title": "Executor 執行官",
+        "role": "independent tribunal; judges on demand"
+      }
+    },
+    "college": {
+      "discovery": {
+        "domain": "Discovery (調査)",
+        "governs": [
+          "discover"
+        ],
+        "priests": [
+          "market-researcher"
+        ],
+        "believers": [
+          "web-scout",
+          "feature-ranker"
+        ],
+        "reviewClass": "pontiff",
+        "pdca": "plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search"
+      },
+      "requirements": {
+        "domain": "Requirements (要件)",
+        "governs": [
+          "analyze",
+          "specify"
+        ],
+        "priests": [
+          "requirements-analyst"
+        ],
+        "believers": [
+          "user-story-writer",
+          "acceptance-criteria-writer"
+        ],
+        "reviewClass": "cardinal:discovery",
+        "pdca": "plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps"
+      },
+      "architecture": {
+        "domain": "Architecture (設計)",
+        "governs": [
+          "design",
+          "detail",
+          "ux"
+        ],
+        "priests": [
+          "architect",
+          "frontend"
+        ],
+        "believers": [
+          "data-modeler",
+          "interface-designer"
+        ],
+        "reviewClass": "cardinal:requirements",
+        "pdca": "plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise"
+      },
+      "construction": {
+        "domain": "Construction (建造)",
+        "governs": [
+          "build",
+          "build-ui",
+          "tests"
+        ],
+        "priests": [
+          "architect",
+          "frontend",
+          "tdd-guide"
+        ],
+        "believers": [
+          "module-builder",
+          "test-writer"
+        ],
+        "reviewClass": "cardinal:quality",
+        "pdca": "plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green"
+      },
+      "quality": {
+        "domain": "Quality (品質)",
+        "governs": [
+          "review",
+          "security",
+          "docs",
+          "verify"
+        ],
+        "priests": [
+          "code-reviewer",
+          "security-reviewer",
+          "doc-updater"
+        ],
+        "believers": [
+          "linter",
+          "coverage-checker",
+          "secret-scanner"
+        ],
+        "reviewClass": "executor",
+        "pdca": "plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass"
+      }
+    },
+    "tribunal": {
+      "domain": "Tribunal (断罪機関)",
+      "governs": [
+        "reflect",
+        "verdict"
+      ],
+      "officers": [
+        "self-critic",
+        "creation-judge"
+      ],
+      "independence": "answers to no cardinal; invoked by the pontiff at the judgment gate",
+      "law": "reflect (adversarial self-critique) precedes verdict (SHIP/REWORK/BLOCK)"
+    },
+    "chain": "god → pontiff → cardinal → priest → believer   ‖   executor (independent)"
+  }
 };

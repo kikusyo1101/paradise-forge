@@ -1,12 +1,5 @@
 [
   {
-    "id": "discover-gap",
-    "label": "調査フェーズ欠落の教訓",
-    "check": "forgeがwish→specyと直行し思い込みspecを生んだ。discoverフェーズを恒久追加し憲法第8条化",
-    "applies": null,
-    "ts": "2026-08-30T11:12:20.222Z"
-  },
-  {
     "id": "require-discovery",
     "label": "調査フェーズを飛ばすな",
     "check": "findings",
@@ -47,5 +40,19 @@
     "check": "synod",
     "applies": "orchestration",
     "ts": "2026-08-30T15:15:11.942Z"
+  },
+  {
+    "id": "kg-forget",
+    "label": "知識グラフは訂正可能であるべき（追記のみは欠陥）",
+    "check": "forget",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T15:24:57.667Z"
+  },
+  {
+    "id": "critic-synonym",
+    "label": "spec充足は文字列一致でなくAC実駆動で裁け",
+    "check": "musthaves",
+    "applies": "paradise-internal",
+    "ts": "2026-08-30T15:24:57.708Z"
   }
 ]

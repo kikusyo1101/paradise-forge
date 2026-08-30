@@ -18,6 +18,8 @@
     --violet-dim: #5a3d8c;
     --green: #3fb950;
     --amber: #d29922;
+    --gold: #e3b341;
+    --red: #f85149;
     --radius: 14px;
     --shadow: 0 4px 20px rgba(0,0,0,0.4);
   }
@@ -197,6 +199,213 @@
   .verdict-badge.other { background: rgba(210,153,34,0.18); color: var(--amber); border: 1px solid rgba(210,153,34,0.4); }
   .findings-dot { font-size: 12px; color: var(--cyan); }
 
+  /* Ecclesiastical Hierarchy */
+  .hier-chain-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .rank-ladder {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1 1 420px;
+    min-width: 280px;
+  }
+  .rank-tier {
+    position: relative;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--cyan);
+    border-radius: 10px;
+    padding: 11px 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .rank-tier .lvl {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: rgba(57,208,216,0.1);
+    border-radius: 6px;
+    padding: 2px 8px;
+    flex: 0 0 auto;
+  }
+  .rank-tier .rtitle { font-weight: 700; font-size: 15px; flex: 0 0 auto; }
+  .rank-tier .rrole { font-size: 12px; color: var(--muted); }
+  .rank-tier.l0 { border-left-color: var(--gold); }
+  .rank-tier.l0 .lvl { color: var(--gold); background: rgba(227,179,65,0.12); }
+  .rank-tier.l1 { border-left-color: var(--violet); }
+  .rank-tier.l1 .lvl { color: var(--violet); background: rgba(163,113,247,0.12); }
+  .rank-arrow { text-align: center; color: var(--muted); font-size: 14px; line-height: 1; margin: -3px 0; }
+  .exec-aside {
+    flex: 0 1 260px;
+    min-width: 230px;
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .exec-divider {
+    flex: 0 0 auto;
+    width: 0;
+    border-left: 2px dashed var(--red);
+    position: relative;
+  }
+  .exec-divider::after {
+    content: "‖";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    color: var(--red);
+    font-size: 22px;
+    background: var(--panel);
+    padding: 4px 2px;
+  }
+  .exec-box {
+    flex: 1 1 auto;
+    background: linear-gradient(135deg, rgba(248,81,73,0.1), rgba(28,34,48,0.6));
+    border: 1px solid rgba(248,81,73,0.45);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .exec-box .elvl {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--red);
+    align-self: flex-start;
+    background: rgba(248,81,73,0.14);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+  .exec-box .etitle { font-weight: 700; font-size: 16px; color: #ffb3ad; }
+  .exec-box .erole { font-size: 12.5px; color: var(--muted); }
+  .exec-box .indep-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--red); margin-top: 2px; }
+
+  .college-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .cardinal-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--violet);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cardinal-card .cdomain { font-weight: 700; font-size: 16px; color: #d9c4ff; }
+  .cardinal-card .csub { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 2px; }
+  .govern-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .govern-chip {
+    font-size: 11.5px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: rgba(57,208,216,0.1);
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  .priest-block {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .priest-name {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--cyan);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .priest-name .kanji { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
+  .believer-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0 0 0 16px;
+    border-left: 1px dotted var(--border);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .believer-list li {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .believer-list li::before { content: "↳ "; color: var(--violet); }
+  .priests-loose { display: flex; flex-direction: column; gap: 8px; }
+  .review-line {
+    font-size: 12.5px;
+    color: var(--text);
+  }
+  .review-line .rlabel { color: var(--muted); text-transform: uppercase; font-size: 10.5px; letter-spacing: 1px; }
+  .review-line .rval {
+    color: var(--amber);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: rgba(210,153,34,0.1);
+    border-radius: 5px;
+    padding: 1px 7px;
+  }
+  .pdca-box {
+    font-size: 11.5px;
+    color: var(--muted);
+    background: rgba(0,0,0,0.28);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    line-height: 1.5;
+  }
+  .tribunal-card {
+    background: linear-gradient(135deg, rgba(248,81,73,0.09), rgba(227,179,65,0.06), rgba(28,34,48,0.55));
+    border: 1px solid rgba(227,179,65,0.5);
+    border-top: 3px solid var(--gold);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .tribunal-card .tdomain { font-weight: 700; font-size: 17px; color: var(--gold); display: flex; align-items: center; gap: 10px; }
+  .tribunal-card .tdomain .indep-pill {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--red); border: 1px solid rgba(248,81,73,0.5);
+    border-radius: 20px; padding: 2px 10px; font-weight: 600;
+  }
+  .officer-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .officer-chip {
+    font-size: 12.5px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: rgba(227,179,65,0.1);
+    border: 1px solid rgba(227,179,65,0.4);
+    color: var(--gold);
+    border-radius: 8px;
+    padding: 5px 12px;
+  }
+  .tribunal-note { font-size: 12.5px; color: var(--muted); }
+  .tribunal-note strong { color: #ffb3ad; }
+  .hier-chain-line {
+    font-size: 12.5px;
+    color: var(--muted);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 4px;
+    text-align: center;
+  }
+
   .fallback {
     background: rgba(210,153,34,0.12);
     border: 1px solid var(--amber);
@@ -316,11 +525,134 @@
 
       html += '</div></section>';
 
+      /* ---- Section 5: Ecclesiastical Hierarchy ---- */
+      html += buildHierarchy(state.hierarchy || {});
+
       app.innerHTML = html;
     }
 
     function badge(num, lbl, violet) {
       return '<div class="badge' + (violet ? ' violet' : '') + '"><span class="num">' + esc(num) + '</span><span class="lbl">' + esc(lbl) + '</span></div>';
+    }
+
+    function buildHierarchy(h) {
+      var ranks = h.ranks || {};
+      var college = h.college || {};
+      var tribunal = h.tribunal || {};
+
+      var out = '<section>';
+      out += '<h2>⛪ Ecclesiastical Hierarchy <span style="color:var(--muted);font-size:13px;font-weight:400;">(聖職位階)</span></h2>';
+      out += '<p class="hint">A nested clergy: <strong>god → pontiff → cardinal → priest → believer</strong>. The <span style="color:var(--red);">executor</span> stands apart — an independent tribunal answering to no cardinal.</p>';
+
+      /* --- Rank ladder + executor aside --- */
+      var ladderOrder = ["god", "pontiff", "cardinal", "priest", "believer"];
+      out += '<div class="hier-chain-wrap">';
+      out += '<div class="rank-ladder">';
+      for (var i = 0; i < ladderOrder.length; i++) {
+        var rk = ranks[ladderOrder[i]];
+        if (!rk) continue;
+        var cls = ladderOrder[i] === "god" ? " l0" : (ladderOrder[i] === "pontiff" ? " l1" : "");
+        out += '<div class="rank-tier' + cls + '">';
+        out += '<span class="lvl">L' + esc(rk.level) + '</span>';
+        out += '<span class="rtitle">' + esc(rk.title) + '</span>';
+        out += '<span class="rrole">' + esc(rk.role) + '</span>';
+        out += '</div>';
+        if (i < ladderOrder.length - 1) { out += '<div class="rank-arrow">▼</div>'; }
+      }
+      out += '</div>';
+
+      /* executor off to the side, separated by a ‖ divider */
+      var ex = ranks.executor;
+      if (ex) {
+        out += '<div class="exec-aside">';
+        out += '<div class="exec-divider"></div>';
+        out += '<div class="exec-box">';
+        out += '<span class="elvl">L' + esc(ex.level) + '</span>';
+        out += '<span class="etitle">' + esc(ex.title) + '</span>';
+        out += '<span class="erole">' + esc(ex.role) + '</span>';
+        out += '<span class="indep-tag">⚖ independent</span>';
+        out += '</div></div>';
+      }
+      out += '</div>';
+
+      /* --- College of cardinals --- */
+      out += '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:6px 0 12px;">College of Cardinals · 枢機卿団</h3>';
+      out += '<div class="college-grid">';
+      var keys = Object.keys(college);
+      for (var c = 0; c < keys.length; c++) {
+        var card = college[keys[c]];
+        out += '<div class="cardinal-card">';
+        out += '<div class="cdomain">🎓 ' + esc(card.domain) + '</div>';
+
+        /* governs chips */
+        out += '<div><div class="csub">Governs</div><div class="govern-chips">';
+        var gov = card.governs || [];
+        for (var gi = 0; gi < gov.length; gi++) {
+          out += '<span class="govern-chip">' + esc(gov[gi]) + '</span>';
+        }
+        out += '</div></div>';
+
+        /* priests with believers nested under them */
+        out += '<div><div class="csub">Priests 神官 → Believers 信徒</div><div class="priests-loose">';
+        var priests = card.priests || [];
+        var believers = card.believers || [];
+        for (var pi = 0; pi < priests.length; pi++) {
+          out += '<div class="priest-block">';
+          out += '<div class="priest-name">⛨ ' + esc(priests[pi]) + ' <span class="kanji">神官</span></div>';
+          /* believers nested only under the first priest to convey the layer without duplication */
+          if (pi === 0 && believers.length) {
+            out += '<ul class="believer-list">';
+            for (var bi = 0; bi < believers.length; bi++) {
+              out += '<li>' + esc(believers[bi]) + ' <span style="opacity:.6;">信徒</span></li>';
+            }
+            out += '</ul>';
+          }
+          out += '</div>';
+        }
+        out += '</div></div>';
+
+        /* reviewClass (who ratifies) */
+        out += '<div class="review-line"><span class="rlabel">Ratified by</span> <span class="rval">' + esc(card.reviewClass) + '</span></div>';
+
+        /* inner PDCA */
+        out += '<div><div class="csub">Inner PDCA</div><div class="pdca-box">' + esc(card.pdca) + '</div></div>';
+
+        out += '</div>';
+      }
+      out += '</div>';
+
+      /* --- Tribunal card (distinct gold/red accent) --- */
+      if (tribunal && tribunal.domain) {
+        out += '<div class="tribunal-card">';
+        out += '<div class="tdomain">⚖️ ' + esc(tribunal.domain) + ' <span class="indep-pill">independent</span></div>';
+        out += '<div><div class="csub" style="color:var(--gold);">Governs</div><div class="govern-chips">';
+        var tg = tribunal.governs || [];
+        for (var ti = 0; ti < tg.length; ti++) {
+          out += '<span class="govern-chip" style="background:rgba(227,179,65,0.1);border-color:rgba(227,179,65,0.4);color:var(--gold);">' + esc(tg[ti]) + '</span>';
+        }
+        out += '</div></div>';
+        out += '<div><div class="csub" style="color:var(--gold);">Officers 執行官</div><div class="officer-row">';
+        var offs = tribunal.officers || [];
+        for (var oi = 0; oi < offs.length; oi++) {
+          out += '<span class="officer-chip">⚑ ' + esc(offs[oi]) + '</span>';
+        }
+        out += '</div></div>';
+        if (tribunal.independence) {
+          out += '<div class="tribunal-note"><strong>Independence:</strong> ' + esc(tribunal.independence) + '</div>';
+        }
+        if (tribunal.law) {
+          out += '<div class="tribunal-note"><strong>Law:</strong> ' + esc(tribunal.law) + '</div>';
+        }
+        out += '</div>';
+      }
+
+      /* --- chain summary line --- */
+      if (h.chain) {
+        out += '<div class="hier-chain-line">' + esc(h.chain) + '</div>';
+      }
+
+      out += '</section>';
+      return out;
     }
 
     function buildLegend(byType) {

@@ -63,6 +63,20 @@ function link(from, rel, to) {
     appendJsonl(EDGES, { from, rel, to, ts: now() });
   return { from, rel, to };
 }
+/** Forget a node and every edge touching it. The paradise can correct its
+ * memory, not only accrete it — stale or duplicate knowledge must be removable. */
+function forget(id) {
+  ensure();
+  const nodes = readJsonl(NODES);
+  const kept = nodes.filter(n => n.id !== id);
+  const removed = nodes.length - kept.length;
+  fs.writeFileSync(NODES, kept.map(n => JSON.stringify(n)).join('\n') + (kept.length ? '\n' : ''));
+  const edges = readJsonl(EDGES);
+  const keptEdges = edges.filter(e => e.from !== id && e.to !== id);
+  const removedEdges = edges.length - keptEdges.length;
+  fs.writeFileSync(EDGES, keptEdges.map(e => JSON.stringify(e)).join('\n') + (keptEdges.length ? '\n' : ''));
+  return { id, removedNodes: removed, removedEdges };
+}
 function query(sub) {
   const s = sub.toLowerCase();
   return readJsonl(NODES).filter(n =>
@@ -156,6 +170,9 @@ function main() {
     case 'link': { const [from, rel, to] = args;
       if (!from || !rel || !to) { console.error('usage: kg.js link <from> <rel> <to>'); process.exit(2); }
       console.log('OK ' + JSON.stringify(link(from, rel, to))); break; }
+    case 'forget': { const id = args[0];
+      if (!id) { console.error('usage: kg.js forget <id>'); process.exit(2); }
+      console.log('OK ' + JSON.stringify(forget(id))); break; }
     case 'query': { const r = query(args.join(' '));
       if (!r.length) console.log('(no matches)');
       else r.forEach(n => console.log(`[${n.type}] ${n.id}: ${n.label}${n.body ? ' — ' + n.body : ''}`)); break; }
@@ -176,9 +193,9 @@ function main() {
       if (!p.length) console.log('(no matches)');
       else p.forEach(([other, c]) => console.log(`${other}  (${c} co-changes)`)); break; }
     default:
-      console.error('commands: remember | link | query | node | neighbors | snapshot | stats | observe | predict');
+      console.error('commands: remember | link | forget | query | node | neighbors | snapshot | stats | observe | predict');
       process.exit(2);
   }
 }
 if (require.main === module) main();
-module.exports = { remember, link, query, getNode, neighbors, snapshot, stats, observe, predict, cochangeCounts };
+module.exports = { remember, link, forget, query, getNode, neighbors, snapshot, stats, observe, predict, cochangeCounts };
