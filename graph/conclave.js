@@ -143,13 +143,23 @@ function next(run) {
               ? `依存の成果物のみを読む: ${ph.deps.join(', ')}`
               : '与えられた入力のみ。範囲外を探索しない',
             boundary: `この相(${id})だけを行う。他の相は他の者の領分である`,
+            // MAST(arXiv:2503.13657): 検証の失敗が全体の21.3%。うち「検証せず/不完全」6.82%、
+            // 「誤った検証」6.66%、「早すぎる終了」7.82%。ゆえに終了条件と証拠を明示する。
+            evidence_required: '走らせた命令とその生の出力を添えること。「できました」は主張であって証拠ではない',
+            done_when: `${ph.artifact || 'artifact'} が実在し、その中身が目的を満たしていることを自分で確認できたとき`,
+            // FM-2.2「確認せず誤った前提で進む」11.65%。黙って進むより問い返す方が安い。
+            if_unclear: '前提が不明なら推測で進まず、blocked として何が不明かを述べて返す',
           },
           // 司祭がさらに細分する場合の割当（信徒は実体を持つ）
           marshal: believers.length ? clergy.marshalPlan(id, { priestCanSpawn: true }) : null,
         };
       }),
-      parallel: ready.length,
-      max_concurrent: clergy.MAX_CONCURRENT,
+      // 並列度は天井(20)ではなく実用値(4)に従う。
+      // arXiv:2512.08296「T ∝ n^1.724、実用的な有効チーム規模は3–4体」逆U字。
+      parallel: Math.min(ready.length, clergy.EFFECTIVE_CONCURRENT),
+      ready_count: ready.length,
+      max_concurrent: clergy.EFFECTIVE_CONCURRENT,
+      runtime_ceiling: clergy.RUNTIME_CONCURRENT,
     };
   }
 

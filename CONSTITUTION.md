@@ -289,6 +289,37 @@ way to change what "complete" means.
     believer), since a ladder taller than the ceiling silently collapses into
     the parent doing the work itself.
 
+26. **Parallelism is a property of the work, not a capacity of the runtime —
+    and the research that arrives late still rules.** Two subagents were sent to
+    study hierarchical orchestration; the second returned *after* the design was
+    finished, and it did not confirm the design — it refuted three parts of it.
+    The honest response is to obey the evidence, not to defend the artifact.
+    (a) **The ceiling is not the setting.** The runtime allows 20 concurrent
+    children, and the paradise had written 20 as its dispatch width. Measurement
+    says otherwise: turns grow superlinearly with team size (T ∝ n^1.724) and
+    effective team size is **3–4**; performance against coordination complexity
+    is an **inverted U**, so past the peak more workers is strictly worse.
+    (b) **Some work must never be split.** "Actions carry implicit decisions"
+    (Cognition): children who cannot see each other's decisions produce mutually
+    contradictory artifacts — one built a Super Mario background while another
+    built a bird that was not Flappy. Anthropic names **coding tasks**
+    specifically as ill-suited. The paradise's construction domain is exactly
+    that, so domains now declare the *nature* of their work (research and review
+    parallelise; design and build do not) and an undeclared nature falls back to
+    sequential. (c) **Verification is a fifth of all failure and a verifier is
+    not a talisman.** MAST (200+ traces, κ=0.88) puts task-verification failures
+    at 21.3% — incomplete verification 6.82%, incorrect verification 6.66%,
+    premature termination 7.82% — and shows verifiers that check only the
+    surface (it compiles, it has comments) passing a chess program that accepts
+    illegal moves. Orders therefore carry an explicit `done_when`, demand
+    evidence as raw command output, and instruct the child to return *blocked*
+    rather than proceed on a guess (FM-2.2, 11.65%). (d) **Control flow belongs
+    in topology, not in prose.** MAST's intervention experiment is decisive:
+    changing the topology beat changing the prompt (25.0% → 40.6% versus 34.4%),
+    and rewriting ChatDev's prompt failed to remove a structural fault at all.
+    This is Article 24's lesson — a rule that lives only in prose is obeyed only
+    when remembered — proven again with numbers, one level up.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

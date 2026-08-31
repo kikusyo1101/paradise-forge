@@ -102,7 +102,42 @@ function allPriests() {
  */
 const SPAWN_TOOL = 'Task';          // Claude Code が他エージェントを起動する道具
 const MAX_SPAWN_DEPTH = 3;          // CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH の既定値
-const MAX_CONCURRENT = 20;          // CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS の既定値
+const RUNTIME_CONCURRENT = 20;      // CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS の既定値（天井）
+
+/**
+ * 実用並列度 — 天井ではなく、効く範囲 (憲法 第26条)
+ *
+ * 天井(20)を並列度として使ってはならない。調査が数で否定している:
+ *   - arXiv:2512.08296「ターン数はチーム規模に超線形 T ∝ n^1.724。
+ *     実用的な有効チーム規模は 3–4体」「協調複雑度に対し性能は逆U字」
+ *   - HumanLayer 12-Factor「1エージェントは3–10、最大20ステップ」
+ * 「もっと並べれば速い」は逆U字の右側で嘘になる。
+ */
+const EFFECTIVE_CONCURRENT = 4;
+const MAX_CONCURRENT = EFFECTIVE_CONCURRENT;   // 発令はこちらに従う
+
+/**
+ * 並列してよい仕事か — 分割してよい仕事と、してはならない仕事 (憲法 第26条)
+ *
+ * 調査が名指しで警告している。Cognition「Don't Build Multi-Agents」:
+ *   「行動は暗黙の決定を運ぶ。サブエージェント同士が互いの決定を見られない限り、
+ *     矛盾した前提に基づく成果物が生まれる」— Flappy Bird の実例では、一方が
+ *     Super Mario 風の背景を作り、他方が Flappy Bird らしくない鳥を作った。
+ * Anthropic も明言: 「全エージェントが同じ文脈を要するドメイン、依存の多い
+ *   ドメインは今日のマルチエージェントに向かない。**コーディングタスクが特にそう**」。
+ *
+ * 楽園の建造ドメイン(module-builder / test-writer)はまさに実装作業である。
+ * 並べれば矛盾した実装が生まれる。**調査は私の設計を検証せず、反証した。**
+ * ゆえに仕事の性質で並列可否を分ける — 分けずに一律で並べる方が危険である。
+ */
+const PARALLEL_SAFE = {
+  // 文脈を分離でき、成果が独立している仕事 — 並列が効く
+  research: { parallel: true,  why: '独立した問いに分けられ、成果は出典付きの事実で衝突しない' },
+  review:   { parallel: true,  why: '同じ成果物を別の観点で見るだけで、互いの決定に依存しない' },
+  // 暗黙の決定を運ぶ仕事 — 並べると矛盾した成果物が生まれる
+  build:    { parallel: false, why: '実装は暗黙の決定を運ぶ。並べれば互いに矛盾した前提で作る(Cognition/Anthropic)' },
+  design:   { parallel: false, why: '設計判断は後続の全てを縛る。分割すると整合しない' },
+};
 
 /**
  * The College of Cardinals. Each cardinal owns a DOMAIN of the creation
@@ -119,6 +154,7 @@ const COLLEGE = {
     domain: 'Discovery (調査)',
     governs: ['discover'],
     priests: ['market-researcher'],
+    work: 'research',      // 独立した問い → 信徒を並列に放てる
     believers: ['web-scout', 'feature-ranker'],
     reviewClass: 'pontiff',           // the pontiff ratifies findings before spec
     pdca: 'plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search',
@@ -128,6 +164,7 @@ const COLLEGE = {
     domain: 'Requirements (要件)',
     governs: ['analyze', 'specify'],
     priests: ['requirements-analyst'],
+    work: 'design',        // 仕様判断は後続を縛る → 逐次
     believers: ['user-story-writer', 'acceptance-criteria-writer'],
     reviewClass: 'cardinal:discovery', // requirements checked against discovery
     pdca: 'plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps',
@@ -137,6 +174,7 @@ const COLLEGE = {
     domain: 'Architecture (設計)',
     governs: ['design', 'detail', 'ux', 'identity'],
     priests: ['architect'],
+    work: 'design',        // 設計は分割すると整合しない → 逐次
     believers: ['data-modeler', 'interface-designer'],
     reviewClass: 'cardinal:requirements',
     pdca: 'plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise',
@@ -146,6 +184,7 @@ const COLLEGE = {
     domain: 'Construction (建造)',
     governs: ['build', 'build-ui', 'tests', 'prove'],
     priests: ['architect', 'tdd-guide'],
+    work: 'build',         // 実装は暗黙の決定を運ぶ → 逐次(Cognition/Anthropic の警告)
     believers: ['module-builder', 'test-writer'],
     reviewClass: 'cardinal:quality',
     pdca: 'plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green',
@@ -155,6 +194,7 @@ const COLLEGE = {
     domain: 'Quality (品質)',
     governs: ['review', 'security', 'docs', 'verify', 'ux-review'],
     priests: ['code-reviewer', 'security-reviewer', 'doc-updater', 'ux-reviewer'],
+    work: 'review',        // 同じ物を別の観点で見る → 並列が効く
     believers: ['linter', 'coverage-checker', 'secret-scanner'],
     reviewClass: 'executor',           // quality feeds the tribunal
     pdca: 'plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass',
@@ -214,6 +254,16 @@ function marshalPlan(phaseId, opts = {}) {
         : canSpawn === false ? 'blocked: priest lacks the spawn tool'
         : 'nested',
     requires: believers.length ? { priestTool: SPAWN_TOOL } : null,
+    // 仕事の性質で並列可否が決まる(第26条)。実装を並べれば矛盾した成果物が生まれる。
+    execution: (() => {
+      const w = PARALLEL_SAFE[c.work] || { parallel: false, why: '性質が宣言されていない — 安全側に倒し逐次' };
+      return {
+        work: c.work || 'unknown',
+        parallel: w.parallel,
+        why: w.why,
+        limit: w.parallel ? Math.min(believers.length, EFFECTIVE_CONCURRENT) : 1,
+      };
+    })(),
   };
 }
 
@@ -295,4 +345,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
+module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };

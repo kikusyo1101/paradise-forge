@@ -46,13 +46,14 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 23 | **楽園は己の法で己を改める**(`reform` の道・無主の相を許さない) |
 | 24 | **確かめていない土台の上に建てない**(分岐前に `branch-guard.js`) |
 | 25 | **歩けぬ階層は階層ではない**(枢機卿=指揮・司祭=実務・信徒=細分。全員に実体と権能) |
+| 26 | **並列は仕事の性質**(天井20を設定値にしない。実用は3〜4。実装と設計は並べない) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (157件)
+node tests/paradise.test.js                    # 楽園の自己診断 (163件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
@@ -101,6 +102,6 @@ node graph/apply-spawn.js verify               # 下位を擁する者が起動�
 ## 現状
 
 - 創造物: `creations/` (habit, pomodoro ほか)
-- 自己診断: **157 tests**
-- 憲法: **25条**
+- 自己診断: **163 tests**
+- 憲法: **26条**
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)
