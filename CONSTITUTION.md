@@ -320,6 +320,31 @@ way to change what "complete" means.
     This is Article 24's lesson — a rule that lives only in prose is obeyed only
     when remembered — proven again with numbers, one level up.
 
+27. **An artifact proves work was done; it never proves who did it.** Article 25
+    gave the hierarchy bodies and Article 26 gave it a safe width, and the
+    pontiff still wrote in the previous pull request: *"whether a cardinal
+    actually dispatches a priest has not been verified in execution."* That gap
+    is not cosmetic. `contract.js` reconciled a phase by checking that its
+    artifact existed and was non-trivial — and an artifact the pontiff wrote by
+    his own hand satisfies both conditions perfectly. **The reconciler could not
+    tell delegation from impersonation**, which is exactly how eleven pull
+    requests were produced with no cardinal ever convened. MAST names the
+    behaviour and measures it: FM-2.6, *reasoning-action mismatch*, 13.98% —
+    saying "I will delegate this" and then doing it oneself. The Claude Agent
+    SDK names the only sound remedy: *"detect `tool_use.name in ("Task",
+    "Agent")` and confirm the child's messages carry `parent_tool_use_id` —
+    this is the only reliable way to verify a subagent actually ran."*
+    Therefore: (a) **dispatch leaves a trace**, recorded as `spawnTrace` on the
+    run itself, not in prose; (b) **the trace distinguishes three states, and
+    only one of them is green** — *observed* (a real `tool_use` id exists),
+    *asserted-only* (someone claims a dispatch with no id), and *no-trace*; an
+    assertion of delegation is a claim like any other and is not evidence
+    (Art. 5); (c) **reconciliation of a phase consults the trace**, so an
+    artifact with no observed dispatch is rejected as `file-but-unspawned` no
+    matter how good the artifact is; and (d) **what cannot be observed is never
+    reported as done** — a hierarchy that cannot show its own footprints has not
+    demonstrated that it was walked, only that something was produced.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

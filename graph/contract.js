@@ -65,6 +65,21 @@ function reconcile(result, opts = {}) {
   try { const st = fs.statSync(art); exists = true; size = st.isDirectory() ? dirSize(art) : st.size; } catch {}
   if (!exists) return { accepted: false, reason: `artifact does not exist on disk: ${art}` };
   if (size < minBytes) return { accepted: false, reason: `artifact too small (${size}b < ${minBytes}b): ${art}` };
+
+  // ── 成果物が在ることは「委譲された」ことを意味しない (憲法 第27条) ──
+  // 教主が己の手で書いても、同じ成果物がそこに在る。ゆえに成果物だけを見る
+  // 照合は階層の素通りを見抜けない。走行状態を渡された時は起動の証跡も検める。
+  // MAST の FM-2.6「推論と実行の不一致」13.98% が正にこの穴である。
+  if (opts.run) {
+    const trace = require('./spawn-trace.js');
+    const t = trace.verify(opts.run, result.phase);
+    if (!t.ok) {
+      return { accepted: false, verified: 'file-but-unspawned', size,
+        reason: `artifact exists but the phase was never dispatched — ${t.reason}` };
+    }
+    return { accepted: true, verified: 'file+spawn', size,
+      reason: `artifact verified (${size}b) and dispatch observed: ${t.reason}` };
+  }
   return { accepted: true, reason: `artifact verified (${size}b): ${art}`, verified: 'file', size };
 }
 

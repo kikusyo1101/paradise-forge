@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T10:52:34.666Z",
+  "generated": "2026-08-31T11:06:17.319Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 61,
+    "nodeCount": 62,
     "edgeCount": 33,
     "nodes": [
       {
@@ -494,6 +494,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "後から届いた調査が設計を反証したら、設計を直す",
         "degree": 0
+      },
+      {
+        "id": "art27-spawn-trace",
+        "type": "lesson",
+        "label": "成果物は誰がやったかを証明しない",
+        "degree": 0
       }
     ],
     "edges": [
@@ -670,7 +676,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 29
+      "lesson": 30
     }
   },
   "lessons": [
@@ -818,6 +824,11 @@ window.PARADISE_STATE = {
       "id": "late-research-still-rules",
       "label": "後から届いた調査が設計を反証したら、設計を直す",
       "check": "並列発令した調査2件のうち片方が設計完了後に戻り、内容は設計を検証せず反証した(並列度・実装の分割・検証の甘さ)。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある|applies:paradise-internal"
+    },
+    {
+      "id": "art27-spawn-trace",
+      "label": "成果物は誰がやったかを証明しない",
+      "check": "contract.jsは成果物の実在だけを検め、教主が自分で書いても通った。委譲と成りすましを区別できないのが11件のPRが枢機卿抜きで生まれた根。Claude Agent SDK docsが唯一確実と呼ぶtool_use/parent_tool_use_idの証跡を記録し、observed/asserted-only/no-traceの三値で裁く。自己申告は証拠ではない|applies:paradise-internal"
     }
   ],
   "creations": [

@@ -1849,6 +1849,87 @@ test('orders: the contract states when it is done and demands evidence (Art.26)'
   } finally { try { fs.rmSync(tmp, { force: true }); } catch {} }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第27条 — 成果物は「誰がやったか」を証明しない
+// ══════════════════════════════════════════════════════════════════════
+
+test('spawn trace: an artifact with no observed dispatch is rejected (Art.27)', () => {
+  // 教主が己の手で書いても、成果物は完璧に存在する。それを見抜けねば
+  // 委譲と成りすましを区別できない。11件のPRがそうやって生まれた。
+  const contract = require('../graph/contract.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const result = { phase: 'discover', status: 'done', artifact: art, summary: 'やりました' };
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    const r = contract.reconcile(result, { run });
+    assert.strictEqual(r.accepted, false, 'an unspawned phase must be rejected however good its artifact');
+    assert.strictEqual(r.verified, 'file-but-unspawned', 'the reason names the real defect');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: a bare claim of dispatch is not evidence (Art.27/Art.5)', () => {
+  // MAST FM-2.6「推論と実行の不一致」13.98% — 委譲すると述べて自分でやる。
+  const contract = require('../graph/contract.js');
+  const trace = require('../graph/spawn-trace.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    trace.record(run, 'discover', { agent: 'market-researcher' });   // tool_use id が無い
+    const r = contract.reconcile({ phase: 'discover', status: 'done', artifact: art }, { run });
+    assert.strictEqual(r.accepted, false, 'an asserted dispatch with no tool_use id must not pass');
+    const v = trace.verify(run, 'discover');
+    assert.strictEqual(v.state, 'asserted-only', 'the state is named precisely, not lumped with success');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: an observed dispatch is accepted (Art.27)', () => {
+  const contract = require('../graph/contract.js');
+  const trace = require('../graph/spawn-trace.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    trace.record(run, 'discover', { agent: 'market-researcher', toolUseId: 'toolu_01ABC', rank: 'priest' });
+    const r = contract.reconcile({ phase: 'discover', status: 'done', artifact: art }, { run });
+    assert.strictEqual(r.accepted, true, 'an observed dispatch with a real artifact is accepted');
+    assert.strictEqual(r.verified, 'file+spawn', 'both the artifact and the dispatch were verified');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: the report names which phases bypassed the hierarchy (Art.27)', () => {
+  const trace = require('../graph/spawn-trace.js');
+  const run = { domains: [{ phases: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }] };
+  trace.record(run, 'a', { agent: 'x', toolUseId: 'toolu_1' });
+  trace.record(run, 'b', { agent: 'y' });                    // 自己申告のみ
+  // c は証跡なし
+  const rep = trace.report(run);
+  assert.strictEqual(rep.ok, false, 'bypassed phases must fail the report');
+  assert.strictEqual(rep.observed, 1);
+  assert.strictEqual(rep.assertedOnly, 1);
+  assert.strictEqual(rep.noTrace, 1);
+  assert.deepStrictEqual(rep.bypassed.map(b => b.phase).sort(), ['b', 'c'],
+    'a finding you cannot trace to a phase you cannot fix');
+});
+
+test('spawn trace: reconciliation without a run keeps working (backward compatible)', () => {
+  // 走行状態を渡さない既存の呼び出しは従来どおり成果物だけで裁く。
+  // 新しい門が古い呼び出しを黙って壊してはならない。
+  const contract = require('../graph/contract.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'a.md');
+  fs.writeFileSync(art, 'x'.repeat(50));
+  try {
+    const r = contract.reconcile({ phase: 'p', status: 'done', artifact: art });
+    assert.strictEqual(r.accepted, true, 'the old call path is unchanged');
+    assert.strictEqual(r.verified, 'file');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

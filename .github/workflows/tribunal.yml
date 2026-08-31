@@ -85,6 +85,32 @@ jobs:
       - name: 🗝 Spawn authority — 下位を擁する者が起動の権能を持つか (第25条)
         run: node graph/apply-spawn.js verify
 
+      - name: 👁 Spawn trace — 起動の証跡を裁く機構が働くか (第27条)
+        run: |
+          # 門をわざと壊して鳴るか確かめる。健全な系しか見ていない門は試されていない。
+          node -e "
+            const assert = require('assert');
+            const fs = require('fs'), os = require('os'), path = require('path');
+            const contract = require('./graph/contract.js');
+            const trace = require('./graph/spawn-trace.js');
+            const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-'));
+            const art = path.join(tmp, 'a.md');
+            fs.writeFileSync(art, 'x'.repeat(80));
+            const run = { domains: [{ phases: [{ id: 'p' }] }] };
+            // 成果物は完璧に在るが、誰も起動されていない
+            assert.strictEqual(contract.reconcile({phase:'p',status:'done',artifact:art},{run}).accepted, false,
+              'an unspawned phase must be rejected');
+            // 自己申告だけでも通してはならない
+            trace.record(run, 'p', { agent: 'x' });
+            assert.strictEqual(contract.reconcile({phase:'p',status:'done',artifact:art},{run}).accepted, false,
+              'a bare claim is not evidence');
+            // 観測された起動だけが通る
+            trace.record(run, 'p', { agent: 'x', toolUseId: 'toolu_1' });
+            assert.strictEqual(contract.reconcile({phase:'p',status:'done',artifact:art},{run}).accepted, true,
+              'an observed dispatch is accepted');
+            console.log('spawn trace gate fires correctly on all three states');
+          "
+
   tribunal:
     name: ⚖️ 執行官の裁定 (independent judgment)
     runs-on: ubuntu-latest
