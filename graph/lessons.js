@@ -42,7 +42,25 @@ function exportLessons(outPath) {
         check = c.replace(/^check:/, '').trim(); applies = a.trim();
         if (label === spec) label = check;
       }
-      return { id: n.id, label, check, applies, ts: n.ts };
+      // ── 教訓には二種類ある (憲法 第28条) ────────────────────────────
+      // 「機構」の教訓はコードに実装として現れる(census.js を作った 等)。
+      // 「規範」の教訓は行いの掟であり、**コードに文字列として現れようがない**
+      // (「ブラウザを閉じよ」「遅れて届いた証拠にも従え」)。
+      // 両者を同じ文字列照合で裁くと、規範は永久に赤を出す。実測すると
+      // 30件中18件が規範で、赤くなかった16件は**偶然コードに単語が現れただけ**
+      // だった。判定が働いていたのではなく、偶然に依存していた。
+      const kindSpec = [n.body, n.label].find(s => s && /\|kind:/.test(s));
+      let kind = null;
+      if (kindSpec) {
+        const m = kindSpec.match(/\|kind:([a-z-]+)/);
+        if (m) {
+          kind = m[1];
+          check = check.replace(/\|kind:[a-z-]+/, '').trim();
+          if (applies) applies = applies.replace(/\|kind:[a-z-]+/, '').trim();
+        }
+      }
+      // 未宣言は 'mechanism' 扱い。既存の教訓の裁き方を変えないため（後方互換）。
+      return { id: n.id, label, check, applies, kind: kind || 'mechanism', ts: n.ts };
     });
   fs.writeFileSync(outPath, JSON.stringify(lessons, null, 2));
   return lessons;

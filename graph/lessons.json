@@ -4,6 +4,7 @@
     "label": "調査フェーズを飛ばすな",
     "check": "findings",
     "applies": null,
+    "kind": "mechanism",
     "ts": "2026-08-30T13:42:29.309Z"
   },
   {
@@ -11,6 +12,7 @@
     "label": "設定カスタマイズは必須",
     "check": "config",
     "applies": "timer",
+    "kind": "mechanism",
     "ts": "2026-08-30T14:57:06.000Z"
   },
   {
@@ -18,6 +20,7 @@
     "label": "指揮ロジックをpromptに置くな",
     "check": "orchestrator",
     "applies": "orchestration",
+    "kind": "mechanism",
     "ts": "2026-08-30T14:57:06.042Z"
   },
   {
@@ -25,6 +28,7 @@
     "label": "lessonにスコープが必要",
     "check": "applies",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T14:57:41.255Z"
   },
   {
@@ -32,6 +36,7 @@
     "label": "criticはソースと創造物を区別せよ",
     "check": "self",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T15:12:45.194Z"
   },
   {
@@ -39,6 +44,7 @@
     "label": "神託を即実装せず計画サイクルを回せ",
     "check": "synod",
     "applies": "orchestration",
+    "kind": "mechanism",
     "ts": "2026-08-30T15:15:11.942Z"
   },
   {
@@ -46,6 +52,7 @@
     "label": "知識グラフは訂正可能であるべき（追記のみは欠陥）",
     "check": "forget",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T15:24:57.667Z"
   },
   {
@@ -53,6 +60,7 @@
     "label": "spec充足は文字列一致でなくAC実駆動で裁け",
     "check": "musthaves",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T15:24:57.708Z"
   },
   {
@@ -60,6 +68,7 @@
     "label": "モデルは位階で割り当て、裁きは値切るな",
     "check": "model",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T20:27:54.685Z"
   },
   {
@@ -67,6 +76,7 @@
     "label": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
     "check": "the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T20:52:20.817Z"
   },
   {
@@ -74,6 +84,7 @@
     "label": "スコープは厳密一致で守れ（偽REWORKは見逃しと同罪）",
     "check": "scopeMatches",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T20:53:49.283Z"
   },
   {
@@ -81,6 +92,7 @@
     "label": "自己審査ではスコープの主語を宣言せよ（沈黙を合格と誤るな）",
     "check": "selfScopeSubject",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T22:22:18.724Z"
   },
   {
@@ -88,6 +100,7 @@
     "label": "差し戻しはドメインを跨いで届かねばならない。ratify(--reject --from X) は X を所有するドメインを全体から探し、そのドメインの批准を取り消して再開させ、下流の成果物を破棄し、loop-guard の負債を誤った側に付ける。自domain内しか探さない実装は「差し戻したのに何も戻らない」偽の審判を生む",
     "check": "差し戻しはドメインを跨いで届かねばならない。ratify(--reject --from X) は X を所有するドメインを全体から探し、そのドメインの批准を取り消して再開させ、下流の成果物を破棄し、loop-guard の負債を誤った側に付ける。自domain内しか探さない実装は「差し戻したのに何も戻らない」偽の審判を生む",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-30T23:20:29.096Z"
   },
   {
@@ -95,6 +108,7 @@
     "label": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
     "check": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T00:04:23.252Z"
   },
   {
@@ -102,6 +116,7 @@
     "label": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
     "check": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T01:58:31.981Z"
   },
   {
@@ -109,20 +124,15 @@
     "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
     "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T03:17:01.173Z"
-  },
-  {
-    "id": "browser-cleanup",
-    "label": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
-    "check": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
-    "applies": "paradise-internal",
-    "ts": "2026-08-31T03:56:33.337Z"
   },
   {
     "id": "borrowed-not-altered",
     "label": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
     "check": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T07:25:04.039Z"
   },
   {
@@ -130,6 +140,7 @@
     "label": "contract must fail closed",
     "check": "contract must fail closed",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:13:03.318Z"
   },
   {
@@ -137,6 +148,7 @@
     "label": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
     "check": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:14:22.274Z"
   },
   {
@@ -144,6 +156,7 @@
     "label": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
     "check": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:30:43.036Z"
   },
   {
@@ -151,6 +164,7 @@
     "label": "門は名を口にする全ての口を見よ",
     "check": "check-agents が forge.js だけを見て clergy.js と examples の宙吊り参照を見逃した。名を跨いで書ける場所を全て列挙し、誰が名指したかまで報告せよ",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:43:53.609Z"
   },
   {
@@ -158,6 +172,7 @@
     "label": "己について語る数は数え直せ",
     "check": "文書の数(テスト数・条数・vendor内訳)は黙って腐る。census.js が実測と突き合わせ、ずれれば門が落ちる",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:43:53.649Z"
   },
   {
@@ -165,6 +180,7 @@
     "label": "楽園自身を改める道を持て",
     "check": "quick/standard/fullは全てcreations用で、楽園自身の改修が通る道が無かった。ゆえに11件のPRが教主の独断となり枢機卿も執行官も召集されなかった。reformスケール+prove相+無主の相検知で機構化",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:55:29.630Z"
   },
   {
@@ -172,6 +188,7 @@
     "label": "確かめていない土台の上に建てるな",
     "check": "PRが未マージという思い込みで古いmainから分岐しrebase競合で変更を失いかけた。CLAUDE.mdに書いてあっても守られない。branch-guard.jsで分岐前に実測する。散文の掟は門に格上げせよ",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T08:55:29.668Z"
   },
   {
@@ -179,6 +196,7 @@
     "label": "歩けぬ階層は階層ではない",
     "check": "枢機卿はdataでactorでなく、信徒13名は全員名前だけ、conclaveは司祭への発令書を教主に返していた。5階層のうち2つしか実行されず。原因はClaude Agent SDK docsが名指しする通りallowedToolsにTask/Agentが無いと起動が黙って拒否されること。各位階にactorを与え、下位を擁する者にapply-spawnで権能を機械適用し、発令は必ず一つ下の位階へ向ける",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T09:34:36.951Z"
   },
   {
@@ -186,6 +204,7 @@
     "label": "在庫でなく供給線を検めよ",
     "check": "独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し司祭9名が消えた。在庫を数える門は独立を証明しない",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T09:34:36.989Z"
   },
   {
@@ -193,13 +212,47 @@
     "label": "並列は仕事の性質であり実行基盤の容量ではない",
     "check": "天井20を発令幅に使っていた。調査(arXiv:2512.08296)はT∝n^1.724・実用3-4体・逆U字を示し、Cognition/Anthropicは実装作業の並列化が矛盾した成果物を生むと警告。ドメインに仕事の性質(research/review=並列可、design/build=逐次)を宣言させ、未宣言は安全側の逐次に倒す。MASTは検証失敗21.3%を示すのでdone_when/evidence_required/if_unclearを発令書に載せる",
     "applies": "paradise-internal",
+    "kind": "mechanism",
     "ts": "2026-08-31T10:52:34.547Z"
   },
   {
-    "id": "late-research-still-rules",
-    "label": "後から届いた調査が設計を反証したら、設計を直す",
-    "check": "並列発令した調査2件のうち片方が設計完了後に戻り、内容は設計を検証せず反証した(並列度・実装の分割・検証の甘さ)。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある",
+    "id": "art27-spawn-trace",
+    "label": "成果物は誰がやったかを証明しない",
+    "check": "contract.jsは成果物の実在だけを検め、教主が自分で書いても通った。委譲と成りすましを区別できないのが11件のPRが枢機卿抜きで生まれた根。Claude Agent SDK docsが唯一確実と呼ぶtool_use/parent_tool_use_idの証跡を記録し、observed/asserted-only/no-traceの三値で裁く。自己申告は証拠ではない",
     "applies": "paradise-internal",
-    "ts": "2026-08-31T10:52:34.585Z"
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:06:17.238Z"
+  },
+  {
+    "id": "browser-cleanup",
+    "label": "目視検証でブラウザを開いたら必ず閉じる",
+    "check": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしは神の画面を占領し、Braveはプロセス再利用で古いタブを掴みキャプチャが更新されない実害を招く。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。一時HTMLも削除する",
+    "applies": "paradise-internal",
+    "kind": "conduct",
+    "ts": "2026-08-31T11:09:04.475Z"
+  },
+  {
+    "id": "late-research-still-rules",
+    "label": "遅れて届いた証拠にも同じ効力がある",
+    "check": "並列発令した調査が設計完了後に戻り、設計を検証せず反証した。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある",
+    "applies": "paradise-internal",
+    "kind": "conduct",
+    "ts": "2026-08-31T11:09:04.516Z"
+  },
+  {
+    "id": "art28-conduct-not-grepped",
+    "label": "規範の教訓はgrepで裁けない",
+    "check": "criticは全教訓をコードへの文字列出現で裁いていた。機構の教訓には効くが規範(ブラウザを閉じよ等)はコードに現れようがなく永久に赤。実測30件中18件が規範で、赤は2件だけ=残り16件は偶然コードに語が現れただけだった。判定は働かず偶然に依存。kind:conductを宣言させ提示のみとする。永久に赤は門を無視させ、緑は教訓を消す。測れぬものも憶えねばならぬが、点数を付けてはならぬ",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:10:38.234Z"
+  },
+  {
+    "id": "art29-derived-not-truth",
+    "label": "生成物は真実の写しであって真実ではない",
+    "check": "執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:20:30.413Z"
   }
 ]

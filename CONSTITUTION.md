@@ -320,6 +320,70 @@ way to change what "complete" means.
     This is Article 24's lesson — a rule that lives only in prose is obeyed only
     when remembered — proven again with numbers, one level up.
 
+27. **An artifact proves work was done; it never proves who did it.** Article 25
+    gave the hierarchy bodies and Article 26 gave it a safe width, and the
+    pontiff still wrote in the previous pull request: *"whether a cardinal
+    actually dispatches a priest has not been verified in execution."* That gap
+    is not cosmetic. `contract.js` reconciled a phase by checking that its
+    artifact existed and was non-trivial — and an artifact the pontiff wrote by
+    his own hand satisfies both conditions perfectly. **The reconciler could not
+    tell delegation from impersonation**, which is exactly how eleven pull
+    requests were produced with no cardinal ever convened. MAST names the
+    behaviour and measures it: FM-2.6, *reasoning-action mismatch*, 13.98% —
+    saying "I will delegate this" and then doing it oneself. The Claude Agent
+    SDK names the only sound remedy: *"detect `tool_use.name in ("Task",
+    "Agent")` and confirm the child's messages carry `parent_tool_use_id` —
+    this is the only reliable way to verify a subagent actually ran."*
+    Therefore: (a) **dispatch leaves a trace**, recorded as `spawnTrace` on the
+    run itself, not in prose; (b) **the trace distinguishes three states, and
+    only one of them is green** — *observed* (a real `tool_use` id exists),
+    *asserted-only* (someone claims a dispatch with no id), and *no-trace*; an
+    assertion of delegation is a claim like any other and is not evidence
+    (Art. 5); (c) **reconciliation of a phase consults the trace**, so an
+    artifact with no observed dispatch is rejected as `file-but-unspawned` no
+    matter how good the artifact is; and (d) **what cannot be observed is never
+    reported as done** — a hierarchy that cannot show its own footprints has not
+    demonstrated that it was walked, only that something was produced.
+
+28. **A lesson about conduct cannot be checked by grepping the code.** The
+    critic judged every past miss the same way — does its keyword appear in the
+    source? That works for a lesson whose remedy is a mechanism (`census.js` was
+    built, so "census" appears), and is meaningless for a lesson whose remedy is
+    a *behaviour*: "close the browser after a visual check", "obey evidence that
+    arrives after the design is finished". Such a lesson can never appear in the
+    source, so it reported REGRESSION forever. Measurement made the scale of the
+    error plain: of thirty lessons, **eighteen were conduct**, and only two were
+    red — the other sixteen passed **because their words happened to occur in
+    unrelated code**. The gate was not working; it was being lucky, and the two
+    unlucky ones looked like real defects while the sixteen lucky ones hid real
+    blindness. Therefore a lesson declares its `kind`. A *mechanism* lesson is
+    still verified against the artifact. A *conduct* lesson is **surfaced, never
+    graded**: it is printed at every review as a standing obligation, because
+    the two wrong answers are equally wrong — grading it red forever trains the
+    reader to ignore a permanently red gate (and an ignored gate is worse than
+    none, Art. 21), while marking it green silently deletes the lesson. What
+    cannot be measured must still be remembered; it simply must not be scored.
+
+29. **A derived file is a copy of the truth, never the truth.** The tribunal
+    rejected the previous change: green locally, one test failing in CI. The
+    cause was a gate written the same hour — it read `graph/lessons.json` and
+    asserted that at least one lesson existed. But that file is *generated* from
+    the knowledge graph, CI has no knowledge graph, and the tribunal job
+    regenerates it before judging. Measured: **31 lessons in the repository, 0
+    after CI regenerates, 1682 lines gone.** The repository's copy and the
+    running environment's copy are simply different objects. Three such files
+    are tracked in git, and every one carries the same three hazards: its
+    content differs by environment, it conflicts on every parallel pull request
+    (and must be regenerated, never hand-merged), and any check that assumes its
+    content breaks wherever the generator's input is absent. Therefore derived
+    artifacts are **declared** (`derived.js`), and a test may read one but may
+    never assert that it has content. Assert against the **generator** instead:
+    that `lessons.js` defaults an undeclared lesson to `mechanism` is true with
+    or without a knowledge graph, while "some lesson is a mechanism" is true only
+    on the author's machine. This is Article 19's lesson — *count the supply
+    line, not the stock* — turned inward: **do not test the output of a
+    generator when what you mean to assert is a property of the generator.**
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T10:52:34.666Z",
+  "generated": "2026-08-31T11:20:30.493Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 61,
+    "nodeCount": 64,
     "edgeCount": 33,
     "nodes": [
       {
@@ -418,12 +418,6 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
-        "id": "browser-cleanup",
-        "type": "lesson",
-        "label": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
-        "degree": 0
-      },
-      {
         "id": "borrowed-not-altered",
         "type": "lesson",
         "label": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
@@ -490,9 +484,33 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
+        "id": "art27-spawn-trace",
+        "type": "lesson",
+        "label": "成果物は誰がやったかを証明しない",
+        "degree": 0
+      },
+      {
+        "id": "browser-cleanup",
+        "type": "lesson",
+        "label": "目視検証でブラウザを開いたら必ず閉じる",
+        "degree": 0
+      },
+      {
         "id": "late-research-still-rules",
         "type": "lesson",
-        "label": "後から届いた調査が設計を反証したら、設計を直す",
+        "label": "遅れて届いた証拠にも同じ効力がある",
+        "degree": 0
+      },
+      {
+        "id": "art28-conduct-not-grepped",
+        "type": "lesson",
+        "label": "規範の教訓はgrepで裁けない",
+        "degree": 0
+      },
+      {
+        "id": "art29-derived-not-truth",
+        "type": "lesson",
+        "label": "生成物は真実の写しであって真実ではない",
         "degree": 0
       }
     ],
@@ -670,7 +688,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 29
+      "lesson": 32
     }
   },
   "lessons": [
@@ -755,11 +773,6 @@ window.PARADISE_STATE = {
       "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる|applies:paradise-internal"
     },
     {
-      "id": "browser-cleanup",
-      "label": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
-      "check": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する|applies:paradise-internal"
-    },
-    {
       "id": "borrowed-not-altered",
       "label": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
       "check": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで|applies:paradise-internal"
@@ -815,9 +828,29 @@ window.PARADISE_STATE = {
       "check": "天井20を発令幅に使っていた。調査(arXiv:2512.08296)はT∝n^1.724・実用3-4体・逆U字を示し、Cognition/Anthropicは実装作業の並列化が矛盾した成果物を生むと警告。ドメインに仕事の性質(research/review=並列可、design/build=逐次)を宣言させ、未宣言は安全側の逐次に倒す。MASTは検証失敗21.3%を示すのでdone_when/evidence_required/if_unclearを発令書に載せる|applies:paradise-internal"
     },
     {
+      "id": "art27-spawn-trace",
+      "label": "成果物は誰がやったかを証明しない",
+      "check": "contract.jsは成果物の実在だけを検め、教主が自分で書いても通った。委譲と成りすましを区別できないのが11件のPRが枢機卿抜きで生まれた根。Claude Agent SDK docsが唯一確実と呼ぶtool_use/parent_tool_use_idの証跡を記録し、observed/asserted-only/no-traceの三値で裁く。自己申告は証拠ではない|applies:paradise-internal"
+    },
+    {
+      "id": "browser-cleanup",
+      "label": "目視検証でブラウザを開いたら必ず閉じる",
+      "check": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしは神の画面を占領し、Braveはプロセス再利用で古いタブを掴みキャプチャが更新されない実害を招く。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。一時HTMLも削除する|applies:paradise-internal|kind:conduct"
+    },
+    {
       "id": "late-research-still-rules",
-      "label": "後から届いた調査が設計を反証したら、設計を直す",
-      "check": "並列発令した調査2件のうち片方が設計完了後に戻り、内容は設計を検証せず反証した(並列度・実装の分割・検証の甘さ)。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある|applies:paradise-internal"
+      "label": "遅れて届いた証拠にも同じ効力がある",
+      "check": "並列発令した調査が設計完了後に戻り、設計を検証せず反証した。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "art28-conduct-not-grepped",
+      "label": "規範の教訓はgrepで裁けない",
+      "check": "criticは全教訓をコードへの文字列出現で裁いていた。機構の教訓には効くが規範(ブラウザを閉じよ等)はコードに現れようがなく永久に赤。実測30件中18件が規範で、赤は2件だけ=残り16件は偶然コードに語が現れただけだった。判定は働かず偶然に依存。kind:conductを宣言させ提示のみとする。永久に赤は門を無視させ、緑は教訓を消す。測れぬものも憶えねばならぬが、点数を付けてはならぬ|applies:paradise-internal|kind:mechanism"
+    },
+    {
+      "id": "art29-derived-not-truth",
+      "label": "生成物は真実の写しであって真実ではない",
+      "check": "執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る|applies:paradise-internal|kind:mechanism"
     }
   ],
   "creations": [

@@ -1849,6 +1849,214 @@ test('orders: the contract states when it is done and demands evidence (Art.26)'
   } finally { try { fs.rmSync(tmp, { force: true }); } catch {} }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第27条 — 成果物は「誰がやったか」を証明しない
+// ══════════════════════════════════════════════════════════════════════
+
+test('spawn trace: an artifact with no observed dispatch is rejected (Art.27)', () => {
+  // 教主が己の手で書いても、成果物は完璧に存在する。それを見抜けねば
+  // 委譲と成りすましを区別できない。11件のPRがそうやって生まれた。
+  const contract = require('../graph/contract.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const result = { phase: 'discover', status: 'done', artifact: art, summary: 'やりました' };
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    const r = contract.reconcile(result, { run });
+    assert.strictEqual(r.accepted, false, 'an unspawned phase must be rejected however good its artifact');
+    assert.strictEqual(r.verified, 'file-but-unspawned', 'the reason names the real defect');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: a bare claim of dispatch is not evidence (Art.27/Art.5)', () => {
+  // MAST FM-2.6「推論と実行の不一致」13.98% — 委譲すると述べて自分でやる。
+  const contract = require('../graph/contract.js');
+  const trace = require('../graph/spawn-trace.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    trace.record(run, 'discover', { agent: 'market-researcher' });   // tool_use id が無い
+    const r = contract.reconcile({ phase: 'discover', status: 'done', artifact: art }, { run });
+    assert.strictEqual(r.accepted, false, 'an asserted dispatch with no tool_use id must not pass');
+    const v = trace.verify(run, 'discover');
+    assert.strictEqual(v.state, 'asserted-only', 'the state is named precisely, not lumped with success');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: an observed dispatch is accepted (Art.27)', () => {
+  const contract = require('../graph/contract.js');
+  const trace = require('../graph/spawn-trace.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'findings.md');
+  fs.writeFileSync(art, 'これは本物の成果物である');
+  try {
+    const run = { domains: [{ phases: [{ id: 'discover' }] }] };
+    trace.record(run, 'discover', { agent: 'market-researcher', toolUseId: 'toolu_01ABC', rank: 'priest' });
+    const r = contract.reconcile({ phase: 'discover', status: 'done', artifact: art }, { run });
+    assert.strictEqual(r.accepted, true, 'an observed dispatch with a real artifact is accepted');
+    assert.strictEqual(r.verified, 'file+spawn', 'both the artifact and the dispatch were verified');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: the report names which phases bypassed the hierarchy (Art.27)', () => {
+  const trace = require('../graph/spawn-trace.js');
+  const run = { domains: [{ phases: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }] };
+  trace.record(run, 'a', { agent: 'x', toolUseId: 'toolu_1' });
+  trace.record(run, 'b', { agent: 'y' });                    // 自己申告のみ
+  // c は証跡なし
+  const rep = trace.report(run);
+  assert.strictEqual(rep.ok, false, 'bypassed phases must fail the report');
+  assert.strictEqual(rep.observed, 1);
+  assert.strictEqual(rep.assertedOnly, 1);
+  assert.strictEqual(rep.noTrace, 1);
+  assert.deepStrictEqual(rep.bypassed.map(b => b.phase).sort(), ['b', 'c'],
+    'a finding you cannot trace to a phase you cannot fix');
+});
+
+test('spawn trace: reconciliation without a run keeps working (backward compatible)', () => {
+  // 走行状態を渡さない既存の呼び出しは従来どおり成果物だけで裁く。
+  // 新しい門が古い呼び出しを黙って壊してはならない。
+  const contract = require('../graph/contract.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-'));
+  const art = path.join(tmp, 'a.md');
+  fs.writeFileSync(art, 'x'.repeat(50));
+  try {
+    const r = contract.reconcile({ phase: 'p', status: 'done', artifact: art });
+    assert.strictEqual(r.accepted, true, 'the old call path is unchanged');
+    assert.strictEqual(r.verified, 'file');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第28条 — 規範の教訓は grep で裁けない
+// ══════════════════════════════════════════════════════════════════════
+
+test('lessons: a lesson declares its kind, defaulting to mechanism (Art.28)', () => {
+  // 注意: lessons.json は KG から生成される成果物である。CI では KG が存在せず
+  // 裁定ジョブが lessons.js export を実行するため **空配列になる**。
+  // 「中身が在ること」を暗黙に前提した検査は、そこで落ちる（実際に落ちた）。
+  // 存在しないから壊れているのではない — 検めるものが無いだけである。
+  const lessons = require('../graph/lessons.json');
+  for (const l of lessons) {
+    assert.ok(l.kind, `lesson ${l.id} must carry a kind`);
+    assert.ok(['mechanism', 'conduct'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
+  }
+  // 既定が mechanism であることは、生成物ではなく **engine** に対して検める。
+  // こちらは KG の有無に依存しない真実である。
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'lessons.js'), 'utf8');
+  assert.ok(/kind:\s*kind\s*\|\|\s*'mechanism'/.test(src),
+    'an undeclared lesson must default to mechanism — asserted against the engine, not its output');
+});
+
+test('lessons: the kind marker never leaks into the check text (Art.28)', () => {
+  // |kind: が check に残ると、その文字列をコードから探すことになり本末転倒。
+  const lessons = require('../graph/lessons.json');
+  for (const l of lessons) {
+    assert.ok(!/\|kind:/.test(l.check), `lesson ${l.id}: the kind marker leaked into its check`);
+    if (l.applies) assert.ok(!/\|kind:/.test(l.applies), `lesson ${l.id}: the kind marker leaked into its scope`);
+  }
+});
+
+test('lessons: a conduct lesson is surfaced but never graded red (Art.28)', () => {
+  // 二つの誤りは等価: 永久に赤 → 門が無視される / 緑にする → 教訓が消える。
+  const critic = require('../graph/critic.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cr-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'x.js'), '// 教訓の語は一切現れない中身\nmodule.exports = 1;\n');
+    const lessonsPath = path.join(tmp, 'lessons.json');
+    fs.writeFileSync(lessonsPath, JSON.stringify([
+      { id: 'c1', label: '掟', check: 'ブラウザを閉じよ', applies: null, kind: 'conduct' },
+      { id: 'm1', label: '機構', check: 'zzz-absent-mechanism-token', applies: null, kind: 'mechanism' },
+    ]));
+    // opts.lessons は **ファイルパス**（配列ではない）。実装を読んで確かめた。
+    const r = critic.review(tmp, { lessons: lessonsPath, self: true });
+    const conduct = r.results.find(x => x.id === 'lesson:c1');
+    const mech = r.results.find(x => x.id === 'lesson:m1');
+    assert.ok(conduct, 'the conduct lesson still appears in the review — it is not deleted');
+    assert.strictEqual(conduct.ok, true, 'a conduct lesson must not be graded red');
+    assert.ok(/CONDUCT/.test(conduct.note), 'it is surfaced as a standing obligation, not silently passed');
+    assert.strictEqual(mech.ok, false, 'a mechanism lesson whose remedy is absent is still a real gap');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('lessons: the engine review is clean — no permanently-red gate remains (Art.28)', () => {
+  // 常時赤の門は読まれなくなる。無視される門は、無い門より悪い。
+  const critic = require('../graph/critic.js');
+  const r = critic.review(path.join(__dirname, '..', 'graph'),
+    { lessons: path.join(__dirname, '..', 'graph', 'lessons.json'), self: true });
+  const hardGaps = r.results.filter(x => !x.ok && !x.soft);
+  assert.strictEqual(hardGaps.length, 0,
+    `the engine review must be clean: ${hardGaps.map(g => g.id).join(', ')}`);
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第29条 — 生成物は真実の写しであって、真実そのものではない
+// ══════════════════════════════════════════════════════════════════════
+
+test('derived: every generated artifact is declared with its source (Art.29)', () => {
+  const derived = require('../graph/derived.js');
+  for (const [file, spec] of Object.entries(derived.DERIVED)) {
+    assert.ok(spec.from, `${file} must name where it comes from`);
+    assert.ok(spec.by, `${file} must name the command that regenerates it`);
+    assert.ok(spec.note, `${file} must state the hazard it carries`);
+  }
+  // 実測で罠を踏んだ3つが宣言されていること
+  for (const f of ['graph/lessons.json', 'dashboard/state.json', 'dashboard/state.js']) {
+    assert.ok(derived.DERIVED[f], `${f} is generated and must be declared`);
+  }
+});
+
+test('derived: no test asserts on the CONTENT of a derived file (Art.29)', () => {
+  // これが本番の門。CIを落とした欠陥がここで捕まる。
+  const derived = require('../graph/derived.js');
+  const res = derived.check();
+  assert.strictEqual(res.findings.length, 0,
+    `tests must not assume derived content: ${res.findings.map(f => `${f.file}:${f.line}`).join(', ')}`);
+});
+
+test('derived: the gate catches the exact accident that broke CI (Art.29)', () => {
+  // 門を、わざと壊して試す。今回CIを落とした形そのものを仕込む。
+  const derived = require('../graph/derived.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dv-'));
+  const f = path.join(tmp, 'bad.test.js');
+  fs.writeFileSync(f, [
+    "test('x', () => {",
+    "  const lessons = require('../graph/lessons.json');",
+    "  assert.ok(lessons.some(l => l.kind === 'mechanism'), 'defaults to mechanism');",
+    '});',
+  ].join('\n'));
+  try {
+    const found = derived.offendingAssertions(f);
+    assert.ok(found.length > 0, 'asserting presence on a derived file must be caught');
+    assert.ok(/lessons\.json/.test(found[0].derived), 'the gate names which derived file');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', () => {
+  // 狼少年の門は、無い門より悪い(第21条)。素朴な照合は3件挙げ、3件とも誤検出だった。
+  const derived = require('../graph/derived.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dv-'));
+  const f = path.join(tmp, 'ok.test.js');
+  fs.writeFileSync(f, [
+    "test('fixture is not a derived file', () => {",
+    "  const lessonsFile = path.join(d, 'lessons.json');",          // 一時ディレクトリの自作
+    "  fs.writeFileSync(lessonsFile, JSON.stringify([{id:'l1'}]));",
+    "  assert.ok(rev.gaps.some(g => g.id === 'lesson:l1'), 'fixture drives the check');",
+    '});',
+    "test('a negation survives an empty derived file', () => {",
+    "  const rev = critic.review(dir, { lessons: path.join(DIR, '..', 'graph', 'lessons.json') });",
+    "  assert.ok(!internal.some(r => /x/.test(r.note)), 'nothing may be skipped');",  // 否定形
+    '});',
+  ].join('\n'));
+  try {
+    assert.strictEqual(derived.offendingAssertions(f).length, 0,
+      'fixtures and negations must not be reported — a gate that cries wolf gets ignored');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
