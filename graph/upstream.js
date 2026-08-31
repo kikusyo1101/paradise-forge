@@ -152,7 +152,17 @@ function impact() {
   const reasons = [];
   let verdict = 'SAFE';
 
-  if (st.error) return { verdict: 'BLOCK', reasons: [st.error], changes: [] };
+  if (st.error) {
+    // 楽園は独立した (第20条)。上流が手元に無いのは異常ではなく既定である。
+    // 取り込んだ資産が揃っているなら、それは「見に行く相手が居ない」だけ。
+    let vendored = false;
+    try { vendored = require('./vendor.js').status().self_sufficient; } catch { /* vendor未導入 */ }
+    if (vendored) {
+      return { verdict: 'SAFE', reasons: ['upstream is not on this machine — paradise runs on its vendored assets (Art. 20)'],
+               behind: 0, changes: [], decisions: [] };
+    }
+    return { verdict: 'BLOCK', reasons: [st.error], changes: [] };
+  }
   if (!st.clean) {
     verdict = 'BLOCK';
     reasons.push(`upstream worktree is dirty (${st.dirty_files.length} file(s)) — the borrowed tree must stay read-only: ` +

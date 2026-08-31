@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T08:14:22.362Z",
+  "generated": "2026-08-31T08:30:47.327Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 52,
+    "nodeCount": 53,
     "edgeCount": 33,
     "nodes": [
       {
@@ -440,6 +440,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
         "degree": 0
+      },
+      {
+        "id": "paradise-independence",
+        "type": "lesson",
+        "label": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
+        "degree": 0
       }
     ],
     "edges": [
@@ -616,7 +622,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 20
+      "lesson": 21
     }
   },
   "lessons": [
@@ -719,6 +725,11 @@ window.PARADISE_STATE = {
       "id": "session-briefing",
       "label": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
       "check": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)|applies:paradise-internal"
+    },
+    {
+      "id": "paradise-independence",
+      "label": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
+      "check": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -732,12 +743,6 @@ window.PARADISE_STATE = {
       "name": "habit",
       "files": 15,
       "verdict": "REWORK",
-      "hasFindings": true
-    },
-    {
-      "name": "packing",
-      "files": 4,
-      "verdict": null,
       "hasFindings": true
     },
     {

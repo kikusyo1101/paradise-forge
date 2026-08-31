@@ -177,6 +177,22 @@ way to change what "complete" means.
     judgment: the machine may fetch, classify and warn, but only a human may
     say *take it*.
 
+20. **Paradise stands on its own feet.** A house built on a neighbour's
+    foundation is not a house; it is a guest. Everything paradise needs to run
+    — the agents, commands, skills, rules, hooks and the scripts behind them —
+    is carried inside paradise's own repository. Delete the upstream project
+    from the machine and paradise still forges, still judges, still ships;
+    that, and nothing weaker, is what independence means. Three duties follow.
+    (a) **Nothing may point outside**: no deployed file, no settings entry, no
+    hook may name a path into a tree paradise does not own, and a check exists
+    that says so out loud. (b) **Independence is not estrangement**: the
+    upstream keeps improving, so paradise still looks — but it looks only when
+    the upstream happens to be present, it stays silent when it is not, and it
+    never adopts without a human saying yes. (c) **What was borrowed is
+    credited, always**: the origin, the commit, the licence and the fact that
+    an upstream `LICENSE` file was absent are all recorded in `NOTICE.md`.
+    Standing on your own feet does not mean pretending you were never carried.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
