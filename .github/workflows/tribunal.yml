@@ -67,10 +67,20 @@ jobs:
 
       - name: 🧩 Engine integrity — 全エンジンが読み込めるか
         run: |
-          for m in graph-engine kg forge verdict critic orchestrator contract lessons clergy conclave synod export-state apply-models identity visual-verify check-agents upstream deploy vendor; do
-            node -e "require('./graph/$m.js')" || { echo "::error::graph/$m.js failed to load"; exit 1; }
-            echo "  ok $m"
+          # 手書きの一覧は新しい engine を黙って取りこぼす（実際 census/daily-guard が
+          # 漏れていた）。ディスクを走査し、graph/*.js を一つ残らず読み込む。
+          fail=0
+          for f in graph/*.js; do
+            node -e "require('./$f')" || { echo "::error::$f failed to load"; fail=1; }
+            echo "  ok $f"
           done
+          test "$fail" -eq 0
+
+      - name: 🔢 Census — 楽園が己について語る数が真実か (第22条)
+        run: node graph/census.js check
+
+      - name: ⛪ Agent presence — 名指しした司祭が実在するか (第21条)
+        run: node graph/check-agents.js
 
   tribunal:
     name: ⚖️ 執行官の裁定 (independent judgment)
