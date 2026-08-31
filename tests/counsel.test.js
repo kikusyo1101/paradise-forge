@@ -438,6 +438,8 @@ test('完全な報告は依然として SHIP — 門を塞いだが緩めてい�
     build: 'pass',
     tests: { total: 9, passed: 9, failed: 0, coverage: 92 },
     security: { issues: 0, secrets: 0 },
+    // 第38条: artifact の道では走行も測られて初めて「完全な報告」である
+    trajectory: { score: 92, reworkCount: 0, firstPassRate: 1, loopGuardTrips: 0 },
   });
   assert.strictEqual(r.verdict, 'SHIP',
     '正当な報告まで塞ぐなら、それは門ではなく壁である');

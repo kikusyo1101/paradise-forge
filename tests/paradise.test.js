@@ -214,8 +214,10 @@ const verdict = require(path.join(DIR, '..', 'graph', 'verdict.js'));
 test('SHIP when every gate passes and no breach', () => {
   const v = verdict.judge({ build: 'pass', types: { status: 'pass' }, lint: { status: 'pass' },
     tests: { passed: 14, failed: 0, total: 14, coverage: 92 },
-    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } });
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true },
+    trajectory: { score: 95, reworkCount: 0, firstPassRate: 1, loopGuardTrips: 0 } });
   assert.strictEqual(v.verdict, 'SHIP');
+  assert.ok(v.reasons.some(r => /trajectory 95\/100/.test(r)), 'healthy trajectory is cited as evidence');
 });
 
 test('REWORK on fixable defects (failing tests / low coverage)', () => {
@@ -240,7 +242,8 @@ test('security breach BLOCKS even when all tests pass', () => {
 
 test('coverage floor is configurable', () => {
   const report = { build: 'pass', tests: { passed: 10, failed: 0, total: 10, coverage: 75 },
-    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } };
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true },
+    trajectory: { score: 90, reworkCount: 0, firstPassRate: 1, loopGuardTrips: 0 } };
   assert.strictEqual(verdict.judge(report, { floor: 80 }).verdict, 'REWORK', '75 < 80 => REWORK');
   assert.strictEqual(verdict.judge(report, { floor: 70 }).verdict, 'SHIP', '75 >= 70 => SHIP');
 });
@@ -2268,6 +2271,170 @@ test('seat: deploy は教主の座を配備物として数える (第31条)', ()
   const dep = require('../graph/deploy.js');
   const r = dep.check();
   assert.ok(r.skipped || typeof r.checked === 'number');
+});
+
+// --- Gauge: the scale of proof (証明の秤, 第38条) ---
+console.log('\nGauge (証明の秤, 第38条):');
+const gauge = require(path.join(DIR, '..', 'graph', 'gauge.js'));
+
+/** 合成 run-state を作る補助 — conclave 形式 */
+function makeGaugeRun({ reworks = 0, retries = {}, loopGuards = 0, allRatified = true, allDone = true } = {}) {
+  const mk = (id, att) => ({ id, status: allDone ? 'done' : 'pending', attempts: att });
+  const phases = ['discover', 'specify', 'build', 'verify'].map(id => mk(id, (retries[id] || 0) + 1));
+  const history = [{ ts: '2026-08-31T00:00:00.000Z', event: 'convene', detail: '' }];
+  for (let i = 0; i < reworks; i++) history.push({ ts: '2026-08-31T00:10:00.000Z', event: 'domain-rework', detail: '' });
+  for (let i = 0; i < loopGuards; i++) history.push({ ts: '2026-08-31T00:20:00.000Z', event: 'domain-loop-guard', detail: '' });
+  history.push({ ts: '2026-08-31T00:30:00.000Z', event: 'done', detail: '' });
+  return {
+    meta: { scale: 'standard' },
+    domains: [{ cardinal: 'x', status: allRatified ? 'ratified' : 'active', phases }],
+    history,
+  };
+}
+
+test('gauge: 健全な走行は満点 — 一発完走に減点は無い', () => {
+  const m = gauge.score(makeGaugeRun());
+  assert.strictEqual(m.score, 100);
+  assert.strictEqual(m.firstPassRate, 1);
+  assert.strictEqual(m.complete, true);
+});
+
+test('gauge: 決定性 — 同じ走行には常に同じ点 (LLM に尋ねない)', () => {
+  const run = makeGaugeRun({ reworks: 2, retries: { build: 3 } });
+  const a = gauge.score(run), b = gauge.score(JSON.parse(JSON.stringify(run)));
+  assert.deepStrictEqual(a, b, '秤が揺れるなら、それは秤ではない');
+});
+
+test('gauge: 荒れた走行は健全な走行より必ず低い (trajectory の分水嶺)', () => {
+  const clean = gauge.score(makeGaugeRun());
+  const messy = gauge.score(makeGaugeRun({ reworks: 3, retries: { build: 2, verify: 2 } }));
+  assert.ok(messy.score < clean.score, `荒れ ${messy.score} < 健全 ${clean.score} であるべき`);
+  assert.strictEqual(messy.reworkCount, 3);
+  assert.strictEqual(messy.retryOverhead, 4);
+});
+
+test('gauge: loop-guard 発動は差し戻しより重い罪', () => {
+  const reworked = gauge.score(makeGaugeRun({ reworks: 1 }));
+  const looped = gauge.score(makeGaugeRun({ loopGuards: 1 }));
+  assert.ok(looped.score < reworked.score, '暴走は差し戻しより重く裁かれる');
+});
+
+test('gauge: 未完走は減点 — 途中で消えた走行は完走と同じ点を得ない', () => {
+  const done = gauge.score(makeGaugeRun());
+  const abandoned = gauge.score(makeGaugeRun({ allRatified: false, allDone: false }));
+  assert.ok(abandoned.score < done.score);
+  assert.strictEqual(abandoned.complete, false);
+});
+
+test('gauge: 相の無い run-state は拒否 — 不在は通過ではない (第37条)', () => {
+  assert.throws(() => gauge.score({}), /no phases|測れない/);
+  assert.throws(() => gauge.score({ domains: [], history: [] }), /no phases|測れない/);
+});
+
+test('gauge: orchestrator 形式 (phases{}) も読める — 形式でなく性質で裁く (第16条)', () => {
+  const m = gauge.score({
+    phases: {
+      a: { status: 'done', attempts: 1 },
+      b: { status: 'done', attempts: 2 },
+    },
+    history: [{ ts: '2026-08-31T00:00:00.000Z', event: 'init' }],
+  });
+  assert.strictEqual(m.phasesTotal, 2);
+  assert.strictEqual(m.retryOverhead, 1);
+});
+
+test('gauge: 実在の run-state を採点できる — coin は habit より健全 (実測の固定)', () => {
+  const root = require(path.join(DIR, '..', 'graph', 'workspace.js')).resolve();
+  const coinF = path.join(root.root, 'coin', 'conclave.json');
+  const habitF = path.join(root.root, 'habit', 'conclave.json');
+  if (!fs.existsSync(coinF) || !fs.existsSync(habitF)) return; // 他マシンでは沈黙 (第20条)
+  const coin = gauge.score(JSON.parse(fs.readFileSync(coinF, 'utf8')));
+  const habit = gauge.score(JSON.parse(fs.readFileSync(habitF, 'utf8')));
+  assert.ok(coin.score > habit.score, `coin ${coin.score} > habit ${habit.score} — 差し戻し3回の走行が同点なら秤は嘘`);
+});
+
+test('gauge: 台帳は追記型で record→compare が前後を語る', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-'));
+  // workspace の住所を試験用に付け替える(第30条: 住所を知るのは workspace のみ)
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  process.env.PARADISE_CREATIONS = tmp;
+  delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'workspace.js'))];
+  delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'gauge.js'))];
+  try {
+    const g2 = require(path.join(DIR, '..', 'graph', 'gauge.js'));
+    const before = path.join(tmp, 'before.json'), after = path.join(tmp, 'after.json');
+    fs.writeFileSync(before, JSON.stringify(makeGaugeRun({ reworks: 3, retries: { build: 2 } })));
+    fs.writeFileSync(after, JSON.stringify(makeGaugeRun()));
+    g2.record(before, 'demo-before');
+    g2.record(after, 'demo-after');
+    const entries = g2.readLedger();
+    assert.strictEqual(entries.length, 2, '台帳は2行を刻む');
+    const out = g2.compare('demo-before', 'demo-after');
+    assert.ok(/score/.test(out) && /改善/.test(out), '前後比較が改善を数で語る');
+    assert.throws(() => g2.compare('demo-before', 'ghost'), /no entry|記録なき/, '記録なき前後は比較できない');
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'workspace.js'))];
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'gauge.js'))];
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
+  }
+});
+
+test('verdict: 低い trajectory score は REWORK — 荒れた走行は改善ではない (第38条)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true },
+    trajectory: { score: 45, reworkCount: 3, firstPassRate: 0.7, loopGuardTrips: 0 } });
+  assert.strictEqual(v.verdict, 'REWORK');
+  assert.ok(v.defects.some(d => /trajectory score 45/.test(d)), '低スコアを名指すこと');
+});
+
+test('verdict: loop-guard 発動は tests 全通過でも REWORK (第38条)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true },
+    trajectory: { score: 85, reworkCount: 0, firstPassRate: 1, loopGuardTrips: 1 } });
+  assert.strictEqual(v.verdict, 'REWORK');
+  assert.ok(v.defects.some(d => /loop-guard tripped/.test(d)));
+});
+
+test('verdict: artifact の道で trajectory 不在は REWORK — 測らなかった走行は改善を主張できない (第38条)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } });
+  assert.strictEqual(v.verdict, 'REWORK');
+  assert.ok(v.defects.some(d => /trajectory was never gauged/.test(d)));
+});
+
+test('verdict: engine/document の道は trajectory を要求されない — 門は消さず分ける (第36条)', () => {
+  const eng = verdict.judge({ produces: 'engine', build: 'pass',
+    tests: { passed: 9, failed: 0, total: 9, coverage: 92 }, security: { issues: 0, secrets: 0 } });
+  assert.strictEqual(eng.verdict, 'SHIP', 'CI の断罪 (run-state 無し) は塞がない');
+  const doc = verdict.judge({ produces: 'document' });
+  assert.notStrictEqual(doc.verdict, 'REWORK', '諮問は走行を測られない');
+});
+
+test('verdict: 中身の無い trajectory は欠陥 — 名前だけの証拠は証拠でない (第16条)', () => {
+  const v = verdict.judge({ build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, trajectory: {} });
+  assert.strictEqual(v.verdict, 'REWORK');
+  assert.ok(v.defects.some(d => /trajectory carries no/.test(d)));
+});
+
+test('gauge→verdict 契約: 秤の実出力がそのまま門に通じる — 欄名の縁は写しでなく直結で試す', () => {
+  // 手書き fixture でなく、gauge.score() の生の返り値を verdict に渡す。
+  // gauge が欄名を変えれば、この試験が最初に切れる。
+  const healthy = gauge.score(makeGaugeRun());
+  const messy = gauge.score(makeGaugeRun({ reworks: 3, retries: { build: 2, verify: 2 }, loopGuards: 1 }));
+  const base = { build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
+    security: { issues: 0, secrets: 0 }, spec: { satisfied: true } };
+  assert.strictEqual(verdict.judge({ ...base, trajectory: healthy }).verdict, 'SHIP');
+  const bad = verdict.judge({ ...base, trajectory: messy });
+  assert.strictEqual(bad.verdict, 'REWORK');
+  assert.ok(bad.defects.some(d => /loop-guard tripped/.test(d)), '実出力の loopGuardTrips が門に届くこと');
+});
+
+test('gauge: 手つかずの走行は拒否 — 召集だけで一度も発令されていない run に点は付かない (第37条)', () => {
+  const run = makeGaugeRun();
+  for (const dom of run.domains) for (const p of dom.phases) { p.attempts = 0; p.status = 'pending'; }
+  assert.throws(() => gauge.score(run), /never dispatched|手つかず/);
 });
 
 // --- report ---

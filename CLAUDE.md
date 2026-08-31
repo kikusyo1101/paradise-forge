@@ -67,13 +67,14 @@ node graph/codex.js check          # 索引が本文と一致しているか
 | 35 | **配備は報告ではない、書き込みである**(`deploy --write` は工程を通じて実機を書き換える。禁令は効果で述べよ。第27条は告発者をも縛る — 証跡を読む前に犯人を名指すな) |
 | 36 | **新しい道は古い門に拒まれる**(道を建てたら、旧い前提を符号化した門を全て読み直す。門は**消すのではなく分ける** — 新旧どちらも鳴ることを証明せよ) |
 | 37 | **不在は通過ではない**(空の `{}` が SHIP を得ていた。security 未検査は BLOCK、build/tests 未報告は REWORK。`produces:document` は免除。両方向を証明せよ — 塞ぐだけなら壁である) |
+| 38 | **改善は数値で証明する**(`gauge.js` — 証明の秤。trajectory を決定的に採点し台帳に刻む。artifact の道で走行未計測は REWORK。測らなかった走行は改善を主張できない) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (194件)
+node tests/paradise.test.js                    # 楽園の自己診断 (210件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
@@ -84,6 +85,8 @@ node graph/branch-guard.js                     # 古いmainの上に立ってい
 node graph/apply-spawn.js verify               # 下位を擁する者が起動の権能を持つか (第25条)
 node graph/workspace.js check                  # 楽園に創造物が紛れていないか (第30条)
 node graph/apply-seat.js verify                # 教主の座が宣言どおりか (第31条)
+node graph/gauge.js score <run.json>           # 走行を採点する — 証明の秤 (第38条)
+node graph/gauge.js compare <前> <後>           # 改善の前後を数値で示す (第38条)
 ```
 
 ---
@@ -133,8 +136,8 @@ node graph/apply-seat.js verify                # 教主の座が宣言どおり�
 
 - 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
   `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
-- 自己診断: **194 tests**
-- 憲法: **37条**
+- 自己診断: **210 tests**
+- 憲法: **38条**
 - 位階のモデル: 教主=`fable`/xhigh・枢機卿/執行官=`claude-opus-5`/xhigh・神官=`claude-sonnet-5`/high・
   信徒=`haiku`(effort非対応)。無人cronのみ`claude-opus-5`固定(第31条)。`node graph/clergy.js models`
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

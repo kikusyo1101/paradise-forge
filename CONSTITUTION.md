@@ -607,6 +607,37 @@ way to change what "complete" means.
     only demonstrates the new refusal has not shown that legitimate work survives
     it.
 
+38. **Improvement must be proven in numbers.** 「改善した」と語る者は、前後を
+    数値で示さねばならない。楽園は創造物を裁く門(verdict)を持ちながら、
+    **走行そのもの — trajectory — を測る秤を持たなかった。** 実測: eval engine
+    0 件、verdict.js が読む欄はすべて成果物の数、run-state (22〜40 events,
+    attempts, domain-rework) は完全な軌跡を刻んでいるのに読む者がいなかった。
+    成果物が門を通れば、差し戻し3回・再試行5回の荒れた走行も「成功」と
+    呼ばれていた — **outcome だけを裁く門は、偶然通った暴走を祝福する。**
+
+    ゆえに `graph/gauge.js` — 証明の秤:
+
+    - **決定的に測れるものは決定的に測る。** 再試行・差し戻し・loop-guard・
+      完走・所要時間は run-state から機械的に導出する。同じ走行には常に同じ
+      点(LLM に尋ねない — 秤が揺れるなら、それは秤ではない)。定性の裁きは
+      断罪機関の領分のまま(2026 定石: deterministic checks where you can)。
+    - **式は公開される**: 100 − 10×rework − 5×retryOverhead −
+      15×loopGuard − 20×未完走, clamp [0,100]。荒れた走行は健全な走行より
+      必ず低い。暴走(loop-guard)は差し戻しより重い罪。
+    - **台帳は追記され、前後は比較できる**(`record` / `baseline` /
+      `compare`)。台帳は creations 側に住む(第30条)— 走行の痕跡は創造物の
+      寿命を生きる。**記録なき前後は比較できない。**
+    - **断罪の門は走行を読む**: `report.trajectory` の score が床(60)を
+      割れば REWORK、loop-guard が発動していれば tests 全通過でも REWORK。
+      artifact の道で trajectory 不在は REWORK — **測らなかった走行は改善を
+      主張できない**(第37条の系)。engine / document の道は免除(第36条:
+      門は消すのではなく分ける)。
+    - 相を持たない run-state は 0 点でも 100 点でもなく「測れない」— 拒否。
+
+    **自己改善を掲げる楽園において、この条は他のすべての条の監査役である**:
+    エンジンを直したという主張も、憲法に条を足したという主張も、次の走行の
+    数値が前の走行より良くなって初めて証明される。
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
