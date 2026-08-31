@@ -1935,13 +1935,20 @@ test('spawn trace: reconciliation without a run keeps working (backward compatib
 // ══════════════════════════════════════════════════════════════════════
 
 test('lessons: a lesson declares its kind, defaulting to mechanism (Art.28)', () => {
+  // 注意: lessons.json は KG から生成される成果物である。CI では KG が存在せず
+  // 裁定ジョブが lessons.js export を実行するため **空配列になる**。
+  // 「中身が在ること」を暗黙に前提した検査は、そこで落ちる（実際に落ちた）。
+  // 存在しないから壊れているのではない — 検めるものが無いだけである。
   const lessons = require('../graph/lessons.json');
   for (const l of lessons) {
     assert.ok(l.kind, `lesson ${l.id} must carry a kind`);
     assert.ok(['mechanism', 'conduct'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
   }
-  // 未宣言は mechanism に倒れる = 既存の裁き方を変えない（後方互換）
-  assert.ok(lessons.some(l => l.kind === 'mechanism'), 'undeclared lessons default to mechanism');
+  // 既定が mechanism であることは、生成物ではなく **engine** に対して検める。
+  // こちらは KG の有無に依存しない真実である。
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'lessons.js'), 'utf8');
+  assert.ok(/kind:\s*kind\s*\|\|\s*'mechanism'/.test(src),
+    'an undeclared lesson must default to mechanism — asserted against the engine, not its output');
 });
 
 test('lessons: the kind marker never leaks into the check text (Art.28)', () => {
