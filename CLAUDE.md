@@ -50,13 +50,14 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 27 | **成果物は誰がやったかを証明しない**(起動の証跡 `spawn-trace.js`。自己申告は証拠でない) |
 | 28 | **規範の教訓は grep で裁けない**(`kind:conduct` は提示のみ。常時赤の門は無視される) |
 | 29 | **生成物は真実の写しであって真実でない**(`derived.js`。生成物の中身を前提にしない) |
+| 30 | **作られたものと作るものは同居しない**(創造物は `paradise-creations` に住む。住所は `workspace.js` のみが知る) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (176件)
+node tests/paradise.test.js                    # 楽園の自己診断 (184件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
@@ -65,6 +66,7 @@ node graph/upstream.js impact                  # 借り物の変化 (第19条)
 node graph/census.js check                     # 己について語る数が真実か (第22条)
 node graph/branch-guard.js                     # 古いmainの上に立っていないか (第24条)
 node graph/apply-spawn.js verify               # 下位を擁する者が起動の権能を持つか (第25条)
+node graph/workspace.js check                  # 楽園に創造物が紛れていないか (第30条)
 ```
 
 ---
@@ -104,7 +106,8 @@ node graph/apply-spawn.js verify               # 下位を擁する者が起動�
 
 ## 現状
 
-- 創造物: `creations/` (habit, pomodoro ほか)
-- 自己診断: **176 tests**
-- 憲法: **29条**
+- 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
+  `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
+- 自己診断: **184 tests**
+- 憲法: **30条**
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

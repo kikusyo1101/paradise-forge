@@ -26,6 +26,9 @@ jobs:
       - name: ⚖️ Self-test — 楽園の自己検証
         run: node tests/paradise.test.js
 
+      - name: 🏛️ Workspace — 創造物が楽園に紛れていないか (第30条)
+        run: node graph/workspace.js check
+
       - name: 📜 Constitution — 憲法条文の存在確認
         run: |
           test -f CONSTITUTION.md || { echo "::error::CONSTITUTION.md is missing"; exit 1; }
@@ -136,14 +139,12 @@ jobs:
           echo '```' >> verdict.md
           node graph/critic.js review graph --self --lessons graph/lessons.json >> verdict.md 2>&1 || true
           echo '```' >> verdict.md
-          # every creation must also survive the critic
-          for d in creations/*/; do
-            [ -d "$d" ] || continue
-            echo "### 🔍 Reflect — $d" >> verdict.md
-            echo '```' >> verdict.md
-            node graph/critic.js review "$d" --lessons graph/lessons.json >> verdict.md 2>&1 || true
-            echo '```' >> verdict.md
-          done
+          # 創造物はもはや楽園に住まない(第30条)。CI が検めるのは engine のみ。
+          # 創造物の批評は paradise-creations 側で行う。
+          echo "### 🏛️ Workspace — 創造物の分離 (第30条)" >> verdict.md
+          echo '```' >> verdict.md
+          node graph/workspace.js check >> verdict.md 2>&1 || true
+          echo '```' >> verdict.md
 
       - name: 裁定を下す — SHIP / REWORK / BLOCK
         id: verdict

@@ -27,13 +27,14 @@ KG=~/Documents/workspace/paradise/graph/kg.js
 ```bash
 node $KG snapshot
 node $CLERGY college        # know your cardinals, their priests, their review classes
-mkdir -p ~/Documents/workspace/paradise/creations/<slug>
+# 創造物は楽園の外に住む (第30条)。住所を知るのは workspace.js だけ
+DIR=$(node ~/Documents/workspace/paradise/graph/workspace.js init <slug>)
 ```
 
 ### 1. Forge & convene
 ```bash
-node $FORGE plan "<wish>" --out creations/<slug>/forge.dag.json
-node $CONCLAVE convene creations/<slug>/forge.dag.json --run creations/<slug>/conclave.json
+node $FORGE plan "<wish>" --out $DIR/forge.dag.json
+node $CONCLAVE convene $DIR/forge.dag.json --run $DIR/conclave.json
 ```
 This groups the phases into cardinal domains, each with its own inner PDCA.
 
@@ -50,7 +51,7 @@ This groups the phases into cardinal domains, each with its own inner PDCA.
 
 ### 2. Turn the great ring — repeat until complete
 ```bash
-node $CONCLAVE next --run creations/<slug>/conclave.json
+node $CONCLAVE next --run $DIR/conclave.json
 ```
 It returns one of:
 
@@ -79,8 +80,8 @@ It returns one of:
 ### 3. The tribunal (執行官, independent)
 At completion, invoke the executor — it answers to no cardinal:
 ```bash
-node $CRITIC review creations/<slug> --lessons ~/Documents/workspace/paradise/graph/lessons.json   # reflect
-node $VERDICT judge creations/<slug>/verdict-report.json                                            # verdict
+node $CRITIC review $DIR --lessons ~/Documents/workspace/paradise/graph/lessons.json   # reflect
+node $VERDICT judge $DIR/verdict-report.json                                            # verdict
 ```
 Build the report from REAL evidence (drive the ACs, count tests, grep secrets).
 - SHIP → deliver the creation (preview it, report the path).
@@ -91,7 +92,7 @@ Build the report from REAL evidence (drive the ACs, count tests, grep secrets).
 ```bash
 node $KG remember creation <slug> "<label> (SHIPPED)" "<one line>"
 node ~/Documents/workspace/paradise/graph/export-state.js
-node $CONCLAVE status --run creations/<slug>/conclave.json
+node $CONCLAVE status --run $DIR/conclave.json
 ```
 Commit, then show God the creation.
 

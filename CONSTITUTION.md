@@ -384,6 +384,31 @@ way to change what "complete" means.
     line, not the stock* — turned inward: **do not test the output of a
     generator when what you mean to assert is a property of the generator.**
 
+30. **What is made and what makes it do not share a house.** God asked a simple
+    question — *are the artifacts of testing still sitting in paradise?* They
+    were: **45 files across 4 creations, tracked in the engine's own git
+    history.** The engine and its creations have opposite lifetimes. The engine
+    is law: it is kept, and every line of it is argued over in a pull request
+    that God alone merges. A creation is a trace of an attempt: it is meant to
+    be discarded, and it multiplies without limit. Kept in one repository, the
+    second buries the first — the engine's history fills with the noise of
+    experiments, the tribunal's CI runs the critic over dead scratch work, and
+    no one can tell a finished creation from the residue of a test. Therefore
+    creations live **outside** the paradise, in `paradise-creations`, and the
+    engine holds exactly one road to them: `graph/workspace.js`. No engine file
+    may hardcode `creations/` again; the gate `workspace.js check` reads git's
+    own index and fails if the paradise is carrying a creation.
+
+    The boundary is **lifetime, not authorship** — which is why creations are
+    *not* split one-repository-per-creation. Three measured reasons: the critic
+    sweeps every creation in one pass and N repositories make that N clones; a
+    repository is a unit that cannot be cleaned (deleting thirty of them is
+    hand-work, `rm -rf` is one line); and creations do not depend on one
+    another, so there is nothing between them to separate. One line is drawn,
+    between engine and creation, and only there. A creation earns its own
+    repository only when it is published, released, and carries its own issues
+    — then it is split out, deliberately, by `git subtree split`.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

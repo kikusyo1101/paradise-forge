@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T11:20:30.493Z",
+  "generated": "2026-08-31T11:34:25.708Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 64,
+    "nodeCount": 65,
     "edgeCount": 33,
     "nodes": [
       {
@@ -512,6 +512,12 @@
         "type": "lesson",
         "label": "生成物は真実の写しであって真実ではない",
         "degree": 0
+      },
+      {
+        "id": "creations-separate-repo",
+        "type": "lesson",
+        "label": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
+        "degree": 0
       }
     ],
     "edges": [
@@ -688,7 +694,7 @@
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 32
+      "lesson": 33
     }
   },
   "lessons": [
@@ -851,34 +857,14 @@
       "id": "art29-derived-not-truth",
       "label": "生成物は真実の写しであって真実ではない",
       "check": "執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る|applies:paradise-internal|kind:mechanism"
+    },
+    {
+      "id": "creations-separate-repo",
+      "label": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
+      "check": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check|applies:paradise-internal"
     }
   ],
-  "creations": [
-    {
-      "name": "coin",
-      "files": 10,
-      "verdict": "SHIP",
-      "hasFindings": true
-    },
-    {
-      "name": "habit",
-      "files": 15,
-      "verdict": "REWORK",
-      "hasFindings": true
-    },
-    {
-      "name": "pomodoro",
-      "files": 10,
-      "verdict": "SHIP",
-      "hasFindings": true
-    },
-    {
-      "name": "rps",
-      "files": 10,
-      "verdict": "SHIP",
-      "hasFindings": true
-    }
-  ],
+  "creations": [],
   "hierarchy": {
     "ranks": {
       "god": {
