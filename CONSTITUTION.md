@@ -345,6 +345,25 @@ way to change what "complete" means.
     reported as done** — a hierarchy that cannot show its own footprints has not
     demonstrated that it was walked, only that something was produced.
 
+28. **A lesson about conduct cannot be checked by grepping the code.** The
+    critic judged every past miss the same way — does its keyword appear in the
+    source? That works for a lesson whose remedy is a mechanism (`census.js` was
+    built, so "census" appears), and is meaningless for a lesson whose remedy is
+    a *behaviour*: "close the browser after a visual check", "obey evidence that
+    arrives after the design is finished". Such a lesson can never appear in the
+    source, so it reported REGRESSION forever. Measurement made the scale of the
+    error plain: of thirty lessons, **eighteen were conduct**, and only two were
+    red — the other sixteen passed **because their words happened to occur in
+    unrelated code**. The gate was not working; it was being lucky, and the two
+    unlucky ones looked like real defects while the sixteen lucky ones hid real
+    blindness. Therefore a lesson declares its `kind`. A *mechanism* lesson is
+    still verified against the artifact. A *conduct* lesson is **surfaced, never
+    graded**: it is printed at every review as a standing obligation, because
+    the two wrong answers are equally wrong — grading it red forever trains the
+    reader to ignore a permanently red gate (and an ignored gate is worse than
+    none, Art. 21), while marking it green silently deletes the lesson. What
+    cannot be measured must still be remembered; it simply must not be scored.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

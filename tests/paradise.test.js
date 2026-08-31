@@ -1930,6 +1930,61 @@ test('spawn trace: reconciliation without a run keeps working (backward compatib
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第28条 — 規範の教訓は grep で裁けない
+// ══════════════════════════════════════════════════════════════════════
+
+test('lessons: a lesson declares its kind, defaulting to mechanism (Art.28)', () => {
+  const lessons = require('../graph/lessons.json');
+  for (const l of lessons) {
+    assert.ok(l.kind, `lesson ${l.id} must carry a kind`);
+    assert.ok(['mechanism', 'conduct'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
+  }
+  // 未宣言は mechanism に倒れる = 既存の裁き方を変えない（後方互換）
+  assert.ok(lessons.some(l => l.kind === 'mechanism'), 'undeclared lessons default to mechanism');
+});
+
+test('lessons: the kind marker never leaks into the check text (Art.28)', () => {
+  // |kind: が check に残ると、その文字列をコードから探すことになり本末転倒。
+  const lessons = require('../graph/lessons.json');
+  for (const l of lessons) {
+    assert.ok(!/\|kind:/.test(l.check), `lesson ${l.id}: the kind marker leaked into its check`);
+    if (l.applies) assert.ok(!/\|kind:/.test(l.applies), `lesson ${l.id}: the kind marker leaked into its scope`);
+  }
+});
+
+test('lessons: a conduct lesson is surfaced but never graded red (Art.28)', () => {
+  // 二つの誤りは等価: 永久に赤 → 門が無視される / 緑にする → 教訓が消える。
+  const critic = require('../graph/critic.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cr-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'x.js'), '// 教訓の語は一切現れない中身\nmodule.exports = 1;\n');
+    const lessonsPath = path.join(tmp, 'lessons.json');
+    fs.writeFileSync(lessonsPath, JSON.stringify([
+      { id: 'c1', label: '掟', check: 'ブラウザを閉じよ', applies: null, kind: 'conduct' },
+      { id: 'm1', label: '機構', check: 'zzz-absent-mechanism-token', applies: null, kind: 'mechanism' },
+    ]));
+    // opts.lessons は **ファイルパス**（配列ではない）。実装を読んで確かめた。
+    const r = critic.review(tmp, { lessons: lessonsPath, self: true });
+    const conduct = r.results.find(x => x.id === 'lesson:c1');
+    const mech = r.results.find(x => x.id === 'lesson:m1');
+    assert.ok(conduct, 'the conduct lesson still appears in the review — it is not deleted');
+    assert.strictEqual(conduct.ok, true, 'a conduct lesson must not be graded red');
+    assert.ok(/CONDUCT/.test(conduct.note), 'it is surfaced as a standing obligation, not silently passed');
+    assert.strictEqual(mech.ok, false, 'a mechanism lesson whose remedy is absent is still a real gap');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('lessons: the engine review is clean — no permanently-red gate remains (Art.28)', () => {
+  // 常時赤の門は読まれなくなる。無視される門は、無い門より悪い。
+  const critic = require('../graph/critic.js');
+  const r = critic.review(path.join(__dirname, '..', 'graph'),
+    { lessons: path.join(__dirname, '..', 'graph', 'lessons.json'), self: true });
+  const hardGaps = r.results.filter(x => !x.ok && !x.soft);
+  assert.strictEqual(hardGaps.length, 0,
+    `the engine review must be clean: ${hardGaps.map(g => g.id).join(', ')}`);
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

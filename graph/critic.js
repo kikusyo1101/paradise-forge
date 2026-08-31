@@ -297,6 +297,16 @@ function lessonChecks(lessons) {
         return { ok: true, note: `lesson out of scope here (applies: ${l.applies})`, soft: true };
       }
       const hay = ctx.codeBlob + ctx.requirements + ctx.findings;
+
+      // ── 教訓の種別で裁き方を変える (憲法 第28条) ─────────────────────
+      // 「規範(conduct)」の教訓は行いの掟であり、コードに文字列として現れよう
+      // がない。文字列照合で裁けば永久に赤を出し、赤が常態化した門は無視される
+      // ようになる — 無視される門は、無い門より悪い(第21条の教訓)。
+      // だが緑にして黙らせるのも誤りである。**思い出させる**のが正しい扱い。
+      if (l.kind === 'conduct') {
+        return { ok: true, soft: true, conduct: true,
+          note: `CONDUCT — 実行時に守るべき掟（コードでは検証できない）: ${needle}` };
+      }
       return looseIncludes(hay, needle)
         ? { ok: true, note: `lesson satisfied: ${needle}` }
         : { ok: false, note: `LESSON REGRESSION — past miss recurs: "${needle}" not addressed` };
