@@ -375,9 +375,8 @@ test('orchestrator hands off an upstream artifact to the next phase', () => {
 
 test('orchestrator runs independent phases in the same wave (parallel)', () => {
   const run = makeRun('standard');
-  // build は identity(視覚アイデンティティ)にも依存する — 構造だけでなく
-  // 見た目の根拠が揃って初めて実装に入れる(憲法 第17条)。
-  for (const id of ['discover', 'specify', 'design', 'identity', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
+  // build は design(構造)・ux(振る舞い)・identity(見た目)が揃って初めて始まる
+  for (const id of ['discover', 'specify', 'design', 'ux', 'identity', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
   const nw = orch.nextWave(run);
   const ids = nw.wave.map(w => w.id).sort();
   assert.deepStrictEqual(ids, ['build', 'tests'], 'build & tests run in parallel after detail');
@@ -574,7 +573,7 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
   const run = makeConclave();
   // walk the ring: discovery → requirements → architecture → construction all ratified
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
-                                [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
+                                [['design', 'detail', 'identity', 'ux'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
     for (const p of phases) conclave.markDone(run, p, p + '.md');
     conclave.ratify(run, card);
@@ -991,6 +990,222 @@ test('every phase in every forge scale names an agent that actually exists', () 
       assert.ok(known.has(p.agent), `scale=${scale} phase=${p.id} references a missing agent: ${p.agent}`);
     }
   }
+});
+
+// ─── 表層の実測 (憲法 第18条) ───
+const visual = require('../graph/visual-verify.js');
+
+function makeUi(css, extraFiles = {}) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-vv-'));
+  fs.writeFileSync(path.join(d, 'app.html'),
+    '<!doctype html><html><head><meta name="viewport" content="width=device-width">' +
+    `<style>${css}</style></head><body>${extraFiles.body || ''}</body></html>`);
+  for (const [f, c] of Object.entries(extraFiles.files || {})) fs.writeFileSync(path.join(d, f), c);
+  return d;
+}
+
+test('visual: contrast is measured, not assumed (WCAG AA)', () => {
+  // 1.92:1 のような読めない配色は、機能テストを全て通っても出荷されうる。
+  const d = makeUi(':root{--bg:#ffffff;--fg:#bbbbbb}body{color:var(--fg);background:var(--bg)}');
+  const res = visual.check(d);
+  const c = res.results.find(r => r.id === 'contrast-aa');
+  assert.strictEqual(c.ok, false, 'a 1.9:1 pair must fail AA');
+  assert.ok(/needs 4.5/.test(c.note), 'the report states the threshold it measured against');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: a readable palette passes contrast', () => {
+  const d = makeUi(':root{--bg:#ffffff;--fg:#141413}');
+  const res = visual.check(d);
+  assert.ok(res.results.find(r => r.id === 'contrast-aa').ok, 'near-black on white must pass');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: contrast math matches the WCAG reference values', () => {
+  // 黒/白 = 21:1、白/白 = 1:1 は仕様上の固定値。ここがずれたら全ての判定が嘘になる。
+  assert.ok(Math.abs(visual.contrast([0, 0, 0], [255, 255, 255]) - 21) < 0.01, 'black on white is 21:1');
+  assert.ok(Math.abs(visual.contrast([255, 255, 255], [255, 255, 255]) - 1) < 0.01, 'white on white is 1:1');
+});
+
+test('visual: light and dark themes are measured separately', () => {
+  // ライトだけ壊れている事故は実在する。テーマを混ぜて平均してはならない。
+  const d = makeUi(':root{--bg:#ffffff;--fg:#cccccc}' +
+                   ':root[data-theme="dark"]{--bg:#141413;--fg:#f5f5f5}');
+  const res = visual.check(d);
+  const c = res.results.find(r => r.id === 'contrast-aa');
+  assert.strictEqual(c.ok, false, 'the broken light theme must be caught');
+  assert.ok(/light:/.test(c.note), 'the failure names the theme it was found in');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: empty and error states must be visible somewhere', () => {
+  const bare = makeUi(':root{--bg:#fff;--fg:#111}', { body: '<div>data</div>' });
+  assert.strictEqual(visual.check(bare).results.find(r => r.id === 'states-covered').ok, false,
+    'a UI with no empty/error handling is incomplete');
+  const full = makeUi(':root{--bg:#fff;--fg:#111}',
+    { body: '<p>まだ記録がありません</p><p class="err">エラーが発生しました</p>' });
+  assert.strictEqual(visual.check(full).results.find(r => r.id === 'states-covered').ok, true,
+    'declared empty + error states pass');
+  fs.rmSync(bare, { recursive: true, force: true }); fs.rmSync(full, { recursive: true, force: true });
+});
+
+test('visual: keyboard focus must be visible', () => {
+  const d = makeUi(':root{--bg:#fff;--fg:#111}button{color:red}');
+  assert.strictEqual(visual.check(d).results.find(r => r.id === 'focus-visible').ok, false,
+    'no focus style = keyboard users are lost');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: animation without prefers-reduced-motion is flagged', () => {
+  const d = makeUi(':root{--bg:#fff;--fg:#111}.x{transition:all .3s}');
+  assert.strictEqual(visual.check(d).results.find(r => r.id === 'motion-respected').ok, false,
+    'motion that ignores the reduced-motion preference is a smell');
+  const ok = makeUi(':root{--bg:#fff;--fg:#111}.x{transition:all .3s}' +
+                    '@media (prefers-reduced-motion: reduce){.x{transition:none}}');
+  assert.strictEqual(visual.check(ok).results.find(r => r.id === 'motion-respected').ok, true,
+    'honouring the preference clears it');
+  fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(ok, { recursive: true, force: true });
+});
+
+test('visual: a declared identity that never reached the code is called decorative', () => {
+  const d = makeUi(':root{--bg:#000000;--fg:#ffffff}', {
+    files: { 'identity.md': '# identity\n- `#F3F0EE` cream\n- `#CF4500` signal\n- `#141413` ink\n- `#F37338` warm' },
+  });
+  const r = visual.check(d).results.find(x => x.id === 'identity-honoured');
+  assert.strictEqual(r.ok, false, 'declaring colors that never appear is a decorative identity');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: a non-UI creation is not judged on its looks', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-vv-none-'));
+  fs.writeFileSync(path.join(d, 'lib.js'), 'module.exports = () => 1;');
+  const res = visual.check(d);
+  assert.strictEqual(res.applicable, false, 'no surface, no visual verdict');
+  assert.strictEqual(res.ok, true);
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic wires the measured surface into judgment', () => {
+  // critic が visual-verify の結果を握り潰していないこと。
+  const d = makeUi(':root{--bg:#ffffff;--fg:#cccccc}', { body: '<div>x</div>' });
+  fs.writeFileSync(path.join(d, 'requirements.md'), '# X\n## Acceptance Criteria\n- AC-1 works.');
+  const rev = critic.review(d);
+  assert.ok(rev.gaps.some(g => g.id === 'surface-verified'), 'measured visual gaps become real gaps');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic asks a UI creation for its UX intent and a surface judgment', () => {
+  const d = makeUi(':root{--bg:#ffffff;--fg:#141413}',
+    { body: '<p>まだありません</p><p>エラー</p>' });
+  fs.writeFileSync(path.join(d, 'requirements.md'), '# X\n## Acceptance Criteria\n- AC-1 works.');
+  const before = critic.review(d);
+  assert.ok(before.smells.some(s => s.id === 'ux-intent-declared'), 'a UI with no ux.md/ux-review.md is a smell');
+  fs.writeFileSync(path.join(d, 'ux.md'), '# ux\nflows and states.');
+  fs.writeFileSync(path.join(d, 'ux-review.md'), '# ux review\nAPPROVE');
+  const after = critic.review(d);
+  assert.ok(!after.smells.some(s => s.id === 'ux-intent-declared'), 'declaring intent and judging it clears the smell');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('the standard scale designs the surface and judges it', () => {
+  // UI/UX の門が standard から抜け落ちていたのが元々の欠陥。
+  const ids = forge.buildDag('a small app', 'standard').tasks.map(t => t.id);
+  for (const need of ['ux', 'identity', 'ux-review']) {
+    assert.ok(ids.includes(need), `standard scale must include the "${need}" phase`);
+  }
+  const dag = forge.buildDag('a small app', 'standard');
+  const build = dag.tasks.find(t => t.id === 'build');
+  assert.ok(build.deps.includes('ux') && build.deps.includes('identity'),
+    'build may not start before the surface is designed');
+  const verify = dag.tasks.find(t => t.id === 'verify');
+  assert.ok(verify.deps.includes('ux-review'), 'verification waits on the surface judgment');
+});
+
+test('the quality cardinal owns the surface judgment', () => {
+  const q = clergy.COLLEGE ? clergy.COLLEGE.quality : null;
+  if (!q) return;
+  assert.ok(q.governs.includes('ux-review'), 'ux-review belongs to the quality cardinal');
+  assert.ok(q.priests.includes('ux-reviewer'), 'the ux-reviewer priest serves under quality');
+});
+
+test('visual: adjacent ramp steps must stay distinguishable', () => {
+  // ux-reviewer 司祭が手計算と目視でしか見つけられなかった欠陥。
+  // 5段階のヒートマップで隣が 1.02:1 なら、段は存在しないに等しい。
+  const d = makeUi(':root{--bg:#ffffff;--fg:#141413;' +
+    '--level-0:#E7E1DA;--level-1:#F2DCC6;--level-2:#F0B183;--level-3:#EC7F3C;--level-4:#CF4500}');
+  const r = visual.check(d).results.find(x => x.id === 'ramp-separation');
+  assert.strictEqual(r.ok, false, 'a 1.02:1 step is not a step');
+  assert.ok(/level-0 vs --level-1/.test(r.note), 'the report names the offending pair');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: a well-separated ramp passes', () => {
+  const d = makeUi(':root{--bg:#ffffff;--fg:#141413;' +
+    '--level-0:#EEEEEE;--level-1:#BBBBBB;--level-2:#888888;--level-3:#555555;--level-4:#222222}');
+  assert.ok(visual.check(d).results.find(x => x.id === 'ramp-separation').ok,
+    'a ramp with real steps is fine');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: non-text UI boundaries need 3:1 (WCAG 1.4.11)', () => {
+  // 毎日押す的の枠が見えないのは、読めない文章と同じ欠陥。
+  const d = makeUi(':root{--bg:#EAE5E0;--fg:#141413;--line:#D9D3CC}');
+  const r = visual.check(d).results.find(x => x.id === 'non-text-contrast');
+  assert.strictEqual(r.ok, false, 'a 1.2:1 border is invisible');
+  const ok = makeUi(':root{--bg:#ffffff;--fg:#141413;--line:#6B6B6B}');
+  assert.ok(visual.check(ok).results.find(x => x.id === 'non-text-contrast').ok,
+    'a border that meets 3:1 passes');
+  fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(ok, { recursive: true, force: true });
+});
+
+test('visual: themed UIs must declare color-scheme', () => {
+  const d = makeUi(':root{--bg:#fff;--fg:#111}:root[data-theme="dark"]{--bg:#111;--fg:#fff}');
+  assert.strictEqual(visual.check(d).results.find(x => x.id === 'color-scheme-declared').ok, false,
+    'without color-scheme the browser paints light scrollbars on a dark card');
+  const ok = makeUi(':root{color-scheme:light dark;--bg:#fff;--fg:#111}:root[data-theme="dark"]{--bg:#111;--fg:#fff}');
+  assert.ok(visual.check(ok).results.find(x => x.id === 'color-scheme-declared').ok);
+  fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(ok, { recursive: true, force: true });
+});
+
+test('visual: an interactive target under 24px is a gap, not a nicety', () => {
+  const d = makeUi(':root{--bg:#fff;--fg:#111}.hm-cell{width:13px;height:13px}');
+  const r = visual.check(d).results.find(x => x.id === 'touch-target');
+  assert.strictEqual(r.ok, false, '13px cells fail WCAG 2.5.8');
+  assert.strictEqual(r.severity, 'gap', 'an unhittable control is a gap, not a smell');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: an "on-surface" colour is measured against its own surface', () => {
+  // --on-signal を主背景と比べるのは誤検出。白文字のボタンが紙の地と
+  // 比較されて落ちる、という嘘の指摘を出さないこと。
+  const d = makeUi(':root{--bg:#FCFBFA;--fg:#141413;--signal:#CF4500;--on-signal:#FFFFFF}');
+  const r = visual.check(d).results.find(x => x.id === 'contrast-aa');
+  assert.ok(r.ok, 'white on signal orange is legitimate and must not be flagged against the page background');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: tokens survive CSS comments and repeated :root blocks', () => {
+  // コメント付き :root と、@media 内の 2 個目の :root。実物がこの形で、
+  // これを取りこぼして 25 トークンを丸ごと失い 1.02:1 を見逃した。
+  const d = makeUi(
+    '/* palette — do not use the default look */\n:root{--bg:#ffffff;--fg:#141413;' +
+    '--level-0:#E7E1DA;--level-1:#F2DCC6;--level-2:#F0B183}\n' +
+    '@media (max-width:600px){:root{--cell:12px}}');
+  const res = visual.check(d);
+  assert.ok(res.themes.light >= 5, `the commented :root block must survive (got ${res.themes.light} tokens)`);
+  assert.strictEqual(res.results.find(x => x.id === 'ramp-separation').ok, false,
+    'and its ramp must still be judged');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('visual: the evidence plan demands every theme x width x state', () => {
+  const d = makeUi(':root{--bg:#fff;--fg:#111}:root[data-theme="dark"]{--bg:#111;--fg:#fff}');
+  const plan = visual.evidencePlan(d);
+  assert.strictEqual(plan.applicable, true);
+  assert.strictEqual(plan.shots.length, 8, 'light/dark x narrow/wide x empty/populated');
+  assert.ok(plan.shots.some(s => s.width <= 400), 'a real phone width must be inspected');
+  assert.ok(/not seen/.test(plan.note), 'what could not be captured must be reported as unseen');
+  fs.rmSync(d, { recursive: true, force: true });
 });
 
 // --- report ---

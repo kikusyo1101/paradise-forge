@@ -54,18 +54,24 @@ const SCALES = {
   // Standard — a normal feature: discover -> full four-phase SDD + review + judgment
   standard: (wish) => [
     { id: 'discover', agent: 'market-researcher', goal: `Research prior art, popular solutions, and expected/standard features for: ${wish}. Surface user needs, not just the literal ask.`, gate: true, artifact: 'findings.md' },
-    { id: 'specify',  agent: 'requirements-analyst', goal: 'Write requirements (what & why) grounded in the findings — include the table-stakes features users expect', deps: ['discover'], artifact: 'requirements.md' },
+    { id: 'specify',  agent: 'requirements-analyst', goal: 'Write requirements (what & why) grounded in the findings — include the table-stakes features users expect. Acceptance criteria MUST cover the UI/UX surface too (empty/loading/error states, contrast, keyboard, small screens), not only data and logic.', deps: ['discover'], artifact: 'requirements.md' },
+    // UX を standard にも置く。ここが無いと最上流で要求が機能側へ偏り、
+    // 下流が何をしても取り返せない(憲法 第18条)。
+    { id: 'ux',       agent: 'architect', goal: 'UX design: primary flows, screen states (empty / loading / error / dense), interaction & keyboard rules, small-screen behaviour. Name what the user sees FIRST and what they do on day 30.', deps: ['specify'], artifact: 'ux.md' },
     { id: 'design',   agent: 'architect', goal: 'Basic design: architecture, data model, interfaces', deps: ['specify'], gate: true, artifact: 'design.md' },
     // 視覚アイデンティティ。design.md(構造)とは別物なので identity.md と名を分ける
     // — 名の衝突は事故を生む(憲法 第17条)。`node graph/identity.js suggest` が
     // 出す候補から一つを選び、その理由と却下理由まで書き残させる。
     { id: 'identity', agent: 'architect', goal: 'Visual identity: pick ONE direction from `node graph/identity.js suggest "<wish>" --slug <slug>` and write identity.md (palette, type, texture, motion, do/don\'t). Justify the choice AND why the others were rejected. Never default to the generic dev-tool look.', deps: ['specify'], artifact: 'identity.md' },
     { id: 'detail',   agent: 'architect', goal: 'Detailed design: decompose into ordered testable tasks', deps: ['design'], artifact: 'tasks.md' },
-    { id: 'build',    agent: 'architect', goal: 'Implement the tasks against BOTH design.md (structure) and identity.md (look)', deps: ['detail', 'identity'], artifact: 'implementation' },
+    { id: 'build',    agent: 'architect', goal: 'Implement the tasks against design.md (structure), ux.md (behaviour & states) and identity.md (look)', deps: ['detail', 'identity', 'ux'], artifact: 'implementation' },
     { id: 'tests',    agent: 'tdd-guide', goal: 'Write & run the test suite against requirements', deps: ['detail'], artifact: 'tests' },
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review of the implementation', deps: ['build', 'tests'], artifact: 'review' },
+    // 見た目を裁く司祭。ロジックの審査官とは別の目でなければ、UI は
+    // 「動くから良い」で通ってしまう(憲法 第18条)。
+    { id: 'ux-review', agent: 'ux-reviewer', goal: 'Judge the SURFACE: run `node graph/visual-verify.js check <dir>`, confirm identity.md and ux.md were actually honoured, drive the real browser at narrow and wide widths in BOTH themes, and report what a first-time user sees. Evidence must be measured or seen, never assumed.', deps: ['build'], artifact: 'ux-review.md' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security scan of the change', deps: ['build'], artifact: 'security-report' },
-    { id: 'verify',   agent: 'verification-loop', goal: 'Run all verification gates + coverage', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
+    { id: 'verify',   agent: 'verification-loop', goal: 'Run all verification gates + coverage + visual verification', deps: ['review', 'security', 'ux-review'], gate: true, artifact: 'verification-report' },
     { id: 'reflect',  agent: 'self-critic', goal: 'Adversarially self-critique against findings & spec: run critic checklist + lessons. Any gap => demand REWORK before judgment', deps: ['verify'], gate: true, artifact: 'critique.md' },
     { id: 'verdict',  agent: 'creation-judge', goal: 'Judge against spec, findings, critique & constitution: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
@@ -85,9 +91,10 @@ const SCALES = {
     { id: 'build-ui', agent: 'architect', goal: 'Implement the UI against the UX design and identity.md', deps: ['detail', 'identity'], artifact: 'ui' },
     { id: 'tests',    agent: 'tdd-guide', goal: 'Test suite covering acceptance criteria', deps: ['detail'], artifact: 'tests' },
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review across backend & UI', deps: ['build', 'build-ui', 'tests'], artifact: 'review' },
+    { id: 'ux-review', agent: 'ux-reviewer', goal: 'Judge the SURFACE: run `node graph/visual-verify.js check <dir>`, confirm ux.md and identity.md were honoured, drive the real browser at narrow and wide widths in BOTH themes. Evidence must be measured or seen.', deps: ['build-ui'], artifact: 'ux-review.md' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security & privacy review', deps: ['build', 'build-ui'], artifact: 'security-report' },
     { id: 'docs',     agent: 'doc-updater', goal: 'Write user & developer documentation', deps: ['build', 'build-ui'], artifact: 'docs' },
-    { id: 'verify',   agent: 'verification-loop', goal: 'Full verification: build/type/lint/test/coverage/security', deps: ['review', 'security'], gate: true, artifact: 'verification-report' },
+    { id: 'verify',   agent: 'verification-loop', goal: 'Full verification: build/type/lint/test/coverage/security/visual', deps: ['review', 'security', 'ux-review'], gate: true, artifact: 'verification-report' },
     { id: 'reflect',  agent: 'self-critic', goal: 'Adversarial self-critique against PRD, findings & UX: run critic checklist + lessons. Any gap => REWORK before judgment', deps: ['verify', 'docs'], gate: true, artifact: 'critique.md' },
     { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD, findings, critique & constitution: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],

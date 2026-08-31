@@ -141,6 +141,38 @@ function builtinChecks() {
           : { ok: true, note: 'no identity.md, but the palette is not the default dev-tool one' };
       } },
 
+    // --- 見た目は「宣言」でなく「実測」で裁く (憲法 第18条) ---
+    // visual-verify.js が数値で挙げた欠陥を、断罪機関の判断材料に接続する。
+    // ここが無いと critic は「identity.md が在る」だけで満足してしまう。
+    { id: 'surface-verified', severity: 'gap',
+      desc: 'The visible surface was measured, not assumed (contrast, states, responsiveness, focus)',
+      run: (ctx) => {
+        if (!ctx.files.some(f => /\.(html|css)$/i.test(f))) {
+          return { ok: true, note: 'no UI surface — not applicable' };
+        }
+        let res;
+        try { res = require('./visual-verify.js').check(ctx.dir); }
+        catch (e) { return { ok: true, note: 'visual-verify unavailable: ' + e.message }; }
+        if (!res.applicable) return { ok: true, note: res.summary };
+        return res.gaps.length
+          ? { ok: false, note: `${res.gaps.length} measured visual gap(s): ` + res.gaps.map(g => g.id).join(', ') }
+          : { ok: true, note: res.summary };
+      } },
+
+    // UI を持つ創造物は、UX の意図が書かれていなければ「作れたものが仕様」になる。
+    { id: 'ux-intent-declared', severity: 'smell',
+      desc: 'A UI creation states its UX intent (flows and screen states), not just its structure',
+      run: (ctx) => {
+        if (!ctx.files.some(f => /\.(html|css)$/i.test(f))) {
+          return { ok: true, note: 'no UI surface — not applicable' };
+        }
+        const hasUx = ctx.files.some(f => /^ux\.md$/i.test(f));
+        const hasReview = ctx.files.some(f => /^ux-review\.md$/i.test(f));
+        if (hasUx && hasReview) return { ok: true, note: 'ux.md declares intent and ux-review.md judged the surface' };
+        const missing = [!hasUx && 'ux.md', !hasReview && 'ux-review.md'].filter(Boolean);
+        return { ok: false, note: `missing ${missing.join(' and ')} — the surface was never designed or never judged` };
+      } },
+
     { id: 'claims-backed-by-runnable-evidence', severity: 'smell',
       desc: 'There is a runnable way to verify the creation (a test or a judge-drive script)',
       run: (ctx) => {
@@ -301,7 +333,7 @@ function review(dir, opts = {}) {
   if (isSelf) ctx.scopeSubject = selfScopeSubject(dir);
   let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
   if (isSelf) {
-    const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence', 'visual-identity-declared']);
+    const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence', 'visual-identity-declared', 'surface-verified', 'ux-intent-declared']);
     checks = checks.filter(c => !creationOnly.has(c.id)); // keep security + lessons + hardcode smell
   }
   const results = checks.map(c => {

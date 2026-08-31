@@ -57,6 +57,9 @@ const MODEL_EXCEPTIONS = {
   // Tribunal officers inherit the executor rank, not the priest rank.
   'self-critic':    { model: 'opus', effort: 'max', why: 'tribunal officer — adversarial critique precedes judgment' },
   'creation-judge': { model: 'opus', effort: 'max', why: 'tribunal officer — renders the binding verdict' },
+  // 見た目の審査は「判断」であって量産ではない。何が醜いか・何が使いにくいかは
+  // 規則の照合では決まらず、人が見て嫌がるかどうかで決まる(憲法 第18条)。
+  'ux-reviewer': { model: 'opus', effort: 'high', why: 'taste is judgment: a surface defect ships to every user and rules alone cannot see it' },
   'cardinal':       { model: 'opus', effort: 'high', why: 'the cardinal rank itself' },
   'executor':       { model: 'opus', effort: 'max', why: 'the executor rank itself' },
 };
@@ -124,8 +127,8 @@ const COLLEGE = {
   },
   'quality': {
     domain: 'Quality (品質)',
-    governs: ['review', 'security', 'docs', 'verify'],
-    priests: ['code-reviewer', 'security-reviewer', 'doc-updater'],
+    governs: ['review', 'security', 'docs', 'verify', 'ux-review'],
+    priests: ['code-reviewer', 'security-reviewer', 'doc-updater', 'ux-reviewer'],
     believers: ['linter', 'coverage-checker', 'secret-scanner'],
     reviewClass: 'executor',           // quality feeds the tribunal
     pdca: 'plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass',
