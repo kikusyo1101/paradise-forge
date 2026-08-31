@@ -1774,6 +1774,81 @@ test('hierarchy: the wave is dispatched TO the cardinal, not past it (Art.25)', 
   } finally { try { fs.rmSync(tmp, { force: true }); } catch {} }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第26条 — 並列は仕事の性質。天井を設定値にしない
+// ══════════════════════════════════════════════════════════════════════
+
+test('parallelism: the runtime ceiling is not the dispatch width (Art.26)', () => {
+  // arXiv:2512.08296「T ∝ n^1.724、実用的な有効チーム規模は3–4体」逆U字。
+  const clergy = require('../graph/clergy.js');
+  assert.ok(clergy.EFFECTIVE_CONCURRENT <= 4,
+    `effective width must respect the inverted-U (<=4), got ${clergy.EFFECTIVE_CONCURRENT}`);
+  assert.ok(clergy.RUNTIME_CONCURRENT > clergy.EFFECTIVE_CONCURRENT,
+    'the ceiling and the setting are distinct numbers — conflating them is the defect');
+  assert.strictEqual(clergy.MAX_CONCURRENT, clergy.EFFECTIVE_CONCURRENT,
+    'dispatch follows the effective width, not the ceiling');
+});
+
+test('parallelism: work that carries implicit decisions is not split (Art.26)', () => {
+  // Cognition「行動は暗黙の決定を運ぶ」/ Anthropic「コーディングタスクは特に不向き」
+  const clergy = require('../graph/clergy.js');
+  assert.strictEqual(clergy.PARALLEL_SAFE.build.parallel, false,
+    'implementation must not be parallelised — children build contradictory premises');
+  assert.strictEqual(clergy.PARALLEL_SAFE.design.parallel, false,
+    'design decisions bind everything downstream — they do not split');
+  assert.strictEqual(clergy.PARALLEL_SAFE.research.parallel, true,
+    'independent questions parallelise cleanly');
+  assert.strictEqual(clergy.PARALLEL_SAFE.review.parallel, true,
+    'reviewing one artifact from different angles parallelises');
+});
+
+test('parallelism: every domain declares the nature of its work (Art.26)', () => {
+  const clergy = require('../graph/clergy.js');
+  for (const [cid, c] of Object.entries(clergy.COLLEGE)) {
+    assert.ok(c.work, `domain ${cid} must declare its work type — undeclared work cannot be scheduled safely`);
+    assert.ok(clergy.PARALLEL_SAFE[c.work], `domain ${cid} declares unknown work type '${c.work}'`);
+  }
+});
+
+test('parallelism: an undeclared work type falls back to sequential, never parallel (Art.26)', () => {
+  // 門を、わざと壊して試す。性質を消したら安全側(逐次)に倒れるか。
+  const clergy = require('../graph/clergy.js');
+  const saved = clergy.COLLEGE.construction.work;
+  try {
+    delete clergy.COLLEGE.construction.work;
+    const plan = clergy.marshalPlan('build', { priestCanSpawn: true });
+    assert.strictEqual(plan.execution.parallel, false,
+      'unknown work must default to sequential — the safe side, not the fast side');
+    assert.strictEqual(plan.execution.limit, 1, 'sequential means one at a time');
+  } finally { clergy.COLLEGE.construction.work = saved; }
+});
+
+test('parallelism: the construction domain runs sequentially (Art.26)', () => {
+  // 楽園の建造ドメインは実装作業そのもの。調査が名指しで警告した領域である。
+  const clergy = require('../graph/clergy.js');
+  const plan = clergy.marshalPlan('build', { priestCanSpawn: true });
+  assert.strictEqual(plan.execution.parallel, false,
+    'construction is implementation — Anthropic names coding as ill-suited to parallel agents');
+  assert.ok(/暗黙の決定|implicit/.test(plan.execution.why), 'the reason is stated, not merely the verdict');
+});
+
+test('orders: the contract states when it is done and demands evidence (Art.26)', () => {
+  // MAST: 検証の失敗が21.3%。「検証せず」6.82% /「誤った検証」6.66% /「早すぎる終了」7.82%
+  const forge = require('../graph/forge.js');
+  const conclave = require('../graph/conclave.js');
+  const tmp = path.join(os.tmpdir(), `dag26-${Date.now()}.json`);
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(forge.buildDag('probe wish', 'reform')));
+    const act = conclave.next(conclave.convene(tmp));
+    for (const d of act.dispatch) {
+      assert.ok(d.contract.done_when, `phase ${d.id} must state its termination condition (FM-1.5, 9.82%)`);
+      assert.ok(d.contract.evidence_required, `phase ${d.id} must demand real evidence, not a claim`);
+      assert.ok(d.contract.if_unclear, `phase ${d.id} must tell the child to block rather than guess (FM-2.2, 11.65%)`);
+    }
+    assert.ok(act.parallel <= 4, `dispatch width must respect the effective limit, got ${act.parallel}`);
+  } finally { try { fs.rmSync(tmp, { force: true }); } catch {} }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

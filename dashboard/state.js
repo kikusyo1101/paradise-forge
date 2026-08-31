@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T09:34:37.067Z",
+  "generated": "2026-08-31T10:52:34.666Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 59,
+    "nodeCount": 61,
     "edgeCount": 33,
     "nodes": [
       {
@@ -482,6 +482,18 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "在庫でなく供給線を検めよ",
         "degree": 0
+      },
+      {
+        "id": "art26-parallel-by-nature",
+        "type": "lesson",
+        "label": "並列は仕事の性質であり実行基盤の容量ではない",
+        "degree": 0
+      },
+      {
+        "id": "late-research-still-rules",
+        "type": "lesson",
+        "label": "後から届いた調査が設計を反証したら、設計を直す",
+        "degree": 0
       }
     ],
     "edges": [
@@ -658,7 +670,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 27
+      "lesson": 29
     }
   },
   "lessons": [
@@ -796,6 +808,16 @@ window.PARADISE_STATE = {
       "id": "art19-supply-not-stock",
       "label": "在庫でなく供給線を検めよ",
       "check": "独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し司祭9名が消えた。在庫を数える門は独立を証明しない|applies:paradise-internal"
+    },
+    {
+      "id": "art26-parallel-by-nature",
+      "label": "並列は仕事の性質であり実行基盤の容量ではない",
+      "check": "天井20を発令幅に使っていた。調査(arXiv:2512.08296)はT∝n^1.724・実用3-4体・逆U字を示し、Cognition/Anthropicは実装作業の並列化が矛盾した成果物を生むと警告。ドメインに仕事の性質(research/review=並列可、design/build=逐次)を宣言させ、未宣言は安全側の逐次に倒す。MASTは検証失敗21.3%を示すのでdone_when/evidence_required/if_unclearを発令書に載せる|applies:paradise-internal"
+    },
+    {
+      "id": "late-research-still-rules",
+      "label": "後から届いた調査が設計を反証したら、設計を直す",
+      "check": "並列発令した調査2件のうち片方が設計完了後に戻り、内容は設計を検証せず反証した(並列度・実装の分割・検証の甘さ)。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある|applies:paradise-internal"
     }
   ],
   "creations": [
