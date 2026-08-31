@@ -246,5 +246,13 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T11:10:38.234Z"
+  },
+  {
+    "id": "art29-derived-not-truth",
+    "label": "生成物は真実の写しであって真実ではない",
+    "check": "執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:20:30.413Z"
   }
 ]

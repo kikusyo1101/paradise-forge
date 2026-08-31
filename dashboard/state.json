@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T11:10:38.312Z",
+  "generated": "2026-08-31T11:20:30.493Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 63,
+    "nodeCount": 64,
     "edgeCount": 33,
     "nodes": [
       {
@@ -506,6 +506,12 @@
         "type": "lesson",
         "label": "規範の教訓はgrepで裁けない",
         "degree": 0
+      },
+      {
+        "id": "art29-derived-not-truth",
+        "type": "lesson",
+        "label": "生成物は真実の写しであって真実ではない",
+        "degree": 0
       }
     ],
     "edges": [
@@ -682,7 +688,7 @@
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 31
+      "lesson": 32
     }
   },
   "lessons": [
@@ -840,6 +846,11 @@
       "id": "art28-conduct-not-grepped",
       "label": "規範の教訓はgrepで裁けない",
       "check": "criticは全教訓をコードへの文字列出現で裁いていた。機構の教訓には効くが規範(ブラウザを閉じよ等)はコードに現れようがなく永久に赤。実測30件中18件が規範で、赤は2件だけ=残り16件は偶然コードに語が現れただけだった。判定は働かず偶然に依存。kind:conductを宣言させ提示のみとする。永久に赤は門を無視させ、緑は教訓を消す。測れぬものも憶えねばならぬが、点数を付けてはならぬ|applies:paradise-internal|kind:mechanism"
+    },
+    {
+      "id": "art29-derived-not-truth",
+      "label": "生成物は真実の写しであって真実ではない",
+      "check": "執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る|applies:paradise-internal|kind:mechanism"
     }
   ],
   "creations": [

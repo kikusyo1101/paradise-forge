@@ -1992,6 +1992,71 @@ test('lessons: the engine review is clean — no permanently-red gate remains (A
     `the engine review must be clean: ${hardGaps.map(g => g.id).join(', ')}`);
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第29条 — 生成物は真実の写しであって、真実そのものではない
+// ══════════════════════════════════════════════════════════════════════
+
+test('derived: every generated artifact is declared with its source (Art.29)', () => {
+  const derived = require('../graph/derived.js');
+  for (const [file, spec] of Object.entries(derived.DERIVED)) {
+    assert.ok(spec.from, `${file} must name where it comes from`);
+    assert.ok(spec.by, `${file} must name the command that regenerates it`);
+    assert.ok(spec.note, `${file} must state the hazard it carries`);
+  }
+  // 実測で罠を踏んだ3つが宣言されていること
+  for (const f of ['graph/lessons.json', 'dashboard/state.json', 'dashboard/state.js']) {
+    assert.ok(derived.DERIVED[f], `${f} is generated and must be declared`);
+  }
+});
+
+test('derived: no test asserts on the CONTENT of a derived file (Art.29)', () => {
+  // これが本番の門。CIを落とした欠陥がここで捕まる。
+  const derived = require('../graph/derived.js');
+  const res = derived.check();
+  assert.strictEqual(res.findings.length, 0,
+    `tests must not assume derived content: ${res.findings.map(f => `${f.file}:${f.line}`).join(', ')}`);
+});
+
+test('derived: the gate catches the exact accident that broke CI (Art.29)', () => {
+  // 門を、わざと壊して試す。今回CIを落とした形そのものを仕込む。
+  const derived = require('../graph/derived.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dv-'));
+  const f = path.join(tmp, 'bad.test.js');
+  fs.writeFileSync(f, [
+    "test('x', () => {",
+    "  const lessons = require('../graph/lessons.json');",
+    "  assert.ok(lessons.some(l => l.kind === 'mechanism'), 'defaults to mechanism');",
+    '});',
+  ].join('\n'));
+  try {
+    const found = derived.offendingAssertions(f);
+    assert.ok(found.length > 0, 'asserting presence on a derived file must be caught');
+    assert.ok(/lessons\.json/.test(found[0].derived), 'the gate names which derived file');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', () => {
+  // 狼少年の門は、無い門より悪い(第21条)。素朴な照合は3件挙げ、3件とも誤検出だった。
+  const derived = require('../graph/derived.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dv-'));
+  const f = path.join(tmp, 'ok.test.js');
+  fs.writeFileSync(f, [
+    "test('fixture is not a derived file', () => {",
+    "  const lessonsFile = path.join(d, 'lessons.json');",          // 一時ディレクトリの自作
+    "  fs.writeFileSync(lessonsFile, JSON.stringify([{id:'l1'}]));",
+    "  assert.ok(rev.gaps.some(g => g.id === 'lesson:l1'), 'fixture drives the check');",
+    '});',
+    "test('a negation survives an empty derived file', () => {",
+    "  const rev = critic.review(dir, { lessons: path.join(DIR, '..', 'graph', 'lessons.json') });",
+    "  assert.ok(!internal.some(r => /x/.test(r.note)), 'nothing may be skipped');",  // 否定形
+    '});',
+  ].join('\n'));
+  try {
+    assert.strictEqual(derived.offendingAssertions(f).length, 0,
+      'fixtures and negations must not be reported — a gate that cries wolf gets ignored');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

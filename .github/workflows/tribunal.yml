@@ -79,6 +79,9 @@ jobs:
       - name: 🔢 Census — 楽園が己について語る数が真実か (第22条)
         run: node graph/census.js check
 
+      - name: 📄 Derived — 生成物の中身を前提にした検査がないか (第29条)
+        run: node graph/derived.js check
+
       - name: ⛪ Agent presence — 司祭の実在 / 無主の相 / 階層の実体 (第21・23・25条)
         run: node graph/check-agents.js
 

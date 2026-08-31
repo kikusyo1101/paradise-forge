@@ -364,6 +364,26 @@ way to change what "complete" means.
     none, Art. 21), while marking it green silently deletes the lesson. What
     cannot be measured must still be remembered; it simply must not be scored.
 
+29. **A derived file is a copy of the truth, never the truth.** The tribunal
+    rejected the previous change: green locally, one test failing in CI. The
+    cause was a gate written the same hour — it read `graph/lessons.json` and
+    asserted that at least one lesson existed. But that file is *generated* from
+    the knowledge graph, CI has no knowledge graph, and the tribunal job
+    regenerates it before judging. Measured: **31 lessons in the repository, 0
+    after CI regenerates, 1682 lines gone.** The repository's copy and the
+    running environment's copy are simply different objects. Three such files
+    are tracked in git, and every one carries the same three hazards: its
+    content differs by environment, it conflicts on every parallel pull request
+    (and must be regenerated, never hand-merged), and any check that assumes its
+    content breaks wherever the generator's input is absent. Therefore derived
+    artifacts are **declared** (`derived.js`), and a test may read one but may
+    never assert that it has content. Assert against the **generator** instead:
+    that `lessons.js` defaults an undeclared lesson to `mechanism` is true with
+    or without a knowledge graph, while "some lesson is a mechanism" is true only
+    on the author's machine. This is Article 19's lesson — *count the supply
+    line, not the stock* — turned inward: **do not test the output of a
+    generator when what you mean to assert is a property of the generator.**
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
