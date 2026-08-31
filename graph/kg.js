@@ -115,7 +115,15 @@ function snapshot() {
   lines.push(`nodes:${nodes.length}  edges:${edges.length}`);
   if (recent.length) {
     lines.push('\nRecent knowledge:');
-    for (const n of recent) lines.push(`  [${n.type}] ${n.id}: ${n.label}${n.body ? ' — ' + n.body.slice(0, 80) : ''}`);
+    for (const n of recent) {
+      // label と body が同じ文なら二度書かない。remember は両方に同じ文字列を
+      // 入れるため、素直に連結すると全ての教訓が二重に出て、しかも切り詰めで
+      // 途中から千切れる — 情報密度が半分になっていた。
+      const body = (n.body || '').trim();
+      const label = (n.label || '').trim();
+      const extra = body && !label.startsWith(body.slice(0, 40)) ? ' — ' + body.slice(0, 80) : '';
+      lines.push(`  [${n.type}] ${n.id}: ${label}${extra}`);
+    }
   }
   // surface the most-connected nodes (hubs) — the load-bearing knowledge
   const deg = new Map();

@@ -81,6 +81,10 @@ test('verify CLI exits non-zero on invalid DAG', () => {
 // --- Knowledge graph (isolated store) ---
 console.log('Knowledge graph:');
 const kgRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-kg-'));
+// require() で kg を直接使うテストもある。kg.js は読み込み時に保存先を固定する
+// ため、ここで先に環境変数を立てないと **本番の知識グラフに書き込んでしまう**。
+// 実際にそれで [t] のテスト用ノードが本番へ紛れ込み、毎セッション注入されていた。
+process.env.PARADISE_KG = kgRoot;
 const env = Object.assign({}, process.env, { PARADISE_KG: kgRoot });
 const runKg = (...args) => execFileSync('node', [KG, ...args], { encoding: 'utf8', env });
 
@@ -1335,6 +1339,65 @@ test('the paradise session hook lives outside the borrowed tree', () => {
   const src = fs.readFileSync(hookPath, 'utf8');
   assert.ok(/PARADISE_ROOT/.test(src), 'the hook resolves its root from the environment, not a hardcoded path');
   assert.ok(/fail-open|catch/.test(src), 'a memory hook must never block a session');
+});
+
+test('the session hook tells the agent who it is, not just what it knows', () => {
+  // 知識だけ注いだ結果、新しいセッションは英語で喋り md を闇雲に検索した。
+  // 記憶は「何を知っているか」であって「何者で次に何をするか」ではない。
+  const hookPath = path.join(__dirname, '..', 'tools', 'hooks', 'paradise-session-start.js');
+  const out = require('child_process').execFileSync('node', [hookPath],
+    { encoding: 'utf8', timeout: 30000, env: Object.assign({}, process.env, { PARADISE_ROOT: path.join(__dirname, '..') }) });
+  assert.ok(/日本語/.test(out), 'the language to answer in must be stated, or the agent defaults to English');
+  assert.ok(/教主|Pontiff/.test(out), 'the role must be stated');
+  assert.ok(/CLAUDE\.md/.test(out) && /CONSTITUTION\.md/.test(out),
+    'the agent must be told where to look instead of searching blindly');
+  assert.ok(/PR|main/.test(out), 'the non-negotiable rules must arrive with the memory');
+  // 指示は記憶より先に来ること。後ろに置くと長い記憶に埋もれる。
+  const roleAt = out.indexOf('教主');
+  const memAt = out.indexOf('KNOWLEDGE SNAPSHOT');
+  if (memAt >= 0) assert.ok(roleAt >= 0 && roleAt < memAt, 'the briefing must precede the memory dump');
+});
+
+test('CLAUDE.md exists and states the working language and the hard rules', () => {
+  // Claude Code が最初に読む場所に楽園の説明が無ければ、素の助手として振る舞う。
+  const p = path.join(__dirname, '..', 'CLAUDE.md');
+  assert.ok(fs.existsSync(p), 'the repository must brief whoever opens it');
+  const src = fs.readFileSync(p, 'utf8');
+  assert.ok(/日本語で話す/.test(src), 'the working language is stated up front');
+  assert.ok(/main.*直接コミットしない|PR/.test(src), 'the PR-only rule is stated');
+  assert.ok(/read-only|改変しない/.test(src), 'the borrowed tree rule is stated (Art. 19)');
+  assert.ok(/CONSTITUTION\.md/.test(src), 'it points at the supreme law');
+});
+
+test('kg snapshot does not print the same sentence twice', () => {
+  // label と body に同じ文が入るため、素直に連結すると全教訓が二重に出て
+  // 切り詰めで千切れる。情報密度が半分になっていた。
+  const r1 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-kg-snap-'));
+  const e1 = Object.assign({}, process.env, { PARADISE_KG: r1 });
+  const kg = path.join(__dirname, '..', 'graph', 'kg.js');
+  const long = 'この教訓は十分に長い文であり、ラベルと本文の両方に同じ内容が格納される典型例である';
+  require('child_process').execFileSync('node', [kg, 'remember', 'lesson', 'dup-check', long], { env: e1, encoding: 'utf8' });
+  const out = require('child_process').execFileSync('node', [kg, 'snapshot'], { env: e1, encoding: 'utf8' });
+  const line = out.split('\n').find(l => l.includes('dup-check')) || '';
+  const head = long.slice(0, 30);
+  const occurrences = line.split(head).length - 1;
+  assert.strictEqual(occurrences, 1, `the same sentence must appear once, appeared ${occurrences}x`);
+  fs.rmSync(r1, { recursive: true, force: true });
+});
+
+test('kg snapshot carries no test residue into the real memory', () => {
+  // テストが作った [t] ノードが本番KGに残り、毎セッション注入されていた。
+  // 見るべきは「テスト用の隔離KG」ではなく **本番のKG** — テストは自分で
+  // PARADISE_KG を差し替えているので、ここでは明示的に外して問い直す。
+  const kg = path.join(__dirname, '..', 'graph', 'kg.js');
+  const realEnv = Object.assign({}, process.env);
+  delete realEnv.PARADISE_KG;
+  let out = '';
+  try { out = require('child_process').execFileSync('node', [kg, 'snapshot'], { encoding: 'utf8', timeout: 30000, env: realEnv }); }
+  catch { return; } // KG未使用の環境
+  const residue = out.split('\n').filter(l => /^\s+\[t\]\s/.test(l));
+  assert.deepStrictEqual(residue, [],
+    'nodes of type "t" are test fixtures — they must never reach a real session');
 });
 
 // --- report ---

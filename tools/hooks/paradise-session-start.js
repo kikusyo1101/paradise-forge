@@ -33,8 +33,29 @@ function main() {
     const root = paradiseRoot();
     const kg = path.join(root, 'graph', 'kg.js');
     if (!fs.existsSync(kg)) return;
-    const snap = execFileSync('node', [kg, 'snapshot'], { encoding: 'utf8', timeout: 15000 });
-    if (snap && snap.trim()) process.stdout.write('\n' + snap.trim() + '\n');
+
+    // 知識だけを注いでも、受け取った側は「自分が何者で、次に何をすべきか」を
+    // 知らない。実際にそれで新しいセッションが英語で喋り、md を闇雲に検索した。
+    // 記憶より先に、まず役割と最初の一手を渡す。
+    const lines = [];
+    lines.push('=== 楽園 (PARADISE) — セッション開始 ===');
+    lines.push('あなたは楽園の教主(王)。kikus は神であり、日本語で神託を下す。**日本語で応答すること。**');
+    lines.push(`場所: ${root}`);
+    lines.push('最初に読め: CLAUDE.md (役割と掟) → CONSTITUTION.md (最高法規・19条)');
+    lines.push('闇雲にファイルを探すな。上の2つに、どこを見るべきかが書いてある。');
+    lines.push('');
+    lines.push('掟(要点): main へ直接コミットしない(PR必須・マージは神) / 上流 everything-claude-code は');
+    lines.push('read-only / ~/.claude は成果物なので手で編集しない / subagent の「done」を信じず実物で照合 /');
+    lines.push('神が指摘した欠陥は engine を直し憲法に条を足し回帰テストを書く。');
+    lines.push('');
+
+    let snap = '';
+    try {
+      snap = execFileSync('node', [kg, 'snapshot'], { encoding: 'utf8', timeout: 15000 }) || '';
+    } catch { /* 記憶が読めなくても開始の指示は渡す */ }
+    if (snap.trim()) lines.push(snap.trim());
+
+    process.stdout.write('\n' + lines.join('\n') + '\n');
   } catch {
     // fail-open: 記憶の読み込み失敗でセッションを妨げない
   }
