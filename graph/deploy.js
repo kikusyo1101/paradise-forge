@@ -59,15 +59,28 @@ function plan() {
   const steps = [];
 
   for (const kind of c.kinds) {
-    const upDir = path.join(UP, kind);
+    const vnDir = path.join(OV, 'vendor', kind);   // 取り込んだ資産（楽園の所有物）
+    const upDir = path.join(UP, kind);             // 上流（在れば見るだけ）
     const ovDir = path.join(OV, kind);
     const dstDir = path.join(HOME, kind);
 
-    // 1. 上流を素通し
-    for (const f of listMd(upDir)) {
+    // 1. 素の資産は **vendor から** 取る (憲法 第20条)
+    //
+    // かつてここは上流ツリーから直接読んでいた。第20条で「全てを取り込んだ」と
+    // 宣言した後もである。実測すると配備53件のうち31件が上流由来で、
+    // 上流を隠した瞬間に配備物は22件へ激減し、司祭9名(architect/code-reviewer/
+    // tdd-guide/security-reviewer ほか)が消えた。**vendor に複製は在るのに、
+    // deploy は一度もそれを見ていなかった。** 在庫を数える門はあったが、
+    // 供給線を見る門が無かったので、独立は宣言のまま緑を出し続けた。
+    //
+    // 楽園は取り込んだ資産で建つ。上流はもはや供給元ではない。
+    const primaryDir = fs.existsSync(vnDir) && listMd(vnDir).length ? vnDir : upDir;
+    const fromLabel = primaryDir === vnDir ? 'vendor' : 'upstream';
+    for (const f of listMd(primaryDir)) {
       const relKey = `${kind}/${f}`;
       if (c.replace && c.replace[relKey]) continue; // replace が勝つので後段で入れる
-      steps.push({ kind, file: f, from: 'upstream', src: path.join(upDir, f), dst: path.join(dstDir, f), relation: 'plain' });
+      if ((c.own && c.own[kind] || []).includes(f)) continue; // own が勝つ
+      steps.push({ kind, file: f, from: fromLabel, src: path.join(primaryDir, f), dst: path.join(dstDir, f), relation: 'plain' });
     }
     // 2. replace
     for (const [relKey, spec] of Object.entries(c.replace || {})) {
@@ -134,15 +147,23 @@ function write() {
     done.push(`${s.relation}: ${s.kind}/${s.file}`);
   }
   // 5. transform を再適用 — 上流の本文更新の上に、楽園の規則を重ねる
+  //
+  // 一つの kind に **複数の変換** が要る。agents には位階モデル(第12条)と
+  // 起動の権能(第25条)の二つが乗る。かつてここは engine を1つしか読まず、
+  // 建て直すたびに権能が7名分**黙って消えていた**（実測で捕らえた）。
+  // 変換が一つだけという前提は、規則が増えた瞬間に嘘になる。
   const applied = [];
   for (const kind of p.transforms) {
     const c = up.cfg();
-    const engine = (c.transform[kind] || {}).engine;
-    if (!engine) continue;
-    try {
-      execFileSync('node', [path.join(ROOT, engine), 'apply'], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
-      applied.push(`${kind} ← ${engine}`);
-    } catch (e) { return { ok: false, deployed: done.length, error: `transform failed for ${kind}: ${e.message}` }; }
+    const spec = c.transform[kind] || {};
+    // `engine`(単数・旧形式) と `engines`(複数) の両方を受ける。順に全て適用する。
+    const engines = spec.engines || (spec.engine ? [spec.engine] : []);
+    for (const engine of engines) {
+      try {
+        execFileSync('node', [path.join(ROOT, engine), 'apply'], { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
+        applied.push(`${kind} ← ${engine}`);
+      } catch (e) { return { ok: false, deployed: done.length, error: `transform failed for ${kind} via ${engine}: ${e.message}` }; }
+    }
   }
   return { ok: true, deployed: done.length, transforms: applied, home: p.home };
 }
