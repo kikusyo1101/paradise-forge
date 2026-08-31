@@ -263,6 +263,35 @@ test('critic flags a flawed creation (no AC, no tests) as gaps', () => {
   fs.rmSync(d, { recursive: true, force: true });
 });
 
+test('critic recognises a test suite by SUBSTANCE, not by filename convention', () => {
+  // A real suite named `test.js` / `ac-test.js` matches none of the classic
+  // `*.test.js` / `*.spec.js` patterns. Judging it "missing" is a FALSE REWORK.
+  const spec = '# Habit\n## Acceptance Criteria\n- AC-1 streaks are counted.';
+  const code = 'function make(config){var c=config||{};return {ws:c.weekStart};}\nmodule.exports=make;';
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-critic-name-'));
+  fs.writeFileSync(path.join(d, 'requirements.md'), spec);
+  fs.writeFileSync(path.join(d, 'findings.md'), '# findings\nprior art surveyed.');
+  fs.writeFileSync(path.join(d, 'app.js'), code);
+  // no `.test.` / `.spec.` in either name — the exact shape that produced the bug
+  fs.writeFileSync(path.join(d, 'test.js'), 'const assert=require("assert");\n' + 'assert.ok(1);\n'.repeat(40));
+  fs.writeFileSync(path.join(d, 'ac-test.js'), 'const assert=require("assert");\n' + 'assert.strictEqual(1,1);\n'.repeat(40));
+  const rev = critic.review(d);
+  assert.ok(!rev.gaps.some(g => /tests-exist/.test(g.id)), 'a real suite named test.js is NOT a missing-tests gap');
+  assert.ok(!rev.smells.some(s => /runnable-evidence/.test(s.id)), 'a real suite counts as runnable evidence');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic still flags a creation whose only .js asserts nothing', () => {
+  // the substance check must not become a rubber stamp: a plain source file
+  // with no assertions is still no evidence at all.
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-critic-noassert-'));
+  fs.writeFileSync(path.join(d, 'requirements.md'), '# X\n## Acceptance Criteria\n- AC-1 works.');
+  fs.writeFileSync(path.join(d, 'helper.js'), 'module.exports = function(){ return 42; };\n' + '// filler\n'.repeat(80));
+  const rev = critic.review(d);
+  assert.ok(rev.gaps.some(g => /tests-exist/.test(g.id)), 'a non-asserting file is not a test suite');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
 test('critic passes a complete creation (AC + tests + config + findings)', () => {
   const spec = '# Timer\n## Acceptance Criteria\n- AC-1 durations are configurable.';
   const code = 'function createTimer(config){var cfg=config||{};return {work:cfg.workDuration};}\nmodule.exports=createTimer;';
@@ -537,6 +566,53 @@ test('domain-level reject triggers an INNER rework (the small circle)', () => {
   const d = run.domains.find(x => x.cardinal === 'requirements');
   assert.strictEqual(d.status, 'active', 'domain re-activates for rework');
   assert.strictEqual(d.phases.find(p => p.id === 'specify').status, 'rework');
+});
+
+test('a review class can send work back ACROSS domains (the great circle)', () => {
+  const run = makeConclave();
+  // walk the ring: discovery → requirements → architecture → construction all ratified
+  for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
+                                [['design', 'detail'], 'architecture'], [['build', 'tests'], 'construction']]) {
+    conclave.markRunning(run, phases);
+    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    conclave.ratify(run, card);
+  }
+  conclave.markRunning(run, ['review', 'security']);
+  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  // quality rejects and sends it back to BUILD, which lives in construction
+  const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.target, 'construction', 'rework is charged to the domain that owns `build`');
+  assert.ok(res.reworked.includes('build'), 'build itself is reset');
+  const constr = run.domains.find(x => x.cardinal === 'construction');
+  assert.strictEqual(constr.status, 'active', 'construction LOSES its ratification and reopens');
+  assert.strictEqual(constr.phases.find(p => p.id === 'build').status, 'rework');
+  assert.strictEqual(constr.reworks, 1, 'the loop-guard counts against construction, not quality');
+  const qual = run.domains.find(x => x.cardinal === 'quality');
+  assert.strictEqual(qual.status, 'active', 'the rejecting domain never ratifies itself on a reject');
+  // and the conclave actually hands `build` back out again
+  const step = conclave.next(run);
+  assert.strictEqual(step.cardinal, 'construction', 'next() returns to the reopened upstream domain');
+  assert.ok(step.dispatch.some(x => x.id === 'build'), 'build is re-dispatched');
+});
+
+test('cross-domain rework also resets DOWNSTREAM phases in later domains', () => {
+  const run = makeConclave();
+  for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
+                                [['design', 'detail'], 'architecture'], [['build', 'tests'], 'construction']]) {
+    conclave.markRunning(run, phases);
+    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    conclave.ratify(run, card);
+  }
+  conclave.markRunning(run, ['review', 'security']);
+  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
+  // everything that depended on build must be invalidated, including the finished reviews
+  assert.ok(res.reworked.includes('review'), 'a review of stale code is itself stale');
+  assert.strictEqual(run.domains.find(x => x.cardinal === 'quality')
+    .phases.find(p => p.id === 'review').status, 'rework');
+  assert.strictEqual(run.domains.find(x => x.cardinal === 'quality')
+    .phases.find(p => p.id === 'review').artifactPath, null, 'stale artifact is dropped');
 });
 
 test('domain loop-guard blocks a cardinal after MAX_DOMAIN_REWORK', () => {

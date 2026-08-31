@@ -148,9 +148,11 @@ function markDone(run, id, artifactPath) {
 }
 
 /**
- * ratify(): the review class blesses a domain, or rejects it (inner rework).
- * On reject, the named phase + its downstream WITHIN the domain reset; guarded
- * by MAX_DOMAIN_REWORK (then the domain blocks → pontiff escalation).
+ * ratify(): the review class blesses a domain, or rejects it.
+ * On reject the named phase + its downstream reset — ACROSS domains, because a
+ * review class may legitimately send work back to an EARLIER domain (Art. 14).
+ * Any domain that owns a reset phase loses its ratification and reopens.
+ * Guarded by MAX_DOMAIN_REWORK on the domain that owns `from`.
  */
 function ratify(run, cardinal, opts = {}) {
   const d = run.domains.find(x => x.cardinal === cardinal);
@@ -160,25 +162,37 @@ function ratify(run, cardinal, opts = {}) {
     run.history.push({ ts: now(), event: 'ratify', detail: `${d.domain} ratified by ${d.reviewClass}` });
     return { ok: true, ratified: cardinal };
   }
-  // rejection → inner rework
-  d.reworks += 1;
-  if (d.reworks > MAX_DOMAIN_REWORK) {
-    d.status = 'blocked';
-    run.history.push({ ts: now(), event: 'domain-loop-guard', detail: `${d.domain} exceeded ${MAX_DOMAIN_REWORK} reworks` });
-    return { ok: false, blocked: cardinal, message: `Domain ${d.domain} blocked after ${MAX_DOMAIN_REWORK} reworks — escalate to pontiff.` };
-  }
+  // rejection → rework, possibly upstream into another domain
   const from = opts.from || d.phases[0].id;
-  // reset `from` and everything downstream of it WITHIN this domain
-  const ids = d.phases.map(p => p.id);
+  const ownerOf = id => run.domains.find(x => x.phases.some(p => p.id === id));
+  const target = ownerOf(from);
+  if (!target) throw new Error('no such phase to rework from: ' + from);
+
+  target.reworks += 1;
+  if (target.reworks > MAX_DOMAIN_REWORK) {
+    target.status = 'blocked';
+    run.history.push({ ts: now(), event: 'domain-loop-guard', detail: `${target.domain} exceeded ${MAX_DOMAIN_REWORK} reworks` });
+    return { ok: false, blocked: target.cardinal, message: `Domain ${target.domain} blocked after ${MAX_DOMAIN_REWORK} reworks — escalate to pontiff.` };
+  }
+
+  // downstream closure over EVERY phase in the conclave, not just this domain
+  const every = [];
+  for (const dom of run.domains) for (const p of dom.phases) every.push(p);
   const idset = new Set([from]);
   let changed = true;
   while (changed) { changed = false;
-    for (const p of d.phases) { if (idset.has(p.id)) continue; if (p.deps.some(x => idset.has(x))) { idset.add(p.id); changed = true; } }
+    for (const p of every) { if (idset.has(p.id)) continue; if (p.deps.some(x => idset.has(x))) { idset.add(p.id); changed = true; } }
   }
-  for (const p of d.phases) if (idset.has(p.id)) { p.status = 'rework'; if (p.id !== from) p.artifactPath = null; }
-  d.status = 'active';
-  run.history.push({ ts: now(), event: 'domain-rework', detail: `${d.domain}: reset ${[...idset].join(', ')} (rework ${d.reworks})` });
-  return { ok: true, reworked: [...idset], cardinal, message: `${d.domain}: inner rework from ${from}.` };
+  const reopened = new Set();
+  for (const dom of run.domains) {
+    let touched = false;
+    for (const p of dom.phases) if (idset.has(p.id)) { p.status = 'rework'; if (p.id !== from) p.artifactPath = null; touched = true; }
+    if (touched) { if (dom.status === 'ratified') reopened.add(dom.cardinal); dom.status = 'active'; }
+  }
+  // the rejecting domain never ratifies itself on a reject
+  if (d.status === 'ratified') { d.status = 'active'; reopened.add(d.cardinal); }
+  run.history.push({ ts: now(), event: 'domain-rework', detail: `${d.domain} → ${target.domain}: reset ${[...idset].join(', ')} (rework ${target.reworks})${reopened.size ? '; un-ratified ' + [...reopened].join(', ') : ''}` });
+  return { ok: true, reworked: [...idset], cardinal, target: target.cardinal, reopened: [...reopened], message: `${d.domain}: rework from ${from} (domain ${target.domain}).` };
 }
 
 function statusBoard(run) {

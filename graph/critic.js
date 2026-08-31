@@ -78,7 +78,7 @@ function builtinChecks() {
     { id: 'tests-exist', severity: 'gap',
       desc: 'A test artifact exists and is non-trivial',
       run: (ctx) => {
-        const tests = ctx.files.filter(f => /\.test\.|_test\.|\.spec\./.test(f));
+        const tests = findTestFiles(ctx);
         if (!tests.length) return { ok: false, note: 'no test file found' };
         const big = tests.some(f => safeSize(path.join(ctx.dir, f)) > 400);
         return big ? { ok: true, note: `tests present: ${tests.join(', ')}` }
@@ -125,7 +125,8 @@ function builtinChecks() {
     { id: 'claims-backed-by-runnable-evidence', severity: 'smell',
       desc: 'There is a runnable way to verify the creation (a test or a judge-drive script)',
       run: (ctx) => {
-        const runnable = ctx.files.some(f => /\.test\.|judge-drive|verify\./.test(f));
+        const runnable = findTestFiles(ctx).length > 0
+          || ctx.files.some(f => /judge-drive|verify\./.test(f));
         return runnable ? { ok: true, note: 'runnable verification exists' }
                         : { ok: false, note: 'no runnable verification — claims rest on assertion, not evidence' };
       } },
@@ -149,6 +150,29 @@ function scopeMatches(hay, scope) {
   const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, 'i').test(String(hay).toLowerCase());
 }
+/**
+ * Find test artifacts by SUBSTANCE, not by filename convention.
+ * A creation is not untested merely because its suite is called `test.js`
+ * instead of `foo.test.js`. We accept the usual naming conventions, and we
+ * also read candidate files and accept any that actually assert things
+ * (assert/expect/describe/it/a PASS-FAIL tally). Evidence is judged by what a
+ * file DOES, never by what it is named.
+ */
+function findTestFiles(ctx) {
+  const byName = ctx.files.filter(f => /(^|[^a-z0-9])(tests?|spec)([^a-z0-9]|$)|\.test\.|_test\.|\.spec\./i.test(f));
+  const bySubstance = ctx.files.filter(f => {
+    if (byName.includes(f)) return false;
+    if (!/\.(js|mjs|cjs|ts|py)$/i.test(f)) return false;
+    const p = path.join(ctx.dir, f);
+    if (safeSize(p) < 400) return false;
+    let src = '';
+    try { src = fs.readFileSync(p, 'utf8'); } catch { return false; }
+    const asserts = (src.match(/\bassert\b|\bexpect\s*\(|\bdescribe\s*\(|\bit\s*\(|\bPASS\b|passed:|failed:/g) || []).length;
+    return asserts >= 3;
+  });
+  return [...byName, ...bySubstance];
+}
+
 function extractMustHaves(findings) {
   // pull the labels from lines/rows marked with the red must-have marker
   const out = [];
