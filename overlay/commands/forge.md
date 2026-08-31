@@ -74,10 +74,15 @@ It returns one of:
      node $CRITIC review $DIR --lessons ~/Documents/workspace/paradise/graph/lessons.json
      ```
   2. Build the verdict report from REAL evidence (drive the acceptance criteria
-     yourself in a small node script; count tests; grep for secrets) and judge:
+     yourself in a small node script; count tests; grep for secrets), gauge the
+     trajectory, and judge:
      ```bash
+     node ~/Documents/workspace/paradise/graph/gauge.js score $DIR/run.json --json  # → report.trajectory (第38条)
      node $VERDICT judge $DIR/verdict-report.json
      ```
+     The report MUST carry `trajectory` (gauge output verbatim) — without it the
+     gate REWORKs an artifact-road report. After judgment:
+     `gauge.js record $DIR/run.json --slug <slug>`.
   3. Apply the verdict to the run:
      ```bash
      node $ORCH verdict SHIP|REWORK|BLOCK --run $DIR/run.json [--from <phase>]

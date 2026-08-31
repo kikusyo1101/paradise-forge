@@ -189,6 +189,7 @@ jobs:
           FAILED=$(echo "$TESTS" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo 0)
           cat > verdict-report.json <<EOF
           {
+            "produces": "engine",
             "build": "pass",
             "types": { "status": "pass" },
             "lint": { "status": "pass" },

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T13:33:21.264Z",
+  "generated": "2026-08-31T14:01:25.565Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 76,
+    "nodeCount": 78,
     "edgeCount": 33,
     "nodes": [
       {
@@ -584,6 +584,18 @@
         "type": "lesson",
         "label": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
         "degree": 0
+      },
+      {
+        "id": "gauge-trajectory-over-outcome",
+        "type": "lesson",
+        "label": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない",
+        "degree": 0
+      },
+      {
+        "id": "reform-eval-gauge",
+        "type": "creation",
+        "label": "証明の秤 gauge.js (SHIPPED)",
+        "degree": 0
       }
     ],
     "edges": [
@@ -758,9 +770,9 @@
       "component": 11,
       "decision": 8,
       "run": 3,
-      "creation": 5,
+      "creation": 6,
       "verdict": 1,
-      "lesson": 44
+      "lesson": 45
     }
   },
   "lessons": [
@@ -983,6 +995,11 @@
       "id": "comment-claims-what-code-does-not",
       "label": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
       "check": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check|applies:paradise-internal"
+    },
+    {
+      "id": "gauge-trajectory-over-outcome",
+      "label": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない",
+      "check": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない|applies:paradise-internal"
     }
   ],
   "creations": [],

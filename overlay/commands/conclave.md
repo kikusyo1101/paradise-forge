@@ -81,9 +81,15 @@ It returns one of:
 At completion, invoke the executor — it answers to no cardinal:
 ```bash
 node $CRITIC review $DIR --lessons ~/Documents/workspace/paradise/graph/lessons.json   # reflect
+node ~/Documents/workspace/paradise/graph/gauge.js score $DIR/conclave.json --json      # 走行の採点 (第38条)
 node $VERDICT judge $DIR/verdict-report.json                                            # verdict
 ```
 Build the report from REAL evidence (drive the ACs, count tests, grep secrets).
+**The report MUST carry a `trajectory` key** — paste `gauge.js score --json` output
+verbatim. A report without it is REWORKed by the gate itself (Art. 38:
+測らなかった走行は改善を主張できない). After judgment, record the run:
+`gauge.js record $DIR/conclave.json --slug <slug>` — the ledger is how
+"improved" is ever provable.
 - SHIP → deliver the creation (preview it, report the path).
 - REWORK → send the failing domain back (ratify --reject); turn the ring again.
 - BLOCK → constitutional breach; stop and report to God.

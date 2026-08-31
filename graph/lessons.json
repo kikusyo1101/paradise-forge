@@ -350,5 +350,13 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T13:33:21.184Z"
+  },
+  {
+    "id": "gauge-trajectory-over-outcome",
+    "label": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない",
+    "check": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:55:34.464Z"
   }
 ]

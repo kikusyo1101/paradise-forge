@@ -22,7 +22,9 @@
  *     tests:   { passed: N, failed: N, total: N, coverage: 0-100 },
  *     security:{ issues: N, secrets: N },
  *     spec:    { satisfied: true|false, unmet: ["..."] },
- *     diff:    { files: N }
+ *     diff:    { files: N },
+ *     trajectory: { score: 0-100, reworkCount: N, firstPassRate: 0-1,
+ *                   loopGuardTrips: N }   // gauge.js score --json の出力(第38条)
  *   }
  *
  * Usage:
@@ -34,6 +36,7 @@
 const fs = require('fs');
 
 const DEFAULT_COVERAGE_FLOOR = 80;
+const DEFAULT_TRAJECTORY_FLOOR = 60;
 
 function judge(report, opts = {}) {
   const floor = opts.floor != null ? opts.floor : DEFAULT_COVERAGE_FLOOR;
@@ -58,6 +61,21 @@ function judge(report, opts = {}) {
     const t = report.tests;
     if ((t.failed || 0) > 0) defects.push(`${t.failed}/${t.total ?? '?'} test(s) failing`);
     if (t.coverage != null && t.coverage < floor) defects.push(`coverage ${t.coverage}% below floor ${floor}%`);
+  }
+
+  // --- trajectory: 走行そのものを裁く(第38条) ---------------------------
+  // 成果物が通っても、荒れた走行(差し戻しの嵐・ループ暴走)は改善ではない。
+  // 数値は gauge.js が run-state から決定的に導く — ここでは読むだけ。
+  const trajFloor = opts.trajectoryFloor != null ? opts.trajectoryFloor : DEFAULT_TRAJECTORY_FLOOR;
+  const traj = report.trajectory;
+  if (traj) {
+    if (traj.score == null) {
+      defects.push('trajectory carries no `score` — 中身の無い証拠は証拠ではない (Art. 16)');
+    } else {
+      if (traj.score < trajFloor) defects.push(`trajectory score ${traj.score} below floor ${trajFloor} — 荒れた走行は改善ではない (Art. 38)`);
+      if ((traj.loopGuardTrips || 0) > 0) defects.push(`loop-guard tripped ${traj.loopGuardTrips}× — 暴走した走行は事故であって成果ではない (Art. 38)`);
+      if (traj.score >= trajFloor && (traj.loopGuardTrips || 0) === 0) reasons.push(`trajectory ${traj.score}/100`);
+    }
   }
 
   // --- positive evidence (for the report) ---
@@ -103,6 +121,13 @@ function judge(report, opts = {}) {
     else if ((report.tests.total || 0) === 0 && (report.tests.passed || 0) === 0) {
       defects.push('tests reported but zero were run — 空の試験は試験ではない');
     }
+    // 走行も語られねばならない(第38条)。測らなかった走行は改善を主張できない。
+    // ただし射程は run-state が必ず存在する道(produces:'artifact')のみ。
+    // CI の断罪は run を持たない — produces:'engine' を宣言して build/tests/
+    // security の要求だけを負う(第36条: 門は消すのではなく分ける)。
+    if (produces === 'artifact' && !report.trajectory) {
+      defects.push('trajectory was never gauged — 測らなかった走行は改善を主張できない (Art. 38: gauge.js score <run> --json)');
+    }
   }
 
   let verdict, headline;
@@ -136,6 +161,8 @@ function render(v) {
 const LAW = `⚖️  THE JUDGMENT LAW
 BLOCK   — any security issue/secret, or spec unsatisfied. Never ships; escalate.
 REWORK  — build/type/lint/test failure, or coverage below floor. Loop back & repair.
+        — also: trajectory score below ${DEFAULT_TRAJECTORY_FLOOR}, loop-guard tripped, or an
+          artifact-road report that never gauged its run (Art. 38 — gauge.js).
 SHIP    — every gate passes and no breach remains. Creation is complete.
 Fail-closed on security (unknown security => not proven safe).`;
 
@@ -164,4 +191,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { judge, render, DEFAULT_COVERAGE_FLOOR };
+module.exports = { judge, render, DEFAULT_COVERAGE_FLOOR, DEFAULT_TRAJECTORY_FLOOR };

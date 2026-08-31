@@ -5,7 +5,7 @@
 > 常時運ぶのはこの索引だけでよい。**条文が要るときは引く**:
 > `node graph/codex.js article <番号>`
 
-全 37 条 / 本文 41,377 B / 索引はその約 91% 減
+全 38 条 / 本文 43,831 B / 索引はその約 92% 減
 
 | 条 | 題 | B |
 |---:|---|---:|
@@ -46,4 +46,5 @@
 | 35 | A deployment is not a report — it writes | 1364 |
 | 36 | A new road must be admitted by the old gates, and they will not admit it | 1884 |
 | 37 | Absence is not passage | 1872 |
+| 38 | Improvement must be proven in numbers | 2454 |
 
