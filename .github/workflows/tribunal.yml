@@ -79,7 +79,7 @@ jobs:
       - name: 🔢 Census — 楽園が己について語る数が真実か (第22条)
         run: node graph/census.js check
 
-      - name: ⛪ Agent presence — 名指しした司祭が実在するか (第21条)
+      - name: ⛪ Agent presence — 名指しした司祭が実在するか / 無主の相がないか (第21・23条)
         run: node graph/check-agents.js
 
   tribunal:

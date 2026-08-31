@@ -119,7 +119,7 @@ const COLLEGE = {
   },
   'construction': {
     domain: 'Construction (建造)',
-    governs: ['build', 'build-ui', 'tests'],
+    governs: ['build', 'build-ui', 'tests', 'prove'],
     priests: ['architect', 'tdd-guide'],
     believers: ['module-builder', 'test-writer'],
     reviewClass: 'cardinal:quality',

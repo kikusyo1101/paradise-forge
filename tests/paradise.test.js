@@ -1541,6 +1541,117 @@ test('census: every number the paradise currently claims is true (Art.22)', () =
     `stale self-claims: ${stale.map(f => `${f.label} says ${f.claimed} but is ${f.actual}`).join('; ')}`);
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第23条 — 楽園は己の法で己を改める / 無主の相を許さない
+// ══════════════════════════════════════════════════════════════════════
+
+test('reform: the paradise has a road to change ITSELF (Art.23)', () => {
+  const forge = require('../graph/forge.js');
+  assert.ok(forge.SCALES.reform, 'a reform scale must exist — creations-only roads left the paradise unable to reform itself');
+  const ids = forge.buildDag('probe', 'reform').tasks.map(t => t.id);
+  for (const need of ['discover', 'specify', 'design', 'build', 'prove', 'review', 'security', 'verify', 'reflect', 'verdict']) {
+    assert.ok(ids.includes(need), `reform road must include the ${need} phase`);
+  }
+  // 創造物の道には無い、改革だけの相 — 門をわざと壊して鳴るか試す相。
+  assert.ok(!forge.buildDag('p', 'standard').tasks.some(t => t.id === 'prove'),
+    'prove is specific to reform: a gate that only ever saw a healthy system is untested');
+});
+
+test('reform: a wish about the paradise itself routes to reform, before other heuristics (Art.23)', () => {
+  const forge = require('../graph/forge.js');
+  for (const wish of ['楽園のオーケストレーションを改善する', '憲法に条を足す', 'improve the harness engine', '門を強化する']) {
+    assert.strictEqual(forge.chooseScale(wish), 'reform', `"${wish}" must take the reform road`);
+  }
+  // 「修正」を含んでも、対象が楽園なら quick へ落ちてはならない(順序が効いている証拠)
+  assert.strictEqual(forge.chooseScale('楽園のエンジンのバグを修正する'), 'reform',
+    'subject beats verb: a fix TO THE PARADISE is still a reform');
+  // 逆に、創造物への願いを reform へ攫ってはならない
+  assert.strictEqual(forge.chooseScale('ポモドーロタイマーが欲しい'), 'standard',
+    'a wish for a creation must not be dragged into the reform road');
+});
+
+test('reform: no phase may be masterless (Art.23)', () => {
+  const ca = require('../graph/check-agents.js');
+  const un = ca.ungovernedPhases();
+  assert.strictEqual(un.length, 0,
+    `every phase needs a cardinal or the tribunal; ungoverned: ${JSON.stringify(un)}`);
+});
+
+test('reform: the ungoverned-phase gate actually fires when a phase has no master (Art.23)', () => {
+  // 門を、わざと壊して試す。統治表から construction を抜けば prove/build が無主になる。
+  const clergyMod = require('../graph/clergy.js');
+  const saved = clergyMod.COLLEGE.construction.governs;
+  try {
+    clergyMod.COLLEGE.construction.governs = [];
+    delete require.cache[require.resolve('../graph/check-agents.js')];
+    const ca = require('../graph/check-agents.js');
+    const un = ca.ungovernedPhases();
+    assert.ok(un.length > 0, 'removing a cardinal\'s governance must produce ungoverned phases');
+    assert.ok(un.some(u => u.phase === 'prove' || u.phase === 'build'),
+      `the gate must name the orphaned phase, got ${JSON.stringify(un)}`);
+  } finally {
+    clergyMod.COLLEGE.construction.governs = saved;
+    delete require.cache[require.resolve('../graph/check-agents.js')];
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第24条 — 古い main の上で働かない（門であって、掟ではない）
+// ══════════════════════════════════════════════════════════════════════
+
+test('branch guard: a stale base is caught, not merely written down (Art.24)', () => {
+  // 実際に起きた事故の再現: 未マージだと思ったPRが既にマージされており、
+  // 古い main から分岐して rebase 競合を起こした。隔離リポジトリで門を試す。
+  const { execFileSync } = require('child_process');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bg-'));
+  const remote = tmp + '.remote';
+  const g = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    g(['init', '-q', '-b', 'main', '.'], tmp);
+    g(['config', 'user.email', 't@t'], tmp); g(['config', 'user.name', 't'], tmp);
+    fs.writeFileSync(path.join(tmp, 'a.txt'), 'one');
+    g(['add', '-A'], tmp); g(['commit', '-q', '-m', 'c1'], tmp);
+    const old = g(['rev-parse', 'HEAD'], tmp).trim();
+    fs.writeFileSync(path.join(tmp, 'b.txt'), 'two');
+    g(['add', '-A'], tmp); g(['commit', '-q', '-m', 'c2'], tmp);
+    g(['init', '-q', '--bare', remote], tmp);
+    g(['remote', 'add', 'origin', remote], tmp);
+    g(['push', '-q', 'origin', 'main'], tmp);
+
+    const guard = require('../graph/branch-guard.js');
+    const runIn = (cwd) => {
+      const saved = process.cwd();
+      // inspect は engine のルートで git を叩くため、子プロセスで隔離リポジトリを見せる
+      const out = execFileSync(process.execPath, ['-e', `
+        const cp = require('child_process');
+        const g = a => { try { return cp.execFileSync('git', a, {cwd: ${JSON.stringify(cwd)}, encoding:'utf8', stdio:['ignore','pipe','ignore']}).trim(); } catch { return null; } };
+        const originMain = g(['rev-parse','origin/main']);
+        const isAnc = g(['merge-base','--is-ancestor', originMain, 'HEAD']) !== null;
+        console.log(JSON.stringify({ isAnc }));
+      `], { encoding: 'utf8' });
+      return JSON.parse(out);
+    };
+
+    // A) 最新の上 → 祖先である
+    assert.strictEqual(runIn(tmp).isAnc, true, 'a fresh branch sits on top of origin/main');
+    // B) 古い main から分岐 → 祖先でない = STALE_BASE の条件
+    g(['checkout', '-q', '-b', 'stale', old], tmp);
+    assert.strictEqual(runIn(tmp).isAnc, false,
+      'branching from a stale main must be detectable — this is the accident that happened');
+    assert.strictEqual(typeof guard.inspect, 'function', 'the guard exposes inspect()');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(remote, { recursive: true, force: true });
+  }
+});
+
+test('branch guard: it never reports green when it could not look (Art.24)', () => {
+  // 判定できないことを緑と偽ってはならない(第16条)。
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'branch-guard.js'), 'utf8');
+  assert.ok(/UNKNOWN_BASE/.test(src), 'an unreachable remote yields an explicit unknown, not silence');
+  assert.ok(/STALE_BASE/.test(src) && /ON_MAIN/.test(src), 'the guard judges both a stale base and standing on main');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

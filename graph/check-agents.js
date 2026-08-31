@@ -66,6 +66,26 @@ function requiredAgents(opts) {
   return [...referenceMap(opts).keys()].sort();
 }
 
+/**
+ * 無主の相 — どの枢機卿にも執行官にも属さないフェーズ (憲法 第23条)
+ *
+ * DAG に相を足すのは forge.js、統べる者を決めるのは clergy.js。二箇所ある以上、
+ * 片方だけ更新すれば **誰も審査しない相** が生まれる。実際 `prove` を新設した
+ * 直後がその状態だった。宙吊り参照と同じ病である — 名は在るが担い手が居ない。
+ */
+function ungovernedPhases() {
+  const governed = new Set();
+  for (const c of Object.values(clergy.COLLEGE || {})) for (const g of c.governs || []) governed.add(g);
+  for (const g of (clergy.TRIBUNAL && clergy.TRIBUNAL.governs) || []) governed.add(g);
+  const out = [];
+  for (const scale of Object.keys(forge.SCALES)) {
+    for (const t of forge.buildDag('probe', scale).tasks) {
+      if (!governed.has(t.id) && !out.some(o => o.phase === t.id)) out.push({ phase: t.id, scale });
+    }
+  }
+  return out;
+}
+
 function installedAgents(dir) {
   try {
     return new Set(fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
@@ -86,11 +106,15 @@ function check(agentsDir, opts) {
   const missing = need.filter(a => !have.has(a));
   // 宙吊り参照 = 欠けている司祭 × それを名指した出所
   const dangling = missing.map(a => ({ agent: a, namedBy: sources[a] }));
+  const ungoverned = ungovernedPhases();
   return {
-    ok: missing.length === 0, skipped: false, dir, need, sources, missing, dangling,
+    ok: missing.length === 0 && ungoverned.length === 0, skipped: false,
+    dir, need, sources, missing, dangling, ungoverned,
     note: missing.length
       ? `${missing.length} agent(s) named by the paradise do not exist`
-      : 'every named priest exists',
+      : (ungoverned.length
+          ? `${ungoverned.length} phase(s) belong to no cardinal and no tribunal`
+          : 'every named priest exists and every phase has a master'),
   };
 }
 
@@ -108,10 +132,15 @@ if (require.main === module) {
   else if (res.dangling.length) {
     for (const d of res.dangling) console.log(`  🔴 missing: ${d.agent}  ← named by ${d.namedBy.join(', ')}`);
   } else console.log('  ✓ all present');
+  if (!res.skipped) {
+    if (res.ungoverned && res.ungoverned.length) {
+      for (const u of res.ungoverned) console.log(`  🔴 ungoverned phase: ${u.phase}  (scale: ${u.scale}) — no cardinal, no tribunal`);
+    } else console.log('  ✓ every phase has a master');
+  }
   console.log('─────────────────────────────────');
   console.log(res.note);
   console.log('═════════════════════════════════');
   process.exit(res.ok ? 0 : 1);
 }
 
-module.exports = { check, requiredAgents, referenceMap, installedAgents, PSEUDO };
+module.exports = { check, requiredAgents, referenceMap, installedAgents, ungovernedPhases, PSEUDO };

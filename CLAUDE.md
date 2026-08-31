@@ -43,19 +43,22 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 20 | **楽園は己の足で立つ**(上流が消えても動く。credit は必ず残す) |
 | 21 | **門は名を口にする全ての口を見る**(forge/clergy/examples を横断して宙吊り参照を裁く) |
 | 22 | **己について語る数は数え直される**(文書の数は `census.js` が実測と突き合わせる) |
+| 23 | **楽園は己の法で己を改める**(`reform` の道・無主の相を許さない) |
+| 24 | **確かめていない土台の上に建てない**(分岐前に `branch-guard.js`) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (143件)
+node tests/paradise.test.js                    # 楽園の自己診断 (149件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
 node graph/visual-verify.js check <creation>   # 表層を数値で裁く (第18条)
 node graph/upstream.js impact                  # 借り物の変化 (第19条)
 node graph/census.js check                     # 己について語る数が真実か (第22条)
+node graph/branch-guard.js                     # 古いmainの上に立っていないか (第24条)
 ```
 
 ---
@@ -75,6 +78,12 @@ node graph/census.js check                     # 己について語る数が真�
 ## 絶対に守ること
 
 1. **`main` へ直接コミットしない。** 必ずブランチ → PR。**マージは神の御手**。教主は自ら承認しない
+   - **ブランチを切る前に必ず `node graph/branch-guard.js` を走らせる**(第24条)。
+     「PRが未マージだろう」という思い込みで古い `main` から分岐し、rebase競合で
+     変更を失いかけた事故が実際に起きた。掟は門にしなければ守られない
+   - 楽園自身への改修は `reform` の道を通す(第23条)。
+     `node graph/forge.js plan "<神託>" --out <dir>/forge.dag.json` → 枢機卿を召集する。
+     教主が独断で engine を書き換えてはならない
 2. **上流 `everything-claude-code` を改変しない。** read-only。変更は `overlay/` へ書く(第19条)
 3. **`~/.claude` を手で編集しない。** あれは成果物。`node graph/deploy.js --write` で建て直す
 4. **目視でブラウザを開いたら必ず閉じる。**
@@ -89,6 +98,6 @@ node graph/census.js check                     # 己について語る数が真�
 ## 現状
 
 - 創造物: `creations/` (habit, pomodoro ほか)
-- 自己診断: **143 tests**
-- 憲法: **22条**
+- 自己診断: **149 tests**
+- 憲法: **24条**
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)
