@@ -1,0 +1,69 @@
+{
+  "$comment": [
+    "overlay.json — 借り物の上に楽園が纏う意志 (憲法 第19条)",
+    "",
+    "everything-claude-code は read-only の素材である。ここに書かれた定義だけが",
+    "楽園の改変であり、~/.claude はこの定義から常に再生成できる。",
+    "手で ~/.claude を編集してはならない — 編集は必ずここへ書く。",
+    "",
+    "四つの関係:",
+    "  transform : 上流を素材として、規則で機械変換する。上流の変更は常に取り込み、",
+    "              その後に変換を再適用する。これは衝突ではない。",
+    "  replace   : 楽園独自版で完全に置き換える。上流の変更は通知するが採らない。",
+    "  own       : 上流に存在しない楽園固有のもの。上流と無関係。",
+    "  adopted   : 上流が削除したが楽園が使い続けるもの。拾った側の責任で持つ。"
+  ],
+
+  "version": 1,
+  "upstream": {
+    "name": "everything-claude-code",
+    "repo": "https://github.com/WorldFlowAI/everything-claude-code.git",
+    "license": "see upstream repository",
+    "path_env": "PARADISE_UPSTREAM",
+    "default_path": "~/Documents/workspace/everything-claude-code",
+    "readonly": true,
+    "$note": "上流のワークツリーは決して改変しない。fetch と読み取りのみ。"
+  },
+
+  "deploy_target": {
+    "path_env": "CLAUDE_HOME",
+    "default_path": "~/.claude",
+    "$note": "配備先は成果物であって原本ではない。いつ消えても再生成できること。"
+  },
+
+  "kinds": ["agents", "commands", "rules", "skills"],
+
+  "transform": {
+    "agents": {
+      "rule": "apply-models",
+      "engine": "graph/apply-models.js",
+      "reason": "憲法 第12条: 位階に応じたモデルを機械適用する。上流が本文を更新しても model/effort だけは楽園の規則が勝つ。9件すべてがこの関係にあり、乖離ではなく変換である。",
+      "$note": "上流の本文変更は常に採用し、その後 apply-models を再実行する。"
+    }
+  },
+
+  "replace": {
+    "commands/orchestrate.md": {
+      "reason": "楽園は conclave/forge で階層的に統べるため、上流の逐次オーケストレーションとは思想が異なる。",
+      "source": "overlay/commands/orchestrate.md"
+    }
+  },
+
+  "own": {
+    "commands": ["forge.md", "conclave.md", "graph.md"],
+    "agents": ["cardinal.md", "executor.md", "market-researcher.md", "requirements-analyst.md",
+               "self-critic.md", "creation-judge.md", "ux-reviewer.md"],
+    "$note": "楽園固有。overlay/ 配下に原本を持ち、上流の増減に影響されない。"
+  },
+
+  "adopted": {
+    "$note": "上流が削除したが楽園が使い続けるもの。`upstream.js adopt` が自動追従せず、ここへ退避させる。現時点では空。",
+    "files": []
+  },
+
+  "protected_hooks": {
+    "$note": "上流のフックファイルへ書き足すことは禁止。楽園のフックは settings.json の配列へ並べて足す (tools/wire-paradise-hooks.js)。",
+    "never_edit": ["scripts/hooks/*"],
+    "paradise_hooks": ["tools/hooks/paradise-session-start.js"]
+  }
+}

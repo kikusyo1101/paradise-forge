@@ -67,7 +67,7 @@ jobs:
 
       - name: 🧩 Engine integrity — 全エンジンが読み込めるか
         run: |
-          for m in graph-engine kg forge verdict critic orchestrator contract lessons clergy conclave synod export-state apply-models; do
+          for m in graph-engine kg forge verdict critic orchestrator contract lessons clergy conclave synod export-state apply-models identity visual-verify check-agents upstream deploy; do
             node -e "require('./graph/$m.js')" || { echo "::error::graph/$m.js failed to load"; exit 1; }
             echo "  ok $m"
           done
