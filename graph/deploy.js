@@ -31,6 +31,18 @@ const ROOT = path.resolve(__dirname, '..');
 const up = require('./upstream.js');
 
 function md5(p) { try { return crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'); } catch { return null; } }
+/**
+ * 中身の同一性は改行コードで判定しない。Windows と Linux を跨ぐと git の
+ * autocrlf で CRLF/LF が入れ替わり、内容が同じでも md5 は必ず食い違う。
+ * 「改行が違う」を乖離と呼ぶと、検査が環境差で誤警報を出し続け、やがて
+ * 誰も検査を見なくなる。見られない検査は無いのと同じである。
+ */
+function contentHash(p) {
+  try {
+    const raw = fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+    return crypto.createHash('md5').update(raw).digest('hex');
+  } catch { return null; }
+}
 function listMd(dir) {
   try { return fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch { return []; }
 }
@@ -98,7 +110,7 @@ function check() {
   const p = plan();
   const drift = [];
   for (const s of p.steps) {
-    const a = md5(s.src), b = md5(s.dst);
+    const a = contentHash(s.src), b = contentHash(s.dst);
     if (a === null) { drift.push({ ...s, why: 'source missing' }); continue; }
     if (b === null) { drift.push({ ...s, why: 'not deployed' }); continue; }
     if (a !== b) {

@@ -1301,6 +1301,23 @@ test('deploy: check skips cleanly where no harness is installed', () => {
   assert.ok(r.ok || r.drift.length > 0, 'a failure must name what drifted');
 });
 
+test('deploy: line endings alone are not drift, but real edits are', () => {
+  // Windows と Linux を跨ぐと autocrlf で改行が入れ替わる。それを乖離と
+  // 呼ぶ検査は環境差で鳴り続け、やがて誰も見なくなる。
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-eol-'));
+  const src = path.join(d, 'a.md'), dst = path.join(d, 'b.md');
+  fs.writeFileSync(src, 'line one\nline two\n');
+  fs.writeFileSync(dst, 'line one\r\nline two\r\n');
+  const same = require('crypto').createHash('md5').update(fs.readFileSync(src, 'utf8').replace(/\r\n/g, '\n')).digest('hex')
+             === require('crypto').createHash('md5').update(fs.readFileSync(dst, 'utf8').replace(/\r\n/g, '\n')).digest('hex');
+  assert.ok(same, 'CRLF and LF of the same content must compare equal');
+  fs.writeFileSync(dst, 'line one\r\nline two\r\n<!-- tampered -->\n');
+  const differs = require('crypto').createHash('md5').update(fs.readFileSync(src, 'utf8').replace(/\r\n/g, '\n')).digest('hex')
+               !== require('crypto').createHash('md5').update(fs.readFileSync(dst, 'utf8').replace(/\r\n/g, '\n')).digest('hex');
+  assert.ok(differs, 'an actual edit must still be caught');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
 test('deploy: paradise-owned files come from the repository, not from ~/.claude', () => {
   // 楽園固有のものが配備先にしか無いと、clone した環境で再現できない。
   const p = deploy.plan();
