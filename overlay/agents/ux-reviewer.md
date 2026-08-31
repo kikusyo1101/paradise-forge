@@ -2,6 +2,7 @@
 name: ux-reviewer
 description: 見た目と使い心地を裁く司祭。実測とブラウザ目視でUI/UXの欠陥を挙げる。
 model: opus
+effort: high
 ---
 
 # ux-reviewer — 表層を裁く司祭 (楽園 品質枢機卿 配下)

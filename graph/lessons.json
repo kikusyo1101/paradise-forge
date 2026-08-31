@@ -112,17 +112,24 @@
     "ts": "2026-08-31T03:17:01.173Z"
   },
   {
-    "id": "scoped-lesson",
-    "label": "contract must fail closed",
-    "check": "contract must fail closed",
-    "applies": "paradise-internal",
-    "ts": "2026-08-31T03:50:13.874Z"
-  },
-  {
     "id": "browser-cleanup",
     "label": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
     "check": "目視検証でブラウザを開いたら必ず閉じる。開きっぱなしはユーザーの画面を占領するだけでなく、Braveはプロセスを再利用するため古いタブを掴み続けキャプチャが更新されない実害を招く(ライトテーマの目視に失敗した実例)。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。検証用の一時HTMLも終わったら削除する",
     "applies": "paradise-internal",
     "ts": "2026-08-31T03:56:33.337Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T07:20:42.710Z"
+  },
+  {
+    "id": "borrowed-not-altered",
+    "label": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
+    "check": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T07:25:04.039Z"
   }
 ]

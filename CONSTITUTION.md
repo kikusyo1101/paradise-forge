@@ -156,6 +156,27 @@ way to change what "complete" means.
     accountable for is a domain that rots. A defect the user meets on first
     contact is not a minor defect.
 
+19. **What is borrowed is never altered; it is worn through a transform.** An
+    upstream project keeps moving, and a paradise that edits it directly will
+    one day be silently broken by a single `git pull`. This was not theory: a
+    fourteen-line paradise hook sat uncommitted inside the borrowed tree, one
+    checkout away from vanishing, and nine borrowed agents had been edited in
+    place. Four rules keep the boundary honest. (a) **The borrowed tree is
+    read-only** — fetched and read, never written; a paradise hook is placed
+    *alongside* an upstream hook in the settings array, never *inside* the
+    upstream file. (b) **Deployment is a product, not an original**: `~/.claude`
+    is rebuilt from upstream plus the overlay at any time, so drift stops being
+    a thing that accumulates and becomes a thing that is simply regenerated
+    away. (c) **Divergence has kinds, and each kind has an owner**: a
+    *transform* is re-applied after every adoption and is not a conflict at all;
+    a *replacement* means paradise wins but must still be shown what upstream
+    changed; what paradise *owns* lives in paradise's own repository. (d) **A
+    deletion upstream is never followed silently** — a file paradise depends on
+    that upstream drops is quarantined and adopted deliberately, because the
+    one who keeps a discarded thing owns it from then on. Adoption itself is a
+    judgment: the machine may fetch, classify and warn, but only a human may
+    say *take it*.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

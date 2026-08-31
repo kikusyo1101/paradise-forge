@@ -1225,6 +1225,88 @@ test('visual: the evidence plan demands every theme x width x state', () => {
   fs.rmSync(d, { recursive: true, force: true });
 });
 
+// ─── 借り物の統治 (憲法 第19条) ───
+const upstream = require('../graph/upstream.js');
+const deploy = require('../graph/deploy.js');
+
+test('upstream: the borrowed tree is treated as read-only', () => {
+  const st = upstream.status();
+  if (st.error) return; // 上流未配置の環境ではこの検査を行わない
+  assert.strictEqual(st.readonly, true, 'overlay.json must declare the upstream read-only');
+  assert.strictEqual(st.clean, true,
+    `the borrowed worktree must stay pristine — dirty: ${(st.dirty_files || []).join(', ')}`);
+});
+
+test('upstream: paradise code is never injected into a borrowed file', () => {
+  // 14行のフック注入が実際に未コミットで放置されていた。二度と起こさない。
+  const imp = upstream.impact();
+  const injected = (imp.reasons || []).filter(r => /injected into the borrowed file/.test(r));
+  assert.deepStrictEqual(injected, [], 'a paradise hook belongs beside an upstream hook, never inside it');
+});
+
+test('upstream: every divergence kind is declared in the overlay', () => {
+  const c = upstream.cfg();
+  assert.ok(c.transform && c.transform.agents, 'the model-policy transform over agents is declared');
+  assert.ok(c.replace && Object.keys(c.replace).length >= 1, 'replacements are declared, not implicit');
+  assert.ok(c.own && Array.isArray(c.own.commands) && c.own.commands.includes('forge.md'),
+    'paradise-owned commands are listed');
+  assert.ok(c.adopted && Array.isArray(c.adopted.files), 'an adoption list exists even when empty');
+});
+
+test('upstream: a transform is not a conflict — it is re-applied, not merged', () => {
+  const rel = upstream.relations(upstream.cfg());
+  const r = upstream.relationOf(rel, 'agents/architect.md');
+  assert.strictEqual(r.kind, 'transform',
+    'an upstream agent edited only by the model policy must be classified as a transform');
+  const own = upstream.relationOf(rel, 'commands/forge.md');
+  assert.strictEqual(own.kind, 'own', "paradise's own command must not be mistaken for upstream drift");
+  const rep = upstream.relationOf(rel, 'commands/orchestrate.md');
+  assert.strictEqual(rep.kind, 'replace', 'a replaced command is declared as such');
+});
+
+test('upstream: adopt refuses to run silently', () => {
+  // 既定は dry-run。機械が世界を変えるには人の承認が要る(三権分立)。
+  const r = upstream.adopt({});
+  assert.ok(r.dry_run || r.note, 'adopt without --yes must not change anything');
+  if (r.dry_run) assert.ok(Array.isArray(r.plan), 'a dry run must show the plan it would execute');
+});
+
+test('deploy: every deployed file has a declared source', () => {
+  const p = deploy.plan();
+  assert.ok(p.steps.length >= 10, 'the deployment plan covers the harness');
+  assert.deepStrictEqual(p.missing.map(m => m.src), [], 'no deployment step may point at a missing source');
+  for (const s of p.steps) {
+    assert.ok(['plain', 'replace', 'own', 'adopted'].includes(s.relation),
+      `every file carries a declared relation (${s.file} had "${s.relation}")`);
+  }
+});
+
+test('deploy: the deployed tree matches its declared sources', () => {
+  const r = deploy.check();
+  if (!r.checked) return;
+  assert.deepStrictEqual(r.drift.map(d => `${d.kind}/${d.file}: ${d.why}`), [],
+    '~/.claude is a product — a difference here means someone edited the product instead of the source');
+});
+
+test('deploy: paradise-owned files come from the repository, not from ~/.claude', () => {
+  // 楽園固有のものが配備先にしか無いと、clone した環境で再現できない。
+  const p = deploy.plan();
+  const owned = p.steps.filter(s => s.relation === 'own');
+  assert.ok(owned.length >= 8, 'paradise owns its priests and commands');
+  for (const s of owned) {
+    assert.ok(s.src.includes('overlay'), `${s.file} must originate from overlay/, not from the deploy target`);
+    assert.ok(fs.existsSync(s.src), `${s.file} must exist in the repository`);
+  }
+});
+
+test('the paradise session hook lives outside the borrowed tree', () => {
+  const hookPath = path.join(__dirname, '..', 'tools', 'hooks', 'paradise-session-start.js');
+  assert.ok(fs.existsSync(hookPath), 'paradise keeps its own hook file');
+  const src = fs.readFileSync(hookPath, 'utf8');
+  assert.ok(/PARADISE_ROOT/.test(src), 'the hook resolves its root from the environment, not a hardcoded path');
+  assert.ok(/fail-open|catch/.test(src), 'a memory hook must never block a session');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
