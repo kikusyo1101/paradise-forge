@@ -31,17 +31,27 @@ hilyfux のgit-native memory、LangGraph のtyped state graph）を吸収して�
                     └─────────────────────────────────────────┘
 ```
 
-### ① ハーネスエンジニアリング — `~/.claude`
-`everything-claude-code` を素材として纏う。**上流は read-only**（憲法 第19条）。
+### ① ハーネスエンジニアリング — 楽園は独立している（憲法 第20条）
 
-**`~/.claude` は原本ではなく成果物**である。上流 + `overlay/` から常に再生成できる。
+**上流 `everything-claude-code` の全資産を `overlay/vendor/` に取り込んだ。**
+上流をマシンから消しても、楽園は鍛造し、裁き、出荷する。それが独立である。
+
+```bash
+node graph/vendor.js verify      # 独立が保たれているか（外を指す道が無いか）
+node graph/vendor.js status      # 取り込んだ資産の内訳
+node graph/vendor.js wire --write # settings.json のフックを vendor 基準へ
+node graph/vendor.js refresh --yes # 上流が在れば取り込み直す（人の承認が要る）
+```
+
+取り込んだもの（62ファイル / MIT・出自は `NOTICE.md`）:
+`agents 9` / `commands 15` / `skills 14` / `rules 8` / `hooks 5` / `scripts 8` / `contexts 3`
+
+**`~/.claude` は原本ではなく成果物**である。vendor + `overlay/` から常に再生成できる。
 手で `~/.claude` を編集しない — 編集は `overlay/` へ書く。
 
 ```bash
-node graph/upstream.js status    # 借り物との関係を見る
-node graph/upstream.js impact    # 未取り込み変更の影響を裁定 (SAFE/REVIEW/BLOCK)
-node graph/upstream.js adopt     # dry-run。--yes --force で承認取り込み
-node graph/deploy.js --write     # 上流 + overlay から ~/.claude を建て直す
+node graph/upstream.js impact    # 上流が在れば差分を裁定、無ければ黙る
+node graph/deploy.js --write     # vendor + overlay から ~/.claude を建て直す
 node graph/deploy.js check       # 配備物が定義と一致しているか (CI用)
 node graph/check-agents.js       # forge.js が名指しする司祭が実在するか
 ```
@@ -55,9 +65,9 @@ node graph/check-agents.js       # forge.js が名指しする司祭が実在す
 | **own** | `/forge` `/conclave` `/graph`、司祭7名 | 楽園固有。`overlay/` が原本 |
 | **adopted** | （現在なし） | 上流が削除したが楽園が拾ったもの |
 
-- **上流の削除に自動追従しない。** 捨てられたものを拾う判断は拾う側の責任
+- **独立は決別ではない。** 上流が在るときだけ見に行き、無ければ黙る
 - **取り込みは人の承認を要する。** cron（毎朝9時）は fetch と影響報告まで
-- **楽園のフックは上流本体へ注入しない。** `tools/wire-paradise-hooks.js` で settings.json の配列へ**並べて**足す
+- **借りたものは必ず credit する。** 出自・コミット・ライセンスは `NOTICE.md`
 - **commands (15)**: `/plan` `/tdd` `/verify` `/code-review` `/build-fix` `/refactor-clean` `/learn` `/checkpoint` `/eval` `/orchestrate` … + **`/graph`**（新規・楽園の核）
 - **skills (12)**, **rules (8)**, **hooks (14)** — settings.json に6ライフサイクルイベントで統合
 

@@ -1400,6 +1400,71 @@ test('kg snapshot carries no test residue into the real memory', () => {
     'nodes of type "t" are test fixtures — they must never reach a real session');
 });
 
+// ─── 独立 (憲法 第20条) ───
+const vendor = require('../graph/vendor.js');
+
+test('independence: paradise carries every asset it needs', () => {
+  const st = vendor.status();
+  assert.ok(st.present, 'overlay/vendor must exist in the repository');
+  assert.ok(st.total >= 50, `paradise carries its harness (got ${st.total} files)`);
+  for (const k of ['agents', 'commands', 'skills', 'rules', 'hooks', 'scripts']) {
+    assert.ok(st.kinds[k] > 0, `${k} must be vendored — without it paradise is a guest, not a house`);
+  }
+  assert.strictEqual(st.self_sufficient, true, 'the hook scripts themselves must be carried, not merely referenced');
+});
+
+test('independence: nothing points back into a tree paradise does not own', () => {
+  // 配備物・設定・フックのどれかが上流の絶対パスを指していれば、それは
+  // まだ借り物に紐付いている。上流を消した瞬間に壊れる。
+  const r = vendor.verify();
+  assert.deepStrictEqual(r.findings, [], 'no path may lead back to the borrowed tree');
+});
+
+test('independence: the vendored hooks resolve to files that actually exist', () => {
+  const hooks = vendor.resolveHooks();
+  if (!hooks) return; // vendor未導入の環境
+  const raw = JSON.stringify(hooks);
+  assert.ok(!/everything-claude-code/.test(raw),
+    'resolved hooks must not name the upstream directory');
+  assert.ok(!/\$\{CLAUDE_PLUGIN_ROOT\}/.test(raw), 'the plugin-root placeholder must be resolved');
+  // 実体が在ること。参照だけ直しても中身が無ければ独立していない。
+  for (const m of raw.matchAll(/\\"([^"\\]*\.js)\\"/g)) {
+    const p = m[1];
+    if (!p.includes('vendor')) continue;
+    assert.ok(fs.existsSync(p), `a vendored hook script must exist on disk: ${p}`);
+  }
+});
+
+test('independence: upstream absence is not an error once paradise is vendored', () => {
+  // 独立したのだから、上流が居ないのは異常ではない。BLOCK を出すのは誤り。
+  const upstreamMod = require('../graph/upstream.js');
+  const st = upstreamMod.status();
+  const imp = upstreamMod.impact();
+  if (st.error) {
+    assert.notStrictEqual(imp.verdict, 'BLOCK',
+      'a missing upstream must not block a paradise that carries its own assets');
+  } else {
+    assert.ok(['SAFE', 'REVIEW', 'BLOCK'].includes(imp.verdict), 'a present upstream is still judged');
+  }
+});
+
+test('independence: refresh never copies without a human yes', () => {
+  const r = vendor.refresh({});
+  assert.ok(r.dry_run || r.skipped, 'refresh must not modify the vendored assets on its own');
+});
+
+test('independence: what was borrowed is credited', () => {
+  // 自分の足で立つことは、担がれた事実を無かったことにすることではない。
+  const p = path.join(__dirname, '..', 'NOTICE.md');
+  assert.ok(fs.existsSync(p), 'NOTICE.md must record the origin of adopted assets');
+  const src = fs.readFileSync(p, 'utf8');
+  assert.ok(/everything-claude-code/.test(src), 'the source project is named');
+  assert.ok(/MIT/.test(src), 'the licence is stated');
+  assert.ok(/[0-9a-f]{40}/.test(src), 'the exact adopted commit is recorded');
+  assert.ok(/LICENSE.*存在しない|LICENSE.*不在/.test(src),
+    'the absence of an upstream LICENSE file is recorded honestly, not glossed over');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
