@@ -34,6 +34,10 @@ hilyfux のgit-native memory、LangGraph のtyped state graph）を吸収して�
 ### ① ハーネスエンジニアリング — `~/.claude`
 `everything-claude-code` を丸ごと配線済み。
 - **agents (9)**: planner, architect, code-reviewer, security-reviewer, tdd-guide, build-error-resolver, refactor-cleaner, doc-updater, e2e-runner
+- **楽園が追加する司祭**: `agents/ux-reviewer.md`（表層を裁く。**リポジトリ同梱**なので
+  `cp agents/*.md ~/.claude/agents/` で配置する）
+- **実在検証**: `node graph/check-agents.js` — `forge.js` が名指しする司祭が
+  `~/.claude/agents/` に実在するか確かめる。宙吊り参照を作らないための門
 - **commands (15)**: `/plan` `/tdd` `/verify` `/code-review` `/build-fix` `/refactor-clean` `/learn` `/checkpoint` `/eval` `/orchestrate` … + **`/graph`**（新規・楽園の核）
 - **skills (12)**, **rules (8)**, **hooks (14)** — settings.json に6ライフサイクルイベントで統合
 
@@ -150,10 +154,12 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定 |
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
+| `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
+| `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
-| `CONSTITUTION.md` | **楽園憲法 11条**（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy…） |
+| `CONSTITUTION.md` | **楽園憲法 18条**（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
-| agents | market-researcher（調査）・requirements-analyst（仕様）・self-critic（批評）・creation-judge（裁き） |
+| agents | market-researcher（調査）・requirements-analyst（仕様）・**ux-reviewer（表層の裁き）**・self-critic（批評）・creation-judge（裁き） |
 
 **自己改善ループ（Self-Refine + Reflexion）:** reflect フェーズが verdict の前に
 創造物を敵対的監査し、欠陥があれば REWORK。見逃した欠陥は lesson として知識グラフに
