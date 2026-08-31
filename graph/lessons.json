@@ -145,5 +145,19 @@
     "check": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
     "applies": "paradise-internal",
     "ts": "2026-08-31T08:30:43.036Z"
+  },
+  {
+    "id": "art21-every-mouth",
+    "label": "門は名を口にする全ての口を見よ",
+    "check": "check-agents が forge.js だけを見て clergy.js と examples の宙吊り参照を見逃した。名を跨いで書ける場所を全て列挙し、誰が名指したかまで報告せよ",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T08:43:53.609Z"
+  },
+  {
+    "id": "art22-count-what-you-claim",
+    "label": "己について語る数は数え直せ",
+    "check": "文書の数(テスト数・条数・vendor内訳)は黙って腐る。census.js が実測と突き合わせ、ずれれば門が落ちる",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T08:43:53.649Z"
   }
 ]

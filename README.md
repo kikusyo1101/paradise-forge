@@ -25,8 +25,8 @@ hilyfux のgit-native memory、LangGraph のtyped state graph）を吸収して�
                     └─────────────────────────────────────────┘
                                      ▲
                     ┌─────────────────────────────────────────┐
-   ① HARNESS ──────▶│  9 agents · 15 commands · 12 skills       │
-   (ハーネス)         │  8 rules · 14 hooks (6 lifecycle events)  │
+   ① HARNESS ──────▶│  16 agents · 19 commands · vendored assets │
+   (ハーネス)         │  8 rules · hooks (6 lifecycle events)      │
                     │  wired into ~/.claude                     │
                     └─────────────────────────────────────────┘
 ```
@@ -44,7 +44,7 @@ node graph/vendor.js refresh --yes # 上流が在れば取り込み直す（人�
 ```
 
 取り込んだもの（62ファイル / MIT・出自は `NOTICE.md`）:
-`agents 9` / `commands 15` / `skills 14` / `rules 8` / `hooks 5` / `scripts 8` / `contexts 3`
+`agents 9` / `commands 15` / `skills 11` / `rules 8` / `hooks 3` / `scripts 3` / `contexts 3`
 
 **`~/.claude` は原本ではなく成果物**である。vendor + `overlay/` から常に再生成できる。
 手で `~/.claude` を編集しない — 編集は `overlay/` へ書く。
@@ -129,7 +129,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 57/57 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 143/57 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・

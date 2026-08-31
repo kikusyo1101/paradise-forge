@@ -193,6 +193,29 @@ way to change what "complete" means.
     an upstream `LICENSE` file was absent are all recorded in `NOTICE.md`.
     Standing on your own feet does not mean pretending you were never carried.
 
+21. **A gate must watch every mouth that speaks the name.** A dangling reference
+    is not created by the file the gate happens to read; it is created by any
+    file allowed to *name* a thing that lives somewhere else. When the check for
+    missing priests read only `forge.js`, a priest named `frontend` — which had
+    never existed — survived untouched in `clergy.js` and in two shipped example
+    DAGs, and the gate reported green the whole time. A gate scoped to one
+    speaker is not coverage; it is a blind spot wearing a green light. Therefore:
+    (a) enumerate **every** place a cross-boundary name may be written and make
+    the check read all of them; (b) report **who named it**, not merely that it
+    is missing — a finding you cannot trace is a finding you cannot fix; and
+    (c) when a new mouth is opened (a new registry, a new example, a new config),
+    the gate is widened in the same change that opens it.
+
+22. **A number the paradise states about itself must be countable, and counted.**
+    Prose rots in silence. "137 tests", "20 articles", "9 vendored agents" — each
+    is an assertion about the world that nothing re-verifies, so it drifts the
+    moment the world moves and no build ever fails. Seven such claims were false
+    at once: the test count was eighty behind, the article count one behind, three
+    vendored inventories simply wrong. Therefore: every number the paradise
+    publishes about itself is **measured from the artifact** by `census.js` and
+    compared against the documents; a stale number is a failing gate, not a typo.
+    If a thing cannot be counted, it must not be claimed.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

@@ -1465,6 +1465,82 @@ test('independence: what was borrowed is credited', () => {
     'the absence of an upstream LICENSE file is recorded honestly, not glossed over');
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第21条 — 門は名を口にする全ての口を見る
+// ══════════════════════════════════════════════════════════════════════
+
+test('reference gate: every mouth that names a priest is watched (Art.21)', () => {
+  const ca = require('../graph/check-agents.js');
+  const map = ca.referenceMap();
+  const sources = new Set();
+  for (const s of map.values()) for (const one of s) sources.add(one.split(':')[0].split('/')[0]);
+  // forge.js だけを見る門は盲点だった。三つの口すべてを読むこと。
+  assert.ok([...sources].some(s => s === 'forge.js'), 'forge.js is read');
+  assert.ok([...sources].some(s => s === 'clergy.js'), 'clergy.js is read — it names priests too');
+  assert.ok([...sources].some(s => s === 'examples'), 'shipped example DAGs are read');
+});
+
+test('reference gate: a dangling name is caught AND traced to who named it (Art.21)', () => {
+  // 門を、わざと壊して試す。実在しない司祭を名指す見本DAGを作って気づくか。
+  const ca = require('../graph/check-agents.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ex-'));
+  fs.writeFileSync(path.join(tmp, 'ghost.dag.json'), JSON.stringify({
+    tasks: [{ id: 'x', agent: 'nonexistent-ghost-priest', goal: 'g' }],
+  }));
+  const agentsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ag-'));
+  for (const a of ca.requiredAgents({ examplesDir: path.join(__dirname, '..', 'graph', 'examples') })) {
+    fs.writeFileSync(path.join(agentsDir, `${a}.md`), '# stub');
+  }
+  const res = ca.check(agentsDir, { examplesDir: tmp });
+  assert.strictEqual(res.ok, false, 'a dangling reference must fail the gate');
+  assert.ok(res.missing.includes('nonexistent-ghost-priest'), 'the missing priest is named');
+  const d = res.dangling.find(x => x.agent === 'nonexistent-ghost-priest');
+  assert.ok(d && d.namedBy.some(s => s.includes('ghost.dag.json')),
+    'the gate reports WHO named it — a finding you cannot trace you cannot fix');
+  fs.rmSync(tmp, { recursive: true, force: true });
+  fs.rmSync(agentsDir, { recursive: true, force: true });
+});
+
+test('reference gate: a healthy paradise passes it (no false alarm)', () => {
+  const ca = require('../graph/check-agents.js');
+  const res = ca.check();
+  assert.ok(res.ok, `every named priest must exist: missing ${JSON.stringify(res.missing)}`);
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第22条 — 己について語る数は、数えられ、突き合わされる
+// ══════════════════════════════════════════════════════════════════════
+
+test('census: the paradise measures itself from the artifacts, not from prose (Art.22)', () => {
+  const census = require('../graph/census.js');
+  const c = census.census({ runTests: false });   // 自己テストの中で自己テストは呼ばない
+  assert.ok(c.articles >= 22, `constitution must have >= 22 articles, measured ${c.articles}`);
+  assert.ok(c.engines > 0, 'engines are counted from disk');
+  assert.ok(c.vendorFiles > 0, 'vendored files are counted from disk');
+});
+
+test('census: a stale number in the documents is a failing gate (Art.22)', () => {
+  // 門を、わざと壊して試す。腐った数を仕込んで、名指しで捕らえるか。
+  const census = require('../graph/census.js');
+  const c = census.census({ runTests: false });
+  const claimsList = census.claims(c);
+  const artClaim = claimsList.find(x => /憲法条数/.test(x.label));
+  assert.ok(artClaim, 'the article count is among the claims that get verified');
+  const claudeMd = fs.readFileSync(path.join(__dirname, '..', 'CLAUDE.md'), 'utf8');
+  const m = claudeMd.match(artClaim.re);
+  assert.ok(m, 'the claim is actually present in CLAUDE.md — a claim that vanished is not verified');
+  assert.strictEqual(Number(m[1]), c.articles,
+    'the number CLAUDE.md states must equal the number measured from CONSTITUTION.md');
+});
+
+test('census: every number the paradise currently claims is true (Art.22)', () => {
+  const census = require('../graph/census.js');
+  const res = census.check({ runTests: false });
+  const stale = res.findings.filter(f => f.kind === 'stale');
+  assert.strictEqual(stale.length, 0,
+    `stale self-claims: ${stale.map(f => `${f.label} says ${f.claimed} but is ${f.actual}`).join('; ')}`);
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T08:30:47.327Z",
+  "generated": "2026-08-31T08:43:53.729Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 53,
+    "nodeCount": 55,
     "edgeCount": 33,
     "nodes": [
       {
@@ -446,6 +446,18 @@
         "type": "lesson",
         "label": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
         "degree": 0
+      },
+      {
+        "id": "art21-every-mouth",
+        "type": "lesson",
+        "label": "門は名を口にする全ての口を見よ",
+        "degree": 0
+      },
+      {
+        "id": "art22-count-what-you-claim",
+        "type": "lesson",
+        "label": "己について語る数は数え直せ",
+        "degree": 0
       }
     ],
     "edges": [
@@ -622,7 +634,7 @@
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 21
+      "lesson": 23
     }
   },
   "lessons": [
@@ -730,6 +742,16 @@
       "id": "paradise-independence",
       "label": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする",
       "check": "楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする|applies:paradise-internal"
+    },
+    {
+      "id": "art21-every-mouth",
+      "label": "門は名を口にする全ての口を見よ",
+      "check": "check-agents が forge.js だけを見て clergy.js と examples の宙吊り参照を見逃した。名を跨いで書ける場所を全て列挙し、誰が名指したかまで報告せよ|applies:paradise-internal"
+    },
+    {
+      "id": "art22-count-what-you-claim",
+      "label": "己について語る数は数え直せ",
+      "check": "文書の数(テスト数・条数・vendor内訳)は黙って腐る。census.js が実測と突き合わせ、ずれれば門が落ちる|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -847,8 +869,7 @@
           "identity"
         ],
         "priests": [
-          "architect",
-          "frontend"
+          "architect"
         ],
         "believers": [
           "data-modeler",
@@ -866,7 +887,6 @@
         ],
         "priests": [
           "architect",
-          "frontend",
           "tdd-guide"
         ],
         "believers": [

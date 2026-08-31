@@ -3,7 +3,7 @@
   "tasks": [
     { "id": "plan",     "agent": "planner",          "goal": "Decompose the calculator app into components" },
     { "id": "backend",  "agent": "architect",        "goal": "Build Python uv backend for math ops", "deps": ["plan"] },
-    { "id": "frontend", "agent": "frontend",         "goal": "Build NextJS/Tailwind UI",             "deps": ["plan"] },
+    { "id": "frontend", "agent": "architect",         "goal": "Build NextJS/Tailwind UI",             "deps": ["plan"] },
     { "id": "tests",    "agent": "tdd-guide",        "goal": "Write tests for backend + frontend",   "deps": ["backend", "frontend"] },
     { "id": "review",   "agent": "code-reviewer",    "goal": "Review the whole implementation",      "deps": ["tests"] },
     { "id": "security", "agent": "security-reviewer", "goal": "Security scan the codebase",          "deps": ["backend"] },

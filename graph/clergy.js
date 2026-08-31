@@ -112,7 +112,7 @@ const COLLEGE = {
   'architecture': {
     domain: 'Architecture (設計)',
     governs: ['design', 'detail', 'ux', 'identity'],
-    priests: ['architect', 'frontend'],
+    priests: ['architect'],
     believers: ['data-modeler', 'interface-designer'],
     reviewClass: 'cardinal:requirements',
     pdca: 'plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise',
@@ -120,7 +120,7 @@ const COLLEGE = {
   'construction': {
     domain: 'Construction (建造)',
     governs: ['build', 'build-ui', 'tests'],
-    priests: ['architect', 'frontend', 'tdd-guide'],
+    priests: ['architect', 'tdd-guide'],
     believers: ['module-builder', 'test-writer'],
     reviewClass: 'cardinal:quality',
     pdca: 'plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green',
