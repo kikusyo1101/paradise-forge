@@ -409,6 +409,35 @@ way to change what "complete" means.
     repository only when it is published, released, and carries its own issues
     — then it is split out, deliberately, by `git subtree split`.
 
+31. **The seat that governs is the one nobody configured.** The paradise
+    declared its model policy by rank in `clergy.js` — pontiff, cardinal,
+    priest, believer, executor, each with a model and an effort. Measured, the
+    declaration reached only ranks 2 and below: `apply-models.js` writes the
+    frontmatter of `~/.claude/agents/*.md`, but the pontiff has no agent file.
+    Its seat is `~/.claude/settings.json`, and `deploy.js` never touched that
+    file. **`model` and `effortLevel` were both absent** — the rank that holds
+    the whole plan and renders every final decision ran on whatever the account
+    happened to default to, and the gate `apply-models.js verify` reported
+    `all agents match the rank policy` while the highest seat was ungoverned.
+    This is Article 25's defect turned upward: there, a rank that could not
+    dispatch was not a rank; here, a rank whose model nothing writes is not
+    governed. Therefore `apply-seat.js` writes the pontiff's seat, `deploy.js`
+    deploys it as step six, and `deploy.js check` counts it among the deployed
+    artifacts.
+
+    Two rules follow from measurement, not taste. First, **an effort that the
+    model does not accept is not a declaration.** Haiku 4.5 supports no effort
+    level at all, so `effort: low` on every believer was silently discarded;
+    the policy now carries `effort: null` for that rank and the tool *deletes*
+    the key rather than writing a lie. Second, **the unattended seat is not the
+    pontiff's seat.** Anthropic's own documentation states that in
+    non-interactive mode (`-p`) Claude Code never shows the usage-credit consent
+    prompt and bills without asking. A nightly cron running the pontiff's model
+    would therefore burn credits at 22:00 with nobody present to refuse.
+    `apply-seat.js` holds `UNATTENDED_SEAT` separately and pins it to Opus 5.
+    **Capability is assigned by rank; cost exposure is assigned by who is
+    watching.**
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

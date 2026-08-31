@@ -19,7 +19,8 @@
  *   2. replace を楽園版で上書き
  *   3. own を足す
  *   4. adopted (上流が消したが楽園が使う) を足す
- *   5. transform を再適用する (apply-models)
+ *   5. transform を再適用する (apply-models + apply-spawn)
+ *   6. 教主の座を settings.json に書く (apply-seat, 第31条)
  */
 const fs = require('fs');
 const os = require('os');
@@ -132,7 +133,13 @@ function check() {
       drift.push({ ...s, why: 'deployed copy differs from its source' });
     }
   }
-  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length, transforms: p.transforms };
+  // 教主の座も配備物である (第31条)。agents だけを見る検査は、最上位を見逃す。
+  const seat = require('./apply-seat.js').diff();
+  if (!seat.skipped && !seat.ok) {
+    drift.push({ kind: 'settings', file: 'settings.json', from: 'clergy(pontiff)',
+                 why: `教主の座が宣言と違う: 現状 ${seat.current.model ?? '(無統治)'}/${seat.current.effort ?? '(無統治)'} ⇒ ${seat.want.model}/${seat.want.effort}` });
+  }
+  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length + 1, transforms: p.transforms };
 }
 
 function write() {
@@ -165,7 +172,20 @@ function write() {
       } catch (e) { return { ok: false, deployed: done.length, error: `transform failed for ${kind} via ${engine}: ${e.message}` }; }
     }
   }
-  return { ok: true, deployed: done.length, transforms: applied, home: p.home };
+  // 6. 教主の座を配備する (第31条)
+  //
+  // agents だけを運んでいた頃、位階の宣言は L2〜L-1 にしか届いていなかった。
+  // 教主(L1)の座は settings.json にあり、deploy はそこを一度も見ていなかったので、
+  // 「教主 = <model>」という宣言は**どこにも書かれないまま**緑を出し続けた。
+  // 第25条(歩けぬ階層は階層ではない)と同じ形の欠陥である — 最上位だけが機構の外にいた。
+  let seat = null;
+  try {
+    const s = require('./apply-seat.js').apply();
+    seat = s.ok ? `${s.model}/${s.effort}${s.changed ? ' (更新)' : ''}` : `失敗: ${s.error}`;
+    if (!s.ok) return { ok: false, deployed: done.length, error: `pontiff seat: ${s.error}` };
+  } catch (e) { return { ok: false, deployed: done.length, error: `pontiff seat: ${e.message}` }; }
+
+  return { ok: true, deployed: done.length, transforms: applied, pontiff_seat: seat, home: p.home };
 }
 
 if (require.main === module) {

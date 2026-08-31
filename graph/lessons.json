@@ -262,5 +262,13 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T11:34:25.618Z"
+  },
+  {
+    "id": "pontiff-seat-ungoverned",
+    "label": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
+    "check": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:55:24.279Z"
   }
 ]

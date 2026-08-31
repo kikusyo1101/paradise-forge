@@ -51,13 +51,14 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 28 | **規範の教訓は grep で裁けない**(`kind:conduct` は提示のみ。常時赤の門は無視される) |
 | 29 | **生成物は真実の写しであって真実でない**(`derived.js`。生成物の中身を前提にしない) |
 | 30 | **作られたものと作るものは同居しない**(創造物は `paradise-creations` に住む。住所は `workspace.js` のみが知る) |
+| 31 | **統べる座こそ誰も設定していなかった**(教主の座は `apply-seat.js`。効かない effort は書かない。無人の座は Fable にしない) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (184件)
+node tests/paradise.test.js                    # 楽園の自己診断 (194件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
@@ -67,6 +68,7 @@ node graph/census.js check                     # 己について語る数が真�
 node graph/branch-guard.js                     # 古いmainの上に立っていないか (第24条)
 node graph/apply-spawn.js verify               # 下位を擁する者が起動の権能を持つか (第25条)
 node graph/workspace.js check                  # 楽園に創造物が紛れていないか (第30条)
+node graph/apply-seat.js verify                # 教主の座が宣言どおりか (第31条)
 ```
 
 ---
@@ -108,6 +110,8 @@ node graph/workspace.js check                  # 楽園に創造物が紛れて�
 
 - 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
   `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
-- 自己診断: **184 tests**
-- 憲法: **30条**
+- 自己診断: **194 tests**
+- 憲法: **31条**
+- 位階のモデル: 教主=`fable`/xhigh・枢機卿/執行官=`claude-opus-5`/xhigh・神官=`claude-sonnet-5`/high・
+  信徒=`haiku`(effort非対応)。無人cronのみ`claude-opus-5`固定(第31条)。`node graph/clergy.js models`
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)
