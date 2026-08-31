@@ -119,17 +119,24 @@
     "ts": "2026-08-31T03:56:33.337Z"
   },
   {
-    "id": "scoped-lesson",
-    "label": "contract must fail closed",
-    "check": "contract must fail closed",
-    "applies": "paradise-internal",
-    "ts": "2026-08-31T07:20:42.710Z"
-  },
-  {
     "id": "borrowed-not-altered",
     "label": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
     "check": "借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで",
     "applies": "paradise-internal",
     "ts": "2026-08-31T07:25:04.039Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T08:13:03.318Z"
+  },
+  {
+    "id": "session-briefing",
+    "label": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
+    "check": "セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T08:14:22.274Z"
   }
 ]
