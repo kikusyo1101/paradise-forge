@@ -116,6 +116,24 @@ way to change what "complete" means.
     `critic.js` that decides whether a duty was discharged must read the artifact,
     not merely match its filename.
 
+17. **A creation declares its look, or it inherits the machine's habits.** An
+    agent left to choose freely does not choose freely: it falls to the palette
+    it has seen most, and every creation ends up wearing the same developer-tool
+    skin. This was measured, not supposed — Paradise's own habit tracker shipped
+    in GitHub Primer dark (`#58a6ff` / `#3fb950` / `#0d1117`) with no one having
+    chosen it. The cause is not the agent's taste but its vocabulary, so the
+    remedy is structural. (a) **Visual research precedes visual work**, as
+    Art. 8 requires for function: an `identity.md` states the direction, its
+    palette and type, and — crucially — *which directions were rejected and why*.
+    (b) **The vocabulary must stay wide**: the catalogue keeps a non-technical
+    majority, and no single look may fill more than one candidate slot, because
+    three choices from one family are not a choice. (c) **Repetition is barred by
+    construction, not by hope**: adopted looks are recorded, and recent ones are
+    pushed down, so the same wish twice does not yield the same skin. (d) The
+    identity is a *reference*, never a dependency — no web font, no CDN, nothing
+    fetched. Structure lives in `design.md`; appearance lives in `identity.md`;
+    conflating the two names is itself a defect.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

@@ -108,7 +108,7 @@ const COLLEGE = {
   },
   'architecture': {
     domain: 'Architecture (設計)',
-    governs: ['design', 'detail', 'ux'],
+    governs: ['design', 'detail', 'ux', 'identity'],
     priests: ['architect', 'frontend'],
     believers: ['data-modeler', 'interface-designer'],
     reviewClass: 'cardinal:requirements',

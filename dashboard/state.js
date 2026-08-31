@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T00:07:18.692Z",
+  "generated": "2026-08-31T01:58:36.784Z",
   "pipeline": [
     {
       "id": "discover",
@@ -24,6 +24,14 @@ window.PARADISE_STATE = {
       ]
     },
     {
+      "id": "identity",
+      "agent": "architect",
+      "gate": false,
+      "deps": [
+        "specify"
+      ]
+    },
+    {
       "id": "detail",
       "agent": "architect",
       "gate": false,
@@ -36,7 +44,8 @@ window.PARADISE_STATE = {
       "agent": "architect",
       "gate": false,
       "deps": [
-        "detail"
+        "detail",
+        "identity"
       ]
     },
     {
@@ -99,7 +108,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 49,
+    "nodeCount": 50,
     "edgeCount": 33,
     "nodes": [
       {
@@ -367,6 +376,24 @@ window.PARADISE_STATE = {
         "degree": 0
       },
       {
+        "id": "evidence-by-substance",
+        "type": "lesson",
+        "label": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
+        "degree": 0
+      },
+      {
+        "id": "habit",
+        "type": "creation",
+        "label": "習慣トラッカー — 単一HTML/依存ゼロ/localStorage。ストリーク+skip+密度スコア+52週ヒートマップ。SHIP判定。AC32/32、テスト479、品質REWORK2回を経て承認",
+        "degree": 0
+      },
+      {
+        "id": "visual-identity-vocabulary",
+        "type": "lesson",
+        "label": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
+        "degree": 0
+      },
+      {
         "id": "lww",
         "type": "t",
         "label": "second",
@@ -382,18 +409,6 @@ window.PARADISE_STATE = {
         "id": "scoped-lesson",
         "type": "lesson",
         "label": "contract must fail closed",
-        "degree": 0
-      },
-      {
-        "id": "evidence-by-substance",
-        "type": "lesson",
-        "label": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
-        "degree": 0
-      },
-      {
-        "id": "habit",
-        "type": "creation",
-        "label": "習慣トラッカー — 単一HTML/依存ゼロ/localStorage。ストリーク+skip+密度スコア+52週ヒートマップ。SHIP判定。AC32/32、テスト479、品質REWORK2回を経て承認",
         "degree": 0
       }
     ],
@@ -571,7 +586,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 15,
+      "lesson": 16,
       "t": 2
     }
   },
@@ -642,14 +657,19 @@ window.PARADISE_STATE = {
       "check": "差し戻しはドメインを跨いで届かねばならない。ratify(--reject --from X) は X を所有するドメインを全体から探し、そのドメインの批准を取り消して再開させ、下流の成果物を破棄し、loop-guard の負債を誤った側に付ける。自domain内しか探さない実装は「差し戻したのに何も戻らない」偽の審判を生む|applies:paradise-internal"
     },
     {
-      "id": "scoped-lesson",
-      "label": "contract must fail closed",
-      "check": "contract must fail closed|applies:paradise-internal"
-    },
-    {
       "id": "evidence-by-substance",
       "label": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
       "check": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと|applies:paradise-internal"
+    },
+    {
+      "id": "visual-identity-vocabulary",
+      "label": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
+      "check": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)|applies:paradise-internal"
+    },
+    {
+      "id": "scoped-lesson",
+      "label": "contract must fail closed",
+      "check": "contract must fail closed|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -661,7 +681,7 @@ window.PARADISE_STATE = {
     },
     {
       "name": "habit",
-      "files": 12,
+      "files": 13,
       "verdict": "REWORK",
       "hasFindings": true
     },
@@ -763,7 +783,8 @@ window.PARADISE_STATE = {
         "governs": [
           "design",
           "detail",
-          "ux"
+          "ux",
+          "identity"
         ],
         "priests": [
           "architect",

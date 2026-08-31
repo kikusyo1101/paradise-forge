@@ -1,0 +1,4103 @@
+{
+  "version": 1,
+  "generated_from": "VoltAgent/awesome-design-md",
+  "license": "MIT",
+  "attribution": "Visual vocabulary distilled from VoltAgent/awesome-design-md (MIT). Format follows google-labs-code/design.md (Apache-2.0).",
+  "note": "This is an INDEX for choosing a visual direction, not a copy of the sources. Paradise creations stay dependency-free: nothing here is fetched at build time.",
+  "counts": {
+    "total": 74,
+    "by_family": {
+      "consumer_brand": 8,
+      "tech_saas": 40,
+      "enterprise": 6,
+      "finance": 7,
+      "automotive": 7,
+      "retro_hardware": 4,
+      "editorial": 2
+    }
+  },
+  "dropped_traits": [],
+  "entries": [
+    {
+      "id": "airbnb",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [
+        "warm-organic"
+      ],
+      "description": "A warm, generous consumer marketplace anchored on a clean white canvas and Airbnb Rausch (#ff385c), the single brand voltage that carries every primary CTA, search-button orb, and rating dot. Type runs Airbnb Cereal VF at modest weights — display sits at 22–28px in weight 500/600 rather than the heavy 700+ that fintech and enterprise systems use; the brand trusts photography and generous whitespac",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ff385c"
+        },
+        {
+          "role": "primary-active",
+          "value": "#e00b41"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#ffd1da"
+        },
+        {
+          "role": "primary-error-text",
+          "value": "#c13515"
+        },
+        {
+          "role": "primary-error-text-hover",
+          "value": "#b32505"
+        },
+        {
+          "role": "luxe",
+          "value": "#460479"
+        },
+        {
+          "role": "plus",
+          "value": "#92174d"
+        },
+        {
+          "role": "ink",
+          "value": "#222222"
+        },
+        {
+          "role": "body",
+          "value": "#3f3f3f"
+        },
+        {
+          "role": "muted",
+          "value": "#6a6a6a"
+        }
+      ],
+      "fonts": [
+        "'Airbnb Cereal VF'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/airbnb/DESIGN.md"
+    },
+    {
+      "id": "airtable",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "dark-canvas",
+        "soft-pastel"
+      ],
+      "description": "A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that punctuate long-scroll explainer pages. Primary actions use a near-black pill CTA; secondary actions sit in a white outlined button. Type runs Haas Grotesk in modest weights — never bold for its own sake.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#181d26"
+        },
+        {
+          "role": "primary-active",
+          "value": "#0d1218"
+        },
+        {
+          "role": "ink",
+          "value": "#181d26"
+        },
+        {
+          "role": "body",
+          "value": "#333840"
+        },
+        {
+          "role": "muted",
+          "value": "#41454d"
+        },
+        {
+          "role": "hairline",
+          "value": "#dddddd"
+        },
+        {
+          "role": "border-strong",
+          "value": "#9297a0"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface-soft",
+          "value": "#f8fafc"
+        },
+        {
+          "role": "surface-strong",
+          "value": "#e0e2e6"
+        }
+      ],
+      "fonts": [
+        "Haas Groot Disp",
+        "Haas",
+        "Inter Display"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/airtable/DESIGN.md"
+    },
+    {
+      "id": "apple",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "gradient-led",
+        "minimal",
+        "dark-canvas"
+      ],
+      "description": "A photography-first interface that turns marketing into a museum gallery. Edge-to-edge product tiles alternate light and dark canvases, framed by SF Pro Display headlines with negative letter-spacing and a single Action Blue (#0066cc) interactive color. UI chrome recedes so the product can speak — no decorative gradients, no shadows on chrome, only the one signature drop-shadow under product image",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0066cc"
+        },
+        {
+          "role": "primary-focus",
+          "value": "#0071e3"
+        },
+        {
+          "role": "primary-on-dark",
+          "value": "#2997ff"
+        },
+        {
+          "role": "ink",
+          "value": "#1d1d1f"
+        },
+        {
+          "role": "body",
+          "value": "#1d1d1f"
+        },
+        {
+          "role": "body-on-dark",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body-muted",
+          "value": "#cccccc"
+        },
+        {
+          "role": "ink-muted-80",
+          "value": "#333333"
+        },
+        {
+          "role": "ink-muted-48",
+          "value": "#7a7a7a"
+        },
+        {
+          "role": "divider-soft",
+          "value": "#f0f0f0"
+        }
+      ],
+      "fonts": [
+        "SF Pro Display",
+        "SF Pro Text"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/apple/DESIGN.md"
+    },
+    {
+      "id": "binance",
+      "family": "finance",
+      "format": "design.md",
+      "traits": [
+        "dark-canvas"
+      ],
+      "description": "A confident financial-platform interface anchored on a deep near-black canvas, where Binance's iconic yellow (#FCD535) carries every primary CTA, brand accent, and value-claim moment. Type runs Binance's custom BinanceNova / BinancePlex stack at modest weights — the system trusts size and yellow voltage over bold weight. Marketing and product surfaces default to the dark theme; transactional surfa",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#fcd535"
+        },
+        {
+          "role": "primary-active",
+          "value": "#f0b90b"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#3a3a1f"
+        },
+        {
+          "role": "ink",
+          "value": "#181a20"
+        },
+        {
+          "role": "body",
+          "value": "#eaecef"
+        },
+        {
+          "role": "body-on-light",
+          "value": "#181a20"
+        },
+        {
+          "role": "muted",
+          "value": "#707a8a"
+        },
+        {
+          "role": "muted-strong",
+          "value": "#929aa5"
+        },
+        {
+          "role": "hairline-on-light",
+          "value": "#eaecef"
+        },
+        {
+          "role": "hairline-on-dark",
+          "value": "#2b3139"
+        }
+      ],
+      "fonts": [
+        "BinanceNova",
+        "BinancePlex"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/binance/DESIGN.md"
+    },
+    {
+      "id": "bmw-m",
+      "family": "automotive",
+      "format": "design.md",
+      "traits": [
+        "motorsport",
+        "dark-canvas"
+      ],
+      "description": "A motorsport-engineering interface anchored on a near-black canvas with white BMW Type Next Latin display headlines in confident UPPERCASE. The brand carries no decorative voltage — its energy comes from full-bleed automotive photography (cars on tracks, driver-cockpit shots, carbon-fiber detail) and the iconic M tricolor stripe (light blue → dark blue → red) used sparingly as a brand signature on",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#bbbbbb"
+        },
+        {
+          "role": "body-strong",
+          "value": "#e6e6e6"
+        },
+        {
+          "role": "muted",
+          "value": "#7e7e7e"
+        },
+        {
+          "role": "hairline",
+          "value": "#3c3c3c"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#262626"
+        },
+        {
+          "role": "canvas",
+          "value": "#000000"
+        },
+        {
+          "role": "surface-card",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "surface-elevated",
+          "value": "#262626"
+        }
+      ],
+      "fonts": [
+        "BMWTypeNextLatin",
+        "BMWTypeNextLatin Light"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/bmw-m/DESIGN.md"
+    },
+    {
+      "id": "bmw",
+      "family": "automotive",
+      "format": "design.md",
+      "traits": [
+        "warm-organic",
+        "motorsport",
+        "dark-canvas"
+      ],
+      "description": "BMW's corporate site — distinct from BMW M's motorsport-bombastic variant, this is a measured and settled corporate-automotive interface. On a light (cream-tinted white) canvas, BMW corporate blue (#1c69d4) carries every primary CTA; dark navy hero bands frame model photography. BMW Type Next Latin sets the entire hierarchy on two weights — heavy 700 display and Light 300 body. Configuration and r",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#1c69d4"
+        },
+        {
+          "role": "primary-active",
+          "value": "#0653b6"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#d6d6d6"
+        },
+        {
+          "role": "ink",
+          "value": "#262626"
+        },
+        {
+          "role": "body",
+          "value": "#3c3c3c"
+        },
+        {
+          "role": "body-strong",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "muted",
+          "value": "#6b6b6b"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#9a9a9a"
+        },
+        {
+          "role": "hairline",
+          "value": "#e6e6e6"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#cccccc"
+        }
+      ],
+      "fonts": [
+        "'BMW Type Next Latin'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/bmw/DESIGN.md"
+    },
+    {
+      "id": "bugatti",
+      "family": "automotive",
+      "format": "design.md",
+      "traits": [
+        "terminal",
+        "luxury",
+        "minimal",
+        "dark-canvas"
+      ],
+      "description": "An austere luxury-automotive interface that uses near-pure black canvas, white uppercase letterspaced display, and full-bleed automotive photography as the only voltage. The system runs three custom Bugatti typefaces — Bugatti Display, Bugatti Text Regular, and Bugatti Monospace — and combines them at modest weights with wide tracking to feel European-engineered, hyper-minimal, and quietly expensi",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#cccccc"
+        },
+        {
+          "role": "body-strong",
+          "value": "#e6e6e6"
+        },
+        {
+          "role": "muted",
+          "value": "#999999"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#666666"
+        },
+        {
+          "role": "hairline",
+          "value": "#262626"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#3a3a3a"
+        },
+        {
+          "role": "canvas",
+          "value": "#000000"
+        },
+        {
+          "role": "surface-soft",
+          "value": "#0d0d0d"
+        }
+      ],
+      "fonts": [
+        "Bugatti Display",
+        "Bugatti Monospace",
+        "Bugatti Text Regular"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/bugatti/DESIGN.md"
+    },
+    {
+      "id": "cal",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "playful",
+        "dark-canvas",
+        "soft-pastel"
+      ],
+      "description": "A clean, calendar-software-first interface anchored on white canvas with black primary CTAs and custom Cal Sans display typography. The system reads as friendly modern SaaS — generous whitespace, soft-rounded cards (~12px), product UI fragments shown directly inside cards, and a dark navy footer that visually closes long-scroll pages. Brand voltage comes from the Cal Sans display headline (a custo",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#111111"
+        },
+        {
+          "role": "primary-active",
+          "value": "#242424"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#e5e7eb"
+        },
+        {
+          "role": "ink",
+          "value": "#111111"
+        },
+        {
+          "role": "body",
+          "value": "#374151"
+        },
+        {
+          "role": "muted",
+          "value": "#6b7280"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#898989"
+        },
+        {
+          "role": "hairline",
+          "value": "#e5e7eb"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#f3f4f6"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Cal Sans",
+        "Inter",
+        "JetBrains Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/cal/DESIGN.md"
+    },
+    {
+      "id": "claude",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "dark-canvas"
+      ],
+      "description": "A warm-canvas editorial interface for Anthropic's Claude product. The system anchors on a tinted cream canvas with serif display headlines, warm coral CTAs, and dark navy product surfaces (code editor mockups, model showcase cards). Brand voltage comes from the cream/coral pairing — deliberately warm and humanist where most AI brands use cool blue + slate. Type voice runs a slab-serif display (\"Co",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#cc785c"
+        },
+        {
+          "role": "primary-active",
+          "value": "#a9583e"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#e6dfd8"
+        },
+        {
+          "role": "ink",
+          "value": "#141413"
+        },
+        {
+          "role": "body",
+          "value": "#3d3d3a"
+        },
+        {
+          "role": "body-strong",
+          "value": "#252523"
+        },
+        {
+          "role": "muted",
+          "value": "#6c6a64"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#8e8b82"
+        },
+        {
+          "role": "hairline",
+          "value": "#e6dfd8"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#ebe6df"
+        }
+      ],
+      "fonts": [
+        "Copernicus",
+        "StyreneB",
+        "JetBrains Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/claude/DESIGN.md"
+    },
+    {
+      "id": "clay",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [
+        "playful",
+        "dark-canvas"
+      ],
+      "description": "A vibrant claymation-meets-data interface for Clay.com (GTM data-orchestration platform). Anchors on white canvas with dark-navy primary CTAs, custom rounded display type, and saturated single-color feature cards — hot pink, deep teal, lavender, peach, ochre — that punctuate long-scroll explainer pages. Brand voltage comes from 3D-rendered claymation illustrations (mountains, characters, mascots) ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "primary-active",
+          "value": "#1f1f1f"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#e5e5e5"
+        },
+        {
+          "role": "ink",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "body",
+          "value": "#3a3a3a"
+        },
+        {
+          "role": "body-strong",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "muted",
+          "value": "#6a6a6a"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#9a9a9a"
+        },
+        {
+          "role": "hairline",
+          "value": "#e5e5e5"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#f0f0f0"
+        }
+      ],
+      "fonts": [
+        "Plain Black",
+        "Inter"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/clay/DESIGN.md"
+    },
+    {
+      "id": "clickhouse",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "motorsport",
+        "dark-canvas"
+      ],
+      "description": "A high-performance database interface anchored on near-pure black canvas with electric yellow as the brand voltage. White typography in confident sans, yellow CTAs, and yellow-text stat numbers carry the brand voice across every page. Code blocks and product UI fragments embed directly in dark cards. The yellow + black pairing (and yellow used scarcely as accent) is the system's signature — brand ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#faff69"
+        },
+        {
+          "role": "primary-active",
+          "value": "#e6eb52"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#3a3a1f"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#cccccc"
+        },
+        {
+          "role": "body-strong",
+          "value": "#e6e6e6"
+        },
+        {
+          "role": "muted",
+          "value": "#888888"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#5a5a5a"
+        },
+        {
+          "role": "hairline",
+          "value": "#2a2a2a"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#3a3a3a"
+        }
+      ],
+      "fonts": [
+        "Inter",
+        "JetBrains Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/clickhouse/DESIGN.md"
+    },
+    {
+      "id": "cohere",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "brutalist",
+        "terminal",
+        "playful",
+        "soft-pastel"
+      ],
+      "description": "Cohere's 2026 web system is a controlled enterprise AI interface built from stark white editorial space, deep green-black product bands, soft mineral surfaces, rounded media cards, and a distinctive type split between monospaced-feeling display headlines and precise Unica77 UI text.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#17171c"
+        },
+        {
+          "role": "cohere-black",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#212121"
+        },
+        {
+          "role": "deep-green",
+          "value": "#003c33"
+        },
+        {
+          "role": "dark-navy",
+          "value": "#071829"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "soft-stone",
+          "value": "#eeece7"
+        },
+        {
+          "role": "pale-green",
+          "value": "#edfce9"
+        },
+        {
+          "role": "pale-blue",
+          "value": "#f1f5ff"
+        },
+        {
+          "role": "hairline",
+          "value": "#d9d9dd"
+        }
+      ],
+      "fonts": [
+        "CohereText",
+        "Unica77 Cohere Web",
+        "CohereMono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/cohere/DESIGN.md"
+    },
+    {
+      "id": "coinbase",
+      "family": "finance",
+      "format": "design.md",
+      "traits": [],
+      "description": "An institutional-grade crypto exchange whose marketing surfaces read like a quietly-confident financial-services brand. The base canvas is pure white; Coinbase Blue (`#0052ff`) is the single brand voltage, used scarcely on primary CTAs, signature glyphs, and inline accent moments. Type runs Coinbase's licensed CoinbaseDisplay (display) and CoinbaseSans (body) at modest weights — display sits at we",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0052ff"
+        },
+        {
+          "role": "primary-active",
+          "value": "#003ecc"
+        },
+        {
+          "role": "primary-disabled",
+          "value": "#a8b8cc"
+        },
+        {
+          "role": "ink",
+          "value": "#0a0b0d"
+        },
+        {
+          "role": "body",
+          "value": "#5b616e"
+        },
+        {
+          "role": "body-strong",
+          "value": "#0a0b0d"
+        },
+        {
+          "role": "muted",
+          "value": "#7c828a"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#a8acb3"
+        },
+        {
+          "role": "hairline",
+          "value": "#dee1e6"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#eef0f3"
+        }
+      ],
+      "fonts": [
+        "'Coinbase Display'",
+        "'Coinbase Sans'",
+        "'Coinbase Mono'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/coinbase/DESIGN.md"
+    },
+    {
+      "id": "composio",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "dark-canvas"
+      ],
+      "description": "A developer-tools brand for AI-agent tool integration whose marketing surfaces lean into a dark, technical aesthetic with a single deep-electric-blue voltage (`#0007cd`). The page floor is near-black (`#0f0f0f`); cards float above on subtle gray-tinted surfaces. abcDiatype carries display and body in a single sans family with weights 400-600. The brand's strongest visual signature is a four-pane t",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0007cd"
+        },
+        {
+          "role": "primary-active",
+          "value": "#0005a3"
+        },
+        {
+          "role": "primary-glow",
+          "value": "#1a26ff"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#a8a8a8"
+        },
+        {
+          "role": "body-strong",
+          "value": "#ffffff"
+        },
+        {
+          "role": "muted",
+          "value": "#888888"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#666666"
+        },
+        {
+          "role": "hairline",
+          "value": "#222222"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#1a1a1a"
+        }
+      ],
+      "fonts": [
+        "'abcDiatype'",
+        "'JetBrains Mono'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/composio/DESIGN.md"
+    },
+    {
+      "id": "cursor",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "dark-canvas"
+      ],
+      "description": "An AI-first code editor whose marketing site reads like a quietly-confident developer-tools brand with a warm-cream editorial canvas (`#f7f7f4`) instead of the typical dark IDE atmosphere. Near-black warm ink (`#26251e`) carries body and display alike — display sits at weight 400 with negative letter-spacing for a magazine feel rather than a bold tech voice. The single brand voltage is **Cursor Or",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#f54e00"
+        },
+        {
+          "role": "primary-active",
+          "value": "#d04200"
+        },
+        {
+          "role": "ink",
+          "value": "#26251e"
+        },
+        {
+          "role": "body",
+          "value": "#5a5852"
+        },
+        {
+          "role": "body-strong",
+          "value": "#26251e"
+        },
+        {
+          "role": "muted",
+          "value": "#807d72"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#a09c92"
+        },
+        {
+          "role": "hairline",
+          "value": "#e6e5e0"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#efeee8"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#cfcdc4"
+        }
+      ],
+      "fonts": [
+        "'CursorGothic'",
+        "'JetBrains Mono'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/cursor/DESIGN.md"
+    },
+    {
+      "id": "dell-1996",
+      "family": "retro_hardware",
+      "format": "design.md",
+      "traits": [],
+      "description": "An inspired interpretation of Dell.com's 1996 design language — a catalog-era enterprise web design built around a literal black page frame, vivid flat color-block \"ribbon cards\" tinted in sage, salmon, periwinkle, sky, peach and lime, chunky Helvetica-Black display titles, Times Roman body copy, and an entire visual vocabulary of pre-Photoshop hand-cut GIF stickers (NEW! bursts, award seals, beve",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#e91d2a"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "frame-ink",
+          "value": "#000000"
+        },
+        {
+          "role": "yellow-sticker",
+          "value": "#fcc20f"
+        },
+        {
+          "role": "purple-stripe",
+          "value": "#6a26a4"
+        },
+        {
+          "role": "link",
+          "value": "#0000ee"
+        },
+        {
+          "role": "tint-olive",
+          "value": "#8e8a25"
+        }
+      ],
+      "fonts": [
+        "Arial Black",
+        "Helvetica",
+        "Times New Roman"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/dell-1996/DESIGN.md"
+    },
+    {
+      "id": "elevenlabs",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "gradient-led",
+        "soft-pastel"
+      ],
+      "description": "A voice-AI brand whose marketing surfaces read like a quietly editorial print magazine. The base canvas is off-white (`#f5f5f5`) holding warm near-black ink (`#292524`); the brand voltage is photographic, not chromatic — soft pastel atmospheric gradient orbs (mint → peach → lavender → sky) drift through the page as the only \"color\" moments. Display runs Waldenburg Light at weight 300 — the editori",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#292524"
+        },
+        {
+          "role": "primary-active",
+          "value": "#0c0a09"
+        },
+        {
+          "role": "ink",
+          "value": "#0c0a09"
+        },
+        {
+          "role": "body",
+          "value": "#4e4e4e"
+        },
+        {
+          "role": "body-strong",
+          "value": "#292524"
+        },
+        {
+          "role": "muted",
+          "value": "#777169"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#a8a29e"
+        },
+        {
+          "role": "hairline",
+          "value": "#e7e5e4"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#f0efed"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#d6d3d1"
+        }
+      ],
+      "fonts": [
+        "'Waldenburg'",
+        "'Inter'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/elevenlabs/DESIGN.md"
+    },
+    {
+      "id": "expo",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "gradient-led",
+        "minimal",
+        "soft-pastel"
+      ],
+      "description": "A React Native developer-platform whose marketing site reads like a quietly-confident infrastructure brand. The base canvas is pure white with a soft sky-blue gradient atmospheric wash behind the hero; near-black ink (`#171717`) carries body and display alike. The single brand voltage is **pure black** (`#000000`) for primary CTAs — minimal and editorial-feeling, paired with a small blue text-link",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "primary-active",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "text-link",
+          "value": "#0d74ce"
+        },
+        {
+          "role": "text-link-secondary",
+          "value": "#476cff"
+        },
+        {
+          "role": "ink",
+          "value": "#171717"
+        },
+        {
+          "role": "body",
+          "value": "#60646c"
+        },
+        {
+          "role": "body-strong",
+          "value": "#171717"
+        },
+        {
+          "role": "muted",
+          "value": "#999999"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#cccccc"
+        },
+        {
+          "role": "hairline",
+          "value": "#f0f0f3"
+        }
+      ],
+      "fonts": [
+        "'Inter'",
+        "'JetBrains Mono'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/expo/DESIGN.md"
+    },
+    {
+      "id": "ferrari",
+      "family": "automotive",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "motorsport",
+        "luxury"
+      ],
+      "description": "A luxury-automotive brand whose marketing surfaces read as cinematic editorial. The base canvas is **near-black** (`#181818`) holding pure white display type; white-canvas bands appear only inside specific editorial contexts (preowned listings, pricing tables). The single brand voltage is **Rosso Corsa** (`#da291c`) — the iconic Ferrari racing red — used scarcely on primary CTAs, the Cavallino mar",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#da291c"
+        },
+        {
+          "role": "primary-active",
+          "value": "#b01e0a"
+        },
+        {
+          "role": "primary-hover",
+          "value": "#9d2211"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#969696"
+        },
+        {
+          "role": "body-strong",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body-on-light",
+          "value": "#181818"
+        },
+        {
+          "role": "muted",
+          "value": "#666666"
+        },
+        {
+          "role": "muted-soft",
+          "value": "#8f8f8f"
+        },
+        {
+          "role": "hairline",
+          "value": "#303030"
+        }
+      ],
+      "fonts": [
+        "'FerrariSans'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/ferrari/DESIGN.md"
+    },
+    {
+      "id": "figma",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "editorial-serif",
+        "warm-organic",
+        "soft-pastel"
+      ],
+      "description": "A confident black-and-white editorial frame interrupted by oversized, hand-cut pastel color blocks. The marketing canvas is rigorously monochrome — figmaSans variable type, pure white surfaces, pure black ink, pill-shaped CTAs — while each story section drops the page into a saturated lime, lavender, cream, mint, or pink panel that reads like a sticky note placed on a clean desk. The result is a d",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "inverse-canvas",
+          "value": "#000000"
+        },
+        {
+          "role": "inverse-ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "on-inverse-soft",
+          "value": "#ffffff"
+        },
+        {
+          "role": "hairline",
+          "value": "#e6e6e6"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#f1f1f1"
+        },
+        {
+          "role": "surface-soft",
+          "value": "#f7f7f5"
+        }
+      ],
+      "fonts": [
+        "figmaSans",
+        "figmaMono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/figma/DESIGN.md"
+    },
+    {
+      "id": "framer",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "gradient-led",
+        "dark-canvas"
+      ],
+      "description": "A confident dark-canvas builder marketing site that treats the page like a working artboard — pure black surfaces, white display type set in GT Walsheim Medium with aggressive negative tracking, and a single confident blue (#0099ff) reserved for hyperlinks and selection states. The page rhythm is broken by oversized vibrant gradient atmosphere panels — magenta, violet, orange spotlights — that act",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "on-primary",
+          "value": "#000000"
+        },
+        {
+          "role": "accent-blue",
+          "value": "#0099ff"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink-muted",
+          "value": "#999999"
+        },
+        {
+          "role": "canvas",
+          "value": "#090909"
+        },
+        {
+          "role": "surface-1",
+          "value": "#141414"
+        },
+        {
+          "role": "surface-2",
+          "value": "#1c1c1c"
+        },
+        {
+          "role": "hairline",
+          "value": "#262626"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#1a1a1a"
+        }
+      ],
+      "fonts": [
+        "GT Walsheim Framer Medium",
+        "GT Walsheim Medium",
+        "Inter",
+        "Inter Variable"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/framer/DESIGN.md"
+    },
+    {
+      "id": "hashicorp",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "An enterprise-infrastructure marketing canvas built around a near-black ground (#000000) and a system of per-product accent colors — Terraform purple, Vault yellow, Consul pink, Waypoint cyan, Vagrant blue — that act as identity tokens rather than decorative palette. Display type is hashicorpSans set in 600/700 with tight 1.17–1.21 line-heights; body type runs the same family at 500 weight with re",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "accent-blue",
+          "value": "#2b89ff"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink-muted",
+          "value": "#b2b6bd"
+        },
+        {
+          "role": "ink-subtle",
+          "value": "#656a76"
+        },
+        {
+          "role": "canvas",
+          "value": "#000000"
+        },
+        {
+          "role": "surface-1",
+          "value": "#15181e"
+        },
+        {
+          "role": "surface-2",
+          "value": "#1f232b"
+        },
+        {
+          "role": "surface-3",
+          "value": "#3b3d45"
+        }
+      ],
+      "fonts": [
+        "hashicorpSans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/hashicorp/DESIGN.md"
+    },
+    {
+      "id": "hp",
+      "family": "retro_hardware",
+      "format": "design.md",
+      "traits": [
+        "dark-canvas",
+        "soft-pastel",
+        "swiss-grid"
+      ],
+      "description": "An inspired interpretation of HP's design language — a white-paper enterprise-consumer system anchored by HP Electric Blue (`#024ad8`) as the lone signal CTA, near-black ink (`#1a1a1a`) for headlines, geometric Forma-DJR sans throughout, and angular blue-chevron decorations that nod to the HP wordmark's slashes. Cards round at 8–16px, photos sit in soft 16px frames, and dark navy slabs anchor the ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#024ad8"
+        },
+        {
+          "role": "primary-bright",
+          "value": "#296ef9"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#0e3191"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#c9e0fc"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "ink-deep",
+          "value": "#000000"
+        },
+        {
+          "role": "ink-soft",
+          "value": "#292929"
+        },
+        {
+          "role": "on-ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Forma DJR Micro"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/hp/DESIGN.md"
+    },
+    {
+      "id": "ibm",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [],
+      "description": "An enterprise-marketing canvas faithful to Carbon Design System: white surfaces, charcoal type, IBM Blue (#0f62fe) as the single confident accent, and a deliberately flat-square aesthetic where corners stay at 0–4px. Type runs IBM Plex Sans at light weight 300 for display sizes (a brand signature) and 400/600 for body and emphasis. Cards live as thin-bordered tiles with no shadow; sections separat",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0f62fe"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#161616"
+        },
+        {
+          "role": "ink-muted",
+          "value": "#525252"
+        },
+        {
+          "role": "ink-subtle",
+          "value": "#8c8c8c"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface-1",
+          "value": "#f4f4f4"
+        },
+        {
+          "role": "surface-2",
+          "value": "#e0e0e0"
+        },
+        {
+          "role": "inverse-canvas",
+          "value": "#161616"
+        },
+        {
+          "role": "inverse-surface-1",
+          "value": "#262626"
+        }
+      ],
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/ibm/DESIGN.md"
+    },
+    {
+      "id": "intercom",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "minimal",
+        "soft-pastel",
+        "swiss-grid"
+      ],
+      "description": "An editorial customer-service marketing canvas built around a soft cream-white ground, charcoal type set in Saans (Intercom's proprietary geometric sans), and a single confident Fin Orange (#ff5600) reserved for the Fin AI brand. Cards live as floating white tiles with thin hairline borders and minimal radii (8–16px). Display headlines run Saans at weight 500 with measured negative tracking. The s",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#111111"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#111111"
+        },
+        {
+          "role": "ink-muted",
+          "value": "#626260"
+        },
+        {
+          "role": "ink-subtle",
+          "value": "#7b7b78"
+        },
+        {
+          "role": "ink-tertiary",
+          "value": "#9c9fa5"
+        },
+        {
+          "role": "canvas",
+          "value": "#f5f1ec"
+        },
+        {
+          "role": "surface-1",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface-2",
+          "value": "#ebe7e1"
+        },
+        {
+          "role": "inverse-canvas",
+          "value": "#000000"
+        }
+      ],
+      "fonts": [
+        "Saans",
+        "SaansMono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/intercom/DESIGN.md"
+    },
+    {
+      "id": "kraken",
+      "family": "finance",
+      "format": "prose",
+      "traits": [],
+      "description": "Kraken's website is a clean, trustworthy crypto exchange that uses purple as its commanding brand color. The design operates on white backgrounds with Kraken Purple (`#7132f5`, `#5741d8`, `#5b1ecf`) creating a distinctive, professional crypto identity. The proprietary Kraken-Brand font handles display headings with bold (700) weight and negative tracking, while Kraken-Product (with IBM Plex Sans f",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#7132f5"
+        },
+        {
+          "role": "c2",
+          "value": "#5741d8"
+        },
+        {
+          "role": "c3",
+          "value": "#101114"
+        },
+        {
+          "role": "c4",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c5",
+          "value": "#5b1ecf"
+        },
+        {
+          "role": "c6",
+          "value": "#149e61"
+        },
+        {
+          "role": "c7",
+          "value": "#9497a9"
+        },
+        {
+          "role": "c8",
+          "value": "#026b3f"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/kraken/DESIGN.md"
+    },
+    {
+      "id": "lamborghini",
+      "family": "automotive",
+      "format": "prose",
+      "traits": [
+        "brutalist",
+        "dark-canvas"
+      ],
+      "description": "Lamborghini's website is a cathedral of darkness — a digital stage where jet-black surfaces stretch infinitely and every element emerges from the void like a machine under a spotlight. The page is almost entirely black. Not dark gray, not near-black — true, uncompromising black (`#000000`) that saturates the viewport and refuses to yield. Into this abyss, white type and Lamborghini Gold (`#FFC000`",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#000000"
+        },
+        {
+          "role": "c2",
+          "value": "#202020"
+        },
+        {
+          "role": "c3",
+          "value": "#ffc000"
+        },
+        {
+          "role": "c4",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c5",
+          "value": "#7d7d7d"
+        },
+        {
+          "role": "c6",
+          "value": "#3860be"
+        },
+        {
+          "role": "c7",
+          "value": "#181818"
+        },
+        {
+          "role": "c8",
+          "value": "#1eaedb"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/lamborghini/DESIGN.md"
+    },
+    {
+      "id": "linear.app",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "luxury",
+        "dark-canvas",
+        "soft-pastel"
+      ],
+      "description": "A near-black product-focused marketing canvas built around #010102 (the deepest dark surface of any tool in this collection), light gray text (#f7f8f8), and the signature Linear lavender-blue (#5e6ad2) used as the single chromatic accent. The system reads as software-craft documentation: dense, technical, and quietly luxurious. Display type is set in the Linear custom sans (SF Pro Display fallback",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#5e6ad2"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "primary-hover",
+          "value": "#828fff"
+        },
+        {
+          "role": "primary-focus",
+          "value": "#5e69d1"
+        },
+        {
+          "role": "ink",
+          "value": "#f7f8f8"
+        },
+        {
+          "role": "ink-muted",
+          "value": "#d0d6e0"
+        },
+        {
+          "role": "ink-subtle",
+          "value": "#8a8f98"
+        },
+        {
+          "role": "ink-tertiary",
+          "value": "#62666d"
+        },
+        {
+          "role": "canvas",
+          "value": "#010102"
+        },
+        {
+          "role": "surface-1",
+          "value": "#0f1011"
+        }
+      ],
+      "fonts": [
+        "Linear Display",
+        "Linear Text",
+        "Linear Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/linear.app/DESIGN.md"
+    },
+    {
+      "id": "lovable",
+      "family": "tech_saas",
+      "format": "prose",
+      "traits": [
+        "warm-organic",
+        "luxury",
+        "minimal"
+      ],
+      "description": "Lovable's website radiates warmth through restraint. The entire page sits on a creamy, parchment-toned background (`#f7f4ed`) that immediately separates it from the cold-white conventions of most developer tool sites. This isn't minimalism for minimalism's sake — it's a deliberate choice to feel approachable, almost analog, like a well-crafted notebook. The near-black text (`#1c1c1c`) against this",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#1c1c1c"
+        },
+        {
+          "role": "c2",
+          "value": "#eceae4"
+        },
+        {
+          "role": "c3",
+          "value": "#f7f4ed"
+        },
+        {
+          "role": "c4",
+          "value": "#5f5f5d"
+        },
+        {
+          "role": "c5",
+          "value": "#fcfbf8"
+        },
+        {
+          "role": "c6",
+          "value": "#3b82f6"
+        },
+        {
+          "role": "c7",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Camera Plain Variable"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/lovable/DESIGN.md"
+    },
+    {
+      "id": "mastercard",
+      "family": "finance",
+      "format": "prose",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "luxury",
+        "soft-pastel"
+      ],
+      "description": "Mastercard's experience reads like a warm, editorial magazine built from soft stone and signal orange. The canvas is a muted putty-cream (`#F3F0EE`) — not white, not gray, but a color that feels like the paper of a premium annual report. On top of that canvas, everything that matters is shaped like a stadium, a pill, or a perfect circle. The dominant visual gesture is the **oversized radius**: her",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#141413"
+        },
+        {
+          "role": "c2",
+          "value": "#f3f0ee"
+        },
+        {
+          "role": "c3",
+          "value": "#cf4500"
+        },
+        {
+          "role": "c4",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c5",
+          "value": "#f37338"
+        },
+        {
+          "role": "c6",
+          "value": "#eb001b"
+        },
+        {
+          "role": "c7",
+          "value": "#f79e1b"
+        },
+        {
+          "role": "c8",
+          "value": "#fcfbfa"
+        }
+      ],
+      "fonts": [
+        "MarkForMC"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/mastercard/DESIGN.md"
+    },
+    {
+      "id": "meta",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [
+        "brutalist"
+      ],
+      "description": "Meta's design system spans hardware commerce (Quest VR, Ray-Ban Meta AI glasses) and brand surfaces with a confident product-merchandising voice. The system pairs a stark white canvas with full-bleed photographic product cards, a confident Optimistic VF wordmark/headline face, dual-CTA hero patterns (black primary + outlined secondary), and a saturated cobalt blue (#0064E0) for in-product purchase",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0064e0"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#0457cb"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#0091ff"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink-button",
+          "value": "#000000"
+        },
+        {
+          "role": "on-ink-button",
+          "value": "#ffffff"
+        },
+        {
+          "role": "fb-blue",
+          "value": "#1876f2"
+        },
+        {
+          "role": "meta-link",
+          "value": "#385898"
+        },
+        {
+          "role": "oculus-purple",
+          "value": "#a121ce"
+        },
+        {
+          "role": "success",
+          "value": "#31a24c"
+        }
+      ],
+      "fonts": [
+        "Optimistic VF"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/meta/DESIGN.md"
+    },
+    {
+      "id": "minimax",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "brutalist",
+        "gradient-led",
+        "luxury"
+      ],
+      "description": "MiniMax presents itself as a premium AI infrastructure brand through a striking duality — bold black-pill CTAs and stark white canvas for marketing, paired with vibrant gradient product cards (orange-red, magenta-pink, purple, blue) that turn each model release into a distinctive visual identity. The system uses DM Sans across all surfaces, employs an oversized 80px hero display, anchors major act",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#181e25"
+        },
+        {
+          "role": "brand-coral",
+          "value": "#ff5530"
+        },
+        {
+          "role": "brand-magenta",
+          "value": "#ea5ec1"
+        },
+        {
+          "role": "brand-blue",
+          "value": "#1456f0"
+        },
+        {
+          "role": "brand-blue-mid",
+          "value": "#3b82f6"
+        },
+        {
+          "role": "brand-blue-deep",
+          "value": "#1d4ed8"
+        },
+        {
+          "role": "brand-blue-700",
+          "value": "#17437d"
+        },
+        {
+          "role": "brand-cyan",
+          "value": "#3daeff"
+        }
+      ],
+      "fonts": [
+        "DM Sans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/minimax/DESIGN.md"
+    },
+    {
+      "id": "mintlify",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "warm-organic",
+        "gradient-led",
+        "soft-pastel"
+      ],
+      "description": "Mintlify presents documentation infrastructure with a dual-mode aesthetic — atmospheric sky-gradient marketing heroes (cloud illustration backdrops, soft cream-to-blue washes) paired with dense developer-grade documentation surfaces. The system uses Inter for UI prose, Geist Mono for code, and a signature Mintlify green ({colors.brand-green}) reserved for accent CTAs and active states. Black-pill ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "brand-green",
+          "value": "#00d4a4"
+        },
+        {
+          "role": "brand-green-deep",
+          "value": "#00b48a"
+        },
+        {
+          "role": "brand-green-soft",
+          "value": "#7cebcb"
+        },
+        {
+          "role": "brand-tag",
+          "value": "#3772cf"
+        },
+        {
+          "role": "brand-warn",
+          "value": "#c37d0d"
+        },
+        {
+          "role": "brand-annotate",
+          "value": "#1ba673"
+        },
+        {
+          "role": "brand-error",
+          "value": "#d45656"
+        },
+        {
+          "role": "brand-cursor",
+          "value": "#888888"
+        }
+      ],
+      "fonts": [
+        "Inter",
+        "Geist Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/mintlify/DESIGN.md"
+    },
+    {
+      "id": "miro",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "playful",
+        "soft-pastel"
+      ],
+      "description": "Miro presents itself as the AI-powered visual workspace through a confident, almost playful brand voice — anchored by its signature canary yellow ({colors.brand-yellow}) wordmark over white canvas, broken open by colorful pastel feature tints (rose, teal, coral, orange, mint) that echo the actual sticky-note color palette used on the live whiteboard. Black-pill primary buttons dominate marketing, ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#1c1c1e"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "brand-yellow",
+          "value": "#ffd02f"
+        },
+        {
+          "role": "brand-yellow-deep",
+          "value": "#fcb900"
+        },
+        {
+          "role": "yellow-light",
+          "value": "#fff4c4"
+        },
+        {
+          "role": "yellow-dark",
+          "value": "#746019"
+        },
+        {
+          "role": "brand-blue",
+          "value": "#4262ff"
+        },
+        {
+          "role": "blue-450",
+          "value": "#5b76fe"
+        },
+        {
+          "role": "blue-pressed",
+          "value": "#2a41b6"
+        },
+        {
+          "role": "brand-coral",
+          "value": "#ff9999"
+        }
+      ],
+      "fonts": [
+        "Roobert PRO"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/miro/DESIGN.md"
+    },
+    {
+      "id": "mistral.ai",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "gradient-led"
+      ],
+      "description": "Mistral AI brands itself with a singular signature — atmospheric sunset gradients (mustard, orange, deep red) layered over photography of mountains, plus a horizontal \"sunset stripe\" bar that closes every page. The system pairs warm cream-yellow surfaces ({colors.cream}) with a saturated orange primary CTA ({colors.primary}) and uses an elegant near-serif voice for hero displays. Coverage spans ho",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#fa520f"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#cc3a05"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "sunshine-300",
+          "value": "#ffd06a"
+        },
+        {
+          "role": "sunshine-500",
+          "value": "#ffb83e"
+        },
+        {
+          "role": "sunshine-700",
+          "value": "#ffa110"
+        },
+        {
+          "role": "sunshine-800",
+          "value": "#ff8105"
+        },
+        {
+          "role": "sunshine-900",
+          "value": "#ff8a00"
+        },
+        {
+          "role": "yellow-saturated",
+          "value": "#ffd900"
+        },
+        {
+          "role": "cream",
+          "value": "#fff8e0"
+        }
+      ],
+      "fonts": [
+        "PP Editorial Old",
+        "Inter",
+        "JetBrains Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/mistral.ai/DESIGN.md"
+    },
+    {
+      "id": "mongodb",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "brutalist",
+        "playful",
+        "dark-canvas"
+      ],
+      "description": "MongoDB carries a strong dual-mode visual identity — dark deep-teal hero bands with bright MongoDB green ({colors.brand-green}) CTAs paired with stark white documentation surfaces. The signature green pill button is unmistakable across product, pricing, learning, and AI use-case surfaces. The system uses Euclid Circular A as its display face, anchors a 3-tier pricing comparison (Free / Flex / Dedi",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#00ed64"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#00b545"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#008c34"
+        },
+        {
+          "role": "on-primary",
+          "value": "#001e2b"
+        },
+        {
+          "role": "brand-green",
+          "value": "#00ed64"
+        },
+        {
+          "role": "brand-green-dark",
+          "value": "#00684a"
+        },
+        {
+          "role": "brand-green-mid",
+          "value": "#00a35c"
+        },
+        {
+          "role": "brand-green-soft",
+          "value": "#c3f0d2"
+        },
+        {
+          "role": "brand-teal-deep",
+          "value": "#001e2b"
+        },
+        {
+          "role": "brand-teal",
+          "value": "#003d4f"
+        }
+      ],
+      "fonts": [
+        "Euclid Circular A",
+        "Source Code Pro"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/mongodb/DESIGN.md"
+    },
+    {
+      "id": "nike",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#111111"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "soft-cloud",
+          "value": "#f5f5f5"
+        },
+        {
+          "role": "ink",
+          "value": "#111111"
+        },
+        {
+          "role": "charcoal",
+          "value": "#39393b"
+        },
+        {
+          "role": "ash",
+          "value": "#4b4b4d"
+        },
+        {
+          "role": "mute",
+          "value": "#707072"
+        },
+        {
+          "role": "stone",
+          "value": "#9e9ea0"
+        },
+        {
+          "role": "hairline",
+          "value": "#cacacb"
+        }
+      ],
+      "fonts": [
+        "Nike Futura ND",
+        "Helvetica Now Display Medium",
+        "Helvetica Now Text",
+        "Helvetica Now Text Medium",
+        "Helvetica Neue"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nike/DESIGN.md"
+    },
+    {
+      "id": "nintendo-2001",
+      "family": "retro_hardware",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "neon-futurist"
+      ],
+      "description": "An analysis of Nintendo.com's 2001 design language — a brushed-periwinkle \"console chrome\" interface where every panel is a beveled metal plate, navigation glows amber over a halftone-dotted carbon bar, and bold outlined display type sits on circuit-board hero fields. A Y2K hardware aesthetic that treats the web page like the faceplate of a game system.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#e60012"
+        },
+        {
+          "role": "signal",
+          "value": "#f68d1f"
+        },
+        {
+          "role": "amber",
+          "value": "#ecab37"
+        },
+        {
+          "role": "nav-gold",
+          "value": "#e48600"
+        },
+        {
+          "role": "canvas",
+          "value": "#7a8aba"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#9fbee7"
+        },
+        {
+          "role": "sky",
+          "value": "#9fbee7"
+        },
+        {
+          "role": "lavender",
+          "value": "#acace7"
+        },
+        {
+          "role": "ice",
+          "value": "#c0d5e6"
+        },
+        {
+          "role": "periwinkle",
+          "value": "#8ba1d4"
+        }
+      ],
+      "fonts": [
+        "Arial",
+        "Arial Black"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nintendo-2001/DESIGN.md"
+    },
+    {
+      "id": "notion",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "soft-pastel"
+      ],
+      "description": "Notion presents itself as the all-in-one workspace through a confident, illustration-rich brand voice — anchored by a deep navy hero band ({colors.brand-navy}) decorated with brand-colored sticky-note dots and mesh wire illustrations, a signature purple pill primary CTA ({colors.primary}), and a rich palette of pastel-tinted feature cards that echo the colorful database properties of the live prod",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#5645d4"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#4534b3"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#3a2a99"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "brand-navy",
+          "value": "#0a1530"
+        },
+        {
+          "role": "brand-navy-deep",
+          "value": "#070f24"
+        },
+        {
+          "role": "brand-navy-mid",
+          "value": "#1a2a52"
+        },
+        {
+          "role": "link-blue",
+          "value": "#0075de"
+        },
+        {
+          "role": "link-blue-pressed",
+          "value": "#005bab"
+        },
+        {
+          "role": "brand-orange",
+          "value": "#dd5b00"
+        }
+      ],
+      "fonts": [
+        "Notion Sans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/notion/DESIGN.md"
+    },
+    {
+      "id": "nvidia",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#76b900"
+        },
+        {
+          "role": "on-primary",
+          "value": "#000000"
+        },
+        {
+          "role": "primary-dark",
+          "value": "#5a8d00"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface-dark",
+          "value": "#000000"
+        },
+        {
+          "role": "surface-soft",
+          "value": "#f7f7f7"
+        },
+        {
+          "role": "surface-elevated",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "hairline",
+          "value": "#cccccc"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#5e5e5e"
+        }
+      ],
+      "fonts": [
+        "NVIDIA-EMEA"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nvidia/DESIGN.md"
+    },
+    {
+      "id": "ollama",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "ink-deep",
+          "value": "#090909"
+        },
+        {
+          "role": "charcoal",
+          "value": "#525252"
+        },
+        {
+          "role": "body",
+          "value": "#737373"
+        },
+        {
+          "role": "mute",
+          "value": "#a3a3a3"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "surface-soft",
+          "value": "#fafafa"
+        },
+        {
+          "role": "surface-card",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "SF Pro Rounded",
+        "ui-sans-serif",
+        "ui-monospace"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/ollama/DESIGN.md"
+    },
+    {
+      "id": "opencode.ai",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#201d1d"
+        },
+        {
+          "role": "on-primary",
+          "value": "#fdfcfc"
+        },
+        {
+          "role": "ink",
+          "value": "#201d1d"
+        },
+        {
+          "role": "ink-deep",
+          "value": "#0f0000"
+        },
+        {
+          "role": "charcoal",
+          "value": "#302c2c"
+        },
+        {
+          "role": "body",
+          "value": "#424245"
+        },
+        {
+          "role": "mute",
+          "value": "#646262"
+        },
+        {
+          "role": "stone",
+          "value": "#6e6e73"
+        },
+        {
+          "role": "ash",
+          "value": "#9a9898"
+        },
+        {
+          "role": "canvas",
+          "value": "#fdfcfc"
+        }
+      ],
+      "fonts": [
+        "Berkeley Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/opencode.ai/DESIGN.md"
+    },
+    {
+      "id": "pinterest",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#e60023"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#cc001f"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "ink-soft",
+          "value": "#211922"
+        },
+        {
+          "role": "body",
+          "value": "#33332e"
+        },
+        {
+          "role": "charcoal",
+          "value": "#262622"
+        },
+        {
+          "role": "mute",
+          "value": "#62625b"
+        },
+        {
+          "role": "ash",
+          "value": "#91918c"
+        },
+        {
+          "role": "stone",
+          "value": "#c8c8c1"
+        }
+      ],
+      "fonts": [
+        "Pin Sans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/pinterest/DESIGN.md"
+    },
+    {
+      "id": "playstation",
+      "family": "retro_hardware",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#0070d1"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#0064b7"
+        },
+        {
+          "role": "primary-active",
+          "value": "#004d8d"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "link-light",
+          "value": "#0064b7"
+        },
+        {
+          "role": "link-dark",
+          "value": "#53b1ff"
+        },
+        {
+          "role": "commerce",
+          "value": "#d53b00"
+        },
+        {
+          "role": "commerce-pressed",
+          "value": "#aa2f00"
+        },
+        {
+          "role": "commerce-link-base",
+          "value": "#d63d00"
+        },
+        {
+          "role": "on-commerce",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "PlayStation SST"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/playstation/DESIGN.md"
+    },
+    {
+      "id": "posthog",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#f7a501"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#dd9001"
+        },
+        {
+          "role": "primary-active",
+          "value": "#b17816"
+        },
+        {
+          "role": "on-primary",
+          "value": "#23251d"
+        },
+        {
+          "role": "ink",
+          "value": "#23251d"
+        },
+        {
+          "role": "body",
+          "value": "#4d4f46"
+        },
+        {
+          "role": "charcoal",
+          "value": "#33342d"
+        },
+        {
+          "role": "mute",
+          "value": "#6c6e63"
+        },
+        {
+          "role": "ash",
+          "value": "#9b9c92"
+        },
+        {
+          "role": "stone",
+          "value": "#b6b7af"
+        }
+      ],
+      "fonts": [
+        "IBM Plex Sans Variable",
+        "ui-monospace",
+        "Source Code Pro"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/posthog/DESIGN.md"
+    },
+    {
+      "id": "raycast",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "primary-pressed",
+          "value": "#e8e8e8"
+        },
+        {
+          "role": "on-primary",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#f4f4f6"
+        },
+        {
+          "role": "body",
+          "value": "#cdcdcd"
+        },
+        {
+          "role": "charcoal",
+          "value": "#d3d3d4"
+        },
+        {
+          "role": "mute",
+          "value": "#9c9c9d"
+        },
+        {
+          "role": "ash",
+          "value": "#6a6b6c"
+        },
+        {
+          "role": "stone",
+          "value": "#434345"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/raycast/DESIGN.md"
+    },
+    {
+      "id": "renault",
+      "family": "automotive",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffed00"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#e6d200"
+        },
+        {
+          "role": "on-primary",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "body",
+          "value": "#222222"
+        },
+        {
+          "role": "charcoal",
+          "value": "#333333"
+        },
+        {
+          "role": "mute",
+          "value": "#666666"
+        },
+        {
+          "role": "ash",
+          "value": "#8a8a8a"
+        },
+        {
+          "role": "stone",
+          "value": "#c4c4c4"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "NouvelR"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/renault/DESIGN.md"
+    },
+    {
+      "id": "replicate",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ea2804"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#c01f00"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#202020"
+        },
+        {
+          "role": "body",
+          "value": "#3a3a3a"
+        },
+        {
+          "role": "charcoal",
+          "value": "#575757"
+        },
+        {
+          "role": "mute",
+          "value": "#646464"
+        },
+        {
+          "role": "ash",
+          "value": "#8d8d8d"
+        },
+        {
+          "role": "stone",
+          "value": "#bbbbbb"
+        },
+        {
+          "role": "on-dark",
+          "value": "#fcfcfc"
+        }
+      ],
+      "fonts": [
+        "rb-freigeist-neue",
+        "basier-square",
+        "jetbrains-mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/replicate/DESIGN.md"
+    },
+    {
+      "id": "resend",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#fcfdff"
+        },
+        {
+          "role": "primary-on",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#fcfdff"
+        },
+        {
+          "role": "body",
+          "value": "rgba(252,253,255,0.86)"
+        },
+        {
+          "role": "charcoal",
+          "value": "rgba(252,253,255,0.7)"
+        },
+        {
+          "role": "mute",
+          "value": "#a1a4a5"
+        },
+        {
+          "role": "ash",
+          "value": "#888e90"
+        },
+        {
+          "role": "stone",
+          "value": "#464a4d"
+        },
+        {
+          "role": "on-light",
+          "value": "#000000"
+        },
+        {
+          "role": "on-light-mute",
+          "value": "rgba(0,0,51,0.7)"
+        }
+      ],
+      "fonts": [
+        "Domaine Display",
+        "ABC Favorit",
+        "Inter",
+        "Helvetica",
+        "Geist Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/resend/DESIGN.md"
+    },
+    {
+      "id": "revolut",
+      "family": "finance",
+      "format": "design.md",
+      "traits": [],
+      "description": "|",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#494fdf"
+        },
+        {
+          "role": "primary-bright",
+          "value": "#4f55f1"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#3a40c4"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#191c1f"
+        },
+        {
+          "role": "body",
+          "value": "#1f2226"
+        },
+        {
+          "role": "charcoal",
+          "value": "#3a3d40"
+        },
+        {
+          "role": "mute",
+          "value": "#505a63"
+        },
+        {
+          "role": "ash",
+          "value": "#5c5e60"
+        },
+        {
+          "role": "stone",
+          "value": "#8d969e"
+        }
+      ],
+      "fonts": [
+        "Aeonik Pro",
+        "Inter"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/revolut/DESIGN.md"
+    },
+    {
+      "id": "runwayml",
+      "family": "tech_saas",
+      "format": "prose",
+      "traits": [
+        "editorial-serif",
+        "dark-canvas"
+      ],
+      "description": "Runway's interface is a cinematic reel brought to life as a website — a dark, editorial, film-production-grade design where full-bleed photography and video ARE the primary UI elements. This is not a typical tech product page; it's a visual manifesto for AI-powered creativity. Every section feels like a frame from a film: dramatic lighting, sweeping landscapes, and intimate human moments captured ",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#767d88"
+        },
+        {
+          "role": "c2",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "c3",
+          "value": "#7d848e"
+        },
+        {
+          "role": "c4",
+          "value": "#000000"
+        },
+        {
+          "role": "c5",
+          "value": "#27272a"
+        },
+        {
+          "role": "c6",
+          "value": "#404040"
+        },
+        {
+          "role": "c7",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c8",
+          "value": "#a7a7a7"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/runwayml/DESIGN.md"
+    },
+    {
+      "id": "sanity",
+      "family": "tech_saas",
+      "format": "prose",
+      "traits": [
+        "terminal",
+        "playful",
+        "dark-canvas",
+        "soft-pastel"
+      ],
+      "description": "Sanity's website is a developer-content platform rendered as a nocturnal command center -- dark, precise, and deeply structured. The entire experience sits on a near-black canvas (`#0b0b0b`) that reads less like a \"dark mode toggle\" and more like the natural state of a tool built for people who live in terminals. Where most CMS marketing pages reach for friendly pastels and soft illustration, Sani",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#0b0b0b"
+        },
+        {
+          "role": "c2",
+          "value": "#212121"
+        },
+        {
+          "role": "c3",
+          "value": "#b9b9b9"
+        },
+        {
+          "role": "c4",
+          "value": "#0052ef"
+        },
+        {
+          "role": "c5",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c6",
+          "value": "#f36458"
+        },
+        {
+          "role": "c7",
+          "value": "#353535"
+        },
+        {
+          "role": "c8",
+          "value": "#797979"
+        }
+      ],
+      "fonts": [
+        "waldenburgNormal"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/sanity/DESIGN.md"
+    },
+    {
+      "id": "sentry",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "playful",
+        "dark-canvas"
+      ],
+      "description": "An inspired interpretation of Sentri's design language — a developer-tools brand built on a deep purple-violet midnight canvas, electric lime accents, and a slightly subversive illustrated personality. The system pairs a custom display sans (chunky, playful, near-condensed) with the open Rubik family for UI copy and Monaco for code, then leans on dark-on-light pricing surfaces, sticker-style masco",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#150f23"
+        },
+        {
+          "role": "ink-deep",
+          "value": "#1f1633"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "accent-lime",
+          "value": "#c2ef4e"
+        },
+        {
+          "role": "accent-pink",
+          "value": "#fa7faa"
+        },
+        {
+          "role": "accent-violet",
+          "value": "#6a5fc1"
+        },
+        {
+          "role": "accent-violet-deep",
+          "value": "#422082"
+        },
+        {
+          "role": "accent-violet-mid",
+          "value": "#79628c"
+        },
+        {
+          "role": "surface-canvas-dark",
+          "value": "#1f1633"
+        },
+        {
+          "role": "surface-canvas-light",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Sentri Display",
+        "Rubik",
+        "Monaco"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/sentry/DESIGN.md"
+    },
+    {
+      "id": "shopify",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [
+        "dark-canvas"
+      ],
+      "description": "An inspired interpretation of Shopifi's design language — a cinematic commerce platform that runs two parallel design tracks. The marketing-hero and product-narrative pages live on near-black canvases with full-bleed photography of merchants, giant Neue Haas Grotesk display type at thin weights, and a single black-pill CTA stroked in white. The transactional pages (pricing, signup, dashboards) fli",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-night",
+          "value": "#000000"
+        },
+        {
+          "role": "canvas-night-elevated",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "canvas-light",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-cream",
+          "value": "#fbfbf5"
+        },
+        {
+          "role": "surface-elevated-dark",
+          "value": "#1e2c31"
+        },
+        {
+          "role": "shade-30",
+          "value": "#d4d4d8"
+        }
+      ],
+      "fonts": [
+        "NeueHaasGrotesk Display",
+        "Inter Variable",
+        "ui-monospace"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/shopify/DESIGN.md"
+    },
+    {
+      "id": "slack",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "warm-organic",
+        "gradient-led",
+        "soft-pastel"
+      ],
+      "description": "An inspired interpretation of Slacc's design language — a workplace messaging brand built on a deep aubergine primary, with cream-lavender hero gradients, blue inline links, and pill CTAs. The system pairs a proprietary humanist sans for display with a separate utility sans for body, and stages product UI mockups inside soft pastel-mesh hero composites that act as both decoration and feature expla",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#4a154b"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#481a54"
+        },
+        {
+          "role": "primary-press",
+          "value": "#611f69"
+        },
+        {
+          "role": "primary-tint",
+          "value": "#592466"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#1d1d1d"
+        },
+        {
+          "role": "ink-mute",
+          "value": "#696969"
+        },
+        {
+          "role": "link-blue",
+          "value": "#1264a3"
+        },
+        {
+          "role": "link-hover",
+          "value": "#3860be"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Salesforce-Avant-Garde",
+        "Salesforce-Sans"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/slack/DESIGN.md"
+    },
+    {
+      "id": "spacex",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "minimal",
+        "dark-canvas"
+      ],
+      "description": "An inspired interpretation of Spasex's design language — a mission-oriented aerospace brand built on pure black canvas, full-bleed photographic and video heroes of rockets and Mars landscapes, and uppercase D-DIN display type set in tight vertical leading. UI chrome is intentionally minimal a single ghost outlined pill button per band, all-caps eyebrow microtext, and a fixed top nav over photograp",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "on-primary-mute",
+          "value": "#f0f0fa"
+        },
+        {
+          "role": "canvas-night",
+          "value": "#000000"
+        },
+        {
+          "role": "canvas-night-soft",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "canvas-light",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-cool",
+          "value": "#f0f0fa"
+        },
+        {
+          "role": "hairline-on-dark",
+          "value": "#3a3a3f"
+        },
+        {
+          "role": "hairline-on-light",
+          "value": "#e0e0e8"
+        }
+      ],
+      "fonts": [
+        "D-DIN-Bold",
+        "D-DIN"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/spacex/DESIGN.md"
+    },
+    {
+      "id": "spotify",
+      "family": "consumer_brand",
+      "format": "prose",
+      "traits": [
+        "neon-futurist",
+        "dark-canvas"
+      ],
+      "description": "Spotify's web interface is a dark, immersive music player that wraps listeners in a near-black cocoon (`#121212`, `#181818`, `#1f1f1f`) where album art and content become the primary source of color. The design philosophy is \"content-first darkness\" — the UI recedes into shadow so that music, podcasts, and playlists can glow. Every surface is a shade of charcoal, creating a theater-like environmen",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#1f1f1f"
+        },
+        {
+          "role": "c2",
+          "value": "#121212"
+        },
+        {
+          "role": "c3",
+          "value": "#181818"
+        },
+        {
+          "role": "c4",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c5",
+          "value": "#b3b3b3"
+        },
+        {
+          "role": "c6",
+          "value": "#1ed760"
+        },
+        {
+          "role": "c7",
+          "value": "#f3727f"
+        },
+        {
+          "role": "c8",
+          "value": "#ffa42b"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/spotify/DESIGN.md"
+    },
+    {
+      "id": "starbucks",
+      "family": "consumer_brand",
+      "format": "prose",
+      "traits": [
+        "warm-organic"
+      ],
+      "description": "Starbucks' design system is a **warm, confident retail flagship** wearing the green of their storefront apron across every surface. The canvas alternates between a neutral-warm cream (`#f2f0eb`) and a ceramic off-white (`#edebe9`) — colors that reference actual store materials: the paper napkins, the café walls, the wood finishes — while the signature **Starbucks Green** (`#006241`) anchors the br",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#00754a"
+        },
+        {
+          "role": "c2",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c3",
+          "value": "#1e3932"
+        },
+        {
+          "role": "c4",
+          "value": "#f2f0eb"
+        },
+        {
+          "role": "c5",
+          "value": "#cba258"
+        },
+        {
+          "role": "c6",
+          "value": "#edebe9"
+        },
+        {
+          "role": "c7",
+          "value": "#006241"
+        },
+        {
+          "role": "c8",
+          "value": "#000000"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/starbucks/DESIGN.md"
+    },
+    {
+      "id": "stripe",
+      "family": "finance",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "gradient-led"
+      ],
+      "description": "An inspired interpretation of Stripi's design language — a financial-infrastructure brand built on a deep navy ink, an electric indigo primary, and a recurring atmospheric gradient mesh that occupies the upper third of nearly every marketing page. The system pairs the proprietary Sohne family at thin (300) weights with negative letter-spacing for editorial-density display headlines, and uses tabul",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#533afd"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#4434d4"
+        },
+        {
+          "role": "primary-press",
+          "value": "#2e2b8c"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#665efd"
+        },
+        {
+          "role": "primary-bg-subdued-hover",
+          "value": "#b9b9f9"
+        },
+        {
+          "role": "brand-dark-900",
+          "value": "#1c1e54"
+        },
+        {
+          "role": "ink",
+          "value": "#0d253d"
+        },
+        {
+          "role": "ink-secondary",
+          "value": "#273951"
+        },
+        {
+          "role": "ink-mute",
+          "value": "#64748d"
+        },
+        {
+          "role": "ink-mute-2",
+          "value": "#61718a"
+        }
+      ],
+      "fonts": [
+        "sohne-var"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/stripe/DESIGN.md"
+    },
+    {
+      "id": "supabase",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "minimal"
+      ],
+      "description": "An inspired interpretation of Supabaze's design language — an open-source database platform built on a clean white-and-near-black system with a single signature emerald-green CTA, a custom humanist sans display tier, and dense product UI mockups composited above the hero. The brand reads as quietly technical: minimal chrome, a near-monochrome palette, and the green primary acting as the only chrom",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#3ecf8e"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#24b47e"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#4ade80"
+        },
+        {
+          "role": "ink",
+          "value": "#171717"
+        },
+        {
+          "role": "ink-secondary",
+          "value": "#212121"
+        },
+        {
+          "role": "ink-mute",
+          "value": "#707070"
+        },
+        {
+          "role": "ink-mute-2",
+          "value": "#9a9a9a"
+        },
+        {
+          "role": "ink-faint",
+          "value": "#b2b2b2"
+        },
+        {
+          "role": "on-primary",
+          "value": "#171717"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Circular",
+        "ui-monospace"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/supabase/DESIGN.md"
+    },
+    {
+      "id": "superhuman",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "dark-canvas"
+      ],
+      "description": "An inspired interpretation of Superhumon's design language — a fast-email productivity brand split between an editorial dark hero (deep indigo navy with violet-sky atmospheric backdrop and a portrait subject) and a quiet white content body with off-warm-grey ink. The system uses a single proprietary variable display sans, heavy weight 460–540 with tight tracking, and a deep-teal closing CTA band t",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#1b1938"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#0e0c1f"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#292827"
+        },
+        {
+          "role": "ink-mute",
+          "value": "#73706d"
+        },
+        {
+          "role": "ink-faint",
+          "value": "#9a9794"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#fafaf8"
+        },
+        {
+          "role": "surface-violet-soft",
+          "value": "#c9b4fa"
+        },
+        {
+          "role": "surface-teal-deep",
+          "value": "#0e3030"
+        }
+      ],
+      "fonts": [
+        "'Super Sans VF'"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/superhuman/DESIGN.md"
+    },
+    {
+      "id": "tesla",
+      "family": "automotive",
+      "format": "prose",
+      "traits": [],
+      "description": "Tesla's website is an exercise in radical subtraction — a digital showroom where the product is everything and the interface is almost nothing. The page opens with a full-viewport hero that fills the entire screen with cinematic car photography: three vehicles arranged on polished concrete against a hazy cityscape sky, with a single model name floating above in translucent white type. There are no",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#3e6ae1"
+        },
+        {
+          "role": "c2",
+          "value": "#171a20"
+        },
+        {
+          "role": "c3",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c4",
+          "value": "#5c5e62"
+        },
+        {
+          "role": "c5",
+          "value": "#393c41"
+        },
+        {
+          "role": "c6",
+          "value": "#8e8e8e"
+        },
+        {
+          "role": "c7",
+          "value": "#f4f4f4"
+        },
+        {
+          "role": "c8",
+          "value": "#eeeeee"
+        }
+      ],
+      "fonts": [],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/tesla/DESIGN.md"
+    },
+    {
+      "id": "theverge",
+      "family": "editorial",
+      "format": "prose",
+      "traits": [
+        "editorial-serif",
+        "brutalist"
+      ],
+      "description": "The Verge's 2024 redesign feels like somebody wired a Condé Nast magazine to a chiptune soundboard. The canvas is almost-black (`#131313`), the headlines are built from a brutally heavy display face (Manuka) that runs up to 107px, and the whole page is peppered with acid-mint `#3cffd0` and ultraviolet `#5200ff` that behave less like brand colors and more like hazard tape. Story tiles are not quiet",
+      "palette": [
+        {
+          "role": "c1",
+          "value": "#131313"
+        },
+        {
+          "role": "c2",
+          "value": "#3cffd0"
+        },
+        {
+          "role": "c3",
+          "value": "#ffffff"
+        },
+        {
+          "role": "c4",
+          "value": "#5200ff"
+        },
+        {
+          "role": "c5",
+          "value": "#3860be"
+        },
+        {
+          "role": "c6",
+          "value": "#2d2d2d"
+        },
+        {
+          "role": "c7",
+          "value": "#3d00bf"
+        },
+        {
+          "role": "c8",
+          "value": "#949494"
+        }
+      ],
+      "fonts": [
+        "\"Hazard White"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/theverge/DESIGN.md"
+    },
+    {
+      "id": "together.ai",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "skeuomorphic-chrome",
+        "gradient-led",
+        "playful"
+      ],
+      "description": "An inspired interpretation of Together AI's design language — an AI infrastructure platform whose surface alternates between near-black hero bands (with a three-color orange-magenta-periwinkle gradient as the single piece of brand chrome) and bright white research / pricing / docs bands, knit together by a custom display sans and an uppercase mono eyebrow face.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "body",
+          "value": "#959494"
+        },
+        {
+          "role": "hairline",
+          "value": "#959494"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-dark",
+          "value": "#010120"
+        },
+        {
+          "role": "surface-dark-soft",
+          "value": "#313641"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        },
+        {
+          "role": "accent-orange",
+          "value": "#fc4c02"
+        }
+      ],
+      "fonts": [
+        "The Future",
+        "PP Neue Montreal Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/together.ai/DESIGN.md"
+    },
+    {
+      "id": "uber",
+      "family": "consumer_brand",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "swiss-grid"
+      ],
+      "description": "An inspired interpretation of Uber's design language — a transportation-and-delivery super-app brand whose web surface is a black-and-white duet, framed by a custom geometric display sans, accented by a single signature pill shape (radius 999px) on every interactive element, and decorated only by editorial 4:3 illustrations of riders, drivers, and city objects.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "body",
+          "value": "#5e5e5e"
+        },
+        {
+          "role": "mute",
+          "value": "#afafaf"
+        },
+        {
+          "role": "hairline-mid",
+          "value": "#4b4b4b"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#efefef"
+        },
+        {
+          "role": "canvas-softer",
+          "value": "#f3f3f3"
+        },
+        {
+          "role": "surface-pressed",
+          "value": "#e2e2e2"
+        }
+      ],
+      "fonts": [
+        "UberMove",
+        "UberMoveText"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/uber/DESIGN.md"
+    },
+    {
+      "id": "vercel",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "brutalist",
+        "terminal",
+        "gradient-led",
+        "swiss-grid"
+      ],
+      "description": "An inspired interpretation of Vercel's design language — a developer-platform brand whose surface is a stark black-and-ink duet on near-white canvas, broken at hero scale by a multi-color mesh gradient (cyan / blue / magenta / amber) that acts as the entire decorative system, paired with a custom geometric sans for headlines and a monospaced caption face for technical labels.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#171717"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#171717"
+        },
+        {
+          "role": "body",
+          "value": "#4d4d4d"
+        },
+        {
+          "role": "mute",
+          "value": "#888888"
+        },
+        {
+          "role": "hairline",
+          "value": "#ebebeb"
+        },
+        {
+          "role": "hairline-strong",
+          "value": "#a1a1a1"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#fafafa"
+        },
+        {
+          "role": "canvas-soft-2",
+          "value": "#f5f5f5"
+        }
+      ],
+      "fonts": [
+        "Geist",
+        "Geist Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/vercel/DESIGN.md"
+    },
+    {
+      "id": "vodafone",
+      "family": "enterprise",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif"
+      ],
+      "description": "An inspired interpretation of Vodafone's design language — a telecom super-brand whose web surface alternates between editorial photography hero bands with massive uppercase display headlines and clean white content bands, anchored by the company's signature scarlet red CTA and the proprietary Vodafone display sans set at impossibly heavy 800 weight.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#e60000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#25282b"
+        },
+        {
+          "role": "body",
+          "value": "#7e7e7e"
+        },
+        {
+          "role": "mute",
+          "value": "#bebebe"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#f2f2f2"
+        },
+        {
+          "role": "on-dark",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Vodafone"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/vodafone/DESIGN.md"
+    },
+    {
+      "id": "voltagent",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "dark-canvas",
+        "swiss-grid"
+      ],
+      "description": "An inspired interpretation of Voltagent's design language — a developer-focused AI agent engineering platform whose surface is an unrelenting near-black canvas broken only by a single electric-green brand accent, code-editor mockups inside the hero, and a precise grid of dark feature cards that read like a documentation site dressed as marketing.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#00d992"
+        },
+        {
+          "role": "primary-soft",
+          "value": "#2fd6a1"
+        },
+        {
+          "role": "primary-deep",
+          "value": "#10b981"
+        },
+        {
+          "role": "on-primary",
+          "value": "#101010"
+        },
+        {
+          "role": "ink",
+          "value": "#f2f2f2"
+        },
+        {
+          "role": "ink-strong",
+          "value": "#ffffff"
+        },
+        {
+          "role": "body",
+          "value": "#bdbdbd"
+        },
+        {
+          "role": "mute",
+          "value": "#8b949e"
+        },
+        {
+          "role": "hairline",
+          "value": "#3d3a39"
+        },
+        {
+          "role": "hairline-soft",
+          "value": "#b8b3b0"
+        }
+      ],
+      "fonts": [
+        "Inter",
+        "SFMono-Regular"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/voltagent/DESIGN.md"
+    },
+    {
+      "id": "warp",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "warm-organic",
+        "terminal"
+      ],
+      "description": "An inspired interpretation of Warp's design language — an agentic terminal-and-development-environment brand whose surface is a warm near-charcoal canvas (a tint warmer than pure black), broken only by clean Inter typography, the occasional Instrument Serif italic moment, and dense terminal-mockup imagery; CTAs are unusually understated, with shape geometry running tighter than most marketing site",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#f7f5f0"
+        },
+        {
+          "role": "on-primary",
+          "value": "#2b2622"
+        },
+        {
+          "role": "ink",
+          "value": "#f7f5f0"
+        },
+        {
+          "role": "body",
+          "value": "#c9c0ad"
+        },
+        {
+          "role": "body-strong",
+          "value": "#dad2c1"
+        },
+        {
+          "role": "mute",
+          "value": "#aea69c"
+        },
+        {
+          "role": "canvas",
+          "value": "#2b2622"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#383330"
+        },
+        {
+          "role": "hairline",
+          "value": "#3f3a36"
+        }
+      ],
+      "fonts": [
+        "Inter",
+        "Instrument Serif",
+        "DM Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/warp/DESIGN.md"
+    },
+    {
+      "id": "webflow",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "minimal"
+      ],
+      "description": "An inspired interpretation of Webflow's design language — a visual web development platform whose surface contrasts a deep near-black `#080808` primary against a generous white canvas, broken by a five-stop chromatic accent system (purple / pink / blue / orange / green) that maps to the brand's product categories, and anchored by the proprietary WF Visual Sans family used at restrained 500 / 600 w",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#080808"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#080808"
+        },
+        {
+          "role": "ink-strong",
+          "value": "#222222"
+        },
+        {
+          "role": "body",
+          "value": "#363636"
+        },
+        {
+          "role": "body-mid",
+          "value": "#5a5a5a"
+        },
+        {
+          "role": "mute",
+          "value": "#898989"
+        },
+        {
+          "role": "mute-soft",
+          "value": "#ababab"
+        },
+        {
+          "role": "hairline",
+          "value": "#d8d8d8"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "WF Visual Sans Variable",
+        "WFVisualSans-Mono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/webflow/DESIGN.md"
+    },
+    {
+      "id": "wired",
+      "family": "editorial",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "brutalist"
+      ],
+      "description": "An inspired interpretation of Wired's design language — a flagship technology-magazine brand whose surface is a strict editorial duet of stark black wordmark on white canvas, anchored by a tall narrow custom display serif for hero headlines, a humanist serif body face for long-form reading, and a clean sans face for metadata; layout reads like a printed magazine ported to the web with very little ",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#000000"
+        },
+        {
+          "role": "on-primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink",
+          "value": "#000000"
+        },
+        {
+          "role": "ink-soft",
+          "value": "#1a1a1a"
+        },
+        {
+          "role": "body",
+          "value": "#757575"
+        },
+        {
+          "role": "hairline",
+          "value": "#e0e0e0"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#f5f5f5"
+        },
+        {
+          "role": "link",
+          "value": "#057dbc"
+        }
+      ],
+      "fonts": [
+        "WiredDisplay",
+        "Apercu",
+        "BreveText"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/wired/DESIGN.md"
+    },
+    {
+      "id": "wise",
+      "family": "finance",
+      "format": "design.md",
+      "traits": [
+        "editorial-serif",
+        "playful"
+      ],
+      "description": "An inspired interpretation of Wise's design language — a global money-transfer brand whose surface combines an unusually heavy near-black display sans (weight 900 at 64–126 px) with a vivid lime-green brand accent, sage-tinted surface neutrals, and rounded white cards on a pale green-tinted canvas; the whole system reads more like a Scandinavian fintech magazine than a bank.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#9fe870"
+        },
+        {
+          "role": "on-primary",
+          "value": "#0e0f0c"
+        },
+        {
+          "role": "primary-active",
+          "value": "#cdffad"
+        },
+        {
+          "role": "primary-neutral",
+          "value": "#c5edab"
+        },
+        {
+          "role": "primary-pale",
+          "value": "#e2f6d5"
+        },
+        {
+          "role": "ink",
+          "value": "#0e0f0c"
+        },
+        {
+          "role": "ink-deep",
+          "value": "#163300"
+        },
+        {
+          "role": "body",
+          "value": "#454745"
+        },
+        {
+          "role": "mute",
+          "value": "#868685"
+        },
+        {
+          "role": "canvas",
+          "value": "#ffffff"
+        }
+      ],
+      "fonts": [
+        "Wise Sans",
+        "Inter"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/wise/DESIGN.md"
+    },
+    {
+      "id": "x.ai",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "warm-organic",
+        "terminal",
+        "gradient-led",
+        "dark-canvas",
+        "swiss-grid"
+      ],
+      "description": "An inspired interpretation of xAI's design language — Elon Musk's frontier-AI company whose web surface is a strict near-black canvas broken only by white pill outlines, occasional warm sunset / dusk gradient accents, a custom geometric sans (Universal Sans) for display, and an uppercase tracked monospace caption face; the whole system reads as engineered-cosmic, unmarketed.",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ffffff"
+        },
+        {
+          "role": "on-primary",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "ink",
+          "value": "#ffffff"
+        },
+        {
+          "role": "ink-hover",
+          "value": "#fafaf7"
+        },
+        {
+          "role": "body",
+          "value": "#dadbdf"
+        },
+        {
+          "role": "body-mid",
+          "value": "#7d8187"
+        },
+        {
+          "role": "mute",
+          "value": "#7d8187"
+        },
+        {
+          "role": "hairline",
+          "value": "#212327"
+        },
+        {
+          "role": "canvas",
+          "value": "#0a0a0a"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#1a1c20"
+        }
+      ],
+      "fonts": [
+        "universalSans",
+        "GeistMono"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/x.ai/DESIGN.md"
+    },
+    {
+      "id": "zapier",
+      "family": "tech_saas",
+      "format": "design.md",
+      "traits": [
+        "warm-organic",
+        "soft-pastel"
+      ],
+      "description": "An inspired interpretation of Zapier's design language — a workflow-automation platform whose surface combines warm-cream neutrals (`#fffefb` canvas, `#f8f4f0` soft cream) with deep coffee ink (`#201515`) and a single saturated orange CTA accent (`#ff4f00`); typography pairs the proprietary Degular Display family at hero scale with Inter for sub-displays and body, giving the brand a confident-warm",
+      "palette": [
+        {
+          "role": "primary",
+          "value": "#ff4f00"
+        },
+        {
+          "role": "on-primary",
+          "value": "#fffefb"
+        },
+        {
+          "role": "ink",
+          "value": "#201515"
+        },
+        {
+          "role": "ink-soft",
+          "value": "#2f2a26"
+        },
+        {
+          "role": "ink-mid",
+          "value": "#36342e"
+        },
+        {
+          "role": "body",
+          "value": "#605d52"
+        },
+        {
+          "role": "body-mid",
+          "value": "#939084"
+        },
+        {
+          "role": "mute",
+          "value": "#c5c0b1"
+        },
+        {
+          "role": "canvas",
+          "value": "#fffefb"
+        },
+        {
+          "role": "canvas-soft",
+          "value": "#f8f4f0"
+        }
+      ],
+      "fonts": [
+        "Degular Display",
+        "Inter"
+      ],
+      "source": "https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/zapier/DESIGN.md"
+    }
+  ]
+}

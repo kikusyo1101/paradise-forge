@@ -56,8 +56,12 @@ const SCALES = {
     { id: 'discover', agent: 'market-researcher', goal: `Research prior art, popular solutions, and expected/standard features for: ${wish}. Surface user needs, not just the literal ask.`, gate: true, artifact: 'findings.md' },
     { id: 'specify',  agent: 'requirements-analyst', goal: 'Write requirements (what & why) grounded in the findings — include the table-stakes features users expect', deps: ['discover'], artifact: 'requirements.md' },
     { id: 'design',   agent: 'architect', goal: 'Basic design: architecture, data model, interfaces', deps: ['specify'], gate: true, artifact: 'design.md' },
+    // 視覚アイデンティティ。design.md(構造)とは別物なので identity.md と名を分ける
+    // — 名の衝突は事故を生む(憲法 第17条)。`node graph/identity.js suggest` が
+    // 出す候補から一つを選び、その理由と却下理由まで書き残させる。
+    { id: 'identity', agent: 'architect', goal: 'Visual identity: pick ONE direction from `node graph/identity.js suggest "<wish>" --slug <slug>` and write identity.md (palette, type, texture, motion, do/don\'t). Justify the choice AND why the others were rejected. Never default to the generic dev-tool look.', deps: ['specify'], artifact: 'identity.md' },
     { id: 'detail',   agent: 'architect', goal: 'Detailed design: decompose into ordered testable tasks', deps: ['design'], artifact: 'tasks.md' },
-    { id: 'build',    agent: 'architect', goal: 'Implement the tasks', deps: ['detail'], artifact: 'implementation' },
+    { id: 'build',    agent: 'architect', goal: 'Implement the tasks against BOTH design.md (structure) and identity.md (look)', deps: ['detail', 'identity'], artifact: 'implementation' },
     { id: 'tests',    agent: 'tdd-guide', goal: 'Write & run the test suite against requirements', deps: ['detail'], artifact: 'tests' },
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review of the implementation', deps: ['build', 'tests'], artifact: 'review' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security scan of the change', deps: ['build'], artifact: 'security-report' },
@@ -71,11 +75,14 @@ const SCALES = {
     { id: 'discover', agent: 'market-researcher', goal: `Deep market research for: ${wish}. Study popular products, rank features by adoption, identify differentiators and unmet needs.`, gate: true, artifact: 'findings.md' },
     { id: 'analyze',  agent: 'requirements-analyst', goal: `Analyze the problem space & constraints behind: ${wish}, grounded in the findings`, deps: ['discover'], artifact: 'analysis.md' },
     { id: 'specify',  agent: 'requirements-analyst', goal: 'Write the PRD: requirements, user stories, acceptance criteria — covering expected features from the research', deps: ['analyze'], gate: true, artifact: 'prd.md' },
-    { id: 'ux',       agent: 'frontend', goal: 'UX design: flows, screens, interaction rules', deps: ['specify'], artifact: 'ux.md' },
+    // `frontend` というエージェントは存在しなかった(宙吊り参照)。UX と UI は
+    // architect が担い、視覚の根拠は identity.md が与える。
+    { id: 'ux',       agent: 'architect', goal: 'UX design: flows, screens, interaction rules', deps: ['specify'], artifact: 'ux.md' },
+    { id: 'identity', agent: 'architect', goal: 'Visual identity: pick ONE direction from `node graph/identity.js suggest "<wish>" --slug <slug>` and write identity.md (palette, type, texture, motion, do/don\'t). Justify the choice AND the rejections. Never default to the generic dev-tool look.', deps: ['specify'], artifact: 'identity.md' },
     { id: 'design',   agent: 'architect', goal: 'Basic design: system architecture & data model', deps: ['specify'], gate: true, artifact: 'design.md' },
     { id: 'detail',   agent: 'architect', goal: 'Detailed design: interfaces + ordered testable tasks', deps: ['design', 'ux'], artifact: 'tasks.md' },
     { id: 'build',    agent: 'architect', goal: 'Implement backend & core logic', deps: ['detail'], artifact: 'implementation' },
-    { id: 'build-ui', agent: 'frontend', goal: 'Implement the UI against the UX design', deps: ['detail'], artifact: 'ui' },
+    { id: 'build-ui', agent: 'architect', goal: 'Implement the UI against the UX design and identity.md', deps: ['detail', 'identity'], artifact: 'ui' },
     { id: 'tests',    agent: 'tdd-guide', goal: 'Test suite covering acceptance criteria', deps: ['detail'], artifact: 'tests' },
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review across backend & UI', deps: ['build', 'build-ui', 'tests'], artifact: 'review' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security & privacy review', deps: ['build', 'build-ui'], artifact: 'security-report' },

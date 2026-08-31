@@ -91,17 +91,24 @@
     "ts": "2026-08-30T23:20:29.096Z"
   },
   {
-    "id": "scoped-lesson",
-    "label": "contract must fail closed",
-    "check": "contract must fail closed",
-    "applies": "paradise-internal",
-    "ts": "2026-08-31T00:04:04.669Z"
-  },
-  {
     "id": "evidence-by-substance",
     "label": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
     "check": "証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと",
     "applies": "paradise-internal",
     "ts": "2026-08-31T00:04:23.252Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T01:58:11.589Z"
+  },
+  {
+    "id": "visual-identity-vocabulary",
+    "label": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
+    "check": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T01:58:31.981Z"
   }
 ]
