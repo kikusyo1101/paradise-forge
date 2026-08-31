@@ -91,6 +91,31 @@ way to change what "complete" means.
     reported out of scope when the paradise judges itself. Silence must never be
     mistaken for compliance (Art. 9: doubt before judgment).
 
+15. **A rejection must reach the hand that erred.** Review flows forward, but
+    repair must be free to flow BACKWARD across the whole ring: when a review
+    class rejects, the work returns to the domain that actually owns the faulty
+    phase — even if that domain was already ratified. Three duties follow.
+    (a) **Ratification is revocable**: a domain whose phase is reset LOSES its
+    blessing and reopens; a creation may never rest on a blessing granted to code
+    that no longer exists. (b) **Staleness propagates**: every phase downstream of
+    the reset is invalidated with its artifact dropped, because a review of stale
+    work is itself stale. (c) **The debt is charged to the erring domain**, not to
+    the one that raised the alarm, so the loop-guard restrains the repeat offender
+    and never punishes vigilance. A rejecting domain never ratifies itself.
+    A rejection that silently changes nothing is worse than no rejection at all:
+    it manufactures the appearance of judgment while shipping the defect.
+
+16. **Evidence is judged by what it DOES, never by what it is named.** The
+    tribunal must inspect substance: a suite that asserts is a suite, whether it
+    is called `foo.test.js`, `test.js`, or `ac-test.js`. Condemning a creation
+    for a naming convention is a false REWORK (Art. 13) of the worst kind — it
+    punishes work that was actually done and teaches the paradise that passing
+    the gate is a matter of spelling rather than of proof. The converse binds
+    equally: substance-based recognition must never become a rubber stamp, so a
+    file that asserts nothing is no evidence however it is named. Every check in
+    `critic.js` that decides whether a duty was discharged must read the artifact,
+    not merely match its filename.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
