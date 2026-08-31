@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T12:31:52.194Z",
+  "generated": "2026-08-31T13:11:36.494Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 69,
+    "nodeCount": 72,
     "edgeCount": 33,
     "nodes": [
       {
@@ -542,6 +542,24 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
         "degree": 0
+      },
+      {
+        "id": "accusation-needs-evidence-too",
+        "type": "lesson",
+        "label": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+        "degree": 0
+      },
+      {
+        "id": "env-path-self-reference-kills-hooks",
+        "type": "lesson",
+        "label": "settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check",
+        "degree": 0
+      },
+      {
+        "id": "forbid-by-effect-not-by-name",
+        "type": "lesson",
+        "label": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+        "degree": 0
       }
     ],
     "edges": [
@@ -718,7 +736,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 37
+      "lesson": 40
     }
   },
   "lessons": [
@@ -906,6 +924,21 @@ window.PARADISE_STATE = {
       "id": "every-wish-is-not-build",
       "label": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
       "check": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check|applies:paradise-internal"
+    },
+    {
+      "id": "accusation-needs-evidence-too",
+      "label": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+      "check": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check|applies:paradise-internal"
+    },
+    {
+      "id": "env-path-self-reference-kills-hooks",
+      "label": "settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check",
+      "check": "settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check|applies:paradise-internal"
+    },
+    {
+      "id": "forbid-by-effect-not-by-name",
+      "label": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+      "check": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check|applies:paradise-internal"
     }
   ],
   "creations": [],

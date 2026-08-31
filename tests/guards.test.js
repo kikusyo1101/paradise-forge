@@ -251,7 +251,10 @@ test('apply preserves every unrelated key', () => {
   const f = tmpSettings(before, 'preserve.json');
   G.apply(f);
   const after = G.readSettings(f);
-  for (const k of ['env', 'model', 'effortLevel', 'theme', 'language', 'extraKnownMarketplaces', 'enableWorkflows']) {
+  // ⚠️ `env` はこの一覧に **無い**。FIXTURE の env.PATH は展開されない `$PATH` を
+  // 持つ壊れた値であり、第三の職責がこれを削除する(それが正しい振る舞いである)。
+  // env の保存/削除は下の「env health」の節が専任で裁く。
+  for (const k of ['model', 'effortLevel', 'theme', 'language', 'extraKnownMarketplaces', 'enableWorkflows']) {
     assert.deepStrictEqual(after[k], before[k], `キー ${k} が保存されていない`);
   }
   // hooks の中身(コマンド・説明・件数)も matcher 以外は保存されねばならない
@@ -322,6 +325,216 @@ test('apply never touches the real ~/.claude when given an explicit path', () =>
 });
 
 // ─────────────────────────────────────────────────────────────────────
+console.log('\nEnv health (門が鳴っても走れなければ同じこと — 第三の職責):');
+
+/*
+ * 門を破って鳴る証明。
+ * `env: { "PATH": "$PATH:/x" }` の `$PATH` は **展開されない**。実測:
+ *     $ PATH='$PATH:/c/Program Files/GitHub CLI' bash -c 'command -v node'
+ *       node: command not found
+ * この一行が settings.json の hook 15/15 を殺していた。しかも exit=0 で黙って。
+ */
+test('envDrift names `$PATH:/x` as a FATAL unexpanded reference', () => {
+  const f = tmpSettings({ env: { PATH: '$PATH:/x' } }, 'envfatal.json');
+  const rows = G.envDrift(G.readSettings(f));
+  assert.strictEqual(rows.length, 1, '壊れた env が一件も名指されないなら門ではない');
+  assert.strictEqual(rows[0].key, 'PATH');
+  assert.strictEqual(rows[0].kind, 'unexpanded-posix');
+  assert.strictEqual(rows[0].severity, 'fatal',
+    'PATH に $PATH が入るのは既存 PATH を丸ごと失う — 他の未展開参照と同列にしてはならない');
+  assert.ok(/PATH/.test(rows[0].detail), '何が起きるのかを機構自身が語ること');
+});
+
+test('envDrift detects the Windows form `%PATH%;C:\\x` too', () => {
+  const rows = G.envDrift({ env: { PATH: '%PATH%;C:\\x' } });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].kind, 'unexpanded-windows');
+  assert.strictEqual(rows[0].severity, 'fatal', 'Windows 形式でも失うものは同じである');
+});
+
+test('envDrift detects `${VAR}` braces form', () => {
+  const rows = G.envDrift({ env: { PATH: '${PATH}:/x' } });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].kind, 'unexpanded-posix');
+  assert.strictEqual(rows[0].severity, 'fatal');
+});
+
+test('envDrift reports a non-PATH unexpanded reference as warn, not fatal', () => {
+  const rows = G.envDrift({ env: { OTHER: '$HOME/x' } });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].key, 'OTHER');
+  assert.strictEqual(rows[0].severity, 'warn', 'PATH 以外は害が局所的 — 同じ重さで叫べば fatal が埋もれる');
+  assert.ok(/report-only/.test(rows[0].repair), '消さないことを黙っていてはならない');
+});
+
+test('envDrift stays silent on a clean env — 正常な env で乖離ゼロ', () => {
+  assert.deepStrictEqual(G.envDrift({ env: { FOO: 'bar' } }), [],
+    '無害な env に赤を出す門は、いずれ誰も見なくなる');
+  assert.deepStrictEqual(G.envDrift({ env: { PATH: '/usr/bin:/c/Program Files/nodejs' } }), [],
+    '素の絶対パスだけの PATH は健全である');
+  assert.deepStrictEqual(G.envDrift({}), [], 'env が無いのは欠陥ではない');
+  assert.deepStrictEqual(G.envDrift(null), []);
+});
+
+test('apply deletes the broken env.PATH line — 足していないものを消す', () => {
+  // 実測: GitHub CLI は素の PATH に既に4回入っていた。あの一行は何も足さず、
+  // PATH を破壊してフックを殺すだけの存在だった。ゆえに修復は「削除」である。
+  const f = tmpSettings({ env: { PATH: '$PATH:/c/Program Files/GitHub CLI' }, model: 'fable' }, 'envapply.json');
+  const r = G.apply(f);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.changed, true);
+  const s = G.readSettings(f);
+  assert.strictEqual(s.env, undefined, 'env が空になったら器ごと消す');
+  assert.strictEqual(s.model, 'fable', '無関係のキーは触らない');
+  assert.ok(r.changes.some(c => c.kind === 'env' && c.key === 'PATH'), '何を消したかを名指すこと');
+});
+
+test('apply deletes ONLY PATH and keeps every other env key', () => {
+  const f = tmpSettings({ env: { PATH: '$PATH', OTHER: '$HOME/x' } }, 'envonly.json');
+  G.apply(f);
+  const s = G.readSettings(f);
+  assert.ok(s.env && typeof s.env === 'object', 'OTHER が残る以上 env も残らねばならない');
+  assert.strictEqual(s.env.PATH, undefined, '壊れた PATH は消える');
+  assert.strictEqual(s.env.OTHER, '$HOME/x',
+    'PATH 以外のキーを勝手に消す機構は、いずれ誰かの設定を黙って壊す');
+});
+
+test('apply leaves a healthy env untouched', () => {
+  const f = tmpSettings({ env: { FOO: 'bar', PATH: '/usr/bin' } }, 'envhealthy.json');
+  G.apply(f);
+  assert.deepStrictEqual(G.readSettings(f).env, { FOO: 'bar', PATH: '/usr/bin' });
+});
+
+test('env repair is idempotent — twice yields byte-identical files', () => {
+  const f = tmpSettings({ env: { PATH: '$PATH:/x', OTHER: 'plain' }, model: 'fable' }, 'envidem.json');
+  const r1 = G.apply(f);
+  const a1 = fs.readFileSync(f);
+  const r2 = G.apply(f);
+  const a2 = fs.readFileSync(f);
+  assert.strictEqual(r1.changed, true);
+  assert.strictEqual(r2.changed, false, '2度目は書くことが無いはずである');
+  assert.ok(a1.equals(a2), '冪等でない機構は、走らせるたびに配備物を揺らす');
+});
+
+test('apply with a broken env preserves model/effortLevel/hooks/permissions/theme/language', () => {
+  const before = FIXTURE();
+  const f = tmpSettings(before, 'envpreserve.json');
+  G.apply(f);
+  const after = G.readSettings(f);
+  for (const k of ['model', 'effortLevel', 'theme', 'language']) {
+    assert.deepStrictEqual(after[k], before[k], `キー ${k} が env の修復で失われた`);
+  }
+  assert.strictEqual(after.env, undefined, 'FIXTURE の env は PATH ただ一つ — 器ごと消える');
+  assert.strictEqual(Object.keys(after.hooks).length, Object.keys(before.hooks).length, 'hooks の事象が減った');
+  assert.strictEqual(after.hooks.PreToolUse.length, 2);
+  assert.deepStrictEqual(after.permissions.deny, G.POLICY.deny, 'permissions は同じ pass で書かれる');
+});
+
+test('verify goes red on a fatal env drift and green after apply', () => {
+  const f = tmpSettings({ env: { PATH: '$PATH:/x' } }, 'envverify.json');
+  const v = G.verify(f);
+  assert.strictEqual(v.skipped, false);
+  assert.strictEqual(v.ok, false, 'exit 1 相当 — PATH が壊れたまま緑を出す検査は無いのと同じ');
+  assert.ok(v.changes.some(c => c.kind === 'env'), '何が乖離したかを名指すこと');
+  assert.strictEqual(v.envFatal, 1, 'fatal を数えられなければ deploy は判断できない');
+  G.apply(f);
+  const v2 = G.verify(f);
+  assert.strictEqual(v2.ok, true, '直したのに赤のままなら、その門は治癒を認めない');
+  assert.strictEqual(v2.envFatal, 0);
+});
+
+test('missing settings.json: env inspection skips instead of crashing', () => {
+  const gone = path.join(TMP, 'does-not-exist', 'settings.json');
+  const d = G.diff(gone);
+  assert.strictEqual(d.skipped, true);
+  assert.strictEqual(d.ok, true);
+  assert.deepStrictEqual(G.hookHealth(G.readSettings(gone)), [],
+    '裸の環境では検べるものが無いだけであり、欠陥ではない');
+});
+
+// ─────────────────────────────────────────────────────────────────────
+console.log('\nhookHealth (フックは本当に走れるのか):');
+
+test('commandExe strips quotes and directories to the bare executable name', () => {
+  assert.strictEqual(G.commandExe('node "C:/x/session-end.js"'), 'node');
+  assert.strictEqual(G.commandExe('/usr/bin/bash -c "x"'), 'bash');
+  assert.strictEqual(G.commandExe('"C:/Program Files/nodejs/node.exe" a.js'), 'node.exe');
+  assert.strictEqual(G.commandExe('  python3 x.py '), 'python3');
+  assert.strictEqual(G.commandExe(''), '');
+});
+
+test('splitPathList does not split on a Windows drive letter colon', () => {
+  assert.deepStrictEqual(G.splitPathList('C:/a:/usr/bin'), ['C:/a', '/usr/bin']);
+  assert.deepStrictEqual(G.splitPathList('C:\\a;D:\\b'), ['C:\\a', 'D:\\b']);
+  assert.deepStrictEqual(G.splitPathList(''), []);
+});
+
+test('hookHealth resolves `node` under the CURRENT process PATH', () => {
+  const rows = G.hookHealth({ hooks: { SessionStart: [{ matcher: '*',
+    hooks: [{ type: 'command', command: 'node "C:/x/paradise-session-start.js"' }] }] } });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].event, 'SessionStart');
+  assert.strictEqual(rows[0].exe, 'node');
+  assert.strictEqual(rows[0].resolvable, true,
+    'このテストは node で走っている — その node が PATH で見つからないなら検査が壊れている');
+  assert.strictEqual(rows[0].resolvableUnderEnv, null,
+    'env.PATH が無いなら第二の判定は「判定不能」であって緑ではない');
+});
+
+test('hookHealth states its basis — 嘘の安心を与えない', () => {
+  const rows = G.hookHealth({ hooks: { SessionEnd: [{ matcher: '*',
+    hooks: [{ type: 'command', command: 'node x.js' }] }] } });
+  assert.ok(/現プロセスの PATH/.test(rows[0].basis),
+    'どの PATH で検べたのかを言わない緑は、嘘の安心である');
+  assert.ok(/現プロセスの PATH/.test(G.HOOK_HEALTH_CAVEAT));
+});
+
+/*
+ * これが本体。実機で起きたことの回帰試験である:
+ *   SessionEnd hook [node ".../session-end.js"] failed:
+ *     /usr/bin/bash: line 1: node: command not found
+ */
+test('hookHealth reports `node` as UNRESOLVABLE under env.PATH="$PATH:/x"', () => {
+  const settings = {
+    env: { PATH: '$PATH:/x' },
+    hooks: {
+      SessionStart: [{ matcher: '*', hooks: [{ type: 'command', command: 'node "C:/x/paradise-session-start.js"' }] }],
+      SessionEnd: [{ matcher: '*', hooks: [{ type: 'command', command: 'node "C:/x/session-end.js"' }] }],
+    },
+  };
+  const rows = G.hookHealth(settings);
+  assert.strictEqual(rows.length, 2);
+  for (const r of rows) {
+    assert.strictEqual(r.exe, 'node');
+    assert.strictEqual(r.resolvable, true, '現プロセスの PATH では見える — だからこそ誰も気づかなかった');
+    assert.strictEqual(r.resolvableUnderEnv, false,
+      '`$PATH` はリテラル文字列であり、そこに node は居ない。実機の `command not found` の正体');
+    assert.strictEqual(r.envPath, '$PATH:/x');
+  }
+});
+
+test('hookHealth goes green under env.PATH once the broken line is removed', () => {
+  const settings = {
+    env: { PATH: '$PATH:/x' },
+    hooks: { SessionEnd: [{ matcher: '*', hooks: [{ type: 'command', command: 'node x.js' }] }] },
+  };
+  const f = tmpSettings(settings, 'healthfix.json');
+  G.apply(f);
+  const rows = G.hookHealth(G.readSettings(f));
+  assert.strictEqual(rows[0].resolvableUnderEnv, null, 'env.PATH が消えたので第二の判定は判定不能に戻る');
+  assert.strictEqual(rows[0].resolvable, true, '現 PATH では走れる — それが素の状態である');
+});
+
+test('hookHealth resolves an absolute-path exe name under a real PATH entry', () => {
+  const dir = path.join(TMP, 'bin');
+  fs.mkdirSync(dir, { recursive: true });
+  const exe = process.platform === 'win32' ? 'faketool.cmd' : 'faketool';
+  fs.writeFileSync(path.join(dir, exe), '');
+  assert.strictEqual(G.resolvesIn('faketool', dir), true, 'Windows では .cmd/.bat/.exe も試すこと');
+  assert.strictEqual(G.resolvesIn('faketool', path.join(TMP, 'nope')), false);
+});
+
+// ─────────────────────────────────────────────────────────────────────
 console.log('\nDeploy integration (工程に組み込まれているか):');
 
 test('deploy.js invokes apply-guards in both check and write', () => {
@@ -378,9 +591,12 @@ test('the law IS the machinery on the real machine — permissions present, no d
   if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
   const d = G.diff(G.SETTINGS);
   assert.strictEqual(d.skipped, false);
+  // ⚠️ `d.drift` は存在しないキーだった — 乖離があっても理由が空欄で出ていた。
+  // 何が乖離したのか言えない赤は、直しようがない赤である。
   assert.strictEqual(d.ok, true,
-    `掟と機構が乖離している: ${(d.drift || []).map(x => x.key || x).join(', ')}`
-    + '  → node graph/apply-guards.js apply');
+    `掟と機構が乖離している:\n        `
+    + (d.changes || []).map(c => `${c.kind}: ${c.note}`).join('\n        ')
+    + '\n      → node graph/apply-guards.js apply');
 });
 
 // --- report ---

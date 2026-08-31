@@ -25,14 +25,30 @@
  *
  * 宣言は機構ではない。この engine が、掟を settings.json の機構に落とす。
  *
- * 職責は二つ:
+ * 職責は三つ:
  *   (a) permissions ブロックを書く          … 掟そのものの機械化
  *   (b) 死んだ matcher を検出して修復する    … 既にある門が本当に鳴るようにする
+ *   (c) env の健全性を検める                … 門が鳴っても **走れなければ** 同じこと
  *
  *   node graph/apply-guards.js plan      # 何が変わるか (既定・書かない)
  *   node graph/apply-guards.js apply     # settings.json に書く
  *   node graph/apply-guards.js verify    # 宣言と一致するか (乖離で exit 1)
- *   node graph/apply-guards.js diagnose  # 全 matcher を公式仕様で裁く
+ *   node graph/apply-guards.js diagnose  # 全 matcher を公式仕様で裁く + フックの実行可能性
+ *
+ * ── 第三の職責はなぜ要るか (実測) ────────────────────────────────────
+ * `~/.claude/settings.json` にこの一行があった:
+ *     "env": { "PATH": "$PATH:/c/Program Files/GitHub CLI" }
+ * **`$PATH` は展開されない。** リテラル文字列として PATH に入る。実測:
+ *     $ PATH='$PATH:/c/Program Files/GitHub CLI' bash -c 'command -v node'
+ *       node: command not found
+ * settings.json のフックは **15/15 すべてが `node` を呼ぶ**。つまりフック層が
+ * 丸ごと死んでいた。とりわけ SessionStart の記憶注入(役割・日本語指示・知識
+ * グラフ)が新セッションに一切届いておらず、しかも **exit=0 で黙って失敗**する。
+ * matcher が生きていることは、フックが走ることを意味しない。
+ *
+ * そしてこの env.PATH は **何も足していなかった**。素の PATH に GitHub CLI は
+ * 既に4回入っている。あの一行は PATH を破壊してフックを殺すだけの存在だった。
+ * ゆえに修復は「足す」ではなく **その一行を消す** である。
  *
  * ── 公式仕様(調査済み。この engine の前提) ──────────────────────────
  *   評価順 deny -> ask -> allow。最初の一致が勝ち、具体性は順位を変えない。
@@ -253,6 +269,217 @@ function repairGroup(group) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// env の健全性 (第三の職責)
+// ─────────────────────────────────────────────────────────────────────
+
+/** POSIX の未展開参照 `$VAR` / `${VAR}`。`$$` や `\$` のような逃げは見ない。 */
+const RE_POSIX_VAR = /\$(\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)/g;
+/** Windows の未展開参照 `%VAR%`。 */
+const RE_WINDOWS_VAR = /%([A-Za-z_][A-Za-z0-9_()]*)%/g;
+
+function matchAll(re, s) {
+  const out = [];
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(s))) out.push(m);
+  return out;
+}
+
+/** 値が **自分自身の PATH を参照している** か (`$PATH` `${PATH}` `%PATH%`)。 */
+function referencesPath(value) {
+  return /\$\{?PATH\}?|%PATH%/.test(value);
+}
+
+/**
+ * その値が「PATH を継ぎ足すつもりで書かれ、実際には PATH を破壊する」形か。
+ * 修復(削除)の対象を決めるのはこの述語だけである。
+ */
+function isPathPrefixedValue(value) {
+  return /^\s*(\$PATH|\$\{PATH\}|%PATH%)/.test(value);
+}
+
+/**
+ * `settings.env` の各値を検査し、**展開されない**シェル変数参照を名指す。
+ *
+ * settings.json の env はシェルを通らずそのまま子プロセスの環境になる。
+ * ゆえに `$PATH` は「今の PATH」ではなく **4文字の文字列** である。
+ *
+ * `PATH` に `$PATH` が入っている場合だけを `severity:'fatal'` とする —
+ * 既存の PATH を丸ごと失い、`node` を呼ぶ全フックが道連れになるからである。
+ * 他のキーの未展開参照は害が局所的なので `warn` に留め、**報告のみ**する。
+ *
+ * @returns {{key:string,value:string,kind:string,detail:string,severity:string}[]}
+ */
+function envDrift(settings) {
+  const env = settings && settings.env;
+  const out = [];
+  if (!env || typeof env !== 'object' || Array.isArray(env)) return out;
+  for (const [key, raw] of Object.entries(env)) {
+    if (typeof raw !== 'string') continue;
+    const value = raw;
+    const posix = matchAll(RE_POSIX_VAR, value).map(m => m[0]);
+    const win = matchAll(RE_WINDOWS_VAR, value).map(m => m[0]);
+    if (!posix.length && !win.length) continue;
+    const kind = posix.length ? 'unexpanded-posix' : 'unexpanded-windows';
+    const fatal = key === 'PATH' && referencesPath(value);
+    const refs = [...posix, ...win].join(', ');
+    const detail = fatal
+      ? `PATH は ${refs} を含むが settings.env はシェルを通らない — ${refs} はリテラル文字列として PATH になり、既存の PATH が丸ごと失われる (node を呼ぶ全フックが死ぬ)`
+      : `${refs} は展開されずリテラル文字列としてそのまま環境に入る`;
+    out.push({
+      key, value, kind, detail,
+      severity: fatal ? 'fatal' : 'warn',
+      ...(posix.length ? { posix } : {}),
+      ...(win.length ? { windows: win } : {}),
+      ...(fatal ? {} : { repair: 'report-only — PATH 以外のキーは楽園が勝手に消さない' }),
+    });
+  }
+  return out;
+}
+
+/**
+ * env を修復する。**純関数** — 与えられた env は変更しない。
+ * 消すのは「展開されない PATH 参照で始まる `PATH`」ただ一つ。
+ * 実測で、その行は何も足しておらず PATH を破壊するだけだった。
+ * `env` が空になったら `env` キーごと消す(空の器を残さない)。
+ * @returns {{env:object|undefined, changes:object[]}}
+ */
+function repairEnv(env) {
+  const changes = [];
+  if (!env || typeof env !== 'object' || Array.isArray(env)) return { env, changes };
+  const next = { ...env };
+  if (typeof next.PATH === 'string' && isPathPrefixedValue(next.PATH)) {
+    const from = next.PATH;
+    delete next.PATH;                         // ⚠️ PATH 以外のキーには決して触れない
+    const emptied = !Object.keys(next).length;
+    changes.push({
+      kind: 'env', key: 'PATH', from, severity: 'fatal', emptied,
+      note: `env.PATH = "${from}" は展開されない — 削除する`
+          + (emptied ? ' (env はこれ一つだったのでキーごと消える)' : '')
+          + ' (実測: この行は何も足さず PATH を破壊してフック 15/15 を殺していた)',
+    });
+  }
+  // 一つの欠陥は一つの乖離として数える — 空になったことを別行で叫べば、
+  // drift の件数が実際の欠陥数より膨らんで検査の意味が薄れる。
+  if (!Object.keys(next).length) return { env: undefined, changes };
+  return { env: next, changes };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// hookHealth — 門が鳴ったとき、本当に走れるのか
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * ⚠️ この検査は **この Node プロセスの PATH** で行う。フックが実際に走る環境
+ * (Claude Code が bash に渡す環境) とは異なりうる。緑であることは「今ここで
+ * 解決できた」以上を意味しない。嘘の安心を与えないため必ず併記すること。
+ */
+const HOOK_HEALTH_CAVEAT =
+  'この判定は現プロセスの PATH による。フックが実際に走る環境とは異なりうる';
+
+/** Windows で試すべき実行可能拡張子。PATHEXT があればそれに従う。 */
+function execExtensions() {
+  if (process.platform !== 'win32') return [''];
+  const pathext = (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
+    .split(';').map(s => s.trim()).filter(Boolean).map(s => s.toLowerCase());
+  const want = ['.exe', '.cmd', '.bat'];
+  for (const w of want) if (!pathext.includes(w)) pathext.push(w);
+  return ['', ...pathext];
+}
+
+/**
+ * PATH 文字列をディレクトリに割る。
+ * settings.json の PATH は git-bash 由来の `:` 区切りのことも、Windows 由来の
+ * `;` 区切りのこともある。`C:/x` のドライブレターのコロンで割らないよう繋ぎ直す。
+ */
+function splitPathList(value) {
+  if (typeof value !== 'string' || !value) return [];
+  const raw = value.split(/[;:]/);
+  const out = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (/^[A-Za-z]$/.test(raw[i]) && i + 1 < raw.length && /^[\\/]/.test(raw[i + 1])) {
+      out.push(raw[i] + ':' + raw[i + 1]);    // `C:` + `/x` を戻す
+      i++;
+    } else if (raw[i] !== '') {
+      out.push(raw[i]);
+    }
+  }
+  return out;
+}
+
+/** hook の command 文字列から先頭の実行ファイル名を取り出す(引用符とパスを剥がす)。 */
+function commandExe(command) {
+  const s = String(command == null ? '' : command).trim();
+  if (!s) return '';
+  let token;
+  const q = s.match(/^"((?:[^"\\]|\\.)*)"|^'([^']*)'/);
+  if (q) token = q[1] !== undefined ? q[1] : q[2];
+  else token = s.split(/\s+/)[0];
+  token = token.replace(/^["']|["']$/g, '');
+  const base = token.split(/[\\/]/).pop();     // ディレクトリを剥がす
+  return base || token;
+}
+
+/** 与えられた PATH 文字列で exe が解決できるか。 */
+function resolvesIn(exe, pathValue) {
+  if (!exe) return false;
+  const dirs = splitPathList(pathValue);
+  if (!dirs.length) return false;
+  const exts = /\.[A-Za-z0-9]+$/.test(exe) ? [''] : execExtensions();
+  for (const d of dirs) {
+    for (const ext of exts) {
+      try {
+        const p = path.join(d, exe + ext);
+        if (fs.existsSync(p) && fs.statSync(p).isFile()) return true;
+      } catch { /* 壊れたパス片は「解決できない」でしかない */ }
+    }
+  }
+  return false;
+}
+
+/**
+ * settings.json の全 hook の command を走査し、その実行ファイルが本当に
+ * 解決できるかを検める。matcher の診断は「門が鳴るか」しか見ておらず、
+ * 鳴った門の先で `node: command not found` が起きても何も言わなかった。
+ *
+ * 判定は二つ:
+ *   resolvable            … 現プロセスの PATH (HOOK_HEALTH_CAVEAT を参照)
+ *   resolvableUnderEnv    … settings.env.PATH が設定されている場合、その PATH。
+ *                           **今回の欠陥を捕らえるのはこちらである。**
+ *                           env.PATH が無ければ null (判定不能であって緑ではない)。
+ *
+ * @returns {{event:string,index:number,exe:string,resolvable:boolean,command:string}[]}
+ */
+function hookHealth(settings) {
+  const s = settings === undefined ? readSettings() : settings;
+  const out = [];
+  const hooks = (s && s.hooks) || {};
+  const envPath = s && s.env && typeof s.env.PATH === 'string' ? s.env.PATH : null;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) continue;
+    groups.forEach((g, gi) => {
+      const handlers = (g && Array.isArray(g.hooks)) ? g.hooks : [];
+      handlers.forEach((h, hi) => {
+        if (!h || typeof h !== 'object' || typeof h.command !== 'string') return;
+        const exe = commandExe(h.command);
+        out.push({
+          event,
+          index: gi,
+          handler: hi,
+          exe,
+          command: h.command,
+          resolvable: resolvesIn(exe, process.env.PATH || ''),
+          basis: HOOK_HEALTH_CAVEAT,
+          envPath,
+          resolvableUnderEnv: envPath === null ? null : resolvesIn(exe, envPath),
+        });
+      });
+    });
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // 計画 / 適用 / 検査
 // ─────────────────────────────────────────────────────────────────────
 
@@ -309,6 +536,13 @@ function buildDesired(settings) {
       });
     }
   }
+  // (c) env の健全性 — 門が鳴っても走れなければ同じこと
+  if (next.env && typeof next.env === 'object' && !Array.isArray(next.env)) {
+    const r = repairEnv(next.env);
+    if (r.env === undefined) delete next.env; else next.env = r.env;
+    for (const c of r.changes) changes.push(c);
+  }
+
   return { next, changes };
 }
 
@@ -323,10 +557,13 @@ function diff(file = SETTINGS) {
              note: 'no settings.json on this machine — nothing deployed to verify' };
   }
   const { changes } = buildDesired(s);
-  return { skipped: false, ok: changes.length === 0, file, changes, diagnosis: diagnoseSettings(s) };
+  const env = envDrift(s);
+  return { skipped: false, ok: changes.length === 0, file, changes,
+           diagnosis: diagnoseSettings(s), envDrift: env,
+           envFatal: env.filter(e => e.severity === 'fatal').length };
 }
 
-/** 掟を settings.json に書く。permissions と死んだ matcher 以外は触らない。 */
+/** 掟を settings.json に書く。permissions / 死んだ matcher / 壊れた env 以外は触らない。 */
 function apply(file = SETTINGS) {
   const s = readSettings(file);
   if (s === null) return { skipped: true, ok: true, file, changed: false,
@@ -360,6 +597,54 @@ if (require.main === module) {
     const over = rows.filter(r => r.status === 'overfire').length;
     console.log('─────────────────────────────────────────');
     console.log(`  ${rows.length} matcher(s): ${rows.length - dead - over} live, ${dead} dead, ${over} overfiring`);
+
+    // ── env の健全性 ──────────────────────────────────────────────
+    const s = readSettings(file);
+    console.log('');
+    console.log('═══════ 🧪 ENV HEALTH ═══════════════════');
+    const ed = s ? envDrift(s) : [];
+    if (!s) console.log('  (settings.json 無し — 検査対象が存在しない)');
+    else if (!ed.length) console.log('  ✓ env に展開されないシェル変数参照は無い');
+    for (const e of ed) {
+      console.log(`  ${e.severity === 'fatal' ? '🔴' : '⚠️ '} env.${e.key} [${e.kind}${e.severity === 'fatal' ? '/FATAL' : ''}]`);
+      console.log(`      value : ${e.value}`);
+      console.log(`      why   : ${e.detail}`);
+      if (e.repair) console.log(`      repair: ${e.repair}`);
+    }
+
+    // ── フックが実際に走れるか ────────────────────────────────────
+    const health = s ? hookHealth(s) : [];
+    console.log('');
+    console.log('═══════ 🩺 HOOK EXECUTABILITY ═══════════');
+    console.log(`  ⚠️  ${HOOK_HEALTH_CAVEAT}。`);
+    console.log('     ここが緑でも、フックが走る環境で緑とは限らない。');
+    if (!health.length) console.log('  (hook が一つも無い — 検べるものが無い)');
+    const envPath = s && s.env && typeof s.env.PATH === 'string' ? s.env.PATH : null;
+    const byExe = new Map();
+    for (const h of health) {
+      const k = h.exe;
+      const v = byExe.get(k) || { exe: k, n: 0, resolvable: h.resolvable, underEnv: h.resolvableUnderEnv };
+      v.n++;
+      byExe.set(k, v);
+    }
+    for (const v of byExe.values()) {
+      const a = v.resolvable ? '✓' : '🔴';
+      const b = v.underEnv === null ? '—' : (v.underEnv ? '✓' : '🔴');
+      console.log(`  ${a} ${String(v.exe).padEnd(12)} ×${String(v.n).padStart(2)}   現PATH:${a}   settings.env.PATH:${b}`);
+    }
+    if (envPath !== null) {
+      console.log(`  settings.env.PATH = ${envPath}`);
+      const dead2 = health.filter(h => h.resolvableUnderEnv === false);
+      if (dead2.length) {
+        console.log(`  🔴 settings.env.PATH の下では ${dead2.length}/${health.length} 本の hook が実行ファイルを解決できない`);
+        console.log('     → フックは exit=0 のまま黙って失敗する (`command not found`)');
+        console.log('     → node graph/apply-guards.js apply');
+      } else {
+        console.log(`  ✓ settings.env.PATH の下でも ${health.length} 本すべてが解決できる`);
+      }
+    } else {
+      console.log('  · settings.env.PATH は設定されていない — 第二の判定は行えない(緑ではなく判定不能)');
+    }
     console.log('═════════════════════════════════════════');
     process.exit(0);
   }
@@ -387,17 +672,36 @@ if (require.main === module) {
     console.log(`  🔴 掟と機構が乖離 (${d.changes.length})`);
     for (const c of d.changes) {
       if (c.kind === 'permissions') console.log(`     🔴 permissions — ${c.note}  ⇒ deny ${c.counts.deny} / ask ${c.counts.ask} / allow ${c.counts.allow}`);
+      else if (c.kind === 'env') console.log(`     🔴 env.${c.key} — ${c.note}`);
       else console.log(`     🔴 ${c.event}[${c.index}] ${c.note}\n          from: ${c.from}`);
     }
     console.log(`     → node graph/apply-guards.js apply`);
   }
+  // env は「修復対象でなくとも報告する」— PATH 以外のキーは消さないが黙らない。
+  if (!d.skipped) {
+    const ed = d.envDrift || [];
+    if (!ed.length) console.log('  ✓ env に展開されないシェル変数参照は無い');
+    for (const e of ed) {
+      console.log(`  ${e.severity === 'fatal' ? '🔴' : '⚠️ '} env.${e.key} [${e.kind}] ${e.value}`);
+      console.log(`      ${e.detail}`);
+    }
+    const health = hookHealth(readSettings(file));
+    const bad = health.filter(h => h.resolvableUnderEnv === false);
+    const badNow = health.filter(h => !h.resolvable);
+    console.log(`  🩺 hook ${health.length} 本 — ${HOOK_HEALTH_CAVEAT}`);
+    if (badNow.length) console.log(`     🔴 現 PATH で解決できない: ${[...new Set(badNow.map(h => h.exe))].join(', ')}`);
+    if (bad.length) console.log(`     🔴 settings.env.PATH の下で解決できない: ${bad.length}/${health.length} 本 (${[...new Set(bad.map(h => h.exe))].join(', ')})`);
+  }
   console.log('════════════════════════════════════════════');
-  process.exit(cmd === 'verify' && !d.ok ? 1 : 0);
+  // verify は env の fatal な乖離を単独で赤にする — 修復対象でない fatal
+  // (例: PATH の途中に $PATH がある形) を緑と呼べば、検査が嘘をつく。
+  process.exit(cmd === 'verify' && (!d.ok || d.envFatal > 0) ? 1 : 0);
 }
 
 module.exports = {
-  POLICY, KNOWN_TOOLS, SETTINGS,
+  POLICY, KNOWN_TOOLS, SETTINGS, HOOK_HEALTH_CAVEAT,
   classify, diagnose, diagnoseSettings,
   extractTools, extractConditions, toolsToMatcher, conditionToIf, repairGroup,
+  envDrift, repairEnv, hookHealth, commandExe, splitPathList, resolvesIn,
   readSettings, permissionsMatch, buildDesired, diff, apply, verify,
 };

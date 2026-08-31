@@ -52,6 +52,7 @@
     }
   },
   "own": {
+    "root": ["CLAUDE.md"],
     "commands": [
       "forge.md",
       "conclave.md",

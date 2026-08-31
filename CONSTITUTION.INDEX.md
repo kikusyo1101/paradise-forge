@@ -5,7 +5,7 @@
 > 常時運ぶのはこの索引だけでよい。**条文が要るときは引く**:
 > `node graph/codex.js article <番号>`
 
-全 33 条 / 本文 34,452 B / 索引はその約 91% 減
+全 35 条 / 本文 37,621 B / 索引はその約 91% 減
 
 | 条 | 題 | B |
 |---:|---|---:|
@@ -42,4 +42,6 @@
 | 31 | The seat that governs is the one nobody configured | 1963 |
 | 32 | Not every wish asks to be built | 2005 |
 | 33 | A law the machine does not enforce is a suggestion the agent may forget | 1900 |
+| 34 | A gate that cannot run is worse than a gate that fails | 1805 |
+| 35 | A deployment is not a report — it writes | 1364 |
 
