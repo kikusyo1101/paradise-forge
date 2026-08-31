@@ -302,5 +302,21 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T12:34:12.777Z"
+  },
+  {
+    "id": "env-path-self-reference-kills-hooks",
+    "label": "settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check",
+    "check": "settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:11:36.374Z"
+  },
+  {
+    "id": "forbid-by-effect-not-by-name",
+    "label": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+    "check": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:11:36.415Z"
   }
 ]

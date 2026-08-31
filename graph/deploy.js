@@ -96,6 +96,18 @@ function plan() {
       steps.push({ kind, file: f, from: 'overlay(own)', src: path.join(ovDir, f), dst: path.join(dstDir, f), relation: 'own' });
     }
   }
+  // 5. root — `~/.claude` 直下に住む楽園所有のファイル (第21条の宙吊り退治)
+  //
+  // 実測: 毎セッション読まれる散文のうち `rules/*.md` 8本は全て楽園が所有して
+  // いたが、`~/.claude/CLAUDE.md` 5,693B だけが**どこにも出所が無かった**。
+  // Git の追跡外、レビュー外、門の外。ハーネスが毎回読む部品が作者のマシンに
+  // しか無い — 第21条が裁いた宙吊り参照と同じ病である。ゆえに overlay/root/ に
+  // 取り込み、他の配備物と同じく再生成される成果物にする。
+  for (const f of ((c.own && c.own.root) || [])) {
+    steps.push({ kind: 'root', file: f, from: 'overlay(own)',
+                 src: path.join(OV, 'root', f), dst: path.join(HOME, f), relation: 'own' });
+  }
+
   // 4. adopted — 上流が捨てたが楽園が拾ったもの
   for (const relKey of ((c.adopted && c.adopted.files) || [])) {
     const kind = relKey.split('/')[0];
@@ -142,11 +154,21 @@ function check() {
   }
   // 掟もまた配備物である。permissions が書かれていない配備は、門を一つも
   // 持たない配備であり、agents だけを数える検査はそれを緑と呼んでしまう。
+  // さらに env が壊れていれば、門が鳴っても hook は走らない(第三の職責)。
   const guards = require('./apply-guards.js').diff();
   if (!guards.skipped && !guards.ok) {
     for (const c of guards.changes) {
       drift.push({ kind: 'settings', file: 'settings.json', from: 'apply-guards(POLICY)',
-                   why: c.kind === 'permissions' ? `掟が機構になっていない: ${c.note}` : `死んだ matcher ${c.event}[${c.index}]: ${c.note}` });
+                   why: c.kind === 'permissions' ? `掟が機構になっていない: ${c.note}`
+                      : c.kind === 'env' ? `env が壊れている: ${c.note}`
+                      : `死んだ matcher ${c.event}[${c.index}]: ${c.note}` });
+    }
+  }
+  // 修復対象ではない fatal な env 乖離も配備の欠陥である — 黙らせない。
+  if (!guards.skipped && guards.ok && guards.envFatal > 0) {
+    for (const e of (guards.envDrift || []).filter(x => x.severity === 'fatal')) {
+      drift.push({ kind: 'settings', file: 'settings.json', from: 'apply-guards(env)',
+                   why: `env.${e.key} が展開されない参照を含む: ${e.detail}` });
     }
   }
   return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length + 2, transforms: p.transforms };
@@ -201,6 +223,10 @@ function write() {
   // permissions を書かない配備は、force push も .env の読み出しも素通しにする
   // 配備であり、CLAUDE.md の「Hooks で自動強制されている」という一文を嘘にする。
   // さらに死んだ matcher を直す — 建て直すたびに門が黙って無効化されていた。
+  // そして env の健全性(第三の職責)。`env: {"PATH": "$PATH:..."}` の `$PATH` は
+  // 展開されずリテラル文字列として PATH になり、node を呼ぶ hook 15/15 が
+  // `command not found` で **exit=0 のまま黙って** 死んでいた。工程は増やさない —
+  // apply-guards の職責が増えただけであり、ここが env も一緒に運ぶ。
   let guards = null;
   try {
     const g = require('./apply-guards.js').apply();

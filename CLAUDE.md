@@ -63,6 +63,8 @@ node graph/codex.js check          # 索引が本文と一致しているか
 | 31 | **統べる座こそ誰も設定していなかった**(教主の座は `apply-seat.js`。効かない effort は書かない。無人の座は Fable にしない) |
 | 32 | **全ての願いが「作れ」ではない**(`counsel` の道。調査・監査・報告・諮問は build を通らない。主題は動詞に優先する) |
 | 33 | **機械が強制しない法は、忘れてよい助言である**(`apply-guards.js`。permissions と matcher を実際に効かせる。散文と機構に同じ掟を二重に持たない) |
+| 34 | **走れない門は、落ちる門より悪い**(`env.PATH` に `$PATH` を書くな。展開されず PATH を破壊しフック全滅。門は「一致する・走る・失敗が見える」の三つを満たして初めて門) |
+| 35 | **配備は報告ではない、書き込みである**(`deploy --write` は工程を通じて実機を書き換える。禁令は効果で述べよ。第27条は告発者をも縛る — 証跡を読む前に犯人を名指すな) |
 
 ---
 
@@ -108,6 +110,14 @@ node graph/apply-seat.js verify                # 教主の座が宣言どおり�
 2. **`overlay/vendor/` は楽園の所有物。** 改変は自由(第19条改正)。
    上流はもはや供給元ではない — 配備は `overlay/` からのみ建つ(第20条)
 3. **`~/.claude` を手で編集しない。** あれは成果物。`node graph/deploy.js --write` で建て直す
+   - ⚠️ **`deploy --write` は「配備」ではなく「書き込み」である**(第35条)。工程には
+     `apply-models` / `apply-spawn` / `apply-seat` / `apply-guards` が並んでおり、
+     走らせた瞬間に実機の `settings.json` と `agents/*.md` が書き換わる。
+     司祭に「実機に apply するな」と命じるときは、**`deploy --write` も併せて禁じよ**。
+     禁令は「何を禁じるか」ではなく「その道具が何を書くか」で述べること。
+   - **フックを足したら実際に発火させて確かめる**(第34条)。
+     `node graph/apply-guards.js diagnose` で matcher の生死を、`hookHealth` で
+     実行可能性を検める。設定ファイルに在ることは、効いていることの証明ではない。
 4. **目視でブラウザを開いたら必ず閉じる。**
    `cmd //c "taskkill /F /IM brave.exe /T"` — 開きっぱなしは神の画面を占領し、
    プロセス再利用で古いタブを掴みキャプチャが更新されなくなる
@@ -122,7 +132,7 @@ node graph/apply-seat.js verify                # 教主の座が宣言どおり�
 - 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
   `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
 - 自己診断: **194 tests**
-- 憲法: **33条**
+- 憲法: **35条**
 - 位階のモデル: 教主=`fable`/xhigh・枢機卿/執行官=`claude-opus-5`/xhigh・神官=`claude-sonnet-5`/high・
   信徒=`haiku`(effort非対応)。無人cronのみ`claude-opus-5`固定(第31条)。`node graph/clergy.js models`
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

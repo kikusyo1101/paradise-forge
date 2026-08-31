@@ -494,6 +494,56 @@ way to change what "complete" means.
     the prose entirely; two copies of one law is not redundancy, it is the
     guarantee that one of them is a lie.
 
+34. **A gate that cannot run is worse than a gate that fails.** The paradise had
+    fifteen hooks — the memory injection that tells a fresh session who it is and
+    what language to answer in, the compaction saver, the session evaluator — and
+    every one of them invoked `node`. Measured, **all fifteen were dead**, killed
+    by a single line meant to be helpful:
+
+    ```json
+    "env": { "PATH": "$PATH:/c/Program Files/GitHub CLI" }
+    ```
+
+    `$PATH` is **not expanded**. It is set as the literal four characters, so the
+    real PATH is discarded and `node` vanishes; `gh` survived only because its
+    directory was named absolutely. The line added nothing — the GitHub CLI was
+    already on the inherited PATH four times over — and cost everything. Worse,
+    the failure was **silent and exit-zero**: `SessionStart` reported success
+    while injecting nothing, so every new session began as a generic assistant
+    with no role, no language directive, and no memory, and nothing anywhere
+    said so.
+
+    This is Article 33 one level deeper. There the defect was a matcher that
+    never matched; here the gate matched, fired, and **could not execute**.
+    Presence in a config file proves neither of the three things that matter:
+    that the gate *matches*, that it *runs*, and that its *failure is visible*.
+    Therefore `apply-guards.js` gains a third duty: it detects unexpanded shell
+    references (`$VAR`, `${VAR}`, `%VAR%`) in `env`, treats a self-referential
+    `PATH` as **fatal** because it discards the inherited environment wholesale,
+    and `hookHealth()` resolves every hook's executable against both the real
+    PATH and the PATH the settings would impose. **Do not add a tool to the PATH
+    by rewriting the PATH; add nothing you have not proven absent.**
+
+35. **A deployment is not a report — it writes.** In the reform that introduced
+    Article 33, one worker was told to build the guard engine and never touch the
+    live machine, and another was told to add three agents and deploy them. Both
+    obeyed. Yet at 21:26:58 the live `settings.json` changed, because the second
+    worker's `deploy.js --write` ran the guard step the first had just installed
+    — its own output said so: `"guards": "deny 9 / ask 1 / allow 5 (更新 10)"`.
+    The pontiff read the file's mtime, inferred a motive, and **accused an
+    innocent worker in a commit message and a pull request** before reading the
+    trace that was sitting on disk the whole time.
+
+    Two rules follow. First, **an instruction's boundary is not what it forbids
+    but what its tools do**: forbidding `apply` while permitting `deploy --write`
+    forbids nothing, because deploy applies. State the boundary in terms of
+    effects, and treat any command that rebuilds the deployed tree as a writing
+    command. Second, **Article 27 binds the accuser too.** A claim that someone
+    violated an order is itself a claim, and demands the same evidence as a claim
+    that work was done. Read the trace before naming a culprit; an observation
+    (a timestamp) is not a motive, and the cost of the error is borne by someone
+    who did nothing wrong.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
