@@ -105,7 +105,7 @@ function suggest(wish, slug, opts = {}) {
     .sort((a, b) => a.s - b.s);
 
   // 多様性は確率でなく構造で担保する。候補は family を重複させない。
-  // 同じ family から3つ並べても「選択肢」ではなく、司祭は結局いつもの
+  // 同じ family から3つ並べても「選択肢」ではなく、神官は結局いつもの
   // 見た目に落ちる。さらに tech_saas は候補全体で高々1枠に制限する。
   const n = opts.n || 3;
   const picked = [];

@@ -689,6 +689,28 @@ way to change what "complete" means.
     無スコープ rules の総量には予算 (4,096 B) があり、超えた rule は
     `paths:` を得るか、痩せるか、command へ移るかを選ぶ。
 
+41. **The names of the hierarchy have one source, and prose obeys it.** 神が
+    位階と枢機卿団の名を定めた: God 神 / Pontiff 教主 / Cardinal 枢機卿 /
+    Priest 神官 / Believer 信徒 / Executor 執行官。枢機卿団は Discovery 調査 /
+    Requirements 要件 / Architecture 設計 / Construction 建造 / Quality 品質 /
+    Counsel 諐問 / Tribunal 断罪機関。
+
+    実測: 英字の識別子 (`priest` `believer`) は正しかったのに、**日本語の散文
+    107箇所が Priest を「司祭」と呼んでいた** — 29ファイル、engine・test・ <!-- LEXICON-EXEMPT -->
+    agent 定義・README・CI の段名にまで及ぶ。名が揺れる階層は歩けない。
+    「司祭」と「神官」が同じ者を指すなら、読む者は二つの階層があると学び、 <!-- LEXICON-EXEMPT -->
+    やがて存在しない位階へ仕事を発令する。第25条(歩けぬ階層は階層ではない)の
+    言語版である。
+
+    ゆえに名は**一つの出所**を持つ: `clergy.js` の `LEXICON`。各名は正典の
+    綴りと**禁じられた異名**を併せ持ち、`clergy.js lexicon-check` が全散文
+    (.md/.js/.json/.yml) を走査して行番号まで名指しする。CI の門に加わり、
+    異名の再侵入は機械が止める。表示は `title(key)` を通し、散文が独自に
+    訳語を選ぶことを許さない。
+
+    門には名前付きの脱出印 (`LEXICON-EXEMPT`) を置く — 逃げ道の無い門は、
+    いずれ黙って外されるからである。
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

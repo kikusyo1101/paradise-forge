@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * check-agents.js — 楽園が名指しする司祭が実在するか確かめる
+ * check-agents.js — 楽園が名指しする神官が実在するか確かめる
  *
  * 楽園は agent 名を **複数の場所** で名指しする:
  *   - graph/forge.js       … 各スケールの DAG の phase.agent
@@ -9,11 +9,11 @@
  *   - graph/examples/*.json … 出荷している見本 DAG の agent
  * しかし実体は `~/.claude/agents/*.md` にしかない。**名指しする場所が増えるたび
  * 宙吊り参照の入口が増える**。かつて forge.js だけを見ていたため、`frontend`
- * という実在しない司祭が clergy.js と examples に生き残り、検査は緑のままだった
+ * という実在しない神官が clergy.js と examples に生き残り、検査は緑のままだった
  * （憲法 第21条）。よって検査は「名指しする全ての口」を走査する。
  *
  *   node graph/check-agents.js          # 検査（不足があれば exit 1）
- *   node graph/check-agents.js --list   # 必要な司祭の一覧（出所つき）
+ *   node graph/check-agents.js --list   # 必要な神官の一覧（出所つき）
  *
  * ハーネス未配置の環境（CI など）では検査せず素通りする。存在しないものを
  * 責めるのではなく、存在すべきものが欠けていないかだけを見る。
@@ -45,7 +45,7 @@ function referenceMap(opts = {}) {
     for (const t of forge.buildDag('probe', scale).tasks) add(t.agent, `forge.js:${scale}`);
   }
 
-  // ② clergy.js — 枢機卿団が率いる司祭
+  // ② clergy.js — 枢機卿団が率いる神官
   for (const [id, c] of Object.entries(clergy.COLLEGE || {})) {
     for (const p of c.priests || []) add(p, `clergy.js:${id}`);
   }
@@ -89,7 +89,7 @@ function ungovernedPhases() {
 /**
  * 階層が実体を持っているか (憲法 第25条)
  *
- * 第21条は「名を口にする全ての口を見よ」と定めたが、その適用は**司祭に限られて
+ * 第21条は「名を口にする全ての口を見よ」と定めたが、その適用は**神官に限られて
  * いた**。ゆえに信徒13名が全員名前だけのまま、門は緑を出し続けた。同じ病が、
  * 検査の視野の外で生きていたのである。
  *
@@ -99,7 +99,7 @@ function ungovernedPhases() {
  *
  * よって三つを検める:
  *   ① 信徒に実体があるか          — 名前だけの階層を許さない
- *   ② 信徒を持つ司祭が起動の権能を持つか — 権能なき親は黙って兼務に倒れる
+ *   ② 信徒を持つ神官が起動の権能を持つか — 権能なき親は黙って兼務に倒れる
  *   ③ 宣言した深さが実行基盤の上限内か   — 越えれば黙って実行に落ちる
  */
 function hierarchyIntegrity(agentsDir) {
@@ -112,7 +112,7 @@ function hierarchyIntegrity(agentsDir) {
   const have = new Set(files.map(f => f.replace(/\.md$/, '')));
   /**
    * `tools:` 行の**不在**は「道具を持たない」ではなく「親から全て継承する」である。
-   * 空配列を返すと全継承の司祭を権能なしと誤断し、偽の警報になる。
+   * 空配列を返すと全継承の神官を権能なしと誤断し、偽の警報になる。
    * 判定できない状態と、判定して欠けている状態を混同してはならない(第16条)。
    */
   const toolsOf = (name) => {
@@ -135,14 +135,14 @@ function hierarchyIntegrity(agentsDir) {
           message: `信徒 ${b} に実体がない — ${cid} の組織図にいるが出勤しない` });
       }
     }
-    // ② 司祭の起動権能
+    // ② 神官の起動権能
     for (const p of c.priests || []) {
-      if (!have.has(p)) continue;   // 司祭不在は別途 dangling で捕らえる
+      if (!have.has(p)) continue;   // 神官不在は別途 dangling で捕らえる
       const tools = toolsOf(p);
       if (tools === null) continue;   // 全継承 = 起動の権能も継承している
       if (!tools.includes(clergy.SPAWN_TOOL)) {
         findings.push({ code: 'PRIEST_CANNOT_SPAWN', cardinal: cid, priest: p,
-          message: `司祭 ${p} は信徒を擁するが起動の道具 ${clergy.SPAWN_TOOL} を持たない — ` +
+          message: `神官 ${p} は信徒を擁するが起動の道具 ${clergy.SPAWN_TOOL} を持たない — ` +
                    '起動は黙って拒否され、階層は宣言だけになる' });
       }
     }
@@ -174,7 +174,7 @@ function check(agentsDir, opts) {
              note: 'no harness at this path — nothing to verify' };
   }
   const missing = need.filter(a => !have.has(a));
-  // 宙吊り参照 = 欠けている司祭 × それを名指した出所
+  // 宙吊り参照 = 欠けている神官 × それを名指した出所
   const dangling = missing.map(a => ({ agent: a, namedBy: sources[a] }));
   const ungoverned = ungovernedPhases();
   const hier = hierarchyIntegrity(dir);

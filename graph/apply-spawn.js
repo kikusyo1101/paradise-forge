@@ -10,10 +10,10 @@
  *     permission callback に落ちるか dontAsk モードで拒否される」
  *
  * 楽園はまさにこれだった。実測すると `Task` を持つのは cardinal 只一人で、
- * 信徒を擁する司祭は誰一人持っていなかった。ゆえに信徒13名は名前だけの存在で
- * あり続け、教主が階層を素通りして司祭を直接呼ぶしかなかった。
+ * 信徒を擁する神官は誰一人持っていなかった。ゆえに信徒13名は名前だけの存在で
+ * あり続け、教主が階層を素通りして神官を直接呼ぶしかなかった。
  *
- * **なぜ engine にするのか。** 司祭8名のうち6名は上流由来であり、
+ * **なぜ engine にするのか。** 神官8名のうち6名は上流由来であり、
  * 手で書き換えれば第19条(借り物は改変せず、変換で纏う)を破る。よってこれは
  * apply-models.js と同じ **transform** である — 上流が本文を更新しても
  * 権能だけは楽園の規則が勝ち、再適用で常に取り戻せる。
@@ -22,7 +22,7 @@
  *   node graph/apply-spawn.js apply    # 実際に frontmatter へ書き込む
  *   node graph/apply-spawn.js verify   # 規則と実体が一致しているか（乖離で exit 1）
  *
- * 最小権限を守る: **信徒を擁する司祭にだけ**与える。全員には与えない。
+ * 最小権限を守る: **信徒を擁する神官にだけ**与える。全員には与えない。
  */
 const fs = require('fs');
 const os = require('os');
@@ -35,17 +35,17 @@ const AGENTS_DIR = () => process.env.CLAUDE_HOME
 
 /**
  * 起動の権能を持つべき者 = 下位を擁する者。
- *   枢機卿 … 司祭を呼ぶ（既に Task を持つ）
- *   司祭   … 信徒を擁するものだけ
+ *   枢機卿 … 神官を呼ぶ（既に Task を持つ）
+ *   神官   … 信徒を擁するものだけ
  * 信徒は最下層なので誰も呼ばない（深さ3の底）。
  */
 function needsSpawn() {
   const out = new Map();   // name -> 理由
   for (const [cid, c] of Object.entries(clergy.COLLEGE || {})) {
-    if (c.agent) out.set(c.agent, `枢機卿 ${cid} を演じ、司祭を発令する`);
+    if (c.agent) out.set(c.agent, `枢機卿 ${cid} を演じ、神官を発令する`);
     if ((c.believers || []).length) {
       for (const p of c.priests || []) {
-        out.set(p, `${cid} の司祭として信徒 ${(c.believers || []).join('/')} を発令する`);
+        out.set(p, `${cid} の神官として信徒 ${(c.believers || []).join('/')} を発令する`);
       }
     }
   }
