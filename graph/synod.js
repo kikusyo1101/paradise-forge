@@ -61,21 +61,21 @@ function critiquePlan(convo) {
   //
   // 構造を変えたなら、旧い前提を符号化した門を全て読み直さねばならない。
   // ただし **緩めてはならない**: 創造の道には従来どおりの厳しさを課し、
-  // 諮問の道には「その道に相応しい厳しさ」を課す。門を消すのではなく分ける。
+  // 諐問の道には「その道に相応しい厳しさ」を課す。門を消すのではなく分ける。
   const isCounsel = convo.scale === 'counsel' ||
     convo.cardinals.some(c => c.cardinal === 'counsel');
 
   if (isCounsel) {
-    // 諮問の道の掟 — 創造ではなく **判断** の健全性を守る。
-    // 1. 根拠なき意見は意見ではない(第8条の諮問版): 外を調べ、内を測る二相が要る
+    // 諐問の道の掟 — 創造ではなく **判断** の健全性を守る。
+    // 1. 根拠なき意見は意見ではない(第8条の諐問版): 外を調べ、内を測る二相が要る
     const phases = convo.cardinals.flatMap(c => c.phases);
-    if (!phases.includes('survey')) gaps.push('no survey phase — 外の世界を調べぬ諮問は憶測である (Art. 8)');
-    if (!phases.includes('measure')) gaps.push('no measure phase — 手元を測らぬ諮問は伝聞である (Art. 8)');
-    // 2. 反証を経ぬ結論は結論ではない(第9条の諮問版)
-    if (!phases.includes('counter')) gaps.push('no counter phase — 己の結論を疑わぬ諮問は断定である (Art. 9)');
-    // 3. 諮問は創らない。build を持つならそれは諮問ではない(第32条)
+    if (!phases.includes('survey')) gaps.push('no survey phase — 外の世界を調べぬ諐問は憶測である (Art. 8)');
+    if (!phases.includes('measure')) gaps.push('no measure phase — 手元を測らぬ諐問は伝聞である (Art. 8)');
+    // 2. 反証を経ぬ結論は結論ではない(第9条の諐問版)
+    if (!phases.includes('counter')) gaps.push('no counter phase — 己の結論を疑わぬ諐問は断定である (Art. 9)');
+    // 3. 諐問は創らない。build を持つならそれは諐問ではない(第32条)
     for (const p of ['build', 'tests', 'verdict']) {
-      if (phases.includes(p)) gaps.push(`counsel road must not contain '${p}' — 諮問は創らず裁かない (Art. 32)`);
+      if (phases.includes(p)) gaps.push(`counsel road must not contain '${p}' — 諐問は創らず裁かない (Art. 32)`);
     }
   } else {
     // 創造の道の掟 — 従来どおり。

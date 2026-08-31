@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T22:47:58.625Z",
+  "generated": "2026-08-31T23:09:42.296Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 78,
+    "nodeCount": 79,
     "edgeCount": 33,
     "nodes": [
       {
@@ -414,7 +414,7 @@ window.PARADISE_STATE = {
       {
         "id": "surface-judged-as-strictly",
         "type": "lesson",
-        "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+        "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer神官が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
         "degree": 0
       },
       {
@@ -546,7 +546,7 @@ window.PARADISE_STATE = {
       {
         "id": "accusation-needs-evidence-too",
         "type": "lesson",
-        "label": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+        "label": "教主が神官を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
         "degree": 0
       },
       {
@@ -558,7 +558,7 @@ window.PARADISE_STATE = {
       {
         "id": "forbid-by-effect-not-by-name",
         "type": "lesson",
-        "label": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+        "label": "神官に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
         "degree": 0
       },
       {
@@ -582,7 +582,7 @@ window.PARADISE_STATE = {
       {
         "id": "comment-claims-what-code-does-not",
         "type": "lesson",
-        "label": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
+        "label": "clergy.marshalPlan のコメントは『相に最も適した神官を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
         "degree": 0
       },
       {
@@ -595,6 +595,12 @@ window.PARADISE_STATE = {
         "id": "reform-eval-gauge",
         "type": "creation",
         "label": "証明の秤 gauge.js (SHIPPED)",
+        "degree": 0
+      },
+      {
+        "id": "claude-md-diet-40",
+        "type": "lesson",
+        "label": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)",
         "degree": 0
       }
     ],
@@ -772,7 +778,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 6,
       "verdict": 1,
-      "lesson": 45
+      "lesson": 46
     }
   },
   "lessons": [
@@ -853,8 +859,8 @@ window.PARADISE_STATE = {
     },
     {
       "id": "surface-judged-as-strictly",
-      "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
-      "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる|applies:paradise-internal"
+      "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer神官が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+      "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer神官が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる|applies:paradise-internal"
     },
     {
       "id": "borrowed-not-altered",
@@ -899,12 +905,12 @@ window.PARADISE_STATE = {
     {
       "id": "art25-real-hierarchy",
       "label": "歩けぬ階層は階層ではない",
-      "check": "枢機卿はdataでactorでなく、信徒13名は全員名前だけ、conclaveは司祭への発令書を教主に返していた。5階層のうち2つしか実行されず。原因はClaude Agent SDK docsが名指しする通りallowedToolsにTask/Agentが無いと起動が黙って拒否されること。各位階にactorを与え、下位を擁する者にapply-spawnで権能を機械適用し、発令は必ず一つ下の位階へ向ける|applies:paradise-internal"
+      "check": "枢機卿はdataでactorでなく、信徒13名は全員名前だけ、conclaveは神官への発令書を教主に返していた。5階層のうち2つしか実行されず。原因はClaude Agent SDK docsが名指しする通りallowedToolsにTask/Agentが無いと起動が黙って拒否されること。各位階にactorを与え、下位を擁する者にapply-spawnで権能を機械適用し、発令は必ず一つ下の位階へ向ける|applies:paradise-internal"
     },
     {
       "id": "art19-supply-not-stock",
       "label": "在庫でなく供給線を検めよ",
-      "check": "独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し司祭9名が消えた。在庫を数える門は独立を証明しない|applies:paradise-internal"
+      "check": "独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し神官9名が消えた。在庫を数える門は独立を証明しない|applies:paradise-internal"
     },
     {
       "id": "art26-parallel-by-nature",
@@ -963,8 +969,8 @@ window.PARADISE_STATE = {
     },
     {
       "id": "accusation-needs-evidence-too",
-      "label": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
-      "check": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check|applies:paradise-internal"
+      "label": "教主が神官を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+      "check": "教主が神官を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check|applies:paradise-internal"
     },
     {
       "id": "env-path-self-reference-kills-hooks",
@@ -973,8 +979,8 @@ window.PARADISE_STATE = {
     },
     {
       "id": "forbid-by-effect-not-by-name",
-      "label": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
-      "check": "司祭に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check|applies:paradise-internal"
+      "label": "神官に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check",
+      "check": "神官に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check|applies:paradise-internal"
     },
     {
       "id": "new-road-old-gates",
@@ -993,13 +999,18 @@ window.PARADISE_STATE = {
     },
     {
       "id": "comment-claims-what-code-does-not",
-      "label": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
-      "check": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check|applies:paradise-internal"
+      "label": "clergy.marshalPlan のコメントは『相に最も適した神官を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
+      "check": "clergy.marshalPlan のコメントは『相に最も適した神官を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check|applies:paradise-internal"
     },
     {
       "id": "gauge-trajectory-over-outcome",
       "label": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない",
       "check": "outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない|applies:paradise-internal"
+    },
+    {
+      "id": "claude-md-diet-40",
+      "label": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)",
+      "check": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)|applies:paradise-internal"
     }
   ],
   "creations": [],

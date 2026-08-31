@@ -67,7 +67,7 @@ const SCALES = {
     { id: 'build',    agent: 'architect', goal: 'Implement the tasks against design.md (structure), ux.md (behaviour & states) and identity.md (look)', deps: ['detail', 'identity', 'ux'], artifact: 'implementation' },
     { id: 'tests',    agent: 'tdd-guide', goal: 'Write & run the test suite against requirements', deps: ['detail'], artifact: 'tests' },
     { id: 'review',   agent: 'code-reviewer', goal: 'Quality review of the implementation', deps: ['build', 'tests'], artifact: 'review' },
-    // 見た目を裁く司祭。ロジックの審査官とは別の目でなければ、UI は
+    // 見た目を裁く神官。ロジックの審査官とは別の目でなければ、UI は
     // 「動くから良い」で通ってしまう(憲法 第18条)。
     { id: 'ux-review', agent: 'ux-reviewer', goal: 'Judge the SURFACE: run `node graph/visual-verify.js check <dir>`, confirm identity.md and ux.md were actually honoured, drive the real browser at narrow and wide widths in BOTH themes, and report what a first-time user sees. Evidence must be measured or seen, never assumed.', deps: ['build'], artifact: 'ux-review.md' },
     { id: 'security', agent: 'security-reviewer', goal: 'Security scan of the change', deps: ['build'], artifact: 'security-report' },
@@ -201,10 +201,10 @@ const SCALE_PRODUCES = {
  * 神託が「楽園そのもの」を指しているか。
  *
  * これが最初に判定される理由: 楽園自身への改革を quick/standard と誤ると、
- * 市場調査の司祭が世間を調べに行き、己を測らない。対象を取り違えた道は、
+ * 市場調査の神官が世間を調べに行き、己を測らない。対象を取り違えた道は、
  * どれだけ丁寧に回しても正しい場所に着かない。
  */
-const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|司祭|priest)/i;
+const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest)/i;
 
 /**
  * 諐問の語彙 — 「創れ」ではなく「答えよ」と言っている願い。

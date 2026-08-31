@@ -119,8 +119,11 @@ jobs:
       - name: 📄 Derived — 生成物の中身を前提にした検査がないか (第29条)
         run: node graph/derived.js check
 
-      - name: ⛪ Agent presence — 司祭の実在 / 無主の相 / 階層の実体 (第21・23・25条)
+      - name: ⛪ Agent presence — 神官の実在 / 無主の相 / 階層の実体 (第21・23・25条)
         run: node graph/check-agents.js
+
+      - name: 🕮 Lexicon — 位階と枢機卿団の名が正典に従うか (第41条)
+        run: node graph/clergy.js lexicon-check
 
       - name: 🗝 Spawn authority — 下位を擁する者が起動の権能を持つか (第25条)
         run: node graph/apply-spawn.js verify

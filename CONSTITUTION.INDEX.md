@@ -5,7 +5,7 @@
 > 常時運ぶのはこの索引だけでよい。**条文が要るときは引く**:
 > `node graph/codex.js article <番号>`
 
-全 40 条 / 本文 47,857 B / 索引はその約 92% 減
+全 41 条 / 本文 49,435 B / 索引はその約 92% 減
 
 | 条 | 題 | B |
 |---:|---|---:|
@@ -49,4 +49,5 @@
 | 38 | Improvement must be proven in numbers | 2454 |
 | 39 | The always-loaded page is a first screen, not a codex | 2055 |
 | 40 | The whole harness is on the scale, not just one page | 1971 |
+| 41 | The names of the hierarchy have one source, and prose obeys it | 1578 |
 

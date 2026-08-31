@@ -183,7 +183,7 @@ test('相名の衝突が無い: analyze は requirements のまま、諐問は a
   assert.ok(!ids.includes('analyze'), '諐問の道は analyze を名乗らない(名の混同は事故を生む)');
 });
 
-test('counsel の道が名指す司祭は全て clergy に実在する', () => {
+test('counsel の道が名指す神官は全て clergy に実在する', () => {
   const ca = require(path.join(ROOT, 'graph', 'check-agents.js'));
   const res = ca.check();
   if (res.skipped) return;   // ハーネス未配置の環境では検査しない
@@ -225,7 +225,7 @@ for (const [name, want] of [
     }
     if (want.needsTask) {
       assert.ok(list.includes('Task'),
-        `司祭 ${name} は信徒を擁する — 起動の道具 ${clergy.SPAWN_TOOL} が無ければ階層は宣言だけになる(第25条)`);
+        `神官 ${name} は信徒を擁する — 起動の道具 ${clergy.SPAWN_TOOL} が無ければ階層は宣言だけになる(第25条)`);
     }
     assert.ok(!list.includes('Edit') || name !== 'auditor',
       '監査官は読み取り専用である — 測定が対象を変えたら、それはもう測定ではない');
@@ -376,14 +376,14 @@ test('諐問に build/tests/verdict が紛れ込めば鳴る (第32条)', () => 
   }
 });
 
-test('道の性質によらぬ掟は両方に効く — 司祭なき枢機卿は両道で欠陥', () => {
+test('道の性質によらぬ掟は両方に効く — 神官なき枢機卿は両道で欠陥', () => {
   for (const scale of ['counsel', 'standard']) {
     const c = { scale, cardinals: [
       { cardinal: scale === 'counsel' ? 'counsel' : 'discovery',
         phases: ['survey', 'measure', 'counter'], priests: [], reviewClass: 'executor' },
     ] };
     const r = synod.critiquePlan(c);
-    assert.ok(r.gaps.some(g => /no priest/.test(g)), `${scale}: 司祭なき枢機卿を見逃した`);
+    assert.ok(r.gaps.some(g => /no priest/.test(g)), `${scale}: 神官なき枢機卿を見逃した`);
   }
 });
 
@@ -460,17 +460,17 @@ test('秘密の混入は今も BLOCK — 既存の裁きを壊していない', 
   assert.ok(r.breaches.some(b => /secret/.test(b)));
 });
 
-test('相ごとに相応しい司祭が指揮される — 実体を作って命令が届かぬ階層は階層でない (第25条)', () => {
+test('相ごとに相応しい神官が指揮される — 実体を作って命令が届かぬ階層は階層でない (第25条)', () => {
   const lead = p => clergy.marshalPlan(p).priest;
   // かつて全6相が priests[0] = market-researcher に落ち、auditor と reporter は
-  // 一度も指揮されなかった。コメントは「相に最も適した司祭を選ぶ」と述べていた。
-  assert.strictEqual(lead('survey'), 'market-researcher', '外を調べるのは市場調査の司祭');
-  assert.strictEqual(lead('measure'), 'auditor', '手元を測るのは監査の司祭');
+  // 一度も指揮されなかった。コメントは「相に最も適した神官を選ぶ」と述べていた。
+  assert.strictEqual(lead('survey'), 'market-researcher', '外を調べるのは市場調査の神官');
+  assert.strictEqual(lead('measure'), 'auditor', '手元を測るのは監査の神官');
   assert.strictEqual(lead('assess'), 'auditor');
   assert.strictEqual(lead('counter'), 'auditor', '反証は実測に忠実な者が担う');
-  assert.strictEqual(lead('synthesize'), 'reporter', '編むのは報告の司祭');
+  assert.strictEqual(lead('synthesize'), 'reporter', '編むのは報告の神官');
   assert.strictEqual(lead('counsel'), 'reporter');
-  // 三名すべてが実際に指揮される(名ばかりの司祭を作らない)
+  // 三名すべてが実際に指揮される(名ばかりの神官を作らない)
   const leads = new Set(['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel'].map(lead));
   for (const p of ['market-researcher', 'auditor', 'reporter']) {
     assert.ok(leads.has(p), `${p} が一度も指揮されない — 実体だけ作って命令が届いていない`);
@@ -485,16 +485,16 @@ test('創造の道の指揮系統は壊れていない', () => {
   assert.strictEqual(lead('review'), 'code-reviewer');
 });
 
-test('指揮系統を跨いだ発令はしない — 表が他家の司祭を指しても自家に落ちる', () => {
-  // PHASE_LEAD が枢機卿の擁さぬ者を指した場合、筆頭司祭へ安全に落ちること。
+test('指揮系統を跨いだ発令はしない — 表が他家の神官を指しても自家に落ちる', () => {
+  // PHASE_LEAD が枢機卿の擁さぬ者を指した場合、筆頭神官へ安全に落ちること。
   const m = clergy.marshalPlan('discover');
   const c = clergy.COLLEGE[m.cardinal];
   assert.ok(c.priests.includes(m.priest),
-    `発令先 ${m.priest} が枢機卿 ${m.cardinal} の司祭ではない — 指揮系統を跨いでいる`);
+    `発令先 ${m.priest} が枢機卿 ${m.cardinal} の神官ではない — 指揮系統を跨いでいる`);
   for (const p of ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel']) {
     const mm = clergy.marshalPlan(p);
     assert.ok(clergy.COLLEGE[mm.cardinal].priests.includes(mm.priest),
-      `${p}: 発令先 ${mm.priest} が ${mm.cardinal} の司祭ではない`);
+      `${p}: 発令先 ${mm.priest} が ${mm.cardinal} の神官ではない`);
   }
 });
 

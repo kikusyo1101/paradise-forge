@@ -924,7 +924,7 @@ test('guard reports JST regardless of the machine timezone', () => {
 const identity = require('../graph/identity.js');
 
 test('identity: candidates never repeat a family, and tech_saas gets at most one slot', () => {
-  // 同じ family から3つ並べても選択肢にならない。司祭は結局いつもの見た目に落ちる。
+  // 同じ family から3つ並べても選択肢にならない。神官は結局いつもの見た目に落ちる。
   const res = identity.suggest('習慣を記録するトラッカー', 'test-a', { history: path.join(os.tmpdir(), 'no-such-history-' + Math.random() + '.json') });
   const fams = res.candidates.map(c => c.family);
   assert.strictEqual(new Set(fams).size, fams.length, 'every candidate comes from a different family');
@@ -1162,7 +1162,7 @@ test('the quality cardinal owns the surface judgment', () => {
 });
 
 test('visual: adjacent ramp steps must stay distinguishable', () => {
-  // ux-reviewer 司祭が手計算と目視でしか見つけられなかった欠陥。
+  // ux-reviewer 神官が手計算と目視でしか見つけられなかった欠陥。
   // 5段階のヒートマップで隣が 1.02:1 なら、段は存在しないに等しい。
   const d = makeUi(':root{--bg:#ffffff;--fg:#141413;' +
     '--level-0:#E7E1DA;--level-1:#F2DCC6;--level-2:#F0B183;--level-3:#EC7F3C;--level-4:#CF4500}');
@@ -1497,7 +1497,7 @@ test('reference gate: every mouth that names a priest is watched (Art.21)', () =
 });
 
 test('reference gate: a dangling name is caught AND traced to who named it (Art.21)', () => {
-  // 門を、わざと壊して試す。実在しない司祭を名指す見本DAGを作って気づくか。
+  // 門を、わざと壊して試す。実在しない神官を名指す見本DAGを作って気づくか。
   const ca = require('../graph/check-agents.js');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ex-'));
   fs.writeFileSync(path.join(tmp, 'ghost.dag.json'), JSON.stringify({
@@ -1759,14 +1759,14 @@ test('hierarchy: the gate fires when a believer loses its body (Art.25)', () => 
 
 test('hierarchy: the declared depth fits the runtime (Art.25)', () => {
   const clergy = require('../graph/clergy.js');
-  // 教主(0) → 枢機卿(1) → 司祭(2) → 信徒(3)
+  // 教主(0) → 枢機卿(1) → 神官(2) → 信徒(3)
   assert.ok(clergy.MAX_SPAWN_DEPTH >= 3,
     `the declared ladder needs depth 3, runtime allows ${clergy.MAX_SPAWN_DEPTH}`);
   assert.ok(clergy.SPAWN_TOOL, 'the spawn tool is named, not assumed');
 });
 
 test('hierarchy: the wave is dispatched TO the cardinal, not past it (Art.25)', () => {
-  // 素通りの正体: 司祭への発令書が教主に返っていた。
+  // 素通りの正体: 神官への発令書が教主に返っていた。
   const forge = require('../graph/forge.js');
   const conclave = require('../graph/conclave.js');
   const tmp = path.join(os.tmpdir(), `dag-${Date.now()}.json`);
@@ -2411,7 +2411,7 @@ test('verdict: engine/document の道は trajectory を要求されない — �
     tests: { passed: 9, failed: 0, total: 9, coverage: 92 }, security: { issues: 0, secrets: 0 } });
   assert.strictEqual(eng.verdict, 'SHIP', 'CI の断罪 (run-state 無し) は塞がない');
   const doc = verdict.judge({ produces: 'document' });
-  assert.notStrictEqual(doc.verdict, 'REWORK', '諮問は走行を測られない');
+  assert.notStrictEqual(doc.verdict, 'REWORK', '諐問は走行を測られない');
 });
 
 test('verdict: 中身の無い trajectory は欠陥 — 名前だけの証拠は証拠でない (第16条)', () => {
@@ -2557,6 +2557,61 @@ test('diet: 太った global CLAUDE.md と無スコープ rules の総量超過�
   const probe = new Function('text', src.match(/function hasPathsScope[\s\S]*?\n}/)[0] + '; return hasPathsScope(text);');
   assert.ok(probe(fm) === true, 'frontmatter paths: must count as scoped');
   assert.ok(probe(bodyOnly) === false, 'a paths: mention in the body must not count as scoped');
+});
+
+// --- Lexicon gate (第41条: 名は一つの出所に従う) ---
+console.log('\nLexicon gate (第41条):');
+
+test('lexicon: 神が定めた位階と枢機卿団の名がそのまま辞書に住む (第41条)', () => {
+  const L = clergy.LEXICON;
+  const wantRanks = { god: '神', pontiff: '教主', cardinal: '枢機卿',
+                      priest: '神官', believer: '信徒', executor: '執行官' };
+  for (const [k, ja] of Object.entries(wantRanks)) {
+    assert.ok(L.ranks[k], `rank ${k} must exist in the LEXICON`);
+    assert.strictEqual(L.ranks[k].ja, ja, `rank ${k} の正典の名は ${ja}`);
+  }
+  const wantCollege = { discovery: '調査', requirements: '要件', architecture: '設計',
+                        construction: '建造', quality: '品質', counsel: '諐問', tribunal: '断罪機関' };
+  for (const [k, ja] of Object.entries(wantCollege)) {
+    assert.ok(L.college[k], `college ${k} must exist in the LEXICON`);
+    assert.strictEqual(L.college[k].ja, ja, `college ${k} の正典の名は ${ja}`);
+  }
+  // 枢機卿団の顔ぶれは COLLEGE + TRIBUNAL と一致する — 辞書だけが知る家は無い
+  const colleges = new Set([...Object.keys(clergy.COLLEGE), 'tribunal']);
+  assert.deepStrictEqual(new Set(Object.keys(L.college)), colleges,
+    'the LEXICON names exactly the cardinals that exist — no phantom domain, no unnamed one');
+  assert.strictEqual(clergy.title('priest'), 'Priest 神官');
+  assert.strictEqual(clergy.title('tribunal'), 'Tribunal 断罪機関');
+});
+
+test('lexicon: 現物の散文に異名は住んでいない (第41条)', () => {
+  const r = require('child_process').spawnSync(process.execPath,
+    [path.join(__dirname, '..', 'graph', 'clergy.js'), 'lexicon-check'],
+    { encoding: 'utf8', cwd: path.join(__dirname, '..') });
+  assert.strictEqual(r.status, 0, 'the paradise speaks canonical names:\n' + (r.stdout || '') + (r.stderr || ''));
+  assert.ok(/異名なし/.test(r.stdout), 'the gate must actually report a clean sweep: ' + r.stdout);
+});
+
+test('lexicon: 異名を門が行番号まで名指しで捕らえる (第21条: 壊して鳴らす)', () => {
+  const bad = clergy.lexiconCheck([
+    { file: 'x.md', text: '第一行\n枢機卿は司祭を発令する\n第三行\n諮問の道' },  // LEXICON-EXEMPT
+  ]);
+  const priest = bad.find(f => f.found === '司祭');  // LEXICON-EXEMPT
+  assert.ok(priest, 'the alias 司祭 must be caught');  // LEXICON-EXEMPT
+  assert.strictEqual(priest.line, 2, 'the gate names the exact line — 「どこかに在る」は直せない');
+  assert.strictEqual(priest.want, '神官');
+  assert.ok(bad.some(f => f.found === '諮問' && f.want === '諐問'), 'counsel alias must be caught');  // LEXICON-EXEMPT
+  // 正典の名しか無い散文は鳴らない — 誤報する門は、やがて誰も見ない
+  const clean = clergy.lexiconCheck([{ file: 'y.md', text: '教主が枢機卿を通じ神官と信徒を統べ、執行官が断罪する' }]);
+  assert.strictEqual(clean.length, 0, 'canonical prose must not raise a false alarm: ' + JSON.stringify(clean));
+  // 名前付きの脱出印は効く — 逃げ道の無い門は、いずれ黙って外される
+  const exempt = clergy.lexiconCheck([{ file: 'z.md', text: '旧称は司祭であった  <!-- LEXICON-EXEMPT -->' }]);
+  assert.strictEqual(exempt.length, 0, 'LEXICON-EXEMPT must let a deliberate mention through');
+});
+
+test('lexicon: 門は CI に配線されている — 配線されぬ門は飾りである (第21条)', () => {
+  const ci = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'tribunal.yml'), 'utf8');
+  assert.ok(/clergy\.js lexicon-check/.test(ci), 'lexicon-check must run in the tribunal workflow');
 });
 
 // --- report ---

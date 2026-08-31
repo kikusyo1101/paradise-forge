@@ -84,7 +84,7 @@ function fromProse(src) {
   return { colors: top, description: theme.slice(0, 400) };
 }
 
-/** 見た目の「気配」を語彙化する。司祭が selection するときの検索キー。 */
+/** 見た目の「気配」を語彙化する。神官が selection するときの検索キー。 */
 const TRAIT_RULES = [
   [/beveled|bevel|chrome|metallic|brushed|faceplate|halftone|Y2K|skeuomorph/i, 'skeuomorphic-chrome'],
   [/serif|editorial|magazine|journalis|typographic|broadsheet/i, 'editorial-serif'],

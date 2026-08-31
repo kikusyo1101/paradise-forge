@@ -121,7 +121,7 @@ const DEFAULT_PALETTE = /#(?:58a6ff|0d1117|161b22|21262d|3fb950|f85149|8b949e|c9
  * ヒートマップの5段階は「情報を色の濃さで伝える」約束だが、隣り合う段が
  * 1.02:1 なら段は存在しないに等しい。前景/背景のコントラストだけを見ていた
  * 8検査はこれを全て通過し、人の目と手計算でしか見つからなかった。
- * (ux-reviewer 司祭の上申により追加 — 憲法 第18条(b))
+ * (ux-reviewer 神官の上申により追加 — 憲法 第18条(b))
  */
 const RAMP_MIN_STEP = 1.2; // 隣接段がこれ未満なら段として機能していない
 function checkRampSeparation(ctx) {
@@ -337,7 +337,7 @@ function check(dir) {
     checkIdentityHonoured(ctx), checkContrast(ctx), checkNoDefaultPalette(ctx),
     checkStates(ctx), checkResponsive(ctx), checkFocusVisible(ctx),
     checkTouchTarget(ctx), checkMotion(ctx),
-    // ux-reviewer 司祭の上申により追加(第2世代)。8検査を全通過しながら
+    // ux-reviewer 神官の上申により追加(第2世代)。8検査を全通過しながら
     // 主役UIが読めない状態が実際に成立したため。
     checkRampSeparation(ctx), checkNonTextContrast(ctx), checkColorScheme(ctx),
   ];

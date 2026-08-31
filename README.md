@@ -53,7 +53,7 @@ node graph/vendor.js refresh --yes # 上流が在れば取り込み直す（人�
 node graph/upstream.js impact    # 上流が在れば差分を裁定、無ければ黙る
 node graph/deploy.js --write     # vendor + overlay から ~/.claude を建て直す
 node graph/deploy.js check       # 配備物が定義と一致しているか (CI用)
-node graph/check-agents.js       # forge.js が名指しする司祭が実在するか
+node graph/check-agents.js       # forge.js が名指しする神官が実在するか
 ```
 
 **乖離の四分類**（`overlay/overlay.json` が宣言する）:
@@ -62,7 +62,7 @@ node graph/check-agents.js       # forge.js が名指しする司祭が実在す
 |---|---|---|
 | **transform** | agents 9件の `model:` | 上流を常に採用し、**規則を再適用**。衝突ではない |
 | **replace** | `orchestrate.md` | 楽園が勝つ。ただし上流の変更は必ず提示 |
-| **own** | `/forge` `/conclave` `/graph`、司祭7名 | 楽園固有。`overlay/` が原本 |
+| **own** | `/forge` `/conclave` `/graph`、神官7名 | 楽園固有。`overlay/` が原本 |
 | **adopted** | （現在なし） | 上流が削除したが楽園が拾ったもの |
 
 - **独立は決別ではない。** 上流が在るときだけ見に行き、無ければ黙る
@@ -129,7 +129,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 218/194 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 222/194 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・

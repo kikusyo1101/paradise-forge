@@ -130,14 +130,14 @@ function next(run) {
       level: 'domain', phase: 'wave', cardinal: d.cardinal, domain: d.domain,
       pdca: d.pdca,
       // ── 誰がこの発令を受けるのか (憲法 第25条) ────────────────────────
-      // かつてここは司祭への発令書を **教主に** 返していた。ゆえに教主が司祭を
+      // かつてここは神官への発令書を **教主に** 返していた。ゆえに教主が神官を
       // 直接呼び、枢機卿は素通りされ、階層は宣言だけになった。
-      // 発令は枢機卿が受け、枢機卿が司祭を起動する。
+      // 発令は枢機卿が受け、枢機卿が神官を起動する。
       dispatch_to: {
         rank: 'cardinal',
         agent: (col && col.agent) || 'cardinal',
         cardinal: d.cardinal,
-        instruction: `あなたは枢機卿 ${d.domain} である。以下の相を配下の司祭に発令し、` +
+        instruction: `あなたは枢機卿 ${d.domain} である。以下の相を配下の神官に発令し、` +
                      '結果を実物と突き合わせて検め、己のPDCAを回してから教主に返せ。' +
                      '自ら細部を作らない — あなたは指揮官である。',
         may_dispatch: (col && col.priests) || [],
@@ -166,7 +166,7 @@ function next(run) {
             // FM-2.2「確認せず誤った前提で進む」11.65%。黙って進むより問い返す方が安い。
             if_unclear: '前提が不明なら推測で進まず、blocked として何が不明かを述べて返す',
           },
-          // 司祭がさらに細分する場合の割当（信徒は実体を持つ）
+          // 神官がさらに細分する場合の割当（信徒は実体を持つ）
           marshal: believers.length ? clergy.marshalPlan(id, { priestCanSpawn: true }) : null,
         };
       }),

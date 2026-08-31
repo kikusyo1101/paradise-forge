@@ -52,6 +52,10 @@ function supportsEffort(model, effort) {
   return levels.includes(effort);
 }
 
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.resolve(__dirname, '..');
+
 const RANKS = {
   god:       { level: 0, title: 'God 神',        role: 'issues the wish, receives only answers' },
   pontiff:   { level: 1, title: 'Pontiff 教主',   role: 'governs the whole; the session itself',
@@ -123,7 +127,7 @@ function allPriests() {
  *     **これが『宣言はあるが起動しない』の第一原因である**」
  *
  * 楽園はまさにこれを踏んでいた。実測すると `Task` を持つのは cardinal 只一人で、
- * 司祭は誰一人持っていなかった。ゆえに信徒13名は名前だけの存在であり続けた。
+ * 神官は誰一人持っていなかった。ゆえに信徒13名は名前だけの存在であり続けた。
  * 怠慢ではなく **通れない道** だったのである。
  *
  * よって権能は宣言でなくデータとして持ち、門が検める。
@@ -174,7 +178,7 @@ const PARALLEL_SAFE = {
  * (appropriate-class review). `pdca` names the inner cycle it runs.
  *
  * `agent` は **その枢機卿を演じる実体**である。これが無い間、枢機卿は
- * ただのラベルであり、教主が司祭を直接呼んで階層を素通りしていた。
+ * ただのラベルであり、教主が神官を直接呼んで階層を素通りしていた。
  */
 const COLLEGE = {
   'discovery': {
@@ -270,29 +274,29 @@ function cardinalFor(phaseId) {
 }
 
 /**
- * 司祭の marshalling plan — その相を、誰がどう分けて働くか。
+ * 神官の marshalling plan — その相を、誰がどう分けて働くか。
  *
  * かつてここは `mode: 'single-writer-or-nested'` を返していた。「入れ子が
- * できる環境なら信徒を生む、できなければ司祭が兼務する」という両睨みである。
+ * できる環境なら信徒を生む、できなければ神官が兼務する」という両睨みである。
  * それは敗北宣言であった — **実際には入れ子は可能だった**。
  * Claude Code の MAX_SUBAGENT_SPAWN_DEPTH は既定 3 であり、
- * 教主→枢機卿→司祭→信徒 は物理的に成立する。両睨みでいる限り
+ * 教主→枢機卿→神官→信徒 は物理的に成立する。両睨みでいる限り
  * 信徒は永遠に実体を持たない側に倒れ続け、事実そうなっていた（13名全員が名前だけ）。
  *
- * よって計画は**実在性を伴って**返す: どの信徒が実体を持ち、司祭が起動の権能
+ * よって計画は**実在性を伴って**返す: どの信徒が実体を持ち、神官が起動の権能
  * (Task) を持つか。持たないなら `blocked` と正直に述べる — 黙って兼務に
  * 倒れることはしない。
  */
 /**
- * 相 → その相を率いる司祭。
+ * 相 → その相を率いる神官。
  *
  * ⚠️ かつてここは `c.priests[0]` を無条件に返していた。コメントは「相に最も適した
- * 司祭を選ぶ」と述べていたのに、実装は先頭固定 — 散文が機構を騙っていた(第33条)。
+ * 神官を選ぶ」と述べていたのに、実装は先頭固定 — 散文が機構を騙っていた(第33条)。
  * 実害: 諐問の道の6相すべてが `market-researcher` に発令され、**auditor と
  * reporter は一度も指揮されなかった**。実体を作りながら命令が届かないのは
  * 第25条「歩けぬ階層は階層ではない」そのものである。
  *
- * ここに無い相は従来どおり枢機卿の筆頭司祭に落ちる(既存の道を壊さないため)。
+ * ここに無い相は従来どおり枢機卿の筆頭神官に落ちる(既存の道を壊さないため)。
  */
 const PHASE_LEAD = {
   // 諐問の道 — 外を調べる者、手元を測る者、編む者は別人である
@@ -302,17 +306,83 @@ const PHASE_LEAD = {
   synthesize: 'reporter',           // 人が読める報告書に編む
   counsel:    'reporter',           // 推奨と根拠を献じる
   // counter(反証)は counsel 枢機卿が統べる。理想は self-critic だが彼は tribunal の
-  // 執行官であり counsel の司祭ではない — 指揮系統を跨いだ発令はしない。ゆえに
+  // 執行官であり counsel の神官ではない — 指揮系統を跨いだ発令はしない。ゆえに
   // 実測に忠実な auditor が反証を担う。「己の結論を疑う」のは測る者の役目に近い。
   counter:    'auditor',
 };
+
+/**
+ * LEXICON — 正典の名 (憲法 第41条)
+ *
+ * 神が名を定めた。位階と枢機卿団の名は**一つの出所**を持ち、散文はそれに従う。
+ * 名が揺れる階層は歩けない — 「神官」と「神官」が同じ者を指すなら、読む者は
+ * 二つの階層があると学ぶ。第25条(歩けぬ階層は階層ではない)の言語版である。
+ *
+ * `forbidden` は「その名で呼んではならぬ異名」— lexiconCheck が散文を裁く。
+ */
+const LEXICON = {
+  ranks: {
+    god:      { en: 'God',      ja: '神',     forbidden: [] },
+    pontiff:  { en: 'Pontiff',  ja: '教主',   forbidden: ['教皇', '法王'] },
+    cardinal: { en: 'Cardinal', ja: '枢機卿', forbidden: ['大司教'] },
+    priest:   { en: 'Priest',   ja: '神官',   forbidden: ['司祭'] },
+    believer: { en: 'Believer', ja: '信徒',   forbidden: ['信者'] },
+    executor: { en: 'Executor', ja: '執行官', forbidden: ['執行者'] },
+  },
+  college: {
+    discovery:    { en: 'Discovery',    ja: '調査',     forbidden: ['探索部'] },
+    requirements: { en: 'Requirements', ja: '要件',     forbidden: [] },
+    architecture: { en: 'Architecture', ja: '設計',     forbidden: [] },
+    construction: { en: 'Construction', ja: '建造',     forbidden: ['建設'] },
+    quality:      { en: 'Quality',      ja: '品質',     forbidden: [] },
+    counsel:      { en: 'Counsel',      ja: '諐問',     forbidden: ['諮問', '審問'] },
+    tribunal:     { en: 'Tribunal',     ja: '断罪機関', forbidden: ['裁判所', '法廷'] },
+  },
+};
+
+/** 正典の呼び名 — `Priest 神官` の形。表示は必ずここを通す。 */
+function title(key) {
+  const e = LEXICON.ranks[key] || LEXICON.college[key];
+  return e ? `${e.en} ${e.ja}` : key;
+}
+
+/**
+ * 異名の門 — 散文に禁じられた名が住んでいないか裁く (第41条)。
+ * 引数はテキストの配列 [{file, text}]。返すのは違反の一覧。
+ * 「なぜ禁じたか」を必ず添える — 名指ししない門は直し方を教えない。
+ */
+function lexiconCheck(docs) {
+  const findings = [];
+  const entries = [
+    ...Object.entries(LEXICON.ranks).map(([k, v]) => [k, v, 'rank']),
+    ...Object.entries(LEXICON.college).map(([k, v]) => [k, v, 'college']),
+  ];
+  for (const { file, text } of docs) {
+    const lines = text.split(/\r?\n/);
+    for (const [key, spec, kind] of entries) {
+      for (const bad of spec.forbidden) {
+        // 行番号まで名指しする — 「どこかに在る」は直せない指摘である
+        lines.forEach((line, i) => {
+          // 辞書そのものと、異名を語るために異名を書く行は裁かない。
+          // 門に名前付きの脱出口を与える — 逃げ道の無い門は、いずれ黙って外される。
+          if (line.includes('forbidden:') || line.includes('LEXICON-EXEMPT')) return;
+          if (line.includes(bad)) findings.push({
+            file, line: i + 1, kind, key, found: bad, want: spec.ja,
+            why: `${kind === 'rank' ? '位階' : '枢機卿団'} ${key} の正典の名は「${spec.ja}」(${spec.en}) — 「${bad}」は異名 (第41条)`,
+          });
+        });
+      }
+    }
+  }
+  return findings;
+}
 
 function marshalPlan(phaseId, opts = {}) {
   const card = cardinalFor(phaseId);
   const c = COLLEGE[card];
   if (!c) return { cardinal: card, priest: null, believers: [], mode: 'unknown' };
-  // 相に相応しい司祭を選ぶ。ただし **その枢機卿が実際に擁する者に限る** —
-  // 表が古びて他家の司祭を指しても、指揮系統を跨いだ発令はしない。
+  // 相に相応しい神官を選ぶ。ただし **その枢機卿が実際に擁する者に限る** —
+  // 表が古びて他家の神官を指しても、指揮系統を跨いだ発令はしない。
   const wanted = PHASE_LEAD[phaseId];
   const priest = (wanted && (c.priests || []).includes(wanted)) ? wanted : c.priests[0];
   const believers = c.believers || [];
@@ -324,7 +394,7 @@ function marshalPlan(phaseId, opts = {}) {
     believers,
     division: believers.map(b => ({ believer: b, does: believerRole(b) })),
     depth: { pontiff: 0, cardinal: 1, priest: 2, believer: 3, max: MAX_SPAWN_DEPTH },
-    // 実体化された階層では司祭が信徒を起動する。権能が無ければ黙らず塞がっていると言う。
+    // 実体化された階層では神官が信徒を起動する。権能が無ければ黙らず塞がっていると言う。
     mode: believers.length === 0 ? 'no-believers'
         : canSpawn === false ? 'blocked: priest lacks the spawn tool'
         : 'nested',
@@ -417,8 +487,42 @@ function main() {
     console.log(`執行官 tribunal: ${TRIBUNAL.domain}\n  governs: ${TRIBUNAL.governs.join(', ')}\n  officers: ${TRIBUNAL.officers.join(', ')}`);
     return;
   }
-  console.error('commands: chart | college | cardinal-for <phaseId>');
+  if (cmd === 'lexicon') {
+    // 正典の名を語る (第41条)。散文はここに従う — ここが唯一の出所である。
+    console.log('═══ LEXICON — 正典の名 (第41条) ═══\n');
+    console.log('位階 (Ecclesiastical Hierarchy):');
+    for (const [k, v] of Object.entries(LEXICON.ranks))
+      console.log(`  ${v.en.padEnd(10)} ${v.ja.padEnd(5)}  ${k.padEnd(9)}${v.forbidden.length ? '  ✗ 異名: ' + v.forbidden.join(', ') : ''}`);
+    console.log('\n枢機卿団 (College of Cardinals):');
+    for (const [k, v] of Object.entries(LEXICON.college))
+      console.log(`  ${v.en.padEnd(14)} ${v.ja.padEnd(6)}  ${k.padEnd(13)}${v.forbidden.length ? '  ✗ 異名: ' + v.forbidden.join(', ') : ''}`);
+    return;
+  }
+  if (cmd === 'lexicon-check') {
+    // 散文に異名が住んでいないか裁く。CI はこれで名の揺れを止める。
+    // .yml も散文である — CI の段名に異名が住めば、神は毎回それを読む。
+    // 門が見ない拡張子は、門が無いのと同じ (第21条)。
+    const exts = ['.md', '.js', '.json', '.yml', '.yaml'];
+    const skip = /node_modules|[\\/]\.git[\\/]|dashboard[\\/]state\.|graph[\\/]lessons\.json|[\\/]reform[\\/]|paradise-kg/;
+    const docs = [];
+    (function walk(dir) {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (skip.test(p)) continue;
+        if (e.isDirectory()) { if (e.name !== '.git' && e.name !== 'node_modules') walk(p); continue; }
+        if (!exts.includes(path.extname(e.name))) continue;
+        docs.push({ file: path.relative(ROOT, p), text: fs.readFileSync(p, 'utf8') });
+      }
+    })(ROOT);
+    const findings = lexiconCheck(docs);
+    console.log('═══ 🕮  LEXICON CHECK (第41条) ═══');
+    if (!findings.length) console.log(`  ✓ ${docs.length} 文書に異名なし — 名は一つの出所に従っている`);
+    for (const f of findings) console.log(`  🔴 ${f.file}:${f.line}  「${f.found}」→「${f.want}」  ${f.why}`);
+    console.log('═══════════════════════════════════');
+    process.exit(findings.length ? 1 : 0);
+  }
+  console.error('commands: chart | college | cardinal-for <phaseId> | lexicon | lexicon-check');
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
+module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart, LEXICON, title, lexiconCheck };
