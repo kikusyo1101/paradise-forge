@@ -980,16 +980,33 @@ test('critic does not nag a non-UI creation about visual identity', () => {
 
 test('every phase in every forge scale names an agent that actually exists', () => {
   // `frontend` は実在しないのに full スケールが参照していた(宙吊り参照)。
-  const agentsDir = path.join(os.homedir(), '.claude', 'agents');
-  let known = null;
-  try { known = new Set(fs.readdirSync(agentsDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''))); } catch { /* no harness */ }
-  if (!known || known.size === 0) return; // ハーネス未配置の環境では検査しない
-  known.add('verification-loop'); // engine 側の疑似エージェント
-  for (const scale of ['quick', 'standard', 'full']) {
-    for (const p of forge.buildDag('test wish', scale).tasks) {
-      assert.ok(known.has(p.agent), `scale=${scale} phase=${p.id} references a missing agent: ${p.agent}`);
-    }
-  }
+  // engine 化した check-agents.js で同じ検査を行う。
+  const ca = require('../graph/check-agents.js');
+  const res = ca.check();
+  if (res.skipped) return; // ハーネス未配置の環境では検査しない
+  assert.deepStrictEqual(res.missing, [], 'forge.js must not name a priest that does not exist');
+});
+
+test('check-agents actually catches a missing priest', () => {
+  // 検査そのものが機能しているか。全部揃った状態しか見ないなら、それは検査ではない。
+  const ca = require('../graph/check-agents.js');
+  const need = ca.requiredAgents();
+  assert.ok(need.length >= 5, 'forge names a meaningful number of priests');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-agents-'));
+  // 1名だけ欠いた状態を作る
+  const omitted = need[need.length - 1];
+  for (const a of need) { if (a !== omitted) fs.writeFileSync(path.join(d, a + '.md'), 'x'); }
+  const res = ca.check(d);
+  assert.strictEqual(res.ok, false, 'a missing priest must fail the check');
+  assert.deepStrictEqual(res.missing, [omitted], 'and it must name which one');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('check-agents skips silently where no harness is installed', () => {
+  const ca = require('../graph/check-agents.js');
+  const res = ca.check(path.join(os.tmpdir(), 'paradise-no-such-agents-' + Math.random()));
+  assert.strictEqual(res.skipped, true, 'CI without ~/.claude must not fail on this');
+  assert.strictEqual(res.ok, true);
 });
 
 // ─── 表層の実測 (憲法 第18条) ───
