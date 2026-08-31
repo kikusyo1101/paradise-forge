@@ -122,6 +122,25 @@ function builtinChecks() {
         : { ok: false, note: 'no findings.md — did discovery run? (Art. 8: research precedes spec)' } },
 
     // --- the "did we actually check, or did we assume?" meta-probe ---
+    // --- 視覚が「いつもの見た目」に落ちていないか (憲法 第17条) ---
+    // 対象に UI(HTML/CSS)が無ければ何も言わない。あるなら、既定の
+    // 開発者ツール風パレットへ無自覚に落ちていないかを問う。
+    { id: 'visual-identity-declared', severity: 'smell',
+      desc: 'A UI creation declares its visual direction instead of defaulting to the generic dev-tool look',
+      run: (ctx) => {
+        const ui = ctx.files.filter(f => /\.(html|css)$/i.test(f));
+        if (!ui.length) return { ok: true, note: 'no UI surface — visual identity not applicable' };
+        const hasIdentity = ctx.files.some(f => /^identity\.md$/i.test(f));
+        if (hasIdentity) return { ok: true, note: 'identity.md declares the visual direction' };
+        // identity.md が無いなら、既定パレットの指紋を数える
+        let blob = '';
+        for (const f of ui) { try { blob += fs.readFileSync(path.join(ctx.dir, f), 'utf8'); } catch { /* skip */ } }
+        const generic = (blob.match(GENERIC_UI_PALETTE) || []).length;
+        return generic >= 2
+          ? { ok: false, note: `no identity.md and ${generic} default dev-tool palette hits (e.g. #58a6ff/#0d1117/#3fb950) — the look defaulted` }
+          : { ok: true, note: 'no identity.md, but the palette is not the default dev-tool one' };
+      } },
+
     { id: 'claims-backed-by-runnable-evidence', severity: 'smell',
       desc: 'There is a runnable way to verify the creation (a test or a judge-drive script)',
       run: (ctx) => {
@@ -172,6 +191,15 @@ function findTestFiles(ctx) {
   });
   return [...byName, ...bySubstance];
 }
+
+/**
+ * AI が無自覚に落ちる「開発者ツール既定」の指紋。
+ * 出所は憶測ではない — Paradise 自身の習慣トラッカー初版が、視覚的な
+ * 先行調査を欠いたまま GitHub Primer ダークの配色 (#58a6ff / #3fb950 /
+ * #f85149 / #0d1117) をそのまま採っていた実測に基づく。
+ * 「これらを使うな」ではなく「無自覚に既定へ落ちるな」を検出する目印。
+ */
+const GENERIC_UI_PALETTE = /#(?:58a6ff|0d1117|161b22|21262d|3fb950|f85149|8b949e|c9d1d9|e6edf3|238636|1f6feb|30363d)\b/gi;
 
 function extractMustHaves(findings) {
   // pull the labels from lines/rows marked with the red must-have marker
@@ -273,7 +301,7 @@ function review(dir, opts = {}) {
   if (isSelf) ctx.scopeSubject = selfScopeSubject(dir);
   let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
   if (isSelf) {
-    const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence']);
+    const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence', 'visual-identity-declared']);
     checks = checks.filter(c => !creationOnly.has(c.id)); // keep security + lessons + hardcode smell
   }
   const results = checks.map(c => {

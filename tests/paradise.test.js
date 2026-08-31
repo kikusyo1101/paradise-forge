@@ -375,7 +375,9 @@ test('orchestrator hands off an upstream artifact to the next phase', () => {
 
 test('orchestrator runs independent phases in the same wave (parallel)', () => {
   const run = makeRun('standard');
-  for (const id of ['discover', 'specify', 'design', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
+  // build は identity(視覚アイデンティティ)にも依存する — 構造だけでなく
+  // 見た目の根拠が揃って初めて実装に入れる(憲法 第17条)。
+  for (const id of ['discover', 'specify', 'design', 'identity', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
   const nw = orch.nextWave(run);
   const ids = nw.wave.map(w => w.id).sort();
   assert.deepStrictEqual(ids, ['build', 'tests'], 'build & tests run in parallel after detail');
@@ -572,7 +574,7 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
   const run = makeConclave();
   // walk the ring: discovery → requirements → architecture → construction all ratified
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
-                                [['design', 'detail'], 'architecture'], [['build', 'tests'], 'construction']]) {
+                                [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
     for (const p of phases) conclave.markDone(run, p, p + '.md');
     conclave.ratify(run, card);
@@ -599,7 +601,7 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
 test('cross-domain rework also resets DOWNSTREAM phases in later domains', () => {
   const run = makeConclave();
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
-                                [['design', 'detail'], 'architecture'], [['build', 'tests'], 'construction']]) {
+                                [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
     for (const p of phases) conclave.markDone(run, p, p + '.md');
     conclave.ratify(run, card);
@@ -901,6 +903,94 @@ test('guard reports JST regardless of the machine timezone', () => {
     assert.ok(now.hour >= 0 && now.hour <= 23, 'JST hour');
     assert.ok(/JST$/.test(now.stamp));
   }, 0);
+});
+
+// ─── 視覚アイデンティティ (憲法 第17条) ───
+const identity = require('../graph/identity.js');
+
+test('identity: candidates never repeat a family, and tech_saas gets at most one slot', () => {
+  // 同じ family から3つ並べても選択肢にならない。司祭は結局いつもの見た目に落ちる。
+  const res = identity.suggest('習慣を記録するトラッカー', 'test-a', { history: path.join(os.tmpdir(), 'no-such-history-' + Math.random() + '.json') });
+  const fams = res.candidates.map(c => c.family);
+  assert.strictEqual(new Set(fams).size, fams.length, 'every candidate comes from a different family');
+  assert.ok(fams.filter(f => f === 'tech_saas').length <= 1, 'tech_saas never fills more than one slot');
+});
+
+test('identity: the same wish does NOT keep returning the same look', () => {
+  // これが「AIっぽさ」の再生産を止める中核。採用を記録しながら5回繰り返す。
+  const hf = path.join(os.tmpdir(), 'paradise-identity-' + Math.random().toString(36).slice(2) + '.json');
+  const seen = [];
+  for (let i = 0; i < 5; i++) {
+    const r = identity.suggest('習慣を記録するトラッカー', 'run' + i, { history: hf, n: 1 });
+    const top = r.candidates[0];
+    seen.push(top.id);
+    identity.record('run' + i, top.id, { history: hf });
+  }
+  assert.strictEqual(new Set(seen).size, 5, 'five runs must yield five different looks, not the same default');
+  fs.rmSync(hf, { force: true });
+});
+
+test('identity: selection is deterministic for the same seed and history', () => {
+  const hf = path.join(os.tmpdir(), 'paradise-identity-det-' + Math.random().toString(36).slice(2) + '.json');
+  const a = identity.suggest('集中のためのタイマー', 'same-slug', { history: hf });
+  const b = identity.suggest('集中のためのタイマー', 'same-slug', { history: hf });
+  assert.deepStrictEqual(a.candidates.map(c => c.id), b.candidates.map(c => c.id), 'no randomness: the ring must be reproducible');
+  fs.rmSync(hf, { force: true });
+});
+
+test('identity: the catalog keeps a non-tech majority available', () => {
+  // 語彙がテックSaaSばかりなら、どれだけ規律を書いても偏りは戻ってくる。
+  const cat = identity.loadCatalog();
+  assert.ok(cat.entries.length >= 70, 'catalog carries the full upstream vocabulary');
+  const tech = cat.entries.filter(e => e.family === 'tech_saas').length;
+  assert.ok(cat.entries.length - tech >= 30, `at least 30 non-tech looks must exist (got ${cat.entries.length - tech})`);
+});
+
+test('identity: traits stay discriminating (no trait covers most of the catalog)', () => {
+  // 74件中71件が同じ trait を持つ索引は、索引ではない(実測で一度そうなった)。
+  const cat = identity.loadCatalog();
+  const freq = new Map();
+  for (const e of cat.entries) for (const t of e.traits) freq.set(t, (freq.get(t) || 0) + 1);
+  for (const [t, c] of freq) {
+    assert.ok(c / cat.entries.length <= 0.55, `trait "${t}" covers ${c}/${cat.entries.length} — it no longer discriminates`);
+  }
+});
+
+test('critic flags a UI creation that defaulted to the generic dev-tool palette', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-visual-'));
+  fs.writeFileSync(path.join(d, 'requirements.md'), '# X\n## Acceptance Criteria\n- AC-1 works.');
+  // Paradise 自身の習慣トラッカー初版が実際にこうなっていた
+  fs.writeFileSync(path.join(d, 'app.html'), '<style>:root{--bg:#0d1117;--fg:#e6edf3;--accent:#58a6ff;--ok:#3fb950}</style>');
+  const rev = critic.review(d);
+  assert.ok(rev.smells.some(s => /visual-identity-declared/.test(s.id)), 'defaulting to the dev-tool look is a smell');
+  // identity.md を添えれば、視覚が意図されたものだと示せる
+  fs.writeFileSync(path.join(d, 'identity.md'), '# identity\nmastercard direction: putty cream + signal orange.');
+  const rev2 = critic.review(d);
+  assert.ok(!rev2.smells.some(s => /visual-identity-declared/.test(s.id)), 'a declared identity clears the smell');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic does not nag a non-UI creation about visual identity', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-visual-none-'));
+  fs.writeFileSync(path.join(d, 'requirements.md'), '# X\n## Acceptance Criteria\n- AC-1 works.');
+  fs.writeFileSync(path.join(d, 'lib.js'), 'module.exports = () => 1;');
+  const rev = critic.review(d);
+  assert.ok(!rev.smells.some(s => /visual-identity-declared/.test(s.id)), 'no UI surface, no visual complaint');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('every phase in every forge scale names an agent that actually exists', () => {
+  // `frontend` は実在しないのに full スケールが参照していた(宙吊り参照)。
+  const agentsDir = path.join(os.homedir(), '.claude', 'agents');
+  let known = null;
+  try { known = new Set(fs.readdirSync(agentsDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''))); } catch { /* no harness */ }
+  if (!known || known.size === 0) return; // ハーネス未配置の環境では検査しない
+  known.add('verification-loop'); // engine 側の疑似エージェント
+  for (const scale of ['quick', 'standard', 'full']) {
+    for (const p of forge.buildDag('test wish', scale).tasks) {
+      assert.ok(known.has(p.agent), `scale=${scale} phase=${p.id} references a missing agent: ${p.agent}`);
+    }
+  }
 });
 
 // --- report ---
