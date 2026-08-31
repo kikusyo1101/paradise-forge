@@ -5,3 +5,6 @@ node_modules/
 # Knowledge graph store lives in ~/.claude/paradise-kg by default (global),
 # but if PARADISE_KG points into the repo, keep the raw store local:
 graph/kg-store/
+
+# 創造物は別の倉に住む (憲法 第30条) — github.com/kikusyo1101/paradise-creations
+creations/

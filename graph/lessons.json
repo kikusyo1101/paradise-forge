@@ -254,5 +254,13 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T11:20:30.413Z"
+  },
+  {
+    "id": "creations-separate-repo",
+    "label": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
+    "check": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T11:34:25.618Z"
   }
 ]

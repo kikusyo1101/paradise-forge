@@ -30,20 +30,21 @@ LESSONS=~/Documents/workspace/paradise/graph/lessons.js
 ```bash
 node $KG snapshot
 node $LESSONS export --out ~/Documents/workspace/paradise/graph/lessons.json
-mkdir -p ~/Documents/workspace/paradise/creations/<slug>
+# 創造物は楽園の外に住む (第30条)。住所を知るのは workspace.js だけ
+DIR=$(node ~/Documents/workspace/paradise/graph/workspace.js init <slug>)
 ```
 Pick a `<slug>` from the wish. All artifacts live in that creation dir.
 
 ### 1. Forge the DAG and init the run
 ```bash
-node $FORGE plan "<wish>" --out creations/<slug>/forge.dag.json
-node $ORCH init creations/<slug>/forge.dag.json --run creations/<slug>/run.json
+node $FORGE plan "<wish>" --out $DIR/forge.dag.json
+node $ORCH init $DIR/forge.dag.json --run $DIR/run.json
 ```
 
 ### 2. Drive the loop — repeat until done
 Each turn, ask the conductor what's next:
 ```bash
-node $ORCH auto --run creations/<slug>/run.json
+node $ORCH auto --run $DIR/run.json
 ```
 It returns one of:
 
@@ -53,7 +54,7 @@ It returns one of:
      and ONLY its `context_from` artifacts (compressed handoff — not the whole
      history). Tell every worker to **return the contract**:
      `{ phase, status, artifact:<absolute path>, evidence, summary }` and to
-     WRITE its artifact into `creations/<slug>/`.
+     WRITE its artifact into `$DIR/`.
   2. When the batch returns, **reconcile each result against reality** — do not
      trust the summary:
      ```bash
@@ -63,23 +64,23 @@ It returns one of:
      re-dispatch that one phase before advancing.
   3. **Record each accepted phase:**
      ```bash
-     node $ORCH done <phaseId> --run creations/<slug>/run.json --artifact <path>
+     node $ORCH done <phaseId> --run $DIR/run.json --artifact <path>
      ```
   4. Loop back to step 2 (`auto` again) for the next wave.
 
 - **`phase: "verdict"`** — all phases done. Now judge:
   1. Run the adversarial critic (the `reflect` gate):
      ```bash
-     node $CRITIC review creations/<slug> --lessons ~/Documents/workspace/paradise/graph/lessons.json
+     node $CRITIC review $DIR --lessons ~/Documents/workspace/paradise/graph/lessons.json
      ```
   2. Build the verdict report from REAL evidence (drive the acceptance criteria
      yourself in a small node script; count tests; grep for secrets) and judge:
      ```bash
-     node $VERDICT judge creations/<slug>/verdict-report.json
+     node $VERDICT judge $DIR/verdict-report.json
      ```
   3. Apply the verdict to the run:
      ```bash
-     node $ORCH verdict SHIP|REWORK|BLOCK --run creations/<slug>/run.json [--from <phase>]
+     node $ORCH verdict SHIP|REWORK|BLOCK --run $DIR/run.json [--from <phase>]
      ```
      - **SHIP** → done. Deliver the creation (preview the UI, report the path).
      - **REWORK** → the conductor reset the failing phase + downstream. Go back
@@ -95,7 +96,7 @@ It returns one of:
 node $KG remember creation <slug> "<label> (SHIPPED)" "<one-line>"
 node $KG remember run <slug>-run "Forge run: <wish>" "<phases>, verdict SHIP"
 node $KG link <slug>-run produced <slug>
-node $ORCH status --run creations/<slug>/run.json
+node $ORCH status --run $DIR/run.json
 node ~/Documents/workspace/paradise/graph/export-state.js   # refresh the dashboard
 ```
 Then commit (the repo's git rules apply) and show the user the creation.

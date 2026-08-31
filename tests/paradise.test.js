@@ -2057,6 +2057,89 @@ test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', ()
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+// --- workspace: 創造物は楽園の外に住む (第30条) ---
+console.log('\nWorkspace (Art.30):');
+
+test('workspace: PARADISE_CREATIONS が住所を決める', () => {
+  const ws = require('../graph/workspace.js');
+  const r = ws.resolve({ env: { PARADISE_CREATIONS: path.join(os.tmpdir(), 'x-creations') } });
+  assert.strictEqual(r.source, 'env');
+  assert.strictEqual(r.legacy, false);
+  assert.strictEqual(r.root, path.resolve(path.join(os.tmpdir(), 'x-creations')));
+});
+
+test('workspace: 既定の住所は楽園の兄弟であって内部ではない', () => {
+  const ws = require('../graph/workspace.js');
+  const repo = path.join(os.tmpdir(), 'ws-repo-' + Date.now());
+  const def = ws.defaultRoot(repo);
+  assert.strictEqual(path.basename(def), 'paradise-creations');
+  assert.ok(!def.startsWith(repo + path.sep), '創造物が engine の内側に落ちてはならない: ' + def);
+});
+
+test('workspace: 兄弟が在れば legacy の creations/ より優先される', () => {
+  const ws = require('../graph/workspace.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+  const repo = path.join(base, 'paradise');
+  fs.mkdirSync(path.join(repo, 'creations'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'paradise-creations'), { recursive: true });
+  const r = ws.resolve({ repoRoot: repo, env: {} });
+  assert.strictEqual(r.source, 'sibling', '移行後も内部を掴み続けてはならない');
+  assert.strictEqual(r.legacy, false);
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+test('workspace: 内部 creations/ しか無ければ legacy と明示して返す', () => {
+  const ws = require('../graph/workspace.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+  const repo = path.join(base, 'paradise');
+  fs.mkdirSync(path.join(repo, 'creations'), { recursive: true });
+  const r = ws.resolve({ repoRoot: repo, env: {} });
+  assert.strictEqual(r.source, 'legacy');
+  assert.strictEqual(r.legacy, true, '黙って使うな — 呼び手が警告できねばならない');
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+test('workspace: slug は厳しく検める(パス走査を許さない)', () => {
+  const ws = require('../graph/workspace.js');
+  for (const bad of ['../escape', 'Foo', 'a/b', '', null, '.hidden']) {
+    assert.throws(() => ws.creationDir(bad, { env: { PARADISE_CREATIONS: os.tmpdir() } }),
+      `slug ${JSON.stringify(bad)} must be rejected`);
+  }
+  const ok = ws.creationDir('habit-tracker', { env: { PARADISE_CREATIONS: os.tmpdir() } });
+  assert.strictEqual(path.basename(ok), 'habit-tracker');
+});
+
+test('workspace: 楽園が創造物を git で抱えていない (第30条の本番の門)', () => {
+  const ws = require('../graph/workspace.js');
+  const stray = ws.strayCreations();
+  assert.strictEqual(stray.length, 0,
+    `paradise still tracks creations: ${stray.slice(0, 5).join(', ')}`);
+});
+
+test('workspace: engine が住所を直書きしていない', () => {
+  const ws = require('../graph/workspace.js');
+  const hard = ws.hardcodedRefs();
+  assert.strictEqual(hard.length, 0,
+    `hardcoded creation paths: ${hard.map(h => `${h.file}:${h.line}`).join(', ')}`);
+});
+
+test('workspace: 直書きの門は註釈で吠えず、コードでは吠える', () => {
+  const ws = require('../graph/workspace.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+  const g = path.join(base, 'graph');
+  fs.mkdirSync(g, { recursive: true });
+  fs.writeFileSync(path.join(g, 'quiet.js'), [
+    "// creations/<slug> を産むための道である  ← 註釈は道を説明してよい",
+    "const dir = require('./workspace.js').creationDir(slug);",
+  ].join('\n'));
+  assert.strictEqual(ws.hardcodedRefs(base).length, 0, '註釈で吠える門は無視される(第21条)');
+  fs.writeFileSync(path.join(g, 'loud.js'), "const dir = path.join(ROOT, 'creations/' + slug);");
+  const found = ws.hardcodedRefs(base);
+  assert.strictEqual(found.length, 1, '走るコードの直書きは必ず捕らえる');
+  assert.strictEqual(found[0].file, 'graph/loud.js');
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
