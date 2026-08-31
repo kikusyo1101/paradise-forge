@@ -1272,20 +1272,33 @@ test('upstream: adopt refuses to run silently', () => {
 });
 
 test('deploy: every deployed file has a declared source', () => {
+  // 借り物が無い環境(CI/clone直後)では上流由来の手順が立たない。
+  // overlay 由来の手順だけは、どの環境でも成立していなければならない。
   const p = deploy.plan();
-  assert.ok(p.steps.length >= 10, 'the deployment plan covers the harness');
-  assert.deepStrictEqual(p.missing.map(m => m.src), [], 'no deployment step may point at a missing source');
+  const owned = p.steps.filter(s => s.relation !== 'plain');
+  assert.ok(owned.length >= 10, 'the overlay contributes its priests and commands on any machine');
   for (const s of p.steps) {
     assert.ok(['plain', 'replace', 'own', 'adopted'].includes(s.relation),
       `every file carries a declared relation (${s.file} had "${s.relation}")`);
   }
+  // 欠けていてよいのは上流由来だけ。楽園が持つべきものが無いのは欠陥。
+  const missingOwned = p.missing.filter(m => m.relation !== 'plain');
+  assert.deepStrictEqual(missingOwned.map(m => m.src), [],
+    'a file paradise owns must exist in the repository, not only on the author machine');
 });
 
 test('deploy: the deployed tree matches its declared sources', () => {
   const r = deploy.check();
-  if (!r.checked) return;
+  if (r.skipped) return; // ハーネス未配置の環境では検査対象が無い
   assert.deepStrictEqual(r.drift.map(d => `${d.kind}/${d.file}: ${d.why}`), [],
     '~/.claude is a product — a difference here means someone edited the product instead of the source');
+});
+
+test('deploy: check skips cleanly where no harness is installed', () => {
+  // ローカルでしか通らない検査は、検査ではなく作者の思い込みである。
+  const r = deploy.check();
+  assert.ok(typeof r.skipped === 'boolean', 'check must state whether it could run at all');
+  assert.ok(r.ok || r.drift.length > 0, 'a failure must name what drifted');
 });
 
 test('deploy: paradise-owned files come from the repository, not from ~/.claude', () => {

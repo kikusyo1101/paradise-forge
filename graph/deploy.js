@@ -85,6 +85,16 @@ function plan() {
 
 /** 配備物が計画と一致しているか。CI はこれで「手で触られた」を検出する。 */
 function check() {
+  const c = up.cfg();
+  const UP = up.upstreamPath(c);
+  const HOME = up.claudeHome(c);
+  // 借り物も配備先も無い環境(CI, clone直後)では検査対象が存在しない。
+  // 「配備されていない」と「配備が壊れている」は別物であり、前者を欠陥と
+  // 呼ぶと、ハーネスを持たない環境で永久に落ちるテストになる。
+  if (!fs.existsSync(UP) || !fs.existsSync(HOME)) {
+    return { ok: true, skipped: true, checked: 0, drift: [], transforms: [],
+             note: 'no harness on this machine — nothing deployed to verify' };
+  }
   const p = plan();
   const drift = [];
   for (const s of p.steps) {
@@ -97,7 +107,7 @@ function check() {
       drift.push({ ...s, why: 'deployed copy differs from its source' });
     }
   }
-  return { ok: drift.length === 0, drift, checked: p.steps.length, transforms: p.transforms };
+  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length, transforms: p.transforms };
 }
 
 function write() {
