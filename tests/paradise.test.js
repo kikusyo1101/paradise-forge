@@ -1365,7 +1365,10 @@ test('CLAUDE.md exists and states the working language and the hard rules', () =
   const src = fs.readFileSync(p, 'utf8');
   assert.ok(/日本語で話す/.test(src), 'the working language is stated up front');
   assert.ok(/main.*直接コミットしない|PR/.test(src), 'the PR-only rule is stated');
-  assert.ok(/read-only|改変しない/.test(src), 'the borrowed tree rule is stated (Art. 19)');
+  // 第19条は改正された。「借り物を改変しない」は独立(第20条)で役目を終えた。
+  // 構造を変えたら、古い前提を符号化した門を読み直す — この門自身がその実例である。
+  assert.ok(/手で編集しない|所有物|overlay/.test(src),
+    'the deployment-is-a-product rule is stated (Art. 19 as amended)');
   assert.ok(/CONSTITUTION\.md/.test(src), 'it points at the supreme law');
 });
 
@@ -1650,6 +1653,125 @@ test('branch guard: it never reports green when it could not look (Art.24)', () 
   const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'branch-guard.js'), 'utf8');
   assert.ok(/UNKNOWN_BASE/.test(src), 'an unreachable remote yields an explicit unknown, not silence');
   assert.ok(/STALE_BASE/.test(src) && /ON_MAIN/.test(src), 'the guard judges both a stale base and standing on main');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第19条(改正) — 供給線を検める。在庫を数えるだけの門は独立を証明しない
+// ══════════════════════════════════════════════════════════════════════
+
+test('independence: deployment SOURCES from what paradise owns, not the upstream (Art.19/20)', () => {
+  // かつての門は overlay/vendor のファイル数だけを数え、deploy が実際にどこから
+  // 読むかを一度も見ていなかった。ゆえに配備53件中31件が上流由来のまま緑だった。
+  const deploy = require('../graph/deploy.js');
+  const p = deploy.plan();
+  const fromUpstream = p.steps.filter(s => s.from === 'upstream');
+  assert.strictEqual(fromUpstream.length, 0,
+    `deployment must not source from the upstream tree; ${fromUpstream.length} file(s) still do: ` +
+    fromUpstream.slice(0, 5).map(s => `${s.kind}/${s.file}`).join(', '));
+  assert.ok(p.steps.length > 0, 'the plan is not empty');
+  assert.strictEqual(p.missing.length, 0, 'every planned source exists');
+});
+
+test('independence: hiding the upstream does not change the deployment (Art.20)', () => {
+  // 独立の唯一の定義: 上流をマシンから消して、全てが同じに動くか。
+  // 理屈で語らず、その環境を実際に作って比べる。
+  const { execFileSync } = require('child_process');
+  const run = (env) => {
+    const out = execFileSync(process.execPath, ['-e', `
+      const d = require(${JSON.stringify(path.join(__dirname, '..', 'graph', 'deploy.js'))});
+      const p = d.plan();
+      const m = {};
+      for (const s of p.steps) m[s.from] = (m[s.from] || 0) + 1;
+      console.log(JSON.stringify({ total: p.steps.length, from: m, missing: p.missing.length }));
+    `], { encoding: 'utf8', env: { ...process.env, ...env } });
+    return JSON.parse(out);
+  };
+  const withUp = run({});
+  const without = run({ PARADISE_UPSTREAM: path.join(os.tmpdir(), 'no-such-upstream-xyz') });
+  assert.strictEqual(without.total, withUp.total,
+    `deployment must be identical without the upstream: ${withUp.total} vs ${without.total}`);
+  assert.strictEqual(without.missing, 0, 'nothing may go missing when the upstream is gone');
+  assert.deepStrictEqual(without.from, withUp.from,
+    'the sources must be identical with and without the upstream');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第25条 — 階層は実在する（宣言だけの梯子を許さない）
+// ══════════════════════════════════════════════════════════════════════
+
+test('hierarchy: every cardinal has an actor, not just a label (Art.25)', () => {
+  const clergy = require('../graph/clergy.js');
+  for (const [cid, c] of Object.entries(clergy.COLLEGE)) {
+    assert.ok(c.agent, `cardinal ${cid} must name the agent that plays it — a label dispatches nobody`);
+  }
+});
+
+test('hierarchy: believers have bodies, not merely names (Art.25)', () => {
+  const ca = require('../graph/check-agents.js');
+  const r = ca.hierarchyIntegrity();
+  if (r.skipped) return;                     // ハーネス未配置の環境では検めない
+  const missing = r.findings.filter(f => f.code === 'BELIEVER_MISSING');
+  assert.strictEqual(missing.length, 0,
+    `every believer needs a body: ${missing.map(f => f.believer).join(', ')}`);
+});
+
+test('hierarchy: a priest with believers can actually dispatch them (Art.25)', () => {
+  // 調査(Claude Agent SDK docs)が名指しした第一原因:
+  // 「allowedTools に Agent(Task) が無いと起動は黙って拒否される」
+  const ca = require('../graph/check-agents.js');
+  const r = ca.hierarchyIntegrity();
+  if (r.skipped) return;
+  const blocked = r.findings.filter(f => f.code === 'PRIEST_CANNOT_SPAWN');
+  assert.strictEqual(blocked.length, 0,
+    `these priests govern believers but cannot spawn: ${blocked.map(f => f.priest).join(', ')}`);
+});
+
+test('hierarchy: the gate fires when a believer loses its body (Art.25)', () => {
+  // 門を、わざと壊して試す。実在しない信徒を組織に加えて鳴るか。
+  const clergy = require('../graph/clergy.js');
+  const ca = require('../graph/check-agents.js');
+  const saved = clergy.COLLEGE.discovery.believers;
+  try {
+    clergy.COLLEGE.discovery.believers = [...saved, 'ghost-believer-xyz'];
+    const r = ca.hierarchyIntegrity();
+    if (r.skipped) return;
+    assert.ok(r.findings.some(f => f.code === 'BELIEVER_MISSING' && f.believer === 'ghost-believer-xyz'),
+      'a believer with no body must be named by the gate');
+  } finally {
+    clergy.COLLEGE.discovery.believers = saved;
+  }
+});
+
+test('hierarchy: the declared depth fits the runtime (Art.25)', () => {
+  const clergy = require('../graph/clergy.js');
+  // 教主(0) → 枢機卿(1) → 司祭(2) → 信徒(3)
+  assert.ok(clergy.MAX_SPAWN_DEPTH >= 3,
+    `the declared ladder needs depth 3, runtime allows ${clergy.MAX_SPAWN_DEPTH}`);
+  assert.ok(clergy.SPAWN_TOOL, 'the spawn tool is named, not assumed');
+});
+
+test('hierarchy: the wave is dispatched TO the cardinal, not past it (Art.25)', () => {
+  // 素通りの正体: 司祭への発令書が教主に返っていた。
+  const forge = require('../graph/forge.js');
+  const conclave = require('../graph/conclave.js');
+  const tmp = path.join(os.tmpdir(), `dag-${Date.now()}.json`);
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(forge.buildDag('probe wish', 'reform')));
+    const run = conclave.convene(tmp);
+    const act = conclave.next(run);
+    assert.strictEqual(act.phase, 'wave', 'the first action is a wave');
+    assert.ok(act.dispatch_to, 'the wave must name who receives the order');
+    assert.strictEqual(act.dispatch_to.rank, 'cardinal',
+      'the order goes to the cardinal — the pontiff does not call priests directly');
+    assert.ok(act.dispatch_to.agent, 'the receiving cardinal has an actor');
+    // 調査(Anthropic)が求めた4点が発令書にあるか
+    for (const d of act.dispatch) {
+      assert.ok(d.contract, `phase ${d.id} carries a contract`);
+      for (const k of ['purpose', 'output_format', 'tools_and_sources', 'boundary']) {
+        assert.ok(d.contract[k], `phase ${d.id} contract must state ${k} — vague orders cause duplicated work`);
+      }
+    }
+  } finally { try { fs.rmSync(tmp, { force: true }); } catch {} }
 });
 
 // --- report ---

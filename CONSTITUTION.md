@@ -156,26 +156,35 @@ way to change what "complete" means.
     accountable for is a domain that rots. A defect the user meets on first
     contact is not a minor defect.
 
-19. **What is borrowed is never altered; it is worn through a transform.** An
-    upstream project keeps moving, and a paradise that edits it directly will
-    one day be silently broken by a single `git pull`. This was not theory: a
-    fourteen-line paradise hook sat uncommitted inside the borrowed tree, one
-    checkout away from vanishing, and nine borrowed agents had been edited in
-    place. Four rules keep the boundary honest. (a) **The borrowed tree is
-    read-only** — fetched and read, never written; a paradise hook is placed
-    *alongside* an upstream hook in the settings array, never *inside* the
-    upstream file. (b) **Deployment is a product, not an original**: `~/.claude`
-    is rebuilt from upstream plus the overlay at any time, so drift stops being
-    a thing that accumulates and becomes a thing that is simply regenerated
-    away. (c) **Divergence has kinds, and each kind has an owner**: a
-    *transform* is re-applied after every adoption and is not a conflict at all;
-    a *replacement* means paradise wins but must still be shown what upstream
-    changed; what paradise *owns* lives in paradise's own repository. (d) **A
-    deletion upstream is never followed silently** — a file paradise depends on
-    that upstream drops is quarantined and adopted deliberately, because the
-    one who keeps a discarded thing owns it from then on. Adoption itself is a
-    judgment: the machine may fetch, classify and warn, but only a human may
-    say *take it*.
+19. **What paradise has taken in, paradise owns — and may freely alter.**
+    *(Amended. The original article forbade editing the borrowed tree, and that
+    was right while paradise was a guest. Article 20 ended the tenancy: every
+    asset was vendored into paradise's own repository. A rule written for a
+    dependency that no longer exists does not protect anything — it only
+    forbids. The owner said so plainly: 「上流工程を変えないは既に破棄された。
+    全てを楽園に取り込んだため改変も自由となった。」)*
+
+    The successor rule is narrower and truer. (a) **`overlay/vendor/` is
+    paradise's property, not a loan.** It may be edited directly, and edits to
+    it are ordinary changes reviewed like any other. (b) **The deployment is
+    still a product, never an original**: `~/.claude` is rebuilt from
+    `overlay/` at any time, and is never hand-edited — that discipline was
+    never about the upstream, it was about regenerability. (c) **A transform
+    still beats a hand-edit where a rule applies to many files at once**
+    (models by rank, spawn authority by station): not because the files are
+    untouchable, but because a rule applied by hand to nine files drifts on the
+    tenth. (d) **The upstream, if present, is a source of ideas — never a
+    source of supply.** Paradise looks when it happens to be there, stays
+    silent when it is not, and never adopts without a human saying *take it*.
+
+    The amendment exposed a lie the gates had been telling. Independence was
+    asserted in Article 20 and tested by counting vendored files — but nothing
+    ever checked **where deployment actually read from**. It read from the
+    upstream tree: 31 of 53 deployed files, including nine priests. Hiding the
+    upstream collapsed the deployment to 22 files. The stock was counted; the
+    supply line was never traced. **A gate that measures the inventory instead
+    of the supply proves nothing about independence** — and it is worse than no
+    gate, because it looks like coverage.
 
 20. **Paradise stands on its own feet.** A house built on a neighbour's
     foundation is not a house; it is a guest. Everything paradise needs to run
@@ -256,6 +265,29 @@ way to change what "complete" means.
     base goes stale. And when the remote cannot be reached the guard reports
     `UNKNOWN_BASE` rather than green — an unverified position is not a safe one
     (Art. 16).
+
+25. **A hierarchy that cannot be walked is not a hierarchy.** The owner
+    declared the paradise collapsed, and the measurement agreed: all thirteen
+    believers were names with no bodies, every cardinal was a JSON record that
+    dispatched nobody, and `conclave.next` handed a priest's orders **to the
+    pontiff**, who then called the priest directly. Five ranks were written
+    down; two were ever executed. The cause was not laziness. The Claude Agent
+    SDK documentation names it exactly: *"without `Agent` in `allowedTools`,
+    subagent invocation falls through to the permission callback or is
+    refused"* — and measurement found `Task` held by `cardinal` alone. **The
+    ladder was not merely unused; it was impassable.** Therefore: (a) **every
+    rank names the actor that plays it** — a cardinal is an `agent`, not a
+    label; (b) **every subordinate declared must have a body**, and a name with
+    no body fails the gate exactly as a dangling priest does; (c) **whoever
+    governs subordinates must hold the authority to dispatch them**, granted by
+    rule (`apply-spawn.js`) rather than by hand, because a rule applied by hand
+    to seven files drifts on the eighth; (d) **orders flow to the rank below,
+    never past it** — the wave is addressed to the cardinal, carrying purpose,
+    output format, permitted sources and task boundary, because vague
+    delegation makes children duplicate each other's work; and (e) **the
+    declared depth must fit the runtime** (three: pontiff → cardinal → priest →
+    believer), since a ladder taller than the ceiling silently collapses into
+    the parent doing the work itself.
 
 ## The Verdict Law
 

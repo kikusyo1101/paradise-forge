@@ -86,6 +86,76 @@ function ungovernedPhases() {
   return out;
 }
 
+/**
+ * 階層が実体を持っているか (憲法 第25条)
+ *
+ * 第21条は「名を口にする全ての口を見よ」と定めたが、その適用は**司祭に限られて
+ * いた**。ゆえに信徒13名が全員名前だけのまま、門は緑を出し続けた。同じ病が、
+ * 検査の視野の外で生きていたのである。
+ *
+ * 外部調査 (Claude Agent SDK docs) が第一原因を名指ししている:
+ *   「allowedTools に Agent(旧 Task) が無いと起動は拒否される。
+ *     これが『宣言はあるが起動しない』の第一原因である」
+ *
+ * よって三つを検める:
+ *   ① 信徒に実体があるか          — 名前だけの階層を許さない
+ *   ② 信徒を持つ司祭が起動の権能を持つか — 権能なき親は黙って兼務に倒れる
+ *   ③ 宣言した深さが実行基盤の上限内か   — 越えれば黙って実行に落ちる
+ */
+function hierarchyIntegrity(agentsDir) {
+  const dir = agentsDir || path.join(os.homedir(), '.claude', 'agents');
+  let files;
+  try { files = fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch {
+    return { skipped: true, findings: [] };
+  }
+  if (!files.length) return { skipped: true, findings: [] };
+  const have = new Set(files.map(f => f.replace(/\.md$/, '')));
+  /**
+   * `tools:` 行の**不在**は「道具を持たない」ではなく「親から全て継承する」である。
+   * 空配列を返すと全継承の司祭を権能なしと誤断し、偽の警報になる。
+   * 判定できない状態と、判定して欠けている状態を混同してはならない(第16条)。
+   */
+  const toolsOf = (name) => {
+    try {
+      const src = fs.readFileSync(path.join(dir, `${name}.md`), 'utf8');
+      const m = src.match(/^tools:\s*(.+)$/m);
+      return m ? m[1].split(',').map(s => s.trim()) : null;   // null = inherits all
+    } catch { return null; }
+  };
+
+  const findings = [];
+  for (const [cid, c] of Object.entries(clergy.COLLEGE || {})) {
+    const believers = c.believers || [];
+    if (!believers.length) continue;
+
+    // ① 信徒の実体
+    for (const b of believers) {
+      if (!have.has(b)) {
+        findings.push({ code: 'BELIEVER_MISSING', cardinal: cid, believer: b,
+          message: `信徒 ${b} に実体がない — ${cid} の組織図にいるが出勤しない` });
+      }
+    }
+    // ② 司祭の起動権能
+    for (const p of c.priests || []) {
+      if (!have.has(p)) continue;   // 司祭不在は別途 dangling で捕らえる
+      const tools = toolsOf(p);
+      if (tools === null) continue;   // 全継承 = 起動の権能も継承している
+      if (!tools.includes(clergy.SPAWN_TOOL)) {
+        findings.push({ code: 'PRIEST_CANNOT_SPAWN', cardinal: cid, priest: p,
+          message: `司祭 ${p} は信徒を擁するが起動の道具 ${clergy.SPAWN_TOOL} を持たない — ` +
+                   '起動は黙って拒否され、階層は宣言だけになる' });
+      }
+    }
+  }
+  // ③ 深さ
+  const declared = 3;   // pontiff(0) → cardinal(1) → priest(2) → believer(3)
+  if (declared > clergy.MAX_SPAWN_DEPTH) {
+    findings.push({ code: 'DEPTH_EXCEEDS_RUNTIME',
+      message: `宣言した深さ ${declared} が実行基盤の上限 ${clergy.MAX_SPAWN_DEPTH} を超える` });
+  }
+  return { skipped: false, findings };
+}
+
 function installedAgents(dir) {
   try {
     return new Set(fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
@@ -107,14 +177,19 @@ function check(agentsDir, opts) {
   // 宙吊り参照 = 欠けている司祭 × それを名指した出所
   const dangling = missing.map(a => ({ agent: a, namedBy: sources[a] }));
   const ungoverned = ungovernedPhases();
+  const hier = hierarchyIntegrity(dir);
+  const hierFindings = hier.findings || [];
   return {
-    ok: missing.length === 0 && ungoverned.length === 0, skipped: false,
-    dir, need, sources, missing, dangling, ungoverned,
+    ok: missing.length === 0 && ungoverned.length === 0 && hierFindings.length === 0,
+    skipped: false,
+    dir, need, sources, missing, dangling, ungoverned, hierarchy: hierFindings,
     note: missing.length
       ? `${missing.length} agent(s) named by the paradise do not exist`
       : (ungoverned.length
           ? `${ungoverned.length} phase(s) belong to no cardinal and no tribunal`
-          : 'every named priest exists and every phase has a master'),
+          : (hierFindings.length
+              ? `${hierFindings.length} hierarchy defect(s): the ladder is declared but cannot be walked`
+              : 'every named priest exists, every phase has a master, the hierarchy is real')),
   };
 }
 
@@ -136,6 +211,9 @@ if (require.main === module) {
     if (res.ungoverned && res.ungoverned.length) {
       for (const u of res.ungoverned) console.log(`  🔴 ungoverned phase: ${u.phase}  (scale: ${u.scale}) — no cardinal, no tribunal`);
     } else console.log('  ✓ every phase has a master');
+    if (res.hierarchy && res.hierarchy.length) {
+      for (const h of res.hierarchy) console.log(`  🔴 [${h.code}] ${h.message}`);
+    } else console.log('  ✓ the hierarchy is real, not declared');
   }
   console.log('─────────────────────────────────');
   console.log(res.note);
@@ -143,4 +221,4 @@ if (require.main === module) {
   process.exit(res.ok ? 0 : 1);
 }
 
-module.exports = { check, requiredAgents, referenceMap, installedAgents, ungovernedPhases, PSEUDO };
+module.exports = { check, requiredAgents, referenceMap, installedAgents, ungovernedPhases, hierarchyIntegrity, PSEUDO };

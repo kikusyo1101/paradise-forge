@@ -39,19 +39,20 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 16 | 証拠は名前でなく中身で裁く |
 | 17 | 創造物は己の見た目を宣言せよ、さもなくば機械の癖を相続する |
 | 18 | **表層は実体と同じ厳しさで裁かれる**(UX設計・実測・目視・専任審査) |
-| 19 | 借り物は改変せず、変換で纏う |
+| 19 | **取り込んだものは楽園の所有物**(改変は自由。ただし配備物 `~/.claude` は手で触らない) |
 | 20 | **楽園は己の足で立つ**(上流が消えても動く。credit は必ず残す) |
 | 21 | **門は名を口にする全ての口を見る**(forge/clergy/examples を横断して宙吊り参照を裁く) |
 | 22 | **己について語る数は数え直される**(文書の数は `census.js` が実測と突き合わせる) |
 | 23 | **楽園は己の法で己を改める**(`reform` の道・無主の相を許さない) |
 | 24 | **確かめていない土台の上に建てない**(分岐前に `branch-guard.js`) |
+| 25 | **歩けぬ階層は階層ではない**(枢機卿=指揮・司祭=実務・信徒=細分。全員に実体と権能) |
 
 ---
 
 ## 門(すべて実行して通すこと)
 
 ```bash
-node tests/paradise.test.js                    # 楽園の自己診断 (149件)
+node tests/paradise.test.js                    # 楽園の自己診断 (157件)
 node graph/check-agents.js                     # 司祭が実在するか
 node graph/apply-models.js verify              # 位階とモデルの一致 (第12条)
 node graph/deploy.js check                     # ~/.claude が定義と一致するか
@@ -59,6 +60,7 @@ node graph/visual-verify.js check <creation>   # 表層を数値で裁く (第18
 node graph/upstream.js impact                  # 借り物の変化 (第19条)
 node graph/census.js check                     # 己について語る数が真実か (第22条)
 node graph/branch-guard.js                     # 古いmainの上に立っていないか (第24条)
+node graph/apply-spawn.js verify               # 下位を擁する者が起動の権能を持つか (第25条)
 ```
 
 ---
@@ -84,7 +86,8 @@ node graph/branch-guard.js                     # 古いmainの上に立ってい
    - 楽園自身への改修は `reform` の道を通す(第23条)。
      `node graph/forge.js plan "<神託>" --out <dir>/forge.dag.json` → 枢機卿を召集する。
      教主が独断で engine を書き換えてはならない
-2. **上流 `everything-claude-code` を改変しない。** read-only。変更は `overlay/` へ書く(第19条)
+2. **`overlay/vendor/` は楽園の所有物。** 改変は自由(第19条改正)。
+   上流はもはや供給元ではない — 配備は `overlay/` からのみ建つ(第20条)
 3. **`~/.claude` を手で編集しない。** あれは成果物。`node graph/deploy.js --write` で建て直す
 4. **目視でブラウザを開いたら必ず閉じる。**
    `cmd //c "taskkill /F /IM brave.exe /T"` — 開きっぱなしは神の画面を占領し、
@@ -98,6 +101,6 @@ node graph/branch-guard.js                     # 古いmainの上に立ってい
 ## 現状
 
 - 創造物: `creations/` (habit, pomodoro ほか)
-- 自己診断: **149 tests**
-- 憲法: **24条**
+- 自己診断: **157 tests**
+- 憲法: **25条**
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

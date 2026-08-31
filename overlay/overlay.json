@@ -13,7 +13,6 @@
     "  own       : 上流に存在しない楽園固有のもの。上流と無関係。",
     "  adopted   : 上流が削除したが楽園が使い続けるもの。拾った側の責任で持つ。"
   ],
-
   "version": 1,
   "upstream": {
     "name": "everything-claude-code",
@@ -24,46 +23,73 @@
     "readonly": true,
     "$note": "上流のワークツリーは決して改変しない。fetch と読み取りのみ。"
   },
-
   "deploy_target": {
     "path_env": "CLAUDE_HOME",
     "default_path": "~/.claude",
     "$note": "配備先は成果物であって原本ではない。いつ消えても再生成できること。"
   },
-
-  "kinds": ["agents", "commands", "rules", "skills"],
-
+  "kinds": [
+    "agents",
+    "commands",
+    "rules",
+    "skills"
+  ],
   "transform": {
     "agents": {
-      "rule": "apply-models",
-      "engine": "graph/apply-models.js",
-      "reason": "憲法 第12条: 位階に応じたモデルを機械適用する。上流が本文を更新しても model/effort だけは楽園の規則が勝つ。9件すべてがこの関係にあり、乖離ではなく変換である。",
-      "$note": "上流の本文変更は常に採用し、その後 apply-models を再実行する。"
+      "rule": "apply-models + apply-spawn",
+      "engines": [
+        "graph/apply-models.js",
+        "graph/apply-spawn.js"
+      ],
+      "reason": "憲法 第12条: 位階に応じたモデルを機械適用する。加えて 第25条: 下位を擁する者に起動の権能(Task)を与える。司祭8名のうち6名は上流由来であり手で書き換えれば第19条を破る。ゆえに両方とも変換であり、乖離ではない。",
+      "$note": "上流の本文変更は常に採用し、その後この順で全ての変換を再適用する。変換が一つだけという前提は、規則が増えた瞬間に嘘になる（実際 deploy が権能を黙って消していた）。"
     }
   },
-
   "replace": {
     "commands/orchestrate.md": {
       "reason": "楽園は conclave/forge で階層的に統べるため、上流の逐次オーケストレーションとは思想が異なる。",
       "source": "overlay/commands/orchestrate.md"
     }
   },
-
   "own": {
-    "commands": ["forge.md", "conclave.md", "graph.md"],
-    "agents": ["cardinal.md", "executor.md", "market-researcher.md", "requirements-analyst.md",
-               "self-critic.md", "creation-judge.md", "ux-reviewer.md"],
-    "$note": "楽園固有。overlay/ 配下に原本を持ち、上流の増減に影響されない。"
+    "commands": [
+      "forge.md",
+      "conclave.md",
+      "graph.md"
+    ],
+    "agents": [
+      "acceptance-criteria-writer.md",
+      "cardinal.md",
+      "coverage-checker.md",
+      "creation-judge.md",
+      "data-modeler.md",
+      "executor.md",
+      "feature-ranker.md",
+      "interface-designer.md",
+      "linter.md",
+      "market-researcher.md",
+      "module-builder.md",
+      "requirements-analyst.md",
+      "secret-scanner.md",
+      "self-critic.md",
+      "test-writer.md",
+      "user-story-writer.md",
+      "ux-reviewer.md",
+      "web-scout.md"
+    ],
+    "$note": "楽園固有。overlay/ 配下に原本を持ち、上流の増減に影響されない。信徒(believers)も実体としてここに住む — 名前だけの階層を二度と作らない(第25条)。"
   },
-
   "adopted": {
     "$note": "上流が削除したが楽園が使い続けるもの。`upstream.js adopt` が自動追従せず、ここへ退避させる。現時点では空。",
     "files": []
   },
-
   "protected_hooks": {
     "$note": "上流のフックファイルへ書き足すことは禁止。楽園のフックは settings.json の配列へ並べて足す (tools/wire-paradise-hooks.js)。",
-    "never_edit": ["scripts/hooks/*"],
-    "paradise_hooks": ["tools/hooks/paradise-session-start.js"]
+    "never_edit": [
+      "scripts/hooks/*"
+    ],
+    "paradise_hooks": [
+      "tools/hooks/paradise-session-start.js"
+    ]
   }
 }

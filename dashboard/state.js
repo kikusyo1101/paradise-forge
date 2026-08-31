@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T08:55:29.746Z",
+  "generated": "2026-08-31T09:34:37.067Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 57,
+    "nodeCount": 59,
     "edgeCount": 33,
     "nodes": [
       {
@@ -470,6 +470,18 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "確かめていない土台の上に建てるな",
         "degree": 0
+      },
+      {
+        "id": "art25-real-hierarchy",
+        "type": "lesson",
+        "label": "歩けぬ階層は階層ではない",
+        "degree": 0
+      },
+      {
+        "id": "art19-supply-not-stock",
+        "type": "lesson",
+        "label": "在庫でなく供給線を検めよ",
+        "degree": 0
       }
     ],
     "edges": [
@@ -646,7 +658,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 25
+      "lesson": 27
     }
   },
   "lessons": [
@@ -774,6 +786,16 @@ window.PARADISE_STATE = {
       "id": "art24-branch-guard",
       "label": "確かめていない土台の上に建てるな",
       "check": "PRが未マージという思い込みで古いmainから分岐しrebase競合で変更を失いかけた。CLAUDE.mdに書いてあっても守られない。branch-guard.jsで分岐前に実測する。散文の掟は門に格上げせよ|applies:paradise-internal"
+    },
+    {
+      "id": "art25-real-hierarchy",
+      "label": "歩けぬ階層は階層ではない",
+      "check": "枢機卿はdataでactorでなく、信徒13名は全員名前だけ、conclaveは司祭への発令書を教主に返していた。5階層のうち2つしか実行されず。原因はClaude Agent SDK docsが名指しする通りallowedToolsにTask/Agentが無いと起動が黙って拒否されること。各位階にactorを与え、下位を擁する者にapply-spawnで権能を機械適用し、発令は必ず一つ下の位階へ向ける|applies:paradise-internal"
+    },
+    {
+      "id": "art19-supply-not-stock",
+      "label": "在庫でなく供給線を検めよ",
+      "check": "独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し司祭9名が消えた。在庫を数える門は独立を証明しない|applies:paradise-internal"
     }
   ],
   "creations": [

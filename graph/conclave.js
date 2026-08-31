@@ -108,9 +108,25 @@ function next(run) {
   // ready phases inside this domain
   const ready = d.phases.filter(p => phaseReady(run, p)).map(p => p.id);
   if (ready.length) {
+    const col = clergy.COLLEGE[d.cardinal];
+    const believers = (col && col.believers) || [];
     return {
       level: 'domain', phase: 'wave', cardinal: d.cardinal, domain: d.domain,
       pdca: d.pdca,
+      // ── 誰がこの発令を受けるのか (憲法 第25条) ────────────────────────
+      // かつてここは司祭への発令書を **教主に** 返していた。ゆえに教主が司祭を
+      // 直接呼び、枢機卿は素通りされ、階層は宣言だけになった。
+      // 発令は枢機卿が受け、枢機卿が司祭を起動する。
+      dispatch_to: {
+        rank: 'cardinal',
+        agent: (col && col.agent) || 'cardinal',
+        cardinal: d.cardinal,
+        instruction: `あなたは枢機卿 ${d.domain} である。以下の相を配下の司祭に発令し、` +
+                     '結果を実物と突き合わせて検め、己のPDCAを回してから教主に返せ。' +
+                     '自ら細部を作らない — あなたは指揮官である。',
+        may_dispatch: (col && col.priests) || [],
+        believers_available: believers,
+      },
       dispatch: ready.map(id => {
         const ph = d.phases.find(x => x.id === id);
         const all = allPhases(run);
@@ -118,9 +134,22 @@ function next(run) {
           id, agent: ph.agent, goal: ph.goal, gate: ph.gate,
           expects_artifact: ph.artifact, attempt: ph.attempts + 1,
           context_from: ph.deps.map(dep => ({ from: dep, artifact: (all.get(dep) || {}).artifactPath || null })),
+          // 調査(Anthropic engineering)が求める4点。曖昧な発令は子に重複調査と
+          // 取りこぼしを起こさせる — 実際に起きた失敗として docs に記録がある。
+          contract: {
+            purpose: ph.goal,
+            output_format: `${ph.artifact || 'artifact'} を書き、{phase,status,artifact,evidence,summary} を返す`,
+            tools_and_sources: ph.deps.length
+              ? `依存の成果物のみを読む: ${ph.deps.join(', ')}`
+              : '与えられた入力のみ。範囲外を探索しない',
+            boundary: `この相(${id})だけを行う。他の相は他の者の領分である`,
+          },
+          // 司祭がさらに細分する場合の割当（信徒は実体を持つ）
+          marshal: believers.length ? clergy.marshalPlan(id, { priestCanSpawn: true }) : null,
         };
       }),
       parallel: ready.length,
+      max_concurrent: clergy.MAX_CONCURRENT,
     };
   }
 

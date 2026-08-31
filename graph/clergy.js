@@ -87,13 +87,35 @@ function allPriests() {
 }
 
 /**
+ * 起動の権能 — 誰が誰を呼べるか (憲法 第25条)
+ *
+ * 調査で判明した決定的事実 (Claude Agent SDK docs):
+ *   「allowedTools に "Agent"(旧 Task) が無いと、サブエージェント起動は
+ *     permission callback に落ちるか dontAsk モードで拒否される。
+ *     **これが『宣言はあるが起動しない』の第一原因である**」
+ *
+ * 楽園はまさにこれを踏んでいた。実測すると `Task` を持つのは cardinal 只一人で、
+ * 司祭は誰一人持っていなかった。ゆえに信徒13名は名前だけの存在であり続けた。
+ * 怠慢ではなく **通れない道** だったのである。
+ *
+ * よって権能は宣言でなくデータとして持ち、門が検める。
+ */
+const SPAWN_TOOL = 'Task';          // Claude Code が他エージェントを起動する道具
+const MAX_SPAWN_DEPTH = 3;          // CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH の既定値
+const MAX_CONCURRENT = 20;          // CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS の既定値
+
+/**
  * The College of Cardinals. Each cardinal owns a DOMAIN of the creation
  * lifecycle. `phases` are the forge phase ids this cardinal governs. `priests`
  * are the agent roles it may dispatch. `reviewClass` is who reviews its output
  * (appropriate-class review). `pdca` names the inner cycle it runs.
+ *
+ * `agent` は **その枢機卿を演じる実体**である。これが無い間、枢機卿は
+ * ただのラベルであり、教主が司祭を直接呼んで階層を素通りしていた。
  */
 const COLLEGE = {
   'discovery': {
+    agent: 'cardinal',
     domain: 'Discovery (調査)',
     governs: ['discover'],
     priests: ['market-researcher'],
@@ -102,6 +124,7 @@ const COLLEGE = {
     pdca: 'plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search',
   },
   'requirements': {
+    agent: 'cardinal',
     domain: 'Requirements (要件)',
     governs: ['analyze', 'specify'],
     priests: ['requirements-analyst'],
@@ -110,6 +133,7 @@ const COLLEGE = {
     pdca: 'plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps',
   },
   'architecture': {
+    agent: 'cardinal',
     domain: 'Architecture (設計)',
     governs: ['design', 'detail', 'ux', 'identity'],
     priests: ['architect'],
@@ -118,6 +142,7 @@ const COLLEGE = {
     pdca: 'plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise',
   },
   'construction': {
+    agent: 'cardinal',
     domain: 'Construction (建造)',
     governs: ['build', 'build-ui', 'tests', 'prove'],
     priests: ['architect', 'tdd-guide'],
@@ -126,6 +151,7 @@ const COLLEGE = {
     pdca: 'plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green',
   },
   'quality': {
+    agent: 'cardinal',
     domain: 'Quality (品質)',
     governs: ['review', 'security', 'docs', 'verify', 'ux-review'],
     priests: ['code-reviewer', 'security-reviewer', 'doc-updater', 'ux-reviewer'],
@@ -155,26 +181,39 @@ function cardinalFor(phaseId) {
 }
 
 /**
- * A priest's marshalling plan: given a phase and its cardinal, which believers
- * (small subagents) may be spawned to do fine-grained work under that priest.
- * This makes the priest→believer layer explicit and inspectable even where the
- * runtime cannot physically nest subagents — the plan records the intended
- * division of labor so a priest can either spawn believers (where nesting is on)
- * or execute their roles itself in sequence (single-writer, where nesting is off).
+ * 司祭の marshalling plan — その相を、誰がどう分けて働くか。
+ *
+ * かつてここは `mode: 'single-writer-or-nested'` を返していた。「入れ子が
+ * できる環境なら信徒を生む、できなければ司祭が兼務する」という両睨みである。
+ * それは敗北宣言であった — **実際には入れ子は可能だった**。
+ * Claude Code の MAX_SUBAGENT_SPAWN_DEPTH は既定 3 であり、
+ * 教主→枢機卿→司祭→信徒 は物理的に成立する。両睨みでいる限り
+ * 信徒は永遠に実体を持たない側に倒れ続け、事実そうなっていた（13名全員が名前だけ）。
+ *
+ * よって計画は**実在性を伴って**返す: どの信徒が実体を持ち、司祭が起動の権能
+ * (Task) を持つか。持たないなら `blocked` と正直に述べる — 黙って兼務に
+ * 倒れることはしない。
  */
-function marshalPlan(phaseId) {
+function marshalPlan(phaseId, opts = {}) {
   const card = cardinalFor(phaseId);
   const c = COLLEGE[card];
-  if (!c) return { cardinal: card, priest: null, believers: [] };
+  if (!c) return { cardinal: card, priest: null, believers: [], mode: 'unknown' };
   // pick the priest whose skill best fits the phase (first is the default lead)
   const priest = c.priests[0];
+  const believers = c.believers || [];
+  const canSpawn = opts.priestCanSpawn === undefined ? null : !!opts.priestCanSpawn;
   return {
     cardinal: card,
     domain: c.domain,
     priest,
-    believers: c.believers || [],
-    division: (c.believers || []).map(b => ({ believer: b, does: believerRole(b) })),
-    mode: 'single-writer-or-nested', // priest runs believers in sequence, or spawns them if nesting is enabled
+    believers,
+    division: believers.map(b => ({ believer: b, does: believerRole(b) })),
+    depth: { pontiff: 0, cardinal: 1, priest: 2, believer: 3, max: MAX_SPAWN_DEPTH },
+    // 実体化された階層では司祭が信徒を起動する。権能が無ければ黙らず塞がっていると言う。
+    mode: believers.length === 0 ? 'no-believers'
+        : canSpawn === false ? 'blocked: priest lacks the spawn tool'
+        : 'nested',
+    requires: believers.length ? { priestTool: SPAWN_TOOL } : null,
   };
 }
 
@@ -256,4 +295,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
+module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
