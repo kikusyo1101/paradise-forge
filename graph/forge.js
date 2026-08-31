@@ -98,11 +98,70 @@ const SCALES = {
     { id: 'reflect',  agent: 'self-critic', goal: 'Adversarial self-critique against PRD, findings & UX: run critic checklist + lessons. Any gap => REWORK before judgment', deps: ['verify', 'docs'], gate: true, artifact: 'critique.md' },
     { id: 'verdict',  agent: 'creation-judge', goal: 'Final judgment against PRD, findings, critique & constitution: SHIP / REWORK / BLOCK', deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
+
+  // Reform — 楽園そのものを改める道 (憲法 第23条)
+  //
+  // quick/standard/full はいずれも `creations/<slug>` を産むための道であり、
+  // **楽園自身の改修が通る道は存在しなかった**。ゆえにエンジンへの変更は
+  // 11件のPRすべてで教主の独断となり、枢機卿も執行官も一度も召集されなかった。
+  // 三権分立は宣言されていて、機構化されていなかった。
+  //
+  // creations の道と違うのは三点:
+  //   - discover は「市場」ではなく **己の実測**（門を走らせ、数を数える）
+  //   - build の対象は engine + 憲法 + 回帰テストであり、成果物ではない
+  //   - **門を、わざと壊して鳴るか試す `prove` 相**が独立して存在する。
+  //     健全な系しか見たことのない門は、試されたことがない門である（第21条）
+  reform: (wish) => [
+    { id: 'discover', agent: 'market-researcher',
+      goal: `楽園自身を実測せよ: ${wish}。憶測を書くな。全ての門(tests/paradise.test.js, check-agents, census, apply-models verify, deploy check, upstream impact)を実際に走らせ、critic.js review graph --self をかけ、欠陥を**数**にして出す。「〜のはず」は証拠ではない`,
+      gate: true, artifact: 'findings.md' },
+    { id: 'specify', agent: 'requirements-analyst',
+      goal: '実測された欠陥から、直すべきものを選び受入条件を書く。artifact でなく pipeline を直すこと(第9条)。「この門が、この入力で、こう鳴る」まで具体化する',
+      deps: ['discover'], gate: true, artifact: 'requirements.md' },
+    { id: 'design', agent: 'architect',
+      goal: '機構を設計する: どの engine を、どう変えるか。憲法に条を足すべきか。既存の門との重複・矛盾はないか。**この変更で嘘になる既存の門**を洗い出す(依存関係を変えたら、古い前提を符号化した門を全て読み直す)',
+      deps: ['specify'], gate: true, artifact: 'design.md' },
+    { id: 'build', agent: 'architect',
+      goal: 'engine を実装し、憲法条を追記し、CLAUDE.md/README の該当箇所を更新する',
+      deps: ['design'], artifact: 'implementation' },
+    { id: 'prove', agent: 'tdd-guide',
+      goal: '**門を、わざと壊して鳴るか試す。** 実在しない名を仕込む/腐った数を仕込む/上流を隠すなど、欠陥を意図的に注入し、門がそれを名指しで捕らえることを回帰テストで固定する。健全な系で緑になるだけの門は証明されていない',
+      deps: ['build'], gate: true, artifact: 'tests' },
+    { id: 'review', agent: 'code-reviewer',
+      goal: '機構の質を審査する。教主の実装を、教主でない者が読む(第11条)。設計意図と実装の乖離、命名、既存 engine との一貫性',
+      deps: ['build', 'prove'], artifact: 'review.md' },
+    { id: 'security', agent: 'security-reviewer',
+      goal: '秘密の混入、任意コード実行、パス走査、CI 権限の過剰付与を検める。楽園の engine は開発者の環境で走る — 危害の射程は creations より広い',
+      deps: ['build'], artifact: 'security-report.md' },
+    { id: 'docs', agent: 'doc-updater',
+      goal: 'CLAUDE.md の門一覧・憲法表、README の該当節を更新し、`node graph/census.js check` が通ることを確認する(第22条)',
+      deps: ['build'], artifact: 'docs' },
+    { id: 'verify', agent: 'verification-loop',
+      goal: '全門を通常環境と**素の環境**(PARADISE_UPSTREAM=/nonexistent CLAUDE_HOME=/nonexistent)の両方で走らせる。片方でも赤なら未完(第20条)',
+      deps: ['review', 'security', 'prove'], gate: true, artifact: 'verification-report' },
+    { id: 'reflect', agent: 'self-critic',
+      goal: '敵対的自己批評: node graph/critic.js review graph --self --lessons graph/lessons.json。この改修が生んだ**新しい盲点**を探す。門を足したなら、その門自身は誰が見張るのか',
+      deps: ['verify', 'docs'], gate: true, artifact: 'critique.md' },
+    { id: 'verdict', agent: 'creation-judge',
+      goal: '楽園の改革を裁く: SHIP / REWORK / BLOCK。裁いた上で PR を出す — マージは神のみ',
+      deps: ['reflect'], gate: true, artifact: 'verdict' },
+  ],
 };
+
+/**
+ * 神託が「楽園そのもの」を指しているか。
+ *
+ * これが最初に判定される理由: 楽園自身への改革を quick/standard と誤ると、
+ * 市場調査の司祭が世間を調べに行き、己を測らない。対象を取り違えた道は、
+ * どれだけ丁寧に回しても正しい場所に着かない。
+ */
+const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|司祭|priest)/i;
 
 /** Heuristically choose a scale from the wish text. */
 function chooseScale(wish) {
   const w = wish.toLowerCase();
+  // 対象が楽園自身なら、創造物の道ではなく改革の道を行く(第23条)。
+  if (REFORM_RE.test(wish)) return 'reform';
   const quick = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick|一行|修正|バグ|直す)\b/;
   const full = /\b(product|platform, |system|app|application|saas|dashboard|end-to-end|mvp|launch|製品|システム|アプリ|プラットフォーム|全体)\b/;
   if (quick.test(w)) return 'quick';
@@ -173,4 +232,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, chooseScale, buildDag };
+module.exports = { CONSTITUTION, SCALES, chooseScale, buildDag, REFORM_RE };

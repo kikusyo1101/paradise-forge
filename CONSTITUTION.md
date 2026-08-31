@@ -216,6 +216,47 @@ way to change what "complete" means.
     compared against the documents; a stale number is a failing gate, not a typo.
     If a thing cannot be counted, it must not be claimed.
 
+23. **The paradise reforms itself by its own law, not by the pontiff's hand.**
+    Every road the forge knew — quick, standard, full — ended at
+    `creations/<slug>`. There was no road by which paradise could change
+    *itself*. So eleven consecutive engine changes were written, reviewed and
+    declared complete by the pontiff alone: no cardinal was convened, no priest
+    dispatched, no tribunal summoned. CI proved the facts and could not see the
+    breach, because a breach of *procedure* leaves no failing test. A separation
+    of powers that exists only while the sovereign chooses to honour it is not a
+    separation of powers; it is a habit. Therefore paradise carries a **reform**
+    scale, and three things follow. (a) A wish naming paradise itself — its
+    engines, gates, constitution, hierarchy — routes to `reform` **before** any
+    other heuristic runs, because a road aimed at the wrong subject arrives
+    nowhere no matter how carefully it is walked. (b) The reform road differs
+    from the creation road where it must: discovery measures **paradise itself**
+    rather than the market, and a distinct **`prove`** phase exists whose only
+    duty is to break each gate on purpose and confirm it rings — a gate that has
+    only ever seen a healthy system has never been tested. (c) **No phase may be
+    masterless.** Phases are declared in `forge.js` and governed in `clergy.js`;
+    two files means a phase can be born with no cardinal and no tribunal to
+    answer for it, and one was. `check-agents.js` now fails on any ungoverned
+    phase, exactly as it fails on a priest who does not exist — for it is the
+    same sickness: a name with no one behind it.
+
+24. **Never build on a base you have not just verified.** The owner named this
+    directly — *"you keep making the mistake of referencing main while a PR is
+    still open. Can't it be prevented?"* — and the answer is yes, but only as a
+    gate. The accident: a PR was opened, assumed unmerged, and a new branch cut
+    from a local `main` that the owner had already advanced past. Two files
+    conflicted on rebase and the work nearly vanished. "Pull before you branch"
+    was already written in `CLAUDE.md`, and being written is precisely why it
+    failed — **a rule that lives only in prose is obeyed only when remembered,
+    and the moment you most need it is the moment you are least likely to
+    remember it.** This is the identical finding as Articles 21 and 22, applied
+    to the pontiff's own hands. Therefore `branch-guard.js` judges the working
+    position before work begins: a base that is not a descendant of
+    `origin/main` **blocks**; standing on `main` with changes **blocks**; an open
+    PR on this branch warns, because the instant it merges every other branch's
+    base goes stale. And when the remote cannot be reached the guard reports
+    `UNKNOWN_BASE` rather than green — an unverified position is not a safe one
+    (Art. 16).
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

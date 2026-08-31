@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T08:43:53.729Z",
+  "generated": "2026-08-31T08:55:29.746Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 55,
+    "nodeCount": 57,
     "edgeCount": 33,
     "nodes": [
       {
@@ -458,6 +458,18 @@
         "type": "lesson",
         "label": "己について語る数は数え直せ",
         "degree": 0
+      },
+      {
+        "id": "art23-reform-road",
+        "type": "lesson",
+        "label": "楽園自身を改める道を持て",
+        "degree": 0
+      },
+      {
+        "id": "art24-branch-guard",
+        "type": "lesson",
+        "label": "確かめていない土台の上に建てるな",
+        "degree": 0
       }
     ],
     "edges": [
@@ -634,7 +646,7 @@
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 23
+      "lesson": 25
     }
   },
   "lessons": [
@@ -752,6 +764,16 @@
       "id": "art22-count-what-you-claim",
       "label": "己について語る数は数え直せ",
       "check": "文書の数(テスト数・条数・vendor内訳)は黙って腐る。census.js が実測と突き合わせ、ずれれば門が落ちる|applies:paradise-internal"
+    },
+    {
+      "id": "art23-reform-road",
+      "label": "楽園自身を改める道を持て",
+      "check": "quick/standard/fullは全てcreations用で、楽園自身の改修が通る道が無かった。ゆえに11件のPRが教主の独断となり枢機卿も執行官も召集されなかった。reformスケール+prove相+無主の相検知で機構化|applies:paradise-internal"
+    },
+    {
+      "id": "art24-branch-guard",
+      "label": "確かめていない土台の上に建てるな",
+      "check": "PRが未マージという思い込みで古いmainから分岐しrebase競合で変更を失いかけた。CLAUDE.mdに書いてあっても守られない。branch-guard.jsで分岐前に実測する。散文の掟は門に格上げせよ|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -883,7 +905,8 @@
         "governs": [
           "build",
           "build-ui",
-          "tests"
+          "tests",
+          "prove"
         ],
         "priests": [
           "architect",
