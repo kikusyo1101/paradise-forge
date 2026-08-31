@@ -35,6 +35,12 @@ const ROOT = path.join(__dirname, '..');
  * `from` は生成元、`by` は生成する命令、`needs` は生成元が要求する環境。
  */
 const DERIVED = {
+  'CONSTITUTION.INDEX.md': {
+    from: 'CONSTITUTION.md',
+    by: 'node graph/codex.js index --write',
+    needs: null,
+    note: '憲法の索引 (第33条)。条が増減・改稿されるたび変わる。並行PRでは必ず衝突するが手で解決してはならない — 再生成が正しい。中身(条数・題・バイト数)を前提にした検査を書かない',
+  },
   'graph/lessons.json': {
     from: 'knowledge graph (PARADISE_KG)',
     by: 'node graph/lessons.js export --out graph/lessons.json',

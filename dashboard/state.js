@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T11:55:24.361Z",
+  "generated": "2026-08-31T12:31:52.194Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 66,
+    "nodeCount": 69,
     "edgeCount": 33,
     "nodes": [
       {
@@ -524,6 +524,24 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
         "degree": 0
+      },
+      {
+        "id": "subagent-defied-scope",
+        "type": "lesson",
+        "label": "a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check",
+        "degree": 0
+      },
+      {
+        "id": "gate-asserts-invariant-not-symptom",
+        "type": "lesson",
+        "label": "a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check",
+        "degree": 0
+      },
+      {
+        "id": "every-wish-is-not-build",
+        "type": "lesson",
+        "label": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
+        "degree": 0
       }
     ],
     "edges": [
@@ -700,7 +718,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 34
+      "lesson": 37
     }
   },
   "lessons": [
@@ -873,6 +891,21 @@ window.PARADISE_STATE = {
       "id": "pontiff-seat-ungoverned",
       "label": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
       "check": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check|applies:paradise-internal"
+    },
+    {
+      "id": "subagent-defied-scope",
+      "label": "a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check",
+      "check": "a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check|applies:paradise-internal"
+    },
+    {
+      "id": "gate-asserts-invariant-not-symptom",
+      "label": "a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check",
+      "check": "a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check|applies:paradise-internal"
+    },
+    {
+      "id": "every-wish-is-not-build",
+      "label": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
+      "check": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check|applies:paradise-internal"
     }
   ],
   "creations": [],
@@ -1015,6 +1048,29 @@ window.PARADISE_STATE = {
         ],
         "reviewClass": "executor",
         "pdca": "plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass"
+      },
+      "counsel": {
+        "domain": "Counsel (諐問)",
+        "governs": [
+          "survey",
+          "measure",
+          "assess",
+          "counter",
+          "synthesize",
+          "counsel"
+        ],
+        "priests": [
+          "market-researcher",
+          "auditor",
+          "reporter"
+        ],
+        "believers": [
+          "web-scout",
+          "feature-ranker",
+          "data-collector"
+        ],
+        "reviewClass": "executor",
+        "pdca": "plan: 問いを立てる → do: 外を調べ手元を測る → check: 反証に耐えたか? → act: 根拠を足すか結論を弱める"
       }
     },
     "tribunal": {

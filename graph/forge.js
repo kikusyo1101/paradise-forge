@@ -146,6 +146,55 @@ const SCALES = {
       goal: '楽園の改革を裁く: SHIP / REWORK / BLOCK。裁いた上で PR を出す — マージは神のみ',
       deps: ['reflect'], gate: true, artifact: 'verdict' },
   ],
+
+  // Counsel — 諐問の道: 何も創らず、問いに答える (非開発の道)
+  //
+  // 実測された欠陥: quick/standard/full/reform はすべて build 相と
+  // verdict(SHIP/REWORK/BLOCK) を必須とする **創造の道** であった。ゆえに
+  // 「調査してほしい」「監査してほしい」「報告してほしい」「意見がほしい」という
+  // **創造物を求めない願い**がことごとく standard(14相)へ誤着し、存在しない
+  // 実装物に向かって build を走らせていた。道が四本とも同じ形をしていたので、
+  // 「産まない」という選択肢そのものが機構に存在しなかったのである。
+  //
+  // 創造の道と違うのは三点:
+  //   - **build / tests / verdict 相を一つも持たない**。この道は物を産まない
+  //   - survey(外の世界を調べる)と measure(手元を実測する)が **並列**に立つ。
+  //     市場だけを見る道は己を測らず、己だけを見る道は世間を知らない
+  //   - 終端は断罪ではなく **counsel(推奨と根拠)**。答えるのが仕事である
+  counsel: (wish) => [
+    { id: 'survey', agent: 'market-researcher',
+      goal: `外の世界を調べよ: ${wish}。先行事例・比較対象・一般に何が標準とされるかを、出典URL付きで集める。憶測を事実として書かない`,
+      gate: true, artifact: 'findings.md' },
+    { id: 'measure', agent: 'auditor',
+      goal: `手元の系を実測せよ: ${wish}。コマンドを実際に走らせ、生の出力を根拠に数を出す。「〜のはず」は証拠ではない`,
+      gate: true, artifact: 'measurements.md' },
+    { id: 'assess', agent: 'requirements-analyst',
+      goal: '外の調査(findings)と手元の実測(measurements)を突き合わせ、問いに対する筋を立てる。両者が食い違う点こそ本題である',
+      deps: ['survey', 'measure'], artifact: 'analysis.md' },
+    { id: 'counter', agent: 'self-critic',
+      goal: '敵対的に反証せよ。その分析が**間違っているとしたら何が原因か**を列挙し、根拠の弱い断定を名指しで潰す。反証に耐えなかった主張は結論に載せない',
+      deps: ['assess'], gate: true, artifact: 'counter.md' },
+    { id: 'synthesize', agent: 'reporter',
+      goal: '集められた根拠を人が読める報告書に編む。数値には必ず出典(コマンドかURL)を付ける。推測は「推測」と明記する',
+      deps: ['assess', 'counter'], artifact: 'report.md' },
+    { id: 'counsel', agent: 'executor',
+      goal: '諐問に答える: 推奨と、その根拠と、採らなかった選択肢とその理由。断罪(SHIP/REWORK/BLOCK)ではない — 神が決めるための材料を渡す',
+      deps: ['synthesize'], gate: true, artifact: 'counsel.md' },
+  ],
+};
+
+/**
+ * その道は何を産むのか (第9条の系)
+ *
+ * 道が「何を産むか」を宣言していなかったので、産まない道を作る余地が
+ * 機構に無かった。産物の種別は道の性質そのものであり、meta に載る。
+ */
+const SCALE_PRODUCES = {
+  quick: 'artifact',
+  standard: 'artifact',
+  full: 'artifact',
+  reform: 'artifact',
+  counsel: 'document',
 };
 
 /**
@@ -157,15 +206,54 @@ const SCALES = {
  */
 const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|司祭|priest)/i;
 
+/**
+ * 諐問の語彙 — 「創れ」ではなく「答えよ」と言っている願い。
+ *
+ * **日本語に `\b` を使ってはならない。** 単語境界は「単語構成文字と非構成文字の
+ * 境目」であり、日本語は全て非構成文字として扱われる。ゆえに `\b(修正)\b` は
+ * 日本語文中で事実上決して一致しない。この誤りが既存の quick/full 判定に
+ * 埋まっており、**日本語の願いは全て standard に落ちていた**。よって語彙は
+ * 日本語(境界なし)と英語(境界あり)に分けて持つ。
+ */
+const COUNSEL_JA = '調査|監査|報告|意見|比較|分析|診断|推奨|助言|論評|検討|考察|集計|整理|見直|妥当か|どう思う|どうすべき|はないか|べきか|所見';
+const COUNSEL_EN = '\\b(?:research|investigate|audit|report|advise|recommend|compare|analyze|analyse|diagnose|review-only|assess|evaluate|survey|opinion)\\b';
+const COUNSEL_RE = new RegExp(`${COUNSEL_JA}|${COUNSEL_EN}`, 'i');
+
+/**
+ * 創造の動詞 — 「物を寄越せ」と言っている願い。諐問の語彙と混ざると
+ * 「タイマーが欲しい」が調査の道へ攫われる。
+ */
+const CREATE_RE = new RegExp('欲しい|ほしい|作れ|作って|作る|つくって|実装|実現|開発|構築|' +
+  '\\b(?:build|create|make|implement|develop)\\b', 'i');
+
+/**
+ * ただし **求められている物が文書である**なら、創造の動詞があっても諐問である。
+ * 「比較表がほしい」「報告書がほしい」は建造ではない。
+ */
+const DOC_RE = new RegExp('報告書|比較表|レポート|一覧表|資料|所見|報告|調査|監査|意見|助言|分析|診断|考察|論評|' +
+  '\\b(?:report|comparison|analysis|audit|assessment|findings)\\b', 'i');
+
+/** その願いは諐問(答えを求める)か、創造(物を求める)か。 */
+function isCounsel(wish) {
+  if (!COUNSEL_RE.test(wish)) return false;
+  if (CREATE_RE.test(wish) && !DOC_RE.test(wish)) return false;   // 物を求めている
+  return true;
+}
+
 /** Heuristically choose a scale from the wish text. */
 function chooseScale(wish) {
   const w = wish.toLowerCase();
+  // 主題優先: 「楽園のエンジンを監査してほしい」は楽園の話だが改変ではない。
+  // 諐問は reform より先に判定する — 対象ではなく **求められている答えの種類**が道を決める。
+  if (isCounsel(wish)) return 'counsel';
   // 対象が楽園自身なら、創造物の道ではなく改革の道を行く(第23条)。
   if (REFORM_RE.test(wish)) return 'reform';
-  const quick = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick|一行|修正|バグ|直す)\b/;
-  const full = /\b(product|platform, |system|app|application|saas|dashboard|end-to-end|mvp|launch|製品|システム|アプリ|プラットフォーム|全体)\b/;
-  if (quick.test(w)) return 'quick';
-  if (full.test(w)) return 'full';
+  const quickJa = /一行|修正|バグ|直す|直して|直し|タイポ|誤字|微調整/;
+  const quickEn = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick)\b/;
+  const fullJa = /製品|システム|アプリ|プラットフォーム|全体/;
+  const fullEn = /\b(product|platform|system|app|application|saas|dashboard|end-to-end|mvp|launch)\b/;
+  if (quickJa.test(wish) || quickEn.test(w)) return 'quick';
+  if (fullJa.test(wish) || fullEn.test(w)) return 'full';
   return 'standard';
 }
 
@@ -178,6 +266,8 @@ function buildDag(wish, scale) {
       created: new Date().toISOString(),
       constitution: CONSTITUTION,
       gates: tasks.filter(t => t.gate).map(t => t.id),
+      // 何を産む道なのか。産まない道(counsel)を持てるようにするための宣言。
+      produces: SCALE_PRODUCES[scale] || 'artifact',
     },
     tasks,
   };
@@ -232,4 +322,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, chooseScale, buildDag, REFORM_RE };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, isCounsel };

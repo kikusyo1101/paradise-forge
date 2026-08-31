@@ -21,6 +21,7 @@
  *   4. adopted (上流が消したが楽園が使う) を足す
  *   5. transform を再適用する (apply-models + apply-spawn)
  *   6. 教主の座を settings.json に書く (apply-seat, 第31条)
+ *   7. 掟を settings.json の permissions に落とす (apply-guards)
  */
 const fs = require('fs');
 const os = require('os');
@@ -139,7 +140,16 @@ function check() {
     drift.push({ kind: 'settings', file: 'settings.json', from: 'clergy(pontiff)',
                  why: `教主の座が宣言と違う: 現状 ${seat.current.model ?? '(無統治)'}/${seat.current.effort ?? '(無統治)'} ⇒ ${seat.want.model}/${seat.want.effort}` });
   }
-  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length + 1, transforms: p.transforms };
+  // 掟もまた配備物である。permissions が書かれていない配備は、門を一つも
+  // 持たない配備であり、agents だけを数える検査はそれを緑と呼んでしまう。
+  const guards = require('./apply-guards.js').diff();
+  if (!guards.skipped && !guards.ok) {
+    for (const c of guards.changes) {
+      drift.push({ kind: 'settings', file: 'settings.json', from: 'apply-guards(POLICY)',
+                   why: c.kind === 'permissions' ? `掟が機構になっていない: ${c.note}` : `死んだ matcher ${c.event}[${c.index}]: ${c.note}` });
+    }
+  }
+  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length + 2, transforms: p.transforms };
 }
 
 function write() {
@@ -185,7 +195,21 @@ function write() {
     if (!s.ok) return { ok: false, deployed: done.length, error: `pontiff seat: ${s.error}` };
   } catch (e) { return { ok: false, deployed: done.length, error: `pontiff seat: ${e.message}` }; }
 
-  return { ok: true, deployed: done.length, transforms: applied, pontiff_seat: seat, home: p.home };
+  // 7. 掟を機構にする
+  //
+  // 配備物は agents と commands と座だけではない。**掟そのもの**が配備物である。
+  // permissions を書かない配備は、force push も .env の読み出しも素通しにする
+  // 配備であり、CLAUDE.md の「Hooks で自動強制されている」という一文を嘘にする。
+  // さらに死んだ matcher を直す — 建て直すたびに門が黙って無効化されていた。
+  let guards = null;
+  try {
+    const g = require('./apply-guards.js').apply();
+    if (!g.ok) return { ok: false, deployed: done.length, error: `guards: ${g.error}` };
+    guards = g.skipped ? '(settings.json 無し)'
+           : `deny ${require('./apply-guards.js').POLICY.deny.length} / ask ${require('./apply-guards.js').POLICY.ask.length} / allow ${require('./apply-guards.js').POLICY.allow.length}${g.changed ? ` (更新 ${g.changes.length})` : ''}`;
+  } catch (e) { return { ok: false, deployed: done.length, error: `guards: ${e.message}` }; }
+
+  return { ok: true, deployed: done.length, transforms: applied, pontiff_seat: seat, guards, home: p.home };
 }
 
 if (require.main === module) {

@@ -31,7 +31,16 @@ node graph/critic.js review <dir> --lessons graph/lessons.json # 敵対的自己
 node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLOCK
 ```
 
-**憲法 `CONSTITUTION.md` が最高法規。** 迷ったらそこへ帰る。特に近年の条:
+**憲法 `CONSTITUTION.md` が最高法規。** ただし**全文を常時読むな**(第33条)。
+34,452 B を毎回運ぶのは仕事を圧迫する。常時持つのは索引だけでよい:
+
+```bash
+node graph/codex.js index          # 33条の索引 (2,607 B — 本文の 7.6%)
+node graph/codex.js article 26 33  # 要る条だけを引く
+node graph/codex.js check          # 索引が本文と一致しているか
+```
+
+近年の条(題のみ。本文は上の `article` で引くこと):
 
 | 条 | 内容 |
 |---|---|
@@ -52,6 +61,8 @@ node graph/verdict.js judge <dir>/verdict-report.json          # SHIP/REWORK/BLO
 | 29 | **生成物は真実の写しであって真実でない**(`derived.js`。生成物の中身を前提にしない) |
 | 30 | **作られたものと作るものは同居しない**(創造物は `paradise-creations` に住む。住所は `workspace.js` のみが知る) |
 | 31 | **統べる座こそ誰も設定していなかった**(教主の座は `apply-seat.js`。効かない effort は書かない。無人の座は Fable にしない) |
+| 32 | **全ての願いが「作れ」ではない**(`counsel` の道。調査・監査・報告・諮問は build を通らない。主題は動詞に優先する) |
+| 33 | **機械が強制しない法は、忘れてよい助言である**(`apply-guards.js`。permissions と matcher を実際に効かせる。散文と機構に同じ掟を二重に持たない) |
 
 ---
 
@@ -111,7 +122,7 @@ node graph/apply-seat.js verify                # 教主の座が宣言どおり�
 - 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
   `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
 - 自己診断: **194 tests**
-- 憲法: **31条**
+- 憲法: **33条**
 - 位階のモデル: 教主=`fable`/xhigh・枢機卿/執行官=`claude-opus-5`/xhigh・神官=`claude-sonnet-5`/high・
   信徒=`haiku`(effort非対応)。無人cronのみ`claude-opus-5`固定(第31条)。`node graph/clergy.js models`
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

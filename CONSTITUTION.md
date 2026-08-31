@@ -438,6 +438,62 @@ way to change what "complete" means.
     **Capability is assigned by rank; cost exposure is assigned by who is
     watching.**
 
+32. **Not every wish asks to be built.** The paradise had four roads — `quick`,
+    `standard`, `full`, `reform` — and every one of them passed through `build`
+    and ended at `verdict`. Measured, four non-building wishes ("audit the health
+    of CI", "research the async runtimes and give me a table", "report this
+    month's PR trend", "is this design sound?") all fell to `standard`, a
+    fourteen-phase creation pipeline, and were marched toward an implementation
+    that was never asked for; `chooseScale` contained **zero** vocabulary for
+    investigation, audit, report, or counsel, and its fallback for an
+    unclassified wish was the road that builds. **A machine whose default answer
+    is "make something" cannot hear a question.** The capability was never
+    missing — thirteen of twenty-seven agents (48%) were already read-only or
+    document-producing — what was missing was the **road**. Therefore the fifth
+    road, `counsel`, exists: `survey` and `measure` in parallel (the world
+    outside, the ground underfoot), then `assess`, `counter`, `synthesize`, and
+    `counsel`. It contains no `build`, no `tests`, and no `verdict`, because a
+    counsel is not shipped — it is **given**, with its grounds. Its cardinal
+    answers to the executor, so an opinion is still reviewed by a body that did
+    not form it.
+
+    Routing follows the **subject before the verb**, and `counsel` is asked
+    before `reform`: "audit the paradise's engine" is about the paradise but does
+    not change it, and a road aimed at the wrong subject arrives nowhere however
+    carefully it is walked. One further defect was found in the same place and
+    fixed with it: the existing heuristics wrapped their vocabulary in `\b`, the
+    word boundary, which does not hold against Japanese — so **every Japanese
+    wish had been falling through to the default for as long as the roads have
+    existed**. A pattern that cannot match the language the owner speaks is not
+    a pattern.
+
+33. **A law the machine does not enforce is a suggestion the agent may forget.**
+    The paradise carried 54,349 bytes of prose into every session — 21,700
+    tokens spent before a single token of work, 58.5% of it the constitution
+    itself — and of the fourteen articles and rules that could have been enforced
+    mechanically, **zero** were: `~/.claude/settings.json` had no `permissions`
+    key at all. Worse, the prose *claimed the opposite*. `CLAUDE.md` stated that
+    force-push and direct commits to `main` were "automatically enforced by hooks
+    in settings.json"; the strings `main` and `force` appear nowhere in that
+    file. A false claim of enforcement is worse than an admitted absence,
+    because it stops anyone from looking.
+
+    And the hooks that did exist were largely dead. Eight of fifteen used a
+    matcher of the form `tool == "Bash" && tool_input.command matches "..."` — an
+    expression language that **does not exist** in the specification. A matcher
+    is an exact string or a JavaScript regular expression tested against the
+    *tool name*; that phrase matches nothing and had been firing never. One more
+    was the mirror failure: `tool == "Edit" || tool == "Write"` is a regex whose
+    alternation contains an empty branch, so it matched **every** tool and fired
+    always. **A gate is not proven by its presence in a config file** — the
+    invariant is that it fires when it should and stays silent when it should
+    not, and the only proof is to break something on purpose and watch it ring.
+    Therefore `apply-guards.js` writes the permission rules, diagnoses every
+    matcher as `live` / `dead` / `overfire`, and `deploy.js` deploys it as a
+    numbered step. Where a rule can be enforced by the machine it moves out of
+    the prose entirely; two copies of one law is not redundancy, it is the
+    guarantee that one of them is a lie.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
