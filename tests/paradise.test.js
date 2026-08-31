@@ -646,32 +646,41 @@ test('clergy marshals believers under a priest (priest→believer layer)', () =>
 // --- Model policy by rank (Constitution Art. 12) ---
 console.log('Model policy (rank → model):');
 
-test('every rank that works declares a model and effort', () => {
+test('every rank that works declares a model', () => {
   for (const r of ['pontiff', 'cardinal', 'priest', 'believer', 'executor']) {
     assert.ok(clergy.RANKS[r].model, `${r} must declare a model`);
-    assert.ok(clergy.RANKS[r].effort, `${r} must declare an effort`);
+    // effort は「宣言せよ」ではなく「効くものだけ宣言せよ」(第31条)。
+    // Haiku は effort を受けないので、null であることが正しい状態である。
+    assert.ok(clergy.supportsEffort(clergy.RANKS[r].model, clergy.RANKS[r].effort),
+      `${r}: ${clergy.RANKS[r].model} does not accept effort:${clergy.RANKS[r].effort}`);
   }
 });
 
+// 位階と能力の関係は「順序」であって特定のモデル名ではない。
+// モデル名を直に書くと、神が方針を変えるたびに門が偽の赤を出す(第29条の精神)。
+const TIER = { haiku: 1, 'claude-haiku-4-5': 1, sonnet: 2, 'claude-sonnet-5': 2,
+               opus: 3, 'claude-opus-5': 3, fable: 4, 'claude-fable-5': 4 };
+
 test('capability descends with rank: judgment ranks outrank workers', () => {
-  assert.strictEqual(clergy.RANKS.cardinal.model, 'opus', 'cardinals decide → strongest');
-  assert.strictEqual(clergy.RANKS.priest.model, 'sonnet', 'priests generate → balanced');
-  assert.strictEqual(clergy.RANKS.believer.model, 'haiku', 'believers do mechanical volume → fastest');
-  assert.strictEqual(clergy.RANKS.executor.model, 'opus', 'the judge is never cheapened');
-  assert.strictEqual(clergy.RANKS.executor.effort, 'max');
+  const t = m => { assert.ok(TIER[m], `unknown model tier: ${m}`); return TIER[m]; };
+  const priest = t(clergy.RANKS.priest.model);
+  assert.ok(t(clergy.RANKS.cardinal.model) >= priest, 'cardinals decide → never below a priest');
+  assert.ok(t(clergy.RANKS.executor.model) >= priest, 'the judge is never cheapened');
+  assert.ok(t(clergy.RANKS.pontiff.model) >= priest, 'the pontiff holds the whole plan');
+  assert.ok(t(clergy.RANKS.believer.model) <= priest, 'believers do mechanical volume → fastest');
 });
 
 test('the tribunal, security and planner are exempt from thrift', () => {
   for (const name of ['self-critic', 'creation-judge', 'security-reviewer', 'planner']) {
     const m = clergy.modelFor(name, 'priest'); // even asked as a priest…
-    assert.strictEqual(m.model, 'opus', `${name} must run at full strength`);
+    assert.ok(TIER[m.model] >= 3, `${name} must run at full strength, got ${m.model}`);
     assert.strictEqual(m.source, 'exception');
   }
 });
 
 test('a believer resolves to the cheap fast model, a priest to the balanced one', () => {
-  assert.strictEqual(clergy.modelFor('web-scout', 'believer').model, 'haiku');
-  assert.strictEqual(clergy.modelFor('architect', 'priest').model, 'sonnet');
+  assert.strictEqual(TIER[clergy.modelFor('web-scout', 'believer').model], 1);
+  assert.strictEqual(TIER[clergy.modelFor('architect', 'priest').model], 2);
 });
 
 test('apply-models resolves each agent to its rank (policy is mechanised)', () => {
@@ -2138,6 +2147,127 @@ test('workspace: 直書きの門は註釈で吠えず、コードでは吠える
   assert.strictEqual(found.length, 1, '走るコードの直書きは必ず捕らえる');
   assert.strictEqual(found[0].file, 'graph/loud.js');
   fs.rmSync(base, { recursive: true, force: true });
+});
+
+// --- seat: 教主の座は機構である (第31条) ---
+console.log('\nPontiff seat (Art.31):');
+
+test('seat: 位階の宣言が神の裁可どおりである', () => {
+  const c = require('../graph/clergy.js');
+  assert.strictEqual(c.RANKS.pontiff.model, 'fable', '教主は長丁場の座');
+  assert.strictEqual(c.RANKS.pontiff.effort, 'xhigh');
+  assert.strictEqual(c.RANKS.cardinal.model, 'claude-opus-5');
+  assert.strictEqual(c.RANKS.executor.model, 'claude-opus-5');
+  assert.strictEqual(c.RANKS.priest.model, 'claude-sonnet-5', '生成の本体は据え置く — ここを上げると全てが高くつく');
+  assert.strictEqual(c.RANKS.priest.effort, 'high');
+  assert.strictEqual(c.RANKS.believer.model, 'haiku');
+});
+
+test('seat: 判断の座が神官より安くなることは決してない (第12条)', () => {
+  const c = require('../graph/clergy.js');
+  const tier = { 'haiku': 1, 'claude-haiku-4-5': 1, 'claude-sonnet-5': 2, 'sonnet': 2, 'claude-opus-5': 3, 'opus': 3, 'fable': 4 };
+  const priest = tier[c.RANKS.priest.model];
+  for (const r of ['pontiff', 'cardinal', 'executor']) {
+    assert.ok(tier[c.RANKS[r].model] >= priest, `${r} は神官より安くあってはならない`);
+  }
+  assert.ok(tier[c.RANKS.believer.model] <= priest, '信徒が神官より高いのは位階の転倒');
+  for (const n of ['self-critic', 'creation-judge', 'security-reviewer', 'planner', 'ux-reviewer']) {
+    assert.ok(tier[c.modelFor(n, 'priest').model] >= 3, `${n} は決して安く上げない`);
+  }
+});
+
+test('seat: 効かない effort は宣言しない — Haiku は effort を持たない (第31条)', () => {
+  const c = require('../graph/clergy.js');
+  assert.strictEqual(c.RANKS.believer.effort, null, 'Haiku に effort を書けば黙って捨てられる');
+  assert.deepStrictEqual(c.EFFORT_SUPPORT.haiku, [], '公式表: Haiku 4.5 は effort 非対応');
+  assert.ok(!c.supportsEffort('haiku', 'low'), '受けないものを受けると答えてはならない');
+  assert.ok(c.supportsEffort('haiku', null), 'null は常に許される');
+  assert.ok(c.supportsEffort('claude-opus-5', 'xhigh'));
+  assert.ok(c.supportsEffort('未知のモデル', 'xhigh'), '門は名を知らぬものに吠えない(第21条)');
+});
+
+test('seat: 全ての位階と例外が、そのモデルが受ける effort だけを宣言している', () => {
+  const c = require('../graph/clergy.js');
+  for (const [name, r] of Object.entries(c.RANKS)) {
+    if (!r.model) continue;
+    assert.ok(c.supportsEffort(r.model, r.effort),
+      `rank ${name}: ${r.model} は effort:${r.effort} を受けない — 捨てられる宣言である`);
+  }
+  for (const [name, e] of Object.entries(c.MODEL_EXCEPTIONS)) {
+    assert.ok(c.supportsEffort(e.model, e.effort),
+      `exception ${name}: ${e.model} は effort:${e.effort} を受けない`);
+  }
+});
+
+test('seat: apply-models は effort:null のときキーを消す(書かない)', () => {
+  const am = require('../graph/apply-models.js');
+  const src = ['---', 'name: web-scout', 'model: haiku', 'effort: low', '---', '', 'body'].join('\n');
+  const out = am.deleteFrontmatterKey(src, 'effort');
+  assert.ok(!/^effort:/m.test(out), 'effort キーが残っている');
+  assert.ok(/^model: haiku$/m.test(out), '他のキーを巻き込んではならない');
+  assert.ok(/body/.test(out), '本文を壊してはならない');
+  assert.strictEqual(am.deleteFrontmatterKey('frontmatter なし', 'effort'), null, '推測で書き換えない');
+});
+
+test('seat: apply-seat は宣言を settings.json の二つのキーにだけ書く', () => {
+  const seatMod = require('../graph/apply-seat.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-'));
+  const f = path.join(dir, 'settings.json');
+  fs.writeFileSync(f, JSON.stringify({ theme: 'dark', hooks: { PreToolUse: [1, 2] }, env: { PATH: 'x' } }));
+  const r = seatMod.apply(f);
+  assert.ok(r.ok && r.changed, '書かれていない座は書かれねばならない');
+  const s = JSON.parse(fs.readFileSync(f, 'utf8'));
+  assert.strictEqual(s.model, seatMod.pontiffSeat().model);
+  assert.strictEqual(s.effortLevel, seatMod.pontiffSeat().effort);
+  assert.strictEqual(s.theme, 'dark', '他の設定に触れてはならない');
+  assert.deepStrictEqual(s.hooks, { PreToolUse: [1, 2] }, 'hooks を壊してはならない');
+  assert.deepStrictEqual(s.env, { PATH: 'x' });
+  assert.strictEqual(seatMod.apply(f).changed, false, '二度目は冪等');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('seat: 門は「無統治」を乖離として捕らえる — 今回の欠陥そのもの (第31条)', () => {
+  const seatMod = require('../graph/apply-seat.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-'));
+  const f = path.join(dir, 'settings.json');
+  // 実際にこうなっていた: model も effortLevel も無い settings.json
+  fs.writeFileSync(f, JSON.stringify({ theme: 'dark' }));
+  const d = seatMod.diff(f);
+  assert.strictEqual(d.ok, false, '無統治を緑と呼んではならない');
+  assert.strictEqual(d.current.model, null);
+  assert.strictEqual(d.current.effort, null);
+  seatMod.apply(f);
+  assert.strictEqual(seatMod.diff(f).ok, true, '書いた後は緑になる');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('seat: settings.json が無い機では検査は黙って通る(狼少年にしない)', () => {
+  const seatMod = require('../graph/apply-seat.js');
+  const d = seatMod.diff(path.join(os.tmpdir(), 'nope-' + Date.now(), 'settings.json'));
+  assert.strictEqual(d.skipped, true);
+  assert.strictEqual(d.ok, true, '配備されていないことは、壊れていることではない');
+});
+
+test('seat: 無人(cron)の座は教主の座と分かれており Fable ではない (第31条)', () => {
+  const seatMod = require('../graph/apply-seat.js');
+  const c = require('../graph/clergy.js');
+  const u = seatMod.UNATTENDED_SEAT;
+  assert.ok(!/fable/i.test(u.model),
+    '非対話では課金同意が出ない — 無人の座に Fable を置いてはならない');
+  assert.strictEqual(u.model, 'claude-opus-5');
+  assert.ok(u.why && u.why.length > 20, 'なぜ分けたのかを機構自身が語らねばならない');
+  // 教主が Fable である限り、無人の座は必ず別物でなければならない
+  if (/fable/i.test(c.RANKS.pontiff.model)) {
+    assert.notStrictEqual(u.model, c.RANKS.pontiff.model, '無人の座が教主の座と同じでは分けた意味がない');
+  }
+});
+
+test('seat: deploy は教主の座を配備物として数える (第31条)', () => {
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'deploy.js'), 'utf8');
+  assert.ok(/apply-seat/.test(src), 'deploy が座を運ばなければ、宣言は永久にどこにも書かれない');
+  const dep = require('../graph/deploy.js');
+  const r = dep.check();
+  assert.ok(r.skipped || typeof r.checked === 'number');
 });
 
 // --- report ---

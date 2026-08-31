@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-31T11:34:25.708Z",
+  "generated": "2026-08-31T11:55:24.361Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 65,
+    "nodeCount": 66,
     "edgeCount": 33,
     "nodes": [
       {
@@ -518,6 +518,12 @@
         "type": "lesson",
         "label": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
         "degree": 0
+      },
+      {
+        "id": "pontiff-seat-ungoverned",
+        "type": "lesson",
+        "label": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
+        "degree": 0
       }
     ],
     "edges": [
@@ -694,7 +700,7 @@
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 33
+      "lesson": 34
     }
   },
   "lessons": [
@@ -862,6 +868,11 @@
       "id": "creations-separate-repo",
       "label": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check",
       "check": "engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check|applies:paradise-internal"
+    },
+    {
+      "id": "pontiff-seat-ungoverned",
+      "label": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check",
+      "check": "位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check|applies:paradise-internal"
     }
   ],
   "creations": [],
@@ -876,41 +887,41 @@
         "level": 1,
         "title": "Pontiff 教主",
         "role": "governs the whole; the session itself",
-        "model": "claude-opus-5",
-        "effort": "max",
-        "why": "holds the entire plan, reconciles every result, renders the final decision"
+        "model": "fable",
+        "effort": "xhigh",
+        "why": "一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す"
       },
       "cardinal": {
         "level": 2,
         "title": "Cardinal 枢機卿",
         "role": "domain supervisor; owns a sub-DAG + inner PDCA",
-        "model": "opus",
-        "effort": "high",
-        "why": "ratify/reject decides quality; low token volume, high stakes"
+        "model": "claude-opus-5",
+        "effort": "xhigh",
+        "why": "批准と差戻しが品質を決める。量は少なく賭金は高い — 上げても総額はほぼ動かない"
       },
       "priest": {
         "level": 3,
         "title": "Priest 神官",
         "role": "large subagent dispatched by a cardinal",
-        "model": "sonnet",
+        "model": "claude-sonnet-5",
         "effort": "high",
-        "why": "the bulk of generation flows here; balanced capability against cost"
+        "why": "生成の本体がここを流れる。ここを上げると全てが高くつく — 据え置きが正しい"
       },
       "believer": {
         "level": 4,
         "title": "Believer 信徒",
         "role": "small subagent for fine-grained work",
         "model": "haiku",
-        "effort": "low",
-        "why": "mechanical, high-volume, low-judgment work (search, lint, scan)"
+        "effort": null,
+        "why": "機械的・大量・判断の要らぬ仕事(探索, lint, 走査)。Haiku 4.5 は effort を持たない"
       },
       "executor": {
         "level": -1,
         "title": "Executor 執行官",
         "role": "independent tribunal; judges on demand",
-        "model": "opus",
-        "effort": "max",
-        "why": "a missed verdict ships a broken creation — the judge is NEVER cheapened"
+        "model": "claude-opus-5",
+        "effort": "xhigh",
+        "why": "見逃した断罪は壊れた創造物を出荷する。裁く者は決して安く上げない"
       }
     },
     "college": {

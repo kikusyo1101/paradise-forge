@@ -43,20 +43,54 @@ jobs:
           # instead assert the policy itself resolves correctly.
           node -e "
             const c = require('./graph/clergy.js');
-            const must = { cardinal:'opus', priest:'sonnet', believer:'haiku', executor:'opus' };
-            for (const [rank, model] of Object.entries(must)) {
-              if (c.RANKS[rank].model !== model) {
-                console.error('::error::rank ' + rank + ' must be ' + model + ', got ' + c.RANKS[rank].model);
+            // 能力は序列で検める。モデル名を直書きすると、神が方針を変えた瞬間に
+            // 門が偽の赤を出す — 守るべきは名前ではなく『判断は安く上げない』という順序。
+            const TIER = { haiku:1, 'claude-haiku-4-5':1, sonnet:2, 'claude-sonnet-5':2,
+                           opus:3, 'claude-opus-5':3, fable:4, 'claude-fable-5':4 };
+            const t = m => { if (!TIER[m]) { console.error('::error::unknown model tier: ' + m); process.exit(1); } return TIER[m]; };
+            const priest = t(c.RANKS.priest.model);
+            for (const rank of ['pontiff','cardinal','executor']) {
+              if (t(c.RANKS[rank].model) < priest) {
+                console.error('::error::rank ' + rank + ' must never be cheaper than a priest');
                 process.exit(1);
               }
             }
-            for (const n of ['self-critic','creation-judge','security-reviewer','planner']) {
-              if (c.modelFor(n, 'priest').model !== 'opus') {
+            if (t(c.RANKS.believer.model) > priest) {
+              console.error('::error::a believer above a priest inverts the hierarchy');
+              process.exit(1);
+            }
+            for (const n of ['self-critic','creation-judge','security-reviewer','planner','ux-reviewer']) {
+              if (t(c.modelFor(n, 'priest').model) < 3) {
                 console.error('::error::' + n + ' must never be cheapened');
                 process.exit(1);
               }
             }
+            // 効かない effort は宣言ではない (第31条)
+            for (const [name, r] of Object.entries(c.RANKS)) {
+              if (r.model && !c.supportsEffort(r.model, r.effort)) {
+                console.error('::error::rank ' + name + ': ' + r.model + ' does not accept effort:' + r.effort);
+                process.exit(1);
+              }
+            }
             console.log('model policy intact — judgment is not cheapened');
+          "
+
+      - name: 👑 Pontiff seat — 教主の座が機構化されているか (第31条)
+        run: |
+          node graph/apply-seat.js plan
+          node -e "
+            const s = require('./graph/apply-seat.js');
+            const c = require('./graph/clergy.js');
+            // 無人(-p)では課金同意が出ない。無人の座に Fable を置いてはならない。
+            if (/fable/i.test(s.UNATTENDED_SEAT.model)) {
+              console.error('::error::the unattended seat must never be Fable — non-interactive runs bill without asking');
+              process.exit(1);
+            }
+            if (/fable/i.test(c.RANKS.pontiff.model) && s.UNATTENDED_SEAT.model === c.RANKS.pontiff.model) {
+              console.error('::error::the unattended seat must differ from the pontiff seat');
+              process.exit(1);
+            }
+            console.log('pontiff seat is a mechanism; the unattended seat is pinned to ' + s.UNATTENDED_SEAT.model);
           "
 
       - name: 🔒 Secret scan — 秘密情報の混入検査

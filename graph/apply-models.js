@@ -45,6 +45,18 @@ function setFrontmatterKey(text, key, value) {
   return text.replace(fm[0], `---\n${body}\n---`);
 }
 
+/**
+ * Frontmatter からキーを消す。
+ * 効かない宣言は宣言ではない(第10条)。Haiku は effort を受けないので、
+ * `effort: low` と書けば黙って捨てられる — 書かないことが正しい。
+ */
+function deleteFrontmatterKey(text, key) {
+  const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fm) return null;
+  const body = fm[1].split(/\r?\n/).filter(l => !new RegExp(`^${key}:`).test(l)).join('\n');
+  return text.replace(fm[0], `---\n${body}\n---`);
+}
+
 function readFrontmatterKey(text, key) {
   const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!fm) return null;
@@ -75,11 +87,14 @@ function main() {
     console.log(`AGENT MODEL POLICY  (${AGENT_DIR})`);
     console.log('═'.repeat(78));
     for (const r of rows) {
-      const ok = r.currentModel === r.model && r.currentEffort === String(r.effort);
+      // effort が null の位階(Haiku)は、キーが**存在しない**ことが正しい状態。
+      const ok = r.currentModel === r.model &&
+        (r.effort == null ? r.currentEffort === null : r.currentEffort === String(r.effort));
       if (!ok) drift++;
       const mark = ok ? '✓' : '→';
       const cur = `${r.currentModel || '-'}/${r.currentEffort || '-'}`;
-      console.log(`  ${mark} ${r.name.padEnd(24)} ${r.rank.padEnd(9)} ${cur.padEnd(16)} ${ok ? '' : '⇒ ' + r.model + '/' + r.effort}`);
+      const want = `${r.model}/${r.effort ?? '(none)'}`;
+      console.log(`  ${mark} ${r.name.padEnd(24)} ${r.rank.padEnd(9)} ${cur.padEnd(16)} ${ok ? '' : '⇒ ' + want}`);
     }
     console.log('═'.repeat(78));
     console.log(drift ? `${drift} agent(s) drift from policy` : 'all agents match the rank policy');
@@ -94,8 +109,10 @@ function main() {
       const before = text;
       const t1 = setFrontmatterKey(text, 'model', r.model);
       if (t1 === null) { console.error(`  ! ${r.name}: no frontmatter, skipped`); continue; }
-      const t2 = setFrontmatterKey(t1, 'effort', r.effort);
-      if (t2 !== before) { fs.writeFileSync(r.file, t2); changed++; console.log(`  ✎ ${r.name.padEnd(24)} ${r.rank.padEnd(9)} → ${r.model}/${r.effort}`); }
+      const t2 = r.effort == null
+        ? deleteFrontmatterKey(t1, 'effort')   // 効かない宣言は書かない(第10条)
+        : setFrontmatterKey(t1, 'effort', r.effort);
+      if (t2 !== before) { fs.writeFileSync(r.file, t2); changed++; console.log(`  ✎ ${r.name.padEnd(24)} ${r.rank.padEnd(9)} → ${r.model}/${r.effort ?? '(effort無し)'}`); }
     }
     console.log(`\napplied to ${changed} agent file(s) in ${AGENT_DIR}`);
     return;
@@ -105,4 +122,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { rankOf, resolveAll, setFrontmatterKey, readFrontmatterKey, AGENT_DIR };
+module.exports = { rankOf, resolveAll, setFrontmatterKey, deleteFrontmatterKey, readFrontmatterKey, AGENT_DIR };

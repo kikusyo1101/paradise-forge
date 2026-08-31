@@ -24,23 +24,51 @@
  */
 'use strict';
 
+/**
+ * 効力を持つ effort の段(公式表, 2026-08 実測)。
+ *   Fable 5 / Opus 5 / Sonnet 5 / Opus 4.8 / 4.7 : low medium high xhigh max
+ *   Opus 4.6 / Sonnet 4.6                       : low medium high max
+ *   Haiku 4.5                                   : **effort を持たない**
+ * 持たないモデルに effort を書くと黙って捨てられる。捨てられる宣言は
+ * 宣言ではない(第10条) — ゆえに信徒の effort は null であり、
+ * apply-models はキーそのものを書かない。
+ */
+const EFFORT_SUPPORT = {
+  'fable': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'opus': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'claude-opus-5': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'sonnet': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'claude-sonnet-5': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'haiku': [],   // Haiku 4.5 は effort を受けない
+  'claude-haiku-4-5': [],
+};
+
+/** そのモデルはその effort を受けるか。受けないなら書いてはならない。 */
+function supportsEffort(model, effort) {
+  if (effort == null) return true;
+  const levels = EFFORT_SUPPORT[model];
+  if (!levels) return true;      // 未知のモデルは咎めない(門は名を知らぬものに吠えない)
+  return levels.includes(effort);
+}
+
 const RANKS = {
   god:       { level: 0, title: 'God 神',        role: 'issues the wish, receives only answers' },
   pontiff:   { level: 1, title: 'Pontiff 教主',   role: 'governs the whole; the session itself',
-               model: 'claude-opus-5', effort: 'max',
-               why: 'holds the entire plan, reconciles every result, renders the final decision' },
+               model: 'fable', effort: 'xhigh',
+               why: '一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す' },
   cardinal:  { level: 2, title: 'Cardinal 枢機卿', role: 'domain supervisor; owns a sub-DAG + inner PDCA',
-               model: 'opus', effort: 'high',
-               why: 'ratify/reject decides quality; low token volume, high stakes' },
+               model: 'claude-opus-5', effort: 'xhigh',
+               why: '批准と差戻しが品質を決める。量は少なく賭金は高い — 上げても総額はほぼ動かない' },
   priest:    { level: 3, title: 'Priest 神官',    role: 'large subagent dispatched by a cardinal',
-               model: 'sonnet', effort: 'high',
-               why: 'the bulk of generation flows here; balanced capability against cost' },
+               model: 'claude-sonnet-5', effort: 'high',
+               why: '生成の本体がここを流れる。ここを上げると全てが高くつく — 据え置きが正しい' },
   believer:  { level: 4, title: 'Believer 信徒',   role: 'small subagent for fine-grained work',
-               model: 'haiku', effort: 'low',
-               why: 'mechanical, high-volume, low-judgment work (search, lint, scan)' },
+               model: 'haiku', effort: null,
+               why: '機械的・大量・判断の要らぬ仕事(探索, lint, 走査)。Haiku 4.5 は effort を持たない' },
   executor:  { level: -1, title: 'Executor 執行官', role: 'independent tribunal; judges on demand',
-               model: 'opus', effort: 'max',
-               why: 'a missed verdict ships a broken creation — the judge is NEVER cheapened' },
+               model: 'claude-opus-5', effort: 'xhigh',
+               why: '見逃した断罪は壊れた創造物を出荷する。裁く者は決して安く上げない' },
 };
 
 /**
@@ -51,17 +79,17 @@ const RANKS = {
  */
 const MODEL_EXCEPTIONS = {
   // A security miss is a constitutional BLOCK-level breach — never run it cheap.
-  'security-reviewer': { model: 'opus', effort: 'high', why: 'a security miss is unrecoverable (BLOCK-level breach)' },
+  'security-reviewer': { model: 'claude-opus-5', effort: 'xhigh', why: '秘密の見逃しは回復不能(BLOCK級の違憲)' },
   // A bad plan poisons every downstream phase — planning is judgment, not generation.
-  'planner': { model: 'opus', effort: 'high', why: 'a flawed plan contaminates every downstream phase' },
+  'planner': { model: 'claude-opus-5', effort: 'xhigh', why: '誤った計画は下流の全相を汚染する。計画は生成ではなく判断である' },
   // Tribunal officers inherit the executor rank, not the priest rank.
-  'self-critic':    { model: 'opus', effort: 'max', why: 'tribunal officer — adversarial critique precedes judgment' },
-  'creation-judge': { model: 'opus', effort: 'max', why: 'tribunal officer — renders the binding verdict' },
+  'self-critic':    { model: 'claude-opus-5', effort: 'xhigh', why: '執行官 — 敵対的批評は断罪に先立つ' },
+  'creation-judge': { model: 'claude-opus-5', effort: 'xhigh', why: '執行官 — 拘束力ある裁定を下す' },
   // 見た目の審査は「判断」であって量産ではない。何が醜いか・何が使いにくいかは
   // 規則の照合では決まらず、人が見て嫌がるかどうかで決まる(憲法 第18条)。
-  'ux-reviewer': { model: 'opus', effort: 'high', why: 'taste is judgment: a surface defect ships to every user and rules alone cannot see it' },
-  'cardinal':       { model: 'opus', effort: 'high', why: 'the cardinal rank itself' },
-  'executor':       { model: 'opus', effort: 'max', why: 'the executor rank itself' },
+  'ux-reviewer': { model: 'claude-opus-5', effort: 'xhigh', why: '趣味は判断である: 表層の欠陥は全ての利用者に届き、規則だけでは見えない' },
+  'cardinal':       { model: 'claude-opus-5', effort: 'xhigh', why: '枢機卿の位階そのもの' },
+  'executor':       { model: 'claude-opus-5', effort: 'xhigh', why: '執行官の位階そのもの' },
 };
 
 /** Resolve the model+effort for an agent by name, using rank defaults + exceptions. */
@@ -320,15 +348,15 @@ function main() {
     console.log('═'.repeat(72));
     for (const [k, r] of Object.entries(RANKS)) {
       if (!r.model) { console.log(`  L${r.level}  ${r.title.padEnd(20)} —        (${r.role})`); continue; }
-      console.log(`  L${String(r.level).padEnd(2)} ${r.title.padEnd(20)} ${r.model.padEnd(15)} effort:${r.effort}`);
+      console.log(`  L${String(r.level).padEnd(2)} ${r.title.padEnd(20)} ${r.model.padEnd(15)} ${r.effort ? 'effort:' + r.effort : 'effort: —(未対応)'}`);
       console.log(`       ↳ ${r.why}`);
     }
     console.log('\nEXCEPTIONS (a miss here is unrecoverable):');
     for (const [name, e] of Object.entries(MODEL_EXCEPTIONS))
       console.log(`  ${name.padEnd(20)} ${e.model.padEnd(8)} effort:${String(e.effort).padEnd(6)} — ${e.why}`);
     console.log('\nRESOLVED AGENTS:');
-    for (const p of allPriests()) { const m = modelFor(p, 'priest'); console.log(`  神官 ${p.padEnd(22)} ${m.model.padEnd(8)} effort:${m.effort}  [${m.source}]`); }
-    for (const b of allBelievers()) { const m = modelFor(b, 'believer'); console.log(`  信徒 ${b.padEnd(22)} ${m.model.padEnd(8)} effort:${m.effort}  [${m.source}]`); }
+    for (const p of allPriests()) { const m = modelFor(p, 'priest'); console.log(`  神官 ${p.padEnd(22)} ${m.model.padEnd(16)} ${m.effort ? 'effort:' + m.effort : 'effort:—'}  [${m.source}]`); }
+    for (const b of allBelievers()) { const m = modelFor(b, 'believer'); console.log(`  信徒 ${b.padEnd(22)} ${m.model.padEnd(16)} ${m.effort ? 'effort:' + m.effort : 'effort:—'}  [${m.source}]`); }
     return;
   }
   if (cmd === 'model-for') {
@@ -345,4 +373,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
+module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart };
