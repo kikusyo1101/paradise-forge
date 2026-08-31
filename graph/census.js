@@ -89,9 +89,9 @@ function census(opts = {}) {
  */
 function claims(c) {
   const list = [
-    { file: 'CLAUDE.md', re: /自己診断 \((\d+)件\)/,            actual: c.tests && c.tests.passed, label: 'CLAUDE.md 自己診断件数' },
-    { file: 'CLAUDE.md', re: /自己診断: \*\*(\d+) tests\*\*/,    actual: c.tests && c.tests.passed, label: 'CLAUDE.md 現状-テスト数' },
-    { file: 'CLAUDE.md', re: /憲法: \*\*(\d+)条\*\*/,            actual: c.articles,                label: 'CLAUDE.md 憲法条数' },
+    // CLAUDE.md の数値 claim は第39条で撤去された — CLAUDE.md は数値台帳ではない。
+    // 数は census が数え、dashboard が神に見せる。CLAUDE.md への数値の再侵入は
+    // dietChecks() が裁く (方針転換に門を追従させる — 第36条)。
     { file: 'README.md', re: /paradise\.test\.js\s+#\s*(\d+)\/\d+ pass/, actual: c.tests && c.tests.passed, label: 'README テスト数' },
     { file: 'README.md', re: /取り込んだもの（(\d+)ファイル/,     actual: c.vendorFiles,             label: 'README vendor 総ファイル数' },
     { file: 'README.md', re: /`agents (\d+)`/,                   actual: c.vendor.agents,           label: 'README vendor agents' },
@@ -116,7 +116,87 @@ function check(opts = {}) {
     const claimed = Number(m[1]);
     if (claimed !== cl.actual) findings.push({ ...cl, kind: 'stale', claimed });
   }
+  findings.push(...dietChecks());
   return { ok: findings.length === 0, census: c, findings };
+}
+
+/**
+ * diet 門 (第39条) — CLAUDE.md は「最初の1画面」である。
+ * 値でなく不変量を裁く: (1) 常時ロードの散文は予算内に収まる。
+ * (2) 機械が数え直す数値 (テスト数・条数) は CLAUDE.md に住まない —
+ *     数は census が数え、dashboard が神に見せる。
+ * 予算 4,096 B は「1画面 ≈ 500 tokens 帯」の符号化。神が意図して広げるのは
+ * 自由 — その時はこの定数を変え、理由を commit に書く。
+ */
+const CLAUDE_MD_BUDGET = 4096;
+const VOLATILE_NUMBER_RES = [
+  // [^\n]* → {0,80}? の有界・怠惰量化: 信頼できない入力でも多項式爆発しない (審査指摘)
+  { re: /自己診断[^\n]{0,80}?\d+\s*件/, why: 'テスト数は census が数える' },
+  { re: /\*\*\d+\s*tests?\*\*/i,  why: 'テスト数は census が数える' },
+  { re: /憲法[:：]?\s*\*?\*?\d+\s*条/, why: '条数は codex index が語る' },
+];
+function dietChecks() {
+  const findings = [];
+  const p = path.join(ROOT, 'CLAUDE.md');
+  if (fs.existsSync(p)) {
+    const raw = fs.readFileSync(p);
+    if (raw.length > CLAUDE_MD_BUDGET) {
+      // kind:'diet' — fix() は kind:'stale' しか書き換えない。'stale' を名乗ると
+      // fix() が re の無い finding に空正規表現で当たり「直した」と虚偽報告する (審査指摘)。
+      findings.push({ file: 'CLAUDE.md', kind: 'diet', label: 'CLAUDE.md 予算超過 (第39条)',
+        claimed: raw.length, actual: CLAUDE_MD_BUDGET,
+        note: `常時ロードの散文が ${raw.length} B — 予算 ${CLAUDE_MD_BUDGET} B。法は機構へ、詳細は指した先へ` });
+    }
+    const text = raw.toString('utf8');
+    for (const v of VOLATILE_NUMBER_RES) {
+      const m = text.match(v.re);
+      if (m) findings.push({ file: 'CLAUDE.md', kind: 'diet', label: 'CLAUDE.md への数値の再侵入 (第39条)',
+        claimed: m[0], actual: '(数値は書かない)', note: v.why });
+    }
+  }
+  findings.push(...harnessDietChecks());
+  return findings;
+}
+
+/**
+ * ハーネス diet 門 (第40条) — 毎セッション常時ロードされる散文は
+ * project CLAUDE.md だけではない。global CLAUDE.md (overlay/root/) と
+ * paths: スコープを持たない rules/*.md も全て予算の対象である。
+ * ここは**原本 (overlay/) を裁く** — 配備物 ~/.claude は成果物であり (第29条)、
+ * 原本が痩せていれば配備物も痩せる。CI にハーネスが無くても原本は在る。
+ */
+const GLOBAL_CLAUDE_MD_BUDGET = 2048;      // global は project より薄くあるべき
+const ALWAYS_ON_RULES_BUDGET  = 4096;      // 無スコープ rules の総量
+function hasPathsScope(text) {
+  // 有効な paths: は YAML frontmatter (--- ... ---) の中にだけ住む
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  return !!(m && /^paths:/m.test(m[1]));
+}
+function harnessDietChecks() {
+  const findings = [];
+  const g = path.join(ROOT, 'overlay', 'root', 'CLAUDE.md');
+  if (fs.existsSync(g)) {
+    const n = fs.readFileSync(g).length;
+    if (n > GLOBAL_CLAUDE_MD_BUDGET) {
+      findings.push({ file: 'overlay/root/CLAUDE.md', kind: 'diet', label: 'global CLAUDE.md 予算超過 (第40条)',
+        claimed: n, actual: GLOBAL_CLAUDE_MD_BUDGET,
+        note: `全プロジェクトの毎セッションに乗る散文が ${n} B — 予算 ${GLOBAL_CLAUDE_MD_BUDGET} B。手順は commands へ、掟は hooks へ` });
+    }
+  }
+  const rulesDir = path.join(ROOT, 'overlay', 'rules');
+  if (fs.existsSync(rulesDir)) {
+    let alwaysOn = 0; const unscoped = [];
+    for (const f of fs.readdirSync(rulesDir).filter(f => f.endsWith('.md'))) {
+      const text = fs.readFileSync(path.join(rulesDir, f), 'utf8');
+      if (!hasPathsScope(text)) { alwaysOn += Buffer.byteLength(text); unscoped.push(f); }
+    }
+    if (alwaysOn > ALWAYS_ON_RULES_BUDGET) {
+      findings.push({ file: 'overlay/rules/', kind: 'diet', label: '無スコープ rules の総量超過 (第40条)',
+        claimed: alwaysOn, actual: ALWAYS_ON_RULES_BUDGET,
+        note: `paths: を持たない rule ${unscoped.length} 本 (${unscoped.join(', ')}) が計 ${alwaysOn} B — 予算 ${ALWAYS_ON_RULES_BUDGET} B。ファイル種に紐づく掟は paths: で絞る` });
+    }
+  }
+  return findings;
 }
 
 function fix(opts = {}) {
@@ -171,4 +251,4 @@ if (require.main === module) {
   process.exit(2);
 }
 
-module.exports = { census, check, fix, claims };
+module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };

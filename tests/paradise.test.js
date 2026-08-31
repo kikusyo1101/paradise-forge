@@ -256,7 +256,7 @@ function makeCreation(spec, code, opts = {}) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-critic-'));
   if (spec) fs.writeFileSync(path.join(d, 'requirements.md'), spec);
   if (opts.findings) fs.writeFileSync(path.join(d, 'findings.md'), opts.findings);
-  if (code) fs.writeFileSync(path.join(d, 'app.js'), code);
+  if (code) fs.writeFileSync(path.join(d, opts.fileName || 'app.js'), code);
   if (opts.test) fs.writeFileSync(path.join(d, 'app.test.js'), opts.test);
   return d;
 }
@@ -1372,16 +1372,17 @@ test('the session hook tells the agent who it is, not just what it knows', () =>
 
 test('CLAUDE.md exists and states the working language and the hard rules', () => {
   // Claude Code が最初に読む場所に楽園の説明が無ければ、素の助手として振る舞う。
+  // (第39条改正: CLAUDE.md は「最初の1画面」— 写経ではなく地図を裁く。
+  //  掟の全文は機構(apply-guards/critic/codex)にあり、ここは指し示すだけでよい)
   const p = path.join(__dirname, '..', 'CLAUDE.md');
   assert.ok(fs.existsSync(p), 'the repository must brief whoever opens it');
   const src = fs.readFileSync(p, 'utf8');
   assert.ok(/日本語で話す/.test(src), 'the working language is stated up front');
-  assert.ok(/main.*直接コミットしない|PR/.test(src), 'the PR-only rule is stated');
-  // 第19条は改正された。「借り物を改変しない」は独立(第20条)で役目を終えた。
-  // 構造を変えたら、古い前提を符号化した門を読み直す — この門自身がその実例である。
-  assert.ok(/手で編集しない|所有物|overlay/.test(src),
-    'the deployment-is-a-product rule is stated (Art. 19 as amended)');
+  assert.ok(/PR/.test(src) && /マージは神/.test(src), 'the PR-only / owner-merges rule is stated');
+  assert.ok(/apply-guards/.test(src), 'it points at the machine enforcement (not a prose copy of it)');
   assert.ok(/CONSTITUTION\.md/.test(src), 'it points at the supreme law');
+  assert.ok(/codex\.js/.test(src), 'it points at the law INDEX instead of restating articles (Art. 33/39)');
+  assert.ok(/subagent|「done」を信じない/.test(src), 'the un-mechanizable judgment rules remain');
 });
 
 test('kg snapshot does not print the same sentence twice', () => {
@@ -1536,16 +1537,18 @@ test('census: the paradise measures itself from the artifacts, not from prose (A
 
 test('census: a stale number in the documents is a failing gate (Art.22)', () => {
   // 門を、わざと壊して試す。腐った数を仕込んで、名指しで捕らえるか。
+  // (第39条改正: CLAUDE.md は数値台帳ではなくなった — 数の門は README を裁く)
   const census = require('../graph/census.js');
   const c = census.census({ runTests: false });
   const claimsList = census.claims(c);
-  const artClaim = claimsList.find(x => /憲法条数/.test(x.label));
-  assert.ok(artClaim, 'the article count is among the claims that get verified');
-  const claudeMd = fs.readFileSync(path.join(__dirname, '..', 'CLAUDE.md'), 'utf8');
-  const m = claudeMd.match(artClaim.re);
-  assert.ok(m, 'the claim is actually present in CLAUDE.md — a claim that vanished is not verified');
-  assert.strictEqual(Number(m[1]), c.articles,
-    'the number CLAUDE.md states must equal the number measured from CONSTITUTION.md');
+  const testClaim = claimsList.find(x => /README テスト数/.test(x.label));
+  assert.ok(testClaim, 'the test count is among the claims that get verified');
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  const m = readme.match(testClaim.re);
+  assert.ok(m, 'the claim is actually present in README.md — a claim that vanished is not verified');
+  // CLAUDE.md からは数値 claim が消えたことも門で固定する (再侵入は dietChecks が裁く)
+  assert.ok(!claimsList.some(x => x.file === 'CLAUDE.md'),
+    'CLAUDE.md must carry no numeric claims — it is a first screen, not a ledger (Art. 39)');
 });
 
 test('census: every number the paradise currently claims is true (Art.22)', () => {
@@ -2435,6 +2438,125 @@ test('gauge: 手つかずの走行は拒否 — 召集だけで一度も発令�
   const run = makeGaugeRun();
   for (const dom of run.domains) for (const p of dom.phases) { p.attempts = 0; p.status = 'pending'; }
   assert.throws(() => gauge.score(run), /never dispatched|手つかず/);
+});
+
+// --- Diet gate + creation-law checks (第39条: CLAUDE.md は最初の1画面) ---
+console.log('\nDiet gate (第39条):');
+
+test('diet: 現物の CLAUDE.md は予算内で数値を持たない (第39条)', () => {
+  const census = require('../graph/census.js');
+  const f = census.dietChecks();
+  assert.strictEqual(f.length, 0,
+    'CLAUDE.md violates the diet: ' + f.map(x => x.label + ' ' + (x.note || '')).join('; '));
+  const size = fs.statSync(path.join(__dirname, '..', 'CLAUDE.md')).size;
+  assert.ok(size <= census.CLAUDE_MD_BUDGET, `CLAUDE.md ${size} B > budget ${census.CLAUDE_MD_BUDGET} B`);
+});
+
+test('diet: 太った CLAUDE.md と数値の再侵入を門が名指しで捕らえる (第21条: 壊して鳴らす)', () => {
+  // census.js は ROOT 直下の CLAUDE.md を読む — 一時 dir に census を偽装再配置は
+  // できないので、dietChecks のロジックを合成入力で直接検分する。
+  const census = require('../graph/census.js');
+  // 予算検査: 実装が Buffer.length (bytes) で裁いていることを予算値で確認
+  assert.ok(census.CLAUDE_MD_BUDGET >= 2048 && census.CLAUDE_MD_BUDGET <= 8192,
+    'budget stays in the one-screen band');
+  // 数値再侵入の正規表現が volatile な数を捕らえ、無害な文は捕らえない
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'census.js'), 'utf8');
+  const volatileRes = [/自己診断[^\n]*\d+\s*件/, /\*\*\d+\s*tests?\*\*/i, /憲法[:：]?\s*\*?\*?\d+\s*条/];
+  const bad = ['自己診断 (210件)', '**210 tests**', '憲法: **38条**'];
+  const good = ['自己診断は tests/paradise.test.js', '憲法は CONSTITUTION.md', 'gauge の前後数値で'];
+  for (const b of bad) assert.ok(volatileRes.some(re => re.test(b)), `volatile number escapes: ${b}`);
+  for (const g of good) assert.ok(!volatileRes.some(re => re.test(g)), `false alarm on: ${g}`);
+  assert.ok(/dietChecks/.test(src) && /findings\.push\(\.\.\.dietChecks\(\)\)/.test(src),
+    'dietChecks is wired into check() — a gate not wired is decoration');
+});
+
+test('critic: 創造物の掟 — toISOString と CDN を名指しで捕らえ、清い創造物は通す (第39条)', () => {
+  const bad = makeCreation('# spec\n- AC: works', `
+    <html><head><link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet"></head>
+    <script>const d = new Date().toISOString();</script></html>`, { fileName: 'index.html' });
+  const rBad = critic.review(bad, {});
+  const gapIds = rBad.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(gapIds.includes('no-wall-clock-iso'), 'toISOString must be named: ' + gapIds.join(','));
+  assert.ok(gapIds.includes('no-external-deps'), 'CDN reference must be named: ' + gapIds.join(','));
+  const clean = makeCreation('# spec\n- AC: works',
+    '<html><script>/* DOMAIN:START */ const d = localYmd(); /* DOMAIN:END */</script></html>',
+    { fileName: 'index.html' });
+  const rClean = critic.review(clean, {});
+  const cleanFails = rClean.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!cleanFails.includes('no-wall-clock-iso') && !cleanFails.includes('no-external-deps')
+    && !cleanFails.includes('domain-markers-present'),
+    'a lawful creation must pass the creation laws: ' + cleanFails.join(','));
+});
+
+test('critic: 創造物の掟は engine 自身 (--self) には適用されない — 門は消さず分ける (第36条)', () => {
+  // graph/ の engine は toISOString を正当に使う (kg.js の ts など)。
+  const r = critic.review(path.join(__dirname, '..', 'graph'), { self: true });
+  const ids = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!ids.includes('no-wall-clock-iso'), 'engines may use toISOString — the law is for creations');
+  assert.ok(!ids.includes('no-external-deps'), 'the external-deps law is for creations');
+});
+
+// --- Harness diet gate (第40条: ハーネス全体が秤に乗る) ---
+console.log('\nHarness diet gate (第40条):');
+
+test('diet: 現物の global CLAUDE.md と rules は予算内 (第40条)', () => {
+  const census = require('../graph/census.js');
+  const f = census.harnessDietChecks();
+  assert.strictEqual(f.length, 0,
+    'the harness violates the diet: ' + f.map(x => x.label + ' ' + (x.note || '')).join('; '));
+  const g = fs.statSync(path.join(__dirname, '..', 'overlay', 'root', 'CLAUDE.md')).size;
+  assert.ok(g <= census.GLOBAL_CLAUDE_MD_BUDGET,
+    `global CLAUDE.md ${g} B > budget ${census.GLOBAL_CLAUDE_MD_BUDGET} B`);
+});
+
+test('diet: ファイル種の掟 3本は paths: スコープを持ち、写経の病巣は再発しない (第40条)', () => {
+  const rulesDir = path.join(__dirname, '..', 'overlay', 'rules');
+  // (1) file-type rules must be path-scoped — they load only when relevant
+  for (const f of ['coding-style.md', 'patterns.md', 'testing.md']) {
+    const text = fs.readFileSync(path.join(rulesDir, f), 'utf8');
+    const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    assert.ok(m && /^paths:/m.test(m[1]), `${f} must carry a paths: frontmatter scope`);
+  }
+  // (2) the named diseases stay dead: no phantom-agent table, no model table,
+  //     no hooks-config transcription re-entering always-on prose
+  const all = fs.readdirSync(rulesDir).filter(f => f.endsWith('.md'))
+    .map(f => fs.readFileSync(path.join(rulesDir, f), 'utf8')).join('\n');
+  const g = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'root', 'CLAUDE.md'), 'utf8');
+  assert.ok(!/build-error-resolver \|/.test(all), 'agent table (photocopy of agents/) must not return');
+  assert.ok(!/Haiku 4\.5|Sonnet 4\.5|Opus 4\.5/.test(all), 'model table duplicates 第31条 — apply-models governs models');
+  assert.ok(!/## Current Hooks/.test(all), 'hooks config transcription must not return');
+  // (3) global CLAUDE.md stays a map, not a procedure: no Step-by-Step git text
+  assert.ok(!/gh pr merge --squash/.test(g), 'merge procedure lives in /ship, not in global CLAUDE.md');
+  assert.ok(/\/ship/.test(g), 'global CLAUDE.md must point at /ship instead of transcribing it');
+});
+
+test('diet: /ship command は手順の全文を引き受けている (第40条)', () => {
+  const ship = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'commands', 'ship.md'), 'utf8');
+  assert.ok(/^---\r?\n/.test(ship) && /description:/.test(ship), 'ship.md carries frontmatter');
+  for (const need of ['git checkout -b', 'gh pr create', 'APPROVED', 'NEEDS CHANGES', 'BLOCKED', 'feat/', 'reform/'])
+    assert.ok(ship.includes(need), `/ship must carry the procedure detail: ${need}`);
+  const ov = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'overlay', 'overlay.json'), 'utf8'));
+  assert.ok(ov.own.commands.includes('ship.md'), 'ship.md must be owned in overlay.json or deploy never carries it');
+  for (const r of ['agents', 'coding-style', 'git-workflow', 'hooks', 'patterns', 'performance', 'security', 'testing'])
+    assert.ok(ov.replace[`rules/${r}.md`], `rules/${r}.md must be replaced by the paradise version in overlay.json`);
+});
+
+test('diet: 太った global CLAUDE.md と無スコープ rules の総量超過を門が名指しで捕らえる (第21条: 壊して鳴らす)', () => {
+  const census = require('../graph/census.js');
+  // budgets stay in sane bands
+  assert.ok(census.GLOBAL_CLAUDE_MD_BUDGET >= 1024 && census.GLOBAL_CLAUDE_MD_BUDGET <= 4096,
+    'global budget stays thinner than or equal to the project budget');
+  assert.ok(census.ALWAYS_ON_RULES_BUDGET <= 8192, 'always-on rules budget stays bounded');
+  // the gate is wired into check() via dietChecks — a gate not wired is decoration
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'census.js'), 'utf8');
+  assert.ok(/findings\.push\(\.\.\.harnessDietChecks\(\)\)/.test(src),
+    'harnessDietChecks must be wired into dietChecks()');
+  // paths-scope detection: frontmatter only — a paths: mention in the body must not count
+  const fm = '---\npaths:\n  - "**/*.ts"\n---\n# x';
+  const bodyOnly = '# x\n\npaths: are cool';
+  const probe = new Function('text', src.match(/function hasPathsScope[\s\S]*?\n}/)[0] + '; return hasPathsScope(text);');
+  assert.ok(probe(fm) === true, 'frontmatter paths: must count as scoped');
+  assert.ok(probe(bodyOnly) === false, 'a paths: mention in the body must not count as scoped');
 });
 
 // --- report ---

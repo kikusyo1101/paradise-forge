@@ -129,7 +129,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 210/194 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 218/194 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -188,7 +188,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
-| `CONSTITUTION.md` | **楽園憲法 18条**（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
+| `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
 | agents | market-researcher（調査）・requirements-analyst（仕様）・**ux-reviewer（表層の裁き）**・self-critic（批評）・creation-judge（裁き） |
 
@@ -219,7 +219,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 ```
 教主(Pontiff) が実装しPRを出す
       ↓
-機械ゲート (CI: verify job)        ← self-test 66件・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
+機械ゲート (CI: verify job)        ← self-test・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
       ↓
 執行官 (CI: tribunal job)          ← critic の敵対的自己批評 → verdict.js の裁定を PR に掲示
       ↓                              どの枢機卿にも従属しない（憲法第9・11条）
