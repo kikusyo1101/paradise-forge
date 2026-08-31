@@ -283,12 +283,38 @@ function cardinalFor(phaseId) {
  * (Task) を持つか。持たないなら `blocked` と正直に述べる — 黙って兼務に
  * 倒れることはしない。
  */
+/**
+ * 相 → その相を率いる司祭。
+ *
+ * ⚠️ かつてここは `c.priests[0]` を無条件に返していた。コメントは「相に最も適した
+ * 司祭を選ぶ」と述べていたのに、実装は先頭固定 — 散文が機構を騙っていた(第33条)。
+ * 実害: 諐問の道の6相すべてが `market-researcher` に発令され、**auditor と
+ * reporter は一度も指揮されなかった**。実体を作りながら命令が届かないのは
+ * 第25条「歩けぬ階層は階層ではない」そのものである。
+ *
+ * ここに無い相は従来どおり枢機卿の筆頭司祭に落ちる(既存の道を壊さないため)。
+ */
+const PHASE_LEAD = {
+  // 諐問の道 — 外を調べる者、手元を測る者、編む者は別人である
+  survey:     'market-researcher',  // 外の世界の先行事例を調べる
+  measure:    'auditor',            // 手元の系を実測する(Edit を持たぬ読み取り専用)
+  assess:     'auditor',            // 集めた事実を突き合わせる
+  synthesize: 'reporter',           // 人が読める報告書に編む
+  counsel:    'reporter',           // 推奨と根拠を献じる
+  // counter(反証)は counsel 枢機卿が統べる。理想は self-critic だが彼は tribunal の
+  // 執行官であり counsel の司祭ではない — 指揮系統を跨いだ発令はしない。ゆえに
+  // 実測に忠実な auditor が反証を担う。「己の結論を疑う」のは測る者の役目に近い。
+  counter:    'auditor',
+};
+
 function marshalPlan(phaseId, opts = {}) {
   const card = cardinalFor(phaseId);
   const c = COLLEGE[card];
   if (!c) return { cardinal: card, priest: null, believers: [], mode: 'unknown' };
-  // pick the priest whose skill best fits the phase (first is the default lead)
-  const priest = c.priests[0];
+  // 相に相応しい司祭を選ぶ。ただし **その枢機卿が実際に擁する者に限る** —
+  // 表が古びて他家の司祭を指しても、指揮系統を跨いだ発令はしない。
+  const wanted = PHASE_LEAD[phaseId];
+  const priest = (wanted && (c.priests || []).includes(wanted)) ? wanted : c.priests[0];
   const believers = c.believers || [];
   const canSpawn = opts.priestCanSpawn === undefined ? null : !!opts.priestCanSpawn;
   return {

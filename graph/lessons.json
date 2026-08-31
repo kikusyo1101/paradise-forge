@@ -318,5 +318,37 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T13:11:36.415Z"
+  },
+  {
+    "id": "new-road-old-gates",
+    "label": "道(scale)を新設したら、旧い前提を符号化した門を全て読み直せ。counsel を建てた当日に synod が『discovery が無い』『tribunal が無い』で拒んだ。門は消すのではなく分ける — 新旧どちらも鳴ることを証明せよ|check",
+    "check": "道(scale)を新設したら、旧い前提を符号化した門を全て読み直せ。counsel を建てた当日に synod が『discovery が無い』『tribunal が無い』で拒んだ。門は消すのではなく分ける — 新旧どちらも鳴ることを証明せよ|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:26:01.180Z"
+  },
+  {
+    "id": "judge-by-declared-property-not-name",
+    "label": "分岐条件は名前でなく宣言された性質で書け。run.scale は存在せず(undefined)、cardinal 名の判定は改名で壊れる。forge が meta.produces に刻む道の性質を使えば道が増えても意味が保たれる(第16条)|check",
+    "check": "分岐条件は名前でなく宣言された性質で書け。run.scale は存在せず(undefined)、cardinal 名の判定は改名で壊れる。forge が meta.produces に刻む道の性質を使えば道が増えても意味が保たれる(第16条)|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:26:01.222Z"
+  },
+  {
+    "id": "absence-is-not-passage",
+    "label": "断罪の門 verdict.js が空の {} を SHIP と判定していた。report.security が無いと sec={} で sec.issues||0 が 0 になり『検査していない』が『問題ゼロ』と同義だった。不在は通過ではない — 検証されなかったものは証明されていない|check",
+    "check": "断罪の門 verdict.js が空の {} を SHIP と判定していた。report.security が無いと sec={} で sec.issues||0 が 0 になり『検査していない』が『問題ゼロ』と同義だった。不在は通過ではない — 検証されなかったものは証明されていない|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:33:21.142Z"
+  },
+  {
+    "id": "comment-claims-what-code-does-not",
+    "label": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
+    "check": "clergy.marshalPlan のコメントは『相に最も適した司祭を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T13:33:21.184Z"
   }
 ]

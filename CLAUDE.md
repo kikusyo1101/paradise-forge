@@ -65,6 +65,8 @@ node graph/codex.js check          # 索引が本文と一致しているか
 | 33 | **機械が強制しない法は、忘れてよい助言である**(`apply-guards.js`。permissions と matcher を実際に効かせる。散文と機構に同じ掟を二重に持たない) |
 | 34 | **走れない門は、落ちる門より悪い**(`env.PATH` に `$PATH` を書くな。展開されず PATH を破壊しフック全滅。門は「一致する・走る・失敗が見える」の三つを満たして初めて門) |
 | 35 | **配備は報告ではない、書き込みである**(`deploy --write` は工程を通じて実機を書き換える。禁令は効果で述べよ。第27条は告発者をも縛る — 証跡を読む前に犯人を名指すな) |
+| 36 | **新しい道は古い門に拒まれる**(道を建てたら、旧い前提を符号化した門を全て読み直す。門は**消すのではなく分ける** — 新旧どちらも鳴ることを証明せよ) |
+| 37 | **不在は通過ではない**(空の `{}` が SHIP を得ていた。security 未検査は BLOCK、build/tests 未報告は REWORK。`produces:document` は免除。両方向を証明せよ — 塞ぐだけなら壁である) |
 
 ---
 
@@ -132,7 +134,7 @@ node graph/apply-seat.js verify                # 教主の座が宣言どおり�
 - 創造物: **別の倉** `github.com/kikusyo1101/paradise-creations`(既定の道は楽園の兄弟
   `../paradise-creations`。`node graph/workspace.js root` が答える。第30条)
 - 自己診断: **194 tests**
-- 憲法: **35条**
+- 憲法: **37条**
 - 位階のモデル: 教主=`fable`/xhigh・枢機卿/執行官=`claude-opus-5`/xhigh・神官=`claude-sonnet-5`/high・
   信徒=`haiku`(effort非対応)。無人cronのみ`claude-opus-5`固定(第31条)。`node graph/clergy.js models`
 - 遠隔: `github.com/kikusyo1101/paradise-forge`(公開・`main` は保護)

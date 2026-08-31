@@ -72,6 +72,39 @@ function judge(report, opts = {}) {
   if ((sec.issues || 0) === 0 && (sec.secrets || 0) === 0 && report.security) reasons.push('no security issues');
   if (report.spec && report.spec.satisfied === true) reasons.push('spec satisfied');
 
+  // --- 不在は通過ではない (第4条・第9条・第37条) -----------------------
+  //
+  // ⚠️ 実測された欠陥: **空のレポート `{}` が SHIP を得ていた。**
+  //   $ echo '{}' > r.json && node graph/verdict.js judge r.json
+  //     ✅ SHIP — All gates pass, no breach
+  //
+  // 原因は上の全検査が「値が在る」ことを前提にしていたこと。`report.security`
+  // が無ければ `sec = {}` となり `sec.issues || 0` は 0 — **「検査していない」が
+  // 「問題ゼロ」と同義**になっていた。冒頭のコメントは fail-closed for security
+  // を謳いながら、実装は fail-open だった(第33条: 散文が機構を騙る)。
+  //
+  // 断罪の門が素通しなら、その上の全ての門は意味を失う。ゆえに:
+  //   **検証されなかったものは、通過したのではなく、証明されていない。**
+  //
+  // なお counsel の道(第32条)は創造物を産まないので build/tests は存在し得ない。
+  // 道の性質が `document` なら、この要求は課さない — 門は消さず分ける(第36条)。
+  const produces = report.produces || (report.meta && report.meta.produces) || 'artifact';
+  if (produces !== 'document') {
+    // セキュリティは「不明 = 安全でない」。証明されていない安全は BLOCK。
+    if (!report.security) {
+      breaches.push('security was never assessed — 不明な安全性は証明された安全性ではない (Art. 4)');
+    } else if (sec.issues == null && sec.secrets == null) {
+      breaches.push('security report carries neither `issues` nor `secrets` — 中身の無い証拠は証拠ではない (Art. 16)');
+    }
+    // 実装物を産む道は、少なくとも build と tests が語られねばならない。
+    // これは修正可能な欠落なので REWORK(BLOCK ではない)。
+    if (report.build == null) defects.push('build was never reported — 走らせていないものは通っていない');
+    if (!report.tests) defects.push('tests were never reported — 試験なき実装は未検証である');
+    else if ((report.tests.total || 0) === 0 && (report.tests.passed || 0) === 0) {
+      defects.push('tests reported but zero were run — 空の試験は試験ではない');
+    }
+  }
+
   let verdict, headline;
   if (breaches.length) {
     verdict = 'BLOCK';

@@ -51,12 +51,43 @@ function draftConvocation(wish, scale) {
 function critiquePlan(convo) {
   const gaps = [];
   const names = convo.cardinals.map(c => c.cardinal);
-  // Every credible creation must be grounded (discovery) and judged (tribunal).
-  if (!names.includes('discovery')) gaps.push('no discovery cardinal — the plan would build on assumption (Art. 8)');
-  if (!names.includes('tribunal')) gaps.push('no tribunal — nothing would judge the creation (Art. 9)');
-  // A build must be reviewed for quality before judgment.
-  if (names.includes('construction') && !names.includes('quality'))
-    gaps.push('construction without a quality cardinal — no review/security gate before judgment');
+
+  // ⚠️ ここは長らく **創造の道だけを前提** にしていた。「discovery が居ない」
+  // 「tribunal が居ない」を無条件の欠陥としていたのである。第32条で counsel
+  // (何も創らない道)が生まれた瞬間、その前提は誤りになった — counsel は
+  // 調査を counsel 枢機卿自身の survey/measure 相で行い、創造物を産まないので
+  // 裁く tribunal も持たない。結果、**今日建てた道が今日その入口で拒まれ**、
+  // `⚠️ Plan still has gaps at max scale` で永遠に止まった。
+  //
+  // 構造を変えたなら、旧い前提を符号化した門を全て読み直さねばならない。
+  // ただし **緩めてはならない**: 創造の道には従来どおりの厳しさを課し、
+  // 諮問の道には「その道に相応しい厳しさ」を課す。門を消すのではなく分ける。
+  const isCounsel = convo.scale === 'counsel' ||
+    convo.cardinals.some(c => c.cardinal === 'counsel');
+
+  if (isCounsel) {
+    // 諮問の道の掟 — 創造ではなく **判断** の健全性を守る。
+    // 1. 根拠なき意見は意見ではない(第8条の諮問版): 外を調べ、内を測る二相が要る
+    const phases = convo.cardinals.flatMap(c => c.phases);
+    if (!phases.includes('survey')) gaps.push('no survey phase — 外の世界を調べぬ諮問は憶測である (Art. 8)');
+    if (!phases.includes('measure')) gaps.push('no measure phase — 手元を測らぬ諮問は伝聞である (Art. 8)');
+    // 2. 反証を経ぬ結論は結論ではない(第9条の諮問版)
+    if (!phases.includes('counter')) gaps.push('no counter phase — 己の結論を疑わぬ諮問は断定である (Art. 9)');
+    // 3. 諮問は創らない。build を持つならそれは諮問ではない(第32条)
+    for (const p of ['build', 'tests', 'verdict']) {
+      if (phases.includes(p)) gaps.push(`counsel road must not contain '${p}' — 諮問は創らず裁かない (Art. 32)`);
+    }
+  } else {
+    // 創造の道の掟 — 従来どおり。
+    // Every credible creation must be grounded (discovery) and judged (tribunal).
+    if (!names.includes('discovery')) gaps.push('no discovery cardinal — the plan would build on assumption (Art. 8)');
+    if (!names.includes('tribunal')) gaps.push('no tribunal — nothing would judge the creation (Art. 9)');
+    // A build must be reviewed for quality before judgment.
+    if (names.includes('construction') && !names.includes('quality'))
+      gaps.push('construction without a quality cardinal — no review/security gate before judgment');
+  }
+
+  // 以下は道の性質によらず全ての計画に課される掟。
   // Every cardinal must actually own phases and have a priest to do the work.
   for (const c of convo.cardinals) {
     if (!c.phases.length) gaps.push(`cardinal ${c.cardinal} owns no phases`);

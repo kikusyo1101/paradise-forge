@@ -5,7 +5,7 @@
 > 常時運ぶのはこの索引だけでよい。**条文が要るときは引く**:
 > `node graph/codex.js article <番号>`
 
-全 35 条 / 本文 37,621 B / 索引はその約 91% 減
+全 37 条 / 本文 41,377 B / 索引はその約 91% 減
 
 | 条 | 題 | B |
 |---:|---|---:|
@@ -44,4 +44,6 @@
 | 33 | A law the machine does not enforce is a suggestion the agent may forget | 1900 |
 | 34 | A gate that cannot run is worse than a gate that fails | 1805 |
 | 35 | A deployment is not a report — it writes | 1364 |
+| 36 | A new road must be admitted by the old gates, and they will not admit it | 1884 |
+| 37 | Absence is not passage | 1872 |
 

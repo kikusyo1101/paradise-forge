@@ -544,12 +544,79 @@ way to change what "complete" means.
     (a timestamp) is not a motive, and the cost of the error is borne by someone
     who did nothing wrong.
 
+36. **A new road must be admitted by the old gates, and they will not admit it.**
+    Article 32 built the counsel road on the morning of the day this article was
+    written. That same evening, asked a counsel question, the paradise refused
+    its own new road at the door:
+
+    ```
+    ⚠️ Plan still has gaps at max scale — pontiff must intervene
+       no discovery cardinal — the plan would build on assumption (Art. 8)
+       no tribunal — nothing would judge the creation (Art. 9)
+    ```
+
+    Both complaints were correct **for a creation** and meaningless for a
+    counsel: counsel does its research in its own `survey` and `measure` phases,
+    and produces no creation for a tribunal to judge. The road was built and the
+    senate that admits plans was never told. This is the recurring shape of every
+    structural change in this system — Article 21's dangling reference, Article
+    33's stale enforcement claim, the drift check that fired on line endings —
+    stated once more at the level of a whole road: **when you change what the
+    system can be, re-read every gate that encoded what it used to be.**
+
+    The repair carries the harder half of the lesson. The obvious fix is to
+    delete the two checks, and it is wrong: a creation with no discovery and no
+    tribunal is still a defect, and a gate deleted to admit one case admits every
+    case. **A gate is not removed, it is divided.** The creation road keeps its
+    original severity; the counsel road receives a severity of its own kind —
+    no `survey` is conjecture, no `measure` is hearsay, no `counter` is mere
+    assertion, and a `build` phase means it was never a counsel at all. Prove
+    both halves: that the new road now passes, and that the old road still fails
+    when stripped. A change that only proves the new case has not shown that it
+    left the old one standing.
+
+37. **Absence is not passage.** The tribunal — the last gate, the one that
+    decides whether a creation ships — was measured with an empty report:
+
+    ```
+    $ echo '{}' > report.json && node graph/verdict.js judge report.json
+    ✅ SHIP — All gates pass, no breach — creation is complete.
+    ```
+
+    Nothing had been built, tested, or scanned, and the verdict was **ship**.
+    Every check read a value that was not there: with no `security` block,
+    `sec = {}` and `sec.issues || 0` evaluates to zero, so *"never examined"* and
+    *"found nothing"* became the same sentence. The file's own header claimed
+    `fail-closed for security`; the code was fail-open. Article 33 again, in the
+    one place where it costs the most.
+
+    **A gate that passes what it never saw is not a gate, and it invalidates
+    every gate above it** — discovery, review, ratification all funnel into a
+    judgment that cannot tell evidence from silence. The verdict law is therefore
+    amended at its root: **what was not verified has not passed; it is unproven.**
+    Missing security assessment is a BLOCK, because unknown safety is not proven
+    safety. Missing build or tests is a REWORK, because the omission is fixable.
+    A `security` block carrying neither `issues` nor `secrets` is BLOCK too — a
+    key with no content is a name pretending to be evidence (Art. 16).
+
+    Two guards on the guard. First, **the road's nature decides what must be
+    present**: a counsel produces a document, so demanding build output of it is
+    reading the wrong law — `produces: 'document'` is exempt (Art. 36). Second,
+    **prove both directions or you have built a wall, not a gate**: the empty
+    report must be refused *and* a complete report must still ship. A rule that
+    only demonstrates the new refusal has not shown that legitimate work survives
+    it.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
 |---------|-----------|--------|
 | ✅ **SHIP**   | every gate passes, no breach | creation is complete, release |
-| ⚠️ **REWORK** | fixable defects (build/type/lint/test/coverage) | loop back, repair, re-judge |
-| 🔴 **BLOCK**  | constitutional breach (security/secret/spec unmet) | never ships, escalate to human |
+| ⚠️ **REWORK** | fixable defects (build/type/lint/test/coverage), **or build/tests never reported** | loop back, repair, re-judge |
+| 🔴 **BLOCK**  | constitutional breach (security/secret/spec unmet), **or security never assessed** | never ships, escalate to human |
+
+**不在は通過ではない (第37条)。** 検証されなかったものは、通過したのではなく
+証明されていない。ただし `produces: 'document'`(諐問の道)は実装物の証拠を
+求められない — 道の性質が要求を決める(第36条)。
 
 *Enforced by `graph/verdict.js`. Amend deliberately — this defines completeness.*

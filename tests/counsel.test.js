@@ -302,6 +302,200 @@ test('創造の除外が効いている(除外を外せば創造の願いが攫�
   assert.strictEqual(forge.isCounsel('現状のCIの健全性を監査してほしい'), true);
 });
 
+// ─────────────────────────────────────────────────────────────────────
+console.log('\n諐問の道 — 元老院は諐問を批准できるか (第32条の隣人):');
+
+/*
+ * ⚠️ 第32条で counsel を建てたとき、**元老院(synod.js)を更新し忘れた**。
+ * critiquePlan は「discovery 枢機卿が居ない」「tribunal が居ない」を無条件の
+ * 欠陥としており、これは創造の道だけを前提にした検査だった。counsel は調査を
+ * 己の survey/measure 相で行い、創造物を産まないので裁く tribunal も持たない。
+ * 結果、**建てたその日に、その道は入口で拒まれた**:
+ *   ⚠️ Plan still has gaps at max scale — pontiff must intervene
+ *
+ * 構造を変えたなら、旧い前提を符号化した門を全て読み直さねばならない。
+ * だが門は **消すのではなく分ける** — 創造には創造の、諐問には諐問の厳しさを。
+ */
+const synod = require(path.join(ROOT, 'graph', 'synod.js'));
+
+test('元老院は諐問の計画を批准する — 建てた道が入口で拒まれない', () => {
+  const convo = synod.draftConvocation('楽園全体を監査し、残る欠陥を洗い出す');
+  assert.strictEqual(convo.scale, 'counsel');
+  const r = synod.critiquePlan(convo);
+  assert.strictEqual(r.ok, true,
+    '諐問の計画が批准されない: ' + r.gaps.join(' / '));
+});
+
+test('創造の道は依然として厳しい — 門を緩めていない証拠', () => {
+  const fake = { scale: 'standard', cardinals: [
+    { cardinal: 'construction', phases: ['build'], priests: ['architect'], reviewClass: 'cardinal:quality' },
+  ] };
+  const r = synod.critiquePlan(fake);
+  assert.strictEqual(r.ok, false, '創造の道から discovery と tribunal を抜いても素通りしてはならない');
+  assert.ok(r.gaps.some(g => /discovery/.test(g)), 'discovery の不在を名指すこと');
+  assert.ok(r.gaps.some(g => /tribunal/.test(g)), 'tribunal の不在を名指すこと');
+});
+
+test('諐問から survey を抜くと鳴る — 外を調べぬ諐問は憶測', () => {
+  const c = { scale: 'counsel', cardinals: [
+    { cardinal: 'counsel', phases: ['measure', 'assess', 'counter', 'synthesize', 'counsel'],
+      priests: ['auditor'], reviewClass: 'executor' },
+  ] };
+  const r = synod.critiquePlan(c);
+  assert.strictEqual(r.ok, false);
+  assert.ok(r.gaps.some(g => /survey/.test(g)), 'survey の不在を名指すこと');
+});
+
+test('諐問から measure を抜くと鳴る — 手元を測らぬ諐問は伝聞', () => {
+  const c = { scale: 'counsel', cardinals: [
+    { cardinal: 'counsel', phases: ['survey', 'assess', 'counter', 'synthesize', 'counsel'],
+      priests: ['auditor'], reviewClass: 'executor' },
+  ] };
+  const r = synod.critiquePlan(c);
+  assert.ok(r.gaps.some(g => /measure/.test(g)), 'measure の不在を名指すこと');
+});
+
+test('諐問から counter を抜くと鳴る — 己を疑わぬ諐問は断定', () => {
+  const c = { scale: 'counsel', cardinals: [
+    { cardinal: 'counsel', phases: ['survey', 'measure', 'assess', 'synthesize', 'counsel'],
+      priests: ['auditor'], reviewClass: 'executor' },
+  ] };
+  const r = synod.critiquePlan(c);
+  assert.ok(r.gaps.some(g => /counter/.test(g)), 'counter の不在を名指すこと');
+});
+
+test('諐問に build/tests/verdict が紛れ込めば鳴る (第32条)', () => {
+  for (const bad of ['build', 'tests', 'verdict']) {
+    const c = { scale: 'counsel', cardinals: [
+      { cardinal: 'counsel', phases: ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel', bad],
+        priests: ['auditor'], reviewClass: 'executor' },
+    ] };
+    const r = synod.critiquePlan(c);
+    assert.ok(r.gaps.some(g => g.includes(`'${bad}'`)),
+      `諐問の道に ${bad} が在っても鳴らないなら、諐問はいずれ創造の道に戻る`);
+  }
+});
+
+test('道の性質によらぬ掟は両方に効く — 司祭なき枢機卿は両道で欠陥', () => {
+  for (const scale of ['counsel', 'standard']) {
+    const c = { scale, cardinals: [
+      { cardinal: scale === 'counsel' ? 'counsel' : 'discovery',
+        phases: ['survey', 'measure', 'counter'], priests: [], reviewClass: 'executor' },
+    ] };
+    const r = synod.critiquePlan(c);
+    assert.ok(r.gaps.some(g => /no priest/.test(g)), `${scale}: 司祭なき枢機卿を見逃した`);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────
+console.log('\n断罪の門 — 不在は通過ではない (第37条):');
+
+/*
+ * ⚠️ 実測された欠陥: **空のレポート `{}` が SHIP を得ていた。**
+ *   $ echo '{}' > r.json && node graph/verdict.js judge r.json  →  exit 0 (SHIP)
+ *
+ * 全検査が「値が在る」ことを前提にしており、`report.security` が無ければ
+ * `sec = {}` で `sec.issues || 0` は 0 — 「検査していない」が「問題ゼロ」と
+ * 同義だった。断罪の門が素通しなら、その上の全ての門は意味を失う。
+ */
+const verdict = require(path.join(ROOT, 'graph', 'verdict.js'));
+
+test('空のレポートは SHIP されない — 何も検証していない報告は通過ではない', () => {
+  const r = verdict.judge({});
+  assert.notStrictEqual(r.verdict, 'SHIP',
+    '空の {} が SHIP を得るなら、断罪の門は素通しである');
+  assert.strictEqual(r.verdict, 'BLOCK', '安全性が不明なら BLOCK (第4条)');
+});
+
+test('security の不在は BLOCK — 不明な安全性は証明された安全性ではない', () => {
+  const r = verdict.judge({ build: 'pass', tests: { total: 9, passed: 9, failed: 0 } });
+  assert.strictEqual(r.verdict, 'BLOCK');
+  assert.ok(r.breaches.some(b => /security was never assessed/.test(b)),
+    'セキュリティ未検査を名指すこと');
+});
+
+test('中身の無い security 報告も BLOCK — 名前だけの証拠は証拠でない (第16条)', () => {
+  const r = verdict.judge({ build: 'pass', tests: { total: 9, passed: 9, failed: 0 }, security: {} });
+  assert.strictEqual(r.verdict, 'BLOCK');
+});
+
+test('tests の不在は REWORK — 試験なき実装は未検証', () => {
+  const r = verdict.judge({ build: 'pass', security: { issues: 0, secrets: 0 } });
+  assert.strictEqual(r.verdict, 'REWORK');
+  assert.ok(r.defects.some(d => /tests were never reported/.test(d)));
+});
+
+test('試験0件は REWORK — 空の試験は試験ではない', () => {
+  const r = verdict.judge({
+    build: 'pass', security: { issues: 0, secrets: 0 },
+    tests: { total: 0, passed: 0, failed: 0 },
+  });
+  assert.strictEqual(r.verdict, 'REWORK');
+});
+
+test('完全な報告は依然として SHIP — 門を塞いだが緩めていない', () => {
+  const r = verdict.judge({
+    build: 'pass',
+    tests: { total: 9, passed: 9, failed: 0, coverage: 92 },
+    security: { issues: 0, secrets: 0 },
+  });
+  assert.strictEqual(r.verdict, 'SHIP',
+    '正当な報告まで塞ぐなら、それは門ではなく壁である');
+});
+
+test('諐問(produces:document)は build/tests を要求されない (第32条・第36条)', () => {
+  const r = verdict.judge({ produces: 'document' });
+  assert.strictEqual(r.verdict, 'SHIP',
+    '諐問は創造物を産まない。実装物の証拠を求めるのは道を取り違えている');
+});
+
+test('秘密の混入は今も BLOCK — 既存の裁きを壊していない', () => {
+  const r = verdict.judge({
+    build: 'pass', tests: { total: 9, passed: 9, failed: 0 },
+    security: { issues: 0, secrets: 2 },
+  });
+  assert.strictEqual(r.verdict, 'BLOCK');
+  assert.ok(r.breaches.some(b => /secret/.test(b)));
+});
+
+test('相ごとに相応しい司祭が指揮される — 実体を作って命令が届かぬ階層は階層でない (第25条)', () => {
+  const lead = p => clergy.marshalPlan(p).priest;
+  // かつて全6相が priests[0] = market-researcher に落ち、auditor と reporter は
+  // 一度も指揮されなかった。コメントは「相に最も適した司祭を選ぶ」と述べていた。
+  assert.strictEqual(lead('survey'), 'market-researcher', '外を調べるのは市場調査の司祭');
+  assert.strictEqual(lead('measure'), 'auditor', '手元を測るのは監査の司祭');
+  assert.strictEqual(lead('assess'), 'auditor');
+  assert.strictEqual(lead('counter'), 'auditor', '反証は実測に忠実な者が担う');
+  assert.strictEqual(lead('synthesize'), 'reporter', '編むのは報告の司祭');
+  assert.strictEqual(lead('counsel'), 'reporter');
+  // 三名すべてが実際に指揮される(名ばかりの司祭を作らない)
+  const leads = new Set(['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel'].map(lead));
+  for (const p of ['market-researcher', 'auditor', 'reporter']) {
+    assert.ok(leads.has(p), `${p} が一度も指揮されない — 実体だけ作って命令が届いていない`);
+  }
+});
+
+test('創造の道の指揮系統は壊れていない', () => {
+  const lead = p => clergy.marshalPlan(p).priest;
+  assert.strictEqual(lead('specify'), 'requirements-analyst');
+  assert.strictEqual(lead('design'), 'architect');
+  assert.strictEqual(lead('build'), 'architect');
+  assert.strictEqual(lead('review'), 'code-reviewer');
+});
+
+test('指揮系統を跨いだ発令はしない — 表が他家の司祭を指しても自家に落ちる', () => {
+  // PHASE_LEAD が枢機卿の擁さぬ者を指した場合、筆頭司祭へ安全に落ちること。
+  const m = clergy.marshalPlan('discover');
+  const c = clergy.COLLEGE[m.cardinal];
+  assert.ok(c.priests.includes(m.priest),
+    `発令先 ${m.priest} が枢機卿 ${m.cardinal} の司祭ではない — 指揮系統を跨いでいる`);
+  for (const p of ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel']) {
+    const mm = clergy.marshalPlan(p);
+    assert.ok(clergy.COLLEGE[mm.cardinal].priests.includes(mm.priest),
+      `${p}: 発令先 ${mm.priest} が ${mm.cardinal} の司祭ではない`);
+  }
+});
+
 // --- report ---
 console.log(`\nCounsel self-test: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
