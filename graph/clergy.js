@@ -227,6 +227,27 @@ const COLLEGE = {
     reviewClass: 'executor',           // quality feeds the tribunal
     pdca: 'plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass',
   },
+  /**
+   * 諐問 (Counsel) — 何も創らず、問いに答える道を統べる枢機卿。
+   *
+   * 建造の枢機卿しか居なかったので、「報告・集計」の担い手が一人も居なかった。
+   * ゆえに調査の願いは discovery(市場調査)に丸投げされ、**手元を実測する者**も
+   * **人が読める形に編む者**も居ないまま standard の build へ流れていた。
+   *
+   * 相名の衝突に注意: `analyze` は既に requirements 枢機卿が統べている。
+   * 同じ名を二人が governs すれば cardinalFor が先勝ちで嘘を返す。ゆえに
+   * 諐問の道の分析相は `assess` と名を分けてある(第17条: 名の混同は事故を生む)。
+   */
+  'counsel': {
+    agent: 'cardinal',
+    domain: 'Counsel (諐問)',
+    governs: ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel'],
+    priests: ['market-researcher', 'auditor', 'reporter'],
+    work: 'research',      // 独立した問い(外の世界 / 手元の実測) → 並列が効く
+    believers: ['web-scout', 'feature-ranker', 'data-collector'],
+    reviewClass: 'executor',           // 諐問の結論は執行官が検める — 断罪ではなく助言の質を
+    pdca: 'plan: 問いを立てる → do: 外を調べ手元を測る → check: 反証に耐えたか? → act: 根拠を足すか結論を弱める',
+  },
 };
 
 /**
@@ -309,6 +330,7 @@ function believerRole(name) {
     'linter': 'run the linter and report',
     'coverage-checker': 'measure test coverage',
     'secret-scanner': 'scan for secrets and credentials',
+    'data-collector': 'collect the data for ONE question and return it raw — never interpret',
   };
   return roles[name] || 'fine-grained work under the priest';
 }

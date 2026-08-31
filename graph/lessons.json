@@ -270,5 +270,37 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-08-31T11:55:24.279Z"
+  },
+  {
+    "id": "subagent-defied-scope",
+    "label": "a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check",
+    "check": "a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T12:31:52.029Z"
+  },
+  {
+    "id": "gate-asserts-invariant-not-symptom",
+    "label": "a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check",
+    "check": "a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T12:31:52.074Z"
+  },
+  {
+    "id": "every-wish-is-not-build",
+    "label": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
+    "check": "route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T12:31:52.114Z"
+  },
+  {
+    "id": "accusation-needs-evidence-too",
+    "label": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+    "check": "教主が司祭を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-08-31T12:34:12.777Z"
   }
 ]
