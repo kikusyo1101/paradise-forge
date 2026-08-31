@@ -114,6 +114,41 @@ function builtinChecks() {
                            : { ok: true, note: 'no secrets detected' };
       } },
 
+    // --- 創造物の掟 (第39条: 散文だった掟の機構化) --------------------------
+    // かつて CLAUDE.md の「創造物の掟」節に散文で書かれていた規則。
+    // 散文の遵守率は ~70% — 掟は検査器に住んで初めて掟である (第33条)。
+    // いずれも creation の code にのみ適用 (self mode の engine 検査では
+    // ctx.files が graph/*.js になるが、engine は toISOString を正当に使う —
+    // ctx.isSelf で免除する)。
+    { id: 'no-wall-clock-iso', severity: 'gap',
+      desc: '創造物は toISOString() を使わない — 日付はローカルの YYYY-MM-DD 文字列 (UTC 跨ぎで日付がずれる)',
+      run: (ctx) => {
+        if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
+        const hits = (ctx.codeBlob.match(/toISOString\s*\(/g) || []).length;
+        return hits ? { ok: false, note: `toISOString() used ${hits}× — ローカル日付が UTC に化ける` }
+                    : { ok: true, note: 'no wall-clock ISO usage' };
+      } },
+    { id: 'no-external-deps', severity: 'gap',
+      desc: '創造物は外部依存ゼロの単一HTML — CDN/Webフォント/外部画像を参照しない',
+      run: (ctx) => {
+        if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
+        const html = ctx.files.filter(f => /\.html?$/i.test(f));
+        if (!html.length) return { ok: true, note: 'no HTML artifact — nothing to judge' };
+        const hits = (ctx.codeBlob.match(/(?:src|href)\s*=\s*["']https?:\/\/[^"']+["']|@import\s+url\(\s*["']?https?:/gi) || []);
+        return hits.length ? { ok: false, note: `${hits.length} external reference(s): ${hits.slice(0, 3).join(' , ').slice(0, 120)}` }
+                           : { ok: true, note: 'no external references' };
+      } },
+    { id: 'domain-markers-present', severity: 'smell',
+      desc: '純粋関数の domain 層は /* DOMAIN:START */〜/* DOMAIN:END */ で囲む (テストが抽出する)',
+      run: (ctx) => {
+        if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
+        const hasCode = ctx.files.some(f => /\.(html|js)$/i.test(f));
+        if (!hasCode) return { ok: true, note: 'no code artifact' };
+        return /DOMAIN:START/.test(ctx.codeBlob)
+          ? { ok: true, note: 'domain markers present' }
+          : { ok: false, note: 'no DOMAIN:START/END markers — domain layer is not extractable for tests' };
+      } },
+
     // --- discovery grounding (Constitution Art. 8) ---
     { id: 'grounded-in-discovery', severity: 'smell',
       desc: 'A findings.md exists — the spec was grounded in research, not assumption',
@@ -341,6 +376,7 @@ function review(dir, opts = {}) {
   // and would skip EVERY scoped lesson — the paradise would be blind to exactly
   // the past misses it recorded about itself. Declare what the engine IS instead.
   if (isSelf) ctx.scopeSubject = selfScopeSubject(dir);
+  ctx.isSelf = isSelf; // 創造物の掟 (第39条) は engine 自身には適用しない
   let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
   if (isSelf) {
     const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence', 'visual-identity-declared', 'surface-verified', 'ux-intent-declared']);

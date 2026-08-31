@@ -638,6 +638,57 @@ way to change what "complete" means.
     エンジンを直したという主張も、憲法に条を足したという主張も、次の走行の
     数値が前の走行より良くなって初めて証明される。
 
+39. **The always-loaded page is a first screen, not a codex.** 神が named it
+    directly: 「CLAUDE.md 大量の憲法を記載しているが、本来の設計思想から逸脱して
+    いる。hooks や skills、agents その他ベストプラクティスに従った箇所に記載し、
+    遵守させるべき」。実測: CLAUDE.md 10,780 B のうち **45.7% が憲法38条の要約
+    写経** — 楽園は既に codex.js index (第33条) を建てながら、CLAUDE.md 自身が
+    INDEX より大きい憲法表を抱え、条を足すたび太っていた。第33条が自分の家で
+    破られていた。
+
+    2026 年の定石 (progressive disclosure): 常時ロードされる散文の各行は
+    「消すと、コードから回復できない誤りが起きるか」で裁く。boundaries は
+    **always-true → CLAUDE.md / 法の全文 → codex (on-demand) / safety →
+    hooks・permissions (機械強制) / scoped な掟 → 検査器 / 数値 → census +
+    dashboard / workflow → commands**。散文の遵守率は ~70% — 掟を散文に
+    写経することは、掟を弱める行為である。
+
+    ゆえに: CLAUDE.md は**最初の1画面** — 役割と言語、どこを読むかの地図、
+    機械が強制していることの目録 (写経ではなく出所への指し示し)、そして
+    **機械が強制できない判断則だけ**が住む。
+    - 憲法の要約表は持たない — codex.js index を指す1行で足りる。
+    - 機械が数え直す数値 (テスト数・条数) は書かない — 数は census が数え、
+      dashboard が神に見せる。
+    - 創造物の掟 (toISOString 禁止・外部依存ゼロ・DOMAIN マーカー) は散文から
+      critic.js の決定的 check に昇格した — 掟は検査器に住んで初めて掟である。
+    - **diet 門** (census.dietChecks): 予算 4,096 B 超過と volatile な数値の
+      再侵入を機械が裁く。1画面は、機械が見張るから1画面のままでいられる。
+
+40. **The whole harness is on the scale, not just one page.** 第39条は project
+    CLAUDE.md を痩せさせたが、毎セッション常時ロードされる散文はそれだけでは
+    なかった。実測: global `~/.claude/CLAUDE.md` 5,849 B は Git 手順の全文写経
+    (Step 1〜6・命名表・裁定表) であり、`rules/*.md` 8本 9,720 B は全て無スコープ
+    で常時ロードされ、実在しない agent 9名の表・hooks 設定の写経・モデル選択表
+    (第31条と二重統治) を含んでいた。**一つの門を建てて満足した裏で、同じ病が
+    三つの家に住んでいた。**
+
+    2026 年の定石で各記述の住所は決まる:
+    - **手順 (「〜する時は Step 1..N」)** は command/skill へ — 呼ばれた時だけ
+      ロードされる。Git 配送の全手順は `/ship` に住む。
+    - **ファイル種に紐づく掟** (coding-style, patterns, testing) は rule の
+      `paths:` frontmatter で絞る — 対象ファイルに触れた時だけロードされる。
+    - **設定の写経** (hooks 一覧・モデル表・agent 表) は書かない — 出所
+      (settings.json / apply-models / agents の description) を指す1行で足りる。
+      写経は必ず陳腐化し、陳腐化した写経は毎セッション嘘を教える。
+    - **global CLAUDE.md** は全プロジェクトに乗る税である — project より薄く
+      (予算 2,048 B)、セッション開始の儀式と判断則だけが住む。
+
+    門: `census.harnessDietChecks` が原本 (overlay/root/CLAUDE.md ·
+    overlay/rules/) を裁く — 配備物でなく原本を裁くのは、配備物が成果物で
+    あり (第29条)、CI にハーネスが無くても原本は必ず在るからである。
+    無スコープ rules の総量には予算 (4,096 B) があり、超えた rule は
+    `paths:` を得るか、痩せるか、command へ移るかを選ぶ。
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
