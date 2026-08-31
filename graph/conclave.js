@@ -100,7 +100,23 @@ function activeDomain(run) {
  */
 function next(run) {
   const act = activeDomain(run);
-  if (!act) return { level: 'conclave', phase: 'complete', message: 'All domains ratified — creation complete.' };
+  // 道の性質で結びの言を変える。counsel は創造物を産まない(第32条)ので、
+  // 「creation complete」と言えばそれ自体が第32条への反例になる。
+  //
+  // ⚠️ 判定は `run.meta.produces` を第一とする。これは forge が DAG の meta に
+  // 刻む **道の性質の宣言** であり、道が増えても意味が保たれる。`run.scale` は
+  // 存在せず(実測: undefined)、cardinal 名での判定は枢機卿の改名で壊れる —
+  // 名前ではなく宣言された性質で裁く(第16条)。
+  if (!act) {
+    const produces = run.meta && run.meta.produces;
+    const isCounsel = produces === 'document' ||
+      (run.meta && run.meta.scale === 'counsel') ||
+      (run.domains || []).some(d => d.cardinal === 'counsel');
+    return { level: 'conclave', phase: 'complete',
+             message: isCounsel
+               ? 'All domains ratified — counsel delivered (諐問は創造物を産まない。根拠と共に献じよ)。'
+               : 'All domains ratified — creation complete.' };
+  }
   const d = act.domain;
   if (act.blocked) return { level: 'domain', phase: 'blocked', cardinal: d.cardinal, message: `${d.domain} blocked — escalate to pontiff.` };
   if (d.status === 'pending') d.status = 'active';
