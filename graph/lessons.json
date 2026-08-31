@@ -98,17 +98,24 @@
     "ts": "2026-08-31T00:04:23.252Z"
   },
   {
-    "id": "scoped-lesson",
-    "label": "contract must fail closed",
-    "check": "contract must fail closed",
-    "applies": "paradise-internal",
-    "ts": "2026-08-31T01:58:11.589Z"
-  },
-  {
     "id": "visual-identity-vocabulary",
     "label": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
     "check": "見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)",
     "applies": "paradise-internal",
     "ts": "2026-08-31T01:58:31.981Z"
+  },
+  {
+    "id": "scoped-lesson",
+    "label": "contract must fail closed",
+    "check": "contract must fail closed",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T03:16:51.747Z"
+  },
+  {
+    "id": "surface-judged-as-strictly",
+    "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+    "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+    "applies": "paradise-internal",
+    "ts": "2026-08-31T03:17:01.173Z"
   }
 ]

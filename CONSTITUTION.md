@@ -134,6 +134,28 @@ way to change what "complete" means.
     fetched. Structure lives in `design.md`; appearance lives in `identity.md`;
     conflating the two names is itself a defect.
 
+18. **The surface is judged as strictly as the substance.** A creation is not
+    two things — a trustworthy engine and a decorative shell — it is one thing
+    the user meets through its surface. Paradise had grown lopsided and the
+    imbalance was countable: the habit tracker carried 19 acceptance criteria
+    for data and logic against 3 for everything the user sees, and eight critic
+    checks of which exactly one looked at the interface. Passing 479 assertions
+    while shipping unreadable text is not quality; it is quality measured in the
+    wrong place. Four duties correct this. (a) **UX intent precedes
+    implementation**: the flows and the screen states — empty, loading, error,
+    dense — are designed in `ux.md` before anything is built, because a state
+    nobody designed is a state nobody sees until a user finds it. (b) **The
+    surface is measured, not admired**: contrast ratios, focus visibility,
+    target size, breakpoints and motion preference are computed, and the numbers
+    enter judgment exactly as test counts do. (c) **Someone must look**: no
+    headless run can see a broken layout or a joyless empty screen, so a real
+    browser is opened at a narrow and a wide width in every theme, and what
+    could not be seen is reported as unseen — never as acceptable. (d) **A
+    separate office judges taste**: the `ux-reviewer` answers for the surface as
+    the security reviewer answers for safety, because a domain nobody is
+    accountable for is a domain that rots. A defect the user meets on first
+    contact is not a minor defect.
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |

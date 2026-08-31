@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T01:58:36.784Z",
+  "generated": "2026-08-31T03:17:01.261Z",
   "pipeline": [
     {
       "id": "discover",
@@ -13,6 +13,14 @@ window.PARADISE_STATE = {
       "gate": false,
       "deps": [
         "discover"
+      ]
+    },
+    {
+      "id": "ux",
+      "agent": "architect",
+      "gate": false,
+      "deps": [
+        "specify"
       ]
     },
     {
@@ -45,7 +53,8 @@ window.PARADISE_STATE = {
       "gate": false,
       "deps": [
         "detail",
-        "identity"
+        "identity",
+        "ux"
       ]
     },
     {
@@ -66,6 +75,14 @@ window.PARADISE_STATE = {
       ]
     },
     {
+      "id": "ux-review",
+      "agent": "ux-reviewer",
+      "gate": false,
+      "deps": [
+        "build"
+      ]
+    },
+    {
       "id": "security",
       "agent": "security-reviewer",
       "gate": false,
@@ -79,7 +96,8 @@ window.PARADISE_STATE = {
       "gate": true,
       "deps": [
         "review",
-        "security"
+        "security",
+        "ux-review"
       ]
     },
     {
@@ -108,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 50,
+    "nodeCount": 51,
     "edgeCount": 33,
     "nodes": [
       {
@@ -410,6 +428,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "contract must fail closed",
         "degree": 0
+      },
+      {
+        "id": "surface-judged-as-strictly",
+        "type": "lesson",
+        "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+        "degree": 0
       }
     ],
     "edges": [
@@ -586,7 +610,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 5,
       "verdict": 1,
-      "lesson": 16,
+      "lesson": 17,
       "t": 2
     }
   },
@@ -670,6 +694,11 @@ window.PARADISE_STATE = {
       "id": "scoped-lesson",
       "label": "contract must fail closed",
       "check": "contract must fail closed|applies:paradise-internal"
+    },
+    {
+      "id": "surface-judged-as-strictly",
+      "label": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる",
+      "check": "表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer司祭が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -681,7 +710,7 @@ window.PARADISE_STATE = {
     },
     {
       "name": "habit",
-      "files": 13,
+      "files": 14,
       "verdict": "REWORK",
       "hasFindings": true
     },
@@ -822,12 +851,14 @@ window.PARADISE_STATE = {
           "review",
           "security",
           "docs",
-          "verify"
+          "verify",
+          "ux-review"
         ],
         "priests": [
           "code-reviewer",
           "security-reviewer",
-          "doc-updater"
+          "doc-updater",
+          "ux-reviewer"
         ],
         "believers": [
           "linter",
