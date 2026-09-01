@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-08-31T23:09:42.296Z",
+  "generated": "2026-09-01T03:40:04.663Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 79,
+    "nodeCount": 82,
     "edgeCount": 33,
     "nodes": [
       {
@@ -602,6 +602,24 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)",
         "degree": 0
+      },
+      {
+        "id": "canonical-lexicon-41",
+        "type": "lesson",
+        "label": "位階の名は clergy.js LEXICON が唯一の出所。英字識別子が正しくても日本語散文は別に腐る(Priest=司祭が107箇所/29ファイル)。lexicon-check が .md/.js/.json/.yml を行番号まで名指しし CI が止める。生成物(dashboard/lessons)の異名は原本(KG)を直す",
+        "degree": 0
+      },
+      {
+        "id": "gate-sees-the-thing",
+        "type": "lesson",
+        "label": "門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check",
+        "degree": 0
+      },
+      {
+        "id": "tenbin",
+        "type": "creation",
+        "label": "天秤 — 重み付き決断マトリクス。逆転閾値の閉形式で『どの基準が結論を支配しているか』を数値で示す単一HTML",
+        "degree": 0
       }
     ],
     "edges": [
@@ -776,9 +794,9 @@ window.PARADISE_STATE = {
       "component": 11,
       "decision": 8,
       "run": 3,
-      "creation": 6,
+      "creation": 7,
       "verdict": 1,
-      "lesson": 46
+      "lesson": 48
     }
   },
   "lessons": [
@@ -1011,6 +1029,16 @@ window.PARADISE_STATE = {
       "id": "claude-md-diet-40",
       "label": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)",
       "check": "常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)|applies:paradise-internal"
+    },
+    {
+      "id": "canonical-lexicon-41",
+      "label": "位階の名は clergy.js LEXICON が唯一の出所。英字識別子が正しくても日本語散文は別に腐る(Priest=司祭が107箇所/29ファイル)。lexicon-check が .md/.js/.json/.yml を行番号まで名指しし CI が止める。生成物(dashboard/lessons)の異名は原本(KG)を直す",
+      "check": "位階の名は clergy.js LEXICON が唯一の出所。英字識別子が正しくても日本語散文は別に腐る(Priest=司祭が107箇所/29ファイル)。lexicon-check が .md/.js/.json/.yml を行番号まで名指しし CI が止める。生成物(dashboard/lessons)の異名は原本(KG)を直す|applies:paradise-internal"
+    },
+    {
+      "id": "gate-sees-the-thing",
+      "label": "門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check",
+      "check": "門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check|applies:paradise-internal"
     }
   ],
   "creations": [],

@@ -1957,7 +1957,7 @@ test('lessons: a lesson declares its kind, defaulting to mechanism (Art.28)', ()
   const lessons = require('../graph/lessons.json');
   for (const l of lessons) {
     assert.ok(l.kind, `lesson ${l.id} must carry a kind`);
-    assert.ok(['mechanism', 'conduct'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
+    assert.ok(['mechanism', 'conduct', 'artifact'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
   }
   // 既定が mechanism であることは、生成物ではなく **engine** に対して検める。
   // こちらは KG の有無に依存しない真実である。
@@ -2494,6 +2494,112 @@ test('critic: 創造物の掟は engine 自身 (--self) には適用されない
   const ids = r.results.filter(x => !x.ok).map(x => x.id);
   assert.ok(!ids.includes('no-wall-clock-iso'), 'engines may use toISOString — the law is for creations');
   assert.ok(!ids.includes('no-external-deps'), 'the external-deps law is for creations');
+});
+
+test('critic: 門は tests/ の下も見る — 規約通りに置いたテストを「無い」と裁かない (第21条)', () => {
+  // かつて collect() は readdirSync のトップ階層しか見ず、tests/ に規約通り
+  // 置いた 50/50 で緑のテストが門には見えなかった。現物を見ない門は嘘をつく。
+  const d = makeCreation('# spec\n- AC-01: works', 'function f(){return 1;}\nmodule.exports=f;');
+  fs.mkdirSync(path.join(d, 'tests'));
+  fs.writeFileSync(path.join(d, 'tests', 'thing.test.js'),
+    'const assert=require("assert");\nassert.ok(1);\nassert.ok(2);\nassert.ok(3);\nconsole.log("passed: 3");\n'
+    + '// padding to clear the 400-byte substance floor '.repeat(12));
+  const r = critic.review(d, {});
+  const failed = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!failed.includes('tests-exist'),
+    'a suite under tests/ must be seen: ' + failed.join(','));
+
+  // 壊して鳴らす: サブディレクトリを消せば門は再び鳴る。
+  fs.rmSync(path.join(d, 'tests'), { recursive: true, force: true });
+  const r2 = critic.review(d, {});
+  assert.ok(r2.results.filter(x => !x.ok).map(x => x.id).includes('tests-exist'),
+    'with no tests anywhere the gate must fire');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)', () => {
+  const artifactLesson = [{ id: 'require-discovery', label: '調査フェーズを飛ばすな',
+    check: 'findings', artifact: 'findings.md', applies: null, kind: 'artifact' }];
+  const lf = path.join(os.tmpdir(), 'paradise-lesson-artifact.json');
+  fs.writeFileSync(lf, JSON.stringify(artifactLesson));
+
+  // 本文に "findings" という英単語を1度も含まない、実在する調査成果物。
+  const d = makeCreation('# spec\n- AC-01: works', 'function f(){return 1;}',
+    { findings: '# 市場調査\n'.repeat(4) + '実在の製品を13件調べ、採用度で三層に分けた。\n'.repeat(20) });
+  const r = critic.review(d, { lessons: lf });
+  const lesson = r.results.find(x => x.id === 'lesson:require-discovery');
+  assert.ok(lesson && lesson.ok,
+    '39KB の調査を書いた創造物を、本文の単語だけで「調査を飛ばした」と断じてはならない: '
+    + (lesson ? lesson.note : 'check missing'));
+
+  // 壊して鳴らす: 成果物を消せば門は鳴る。
+  fs.rmSync(path.join(d, 'findings.md'), { force: true });
+  const r2 = critic.review(d, { lessons: lf });
+  const lesson2 = r2.results.find(x => x.id === 'lesson:require-discovery');
+  assert.ok(lesson2 && !lesson2.ok, '調査成果物が無ければ門は鳴らねばならない');
+  fs.rmSync(d, { recursive: true, force: true });
+  fs.rmSync(lf, { force: true });
+});
+
+test('critic: 掟は振る舞いを裁く — 掟を説明したコメントを違反と数えない (第42条)', () => {
+  // 天秤は掟通り localStamp() に直し、その理由をコメントに書いた。すると
+  // その説明文が toISOString の使用として数えられた。掟を説明した者が
+  // 掟破りとして裁かれる門は、正しい行いを罰し、コードから注釈を追い出す。
+  const lawful = makeCreation('# spec\n- AC-01: works', `
+    <html><script>
+    /* 掟「toISOString を使わない」— toISOString() は UTC に変換するため
+       JST 09:00 未満の保存が前日の日付として表示されてしまう。 */
+    // したがって toISOString() ではなくローカルの年月日を自前で組む。
+    /* DOMAIN:START */
+    function localStamp(d) { return d.getFullYear() + "-" + (d.getMonth() + 1); }
+    /* DOMAIN:END */
+    </script></html>`, { fileName: 'index.html' });
+  const rOk = critic.review(lawful, {});
+  const okFails = rOk.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!okFails.includes('no-wall-clock-iso'),
+    '掟を説明したコメントは違反ではない: ' + okFails.join(','));
+
+  // 壊して鳴らす: 本当に呼べば門は鳴る。コメントを剥いでも実行経路は残る。
+  const guilty = makeCreation('# spec\n- AC-01: works', `
+    <html><script>
+    /* このコメントは無害である */
+    const t = new Date().toISOString();
+    </script></html>`, { fileName: 'index.html' });
+  const rBad = critic.review(guilty, {});
+  assert.ok(rBad.results.filter(x => !x.ok).map(x => x.id).includes('no-wall-clock-iso'),
+    '実際に toISOString() を呼べば門は鳴らねばならない');
+
+  fs.rmSync(lawful, { recursive: true, force: true });
+  fs.rmSync(guilty, { recursive: true, force: true });
+});
+
+test('critic: 抽出可能性は綴りでなく実質で裁く — 独自の一対マーカを認める (第42条)', () => {
+  // 天秤は DOMAIN:START ではなく TENBIN-CORE-BEGIN/END でコアを囲み、テストが
+  // 実際にそこを切り出して 50/50 で回している。目的(抽出可能であること)は
+  // 完全に達成されている。名前だけを見て実質を見ない門は、正しく解いた創造物を
+  // 咎める。
+  const custom = makeCreation('# spec\n- AC-01: works', `
+    <html><script id="core">
+    /*===MYAPP-CORE-BEGIN===*/
+    function pure(x) { return x + 1; }
+    const MyCore = Object.freeze({ pure });
+    /*===MYAPP-CORE-END===*/
+    globalThis.MyCore = MyCore;
+    </script></html>`, { fileName: 'index.html' });
+  const r = critic.review(custom, {});
+  const failed = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!failed.includes('domain-markers-present'),
+    '独自の一対マーカでも抽出可能なら認めねばならない: ' + failed.join(','));
+
+  // 壊して鳴らす: 対になっていなければ抽出できず、門は鳴る。
+  const unpaired = makeCreation('# spec\n- AC-01: works',
+    '<html><script>function pure(x){return x+1;}</script></html>', { fileName: 'index.html' });
+  assert.ok(critic.review(unpaired, {}).results
+    .filter(x => !x.ok).map(x => x.id).includes('domain-markers-present'),
+    'マーカが無ければ門は鳴らねばならない');
+
+  fs.rmSync(custom, { recursive: true, force: true });
+  fs.rmSync(unpaired, { recursive: true, force: true });
 });
 
 // --- Harness diet gate (第40条: ハーネス全体が秤に乗る) ---

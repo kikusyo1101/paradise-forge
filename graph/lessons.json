@@ -3,8 +3,9 @@
     "id": "require-discovery",
     "label": "調査フェーズを飛ばすな",
     "check": "findings",
+    "artifact": "findings.md",
     "applies": null,
-    "kind": "mechanism",
+    "kind": "artifact",
     "ts": "2026-08-30T13:42:29.309Z"
   },
   {
