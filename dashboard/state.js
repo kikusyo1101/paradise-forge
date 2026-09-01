@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-09-01T13:06:27.709Z",
+  "generated": "2026-09-01T13:38:00.592Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 88,
+    "nodeCount": 89,
     "edgeCount": 33,
     "nodes": [
       {
@@ -656,6 +656,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "発令者は走者ではない — 同じリースを渡すな",
         "degree": 0
+      },
+      {
+        "id": "igniter-points-not-copies",
+        "type": "lesson",
+        "label": "発火器は道を写経せず道を指す",
+        "degree": 0
       }
     ],
     "edges": [
@@ -832,7 +838,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 54
+      "lesson": 55
     }
   },
   "lessons": [
@@ -1105,6 +1111,11 @@ window.PARADISE_STATE = {
       "id": "art45-dispatcher-not-runner",
       "label": "発令者は走者ではない — 同じリースを渡すな",
       "check": "排他リースを、自ら走らぬ発令者(watchdog)にも同じ形で渡すと、発火された当の走者が締め出され機構が自分の子を殺す。門は全て緑のまま道だけが死ぬ。権利にkind(run/dispatch)を持たせ、走者が継承(adoptedFrom)し、発令の橋は短命にし、他人の鍵は返せなくせよ|applies:paradise-internal"
+    },
+    {
+      "id": "igniter-points-not-copies",
+      "label": "発火器は道を写経せず道を指す",
+      "check": "定期ジョブは既存の道(/conclave等)を名指しで指し、運転手順を写経しない。写経は本物から遅れて腐る。門は不在を通過にせず、壊して鳴らして確かめる|applies:paradise-internal"
     }
   ],
   "creations": [],

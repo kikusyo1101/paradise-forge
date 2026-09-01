@@ -21,14 +21,34 @@ VERDICT=~/Documents/workspace/paradise/graph/verdict.js
 KG=~/Documents/workspace/paradise/graph/kg.js
 ```
 
+## 二つの対象 — 何を作るかで住所が変わる (第23条 / 第30条)
+
+`forge.js scale` が答える道が `reform` なら、**願いの対象は楽園自身**である
+(engine・門・憲法・位階)。創造物の道と一本だけ違うのは**成果物の住所**だ。
+
+| scale | 対象 | 成果物の住所 |
+|-------|------|--------------|
+| quick / standard / full | 創造物 | `DIR=$(node …/workspace.js init <slug>)` — 楽園の**外**(第30条) |
+| **reform** | **楽園自身** | `DIR=reform/<slug>` — 楽園の**中**。engine を直すのだから当然である |
+
+reform を歩くとき、`workspace.js init` を呼んではならない — あれは創造物を
+楽園の外へ隔てる機構であり、楽園自身の改修には当たらない。`reform/<slug>/`
+を自分で作り、findings.md / design.md をそこへ置く。**engine の変更そのものは
+`graph/` へ直接書く**（それが直す対象なのだから）。
+
+
 ## The great circle
 
 ### 0. Prepare
 ```bash
 node $KG snapshot
 node $CLERGY college        # know your cardinals, their priests, their review classes
-# 創造物は楽園の外に住む (第30条)。住所を知るのは workspace.js だけ
+node $FORGE scale "<wish>"  # 道を先に問う — reform か、創造か。住所がこれで決まる
+
+# 創造の道: 創造物は楽園の外に住む (第30条)。住所を知るのは workspace.js だけ
 DIR=$(node ~/Documents/workspace/paradise/graph/workspace.js init <slug>)
+# reform の道: 楽園自身を直すのだから、成果物は楽園の中に住む (第23条)
+DIR=reform/<slug> && mkdir -p $DIR
 ```
 
 ### 1. Forge & convene
@@ -101,6 +121,27 @@ node ~/Documents/workspace/paradise/graph/export-state.js
 node $CONCLAVE status --run $DIR/conclave.json
 ```
 Commit, then show God the creation.
+
+### 5. reform の道だけの終い — 神の御手へ渡す (第23条)
+
+楽園自身を直したなら、成果は創造物ではなく**PR**である。門を実走してから出す:
+```bash
+node tests/paradise.test.js          # 自己診断
+node graph/workspace.js check        # 第30条
+node graph/apply-seat.js verify      # 第31条
+node graph/census.js check           # 第22条 — 文書の数を実測に合わせる
+node graph/deploy.js check
+node graph/apply-guards.js verify
+```
+一つでも赤なら直すか戻す。緑になったら:
+```bash
+git add <変更ファイルを個別指定>
+git -c user.name="Paradise" -c user.email="paradise@localhost" commit -m "<日本語で何を発見し何を直したか>"
+git push -u origin <branch>
+gh pr create --base main --title "<題>" --body "<神託/位階/発見/修復/門の実出力/憲法照合>"
+gh pr checks <番号>
+```
+**教主は自らを承認しない。マージは神のみ。** PRを出したら止まる。
 
 ## The law (Constitution Art. 11)
 - **Nested cycles** — the conclave's great PDCA over domains; each cardinal's
