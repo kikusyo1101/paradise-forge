@@ -124,7 +124,7 @@ function builtinChecks() {
       desc: '創造物は toISOString() を使わない — 日付はローカルの YYYY-MM-DD 文字列 (UTC 跨ぎで日付がずれる)',
       run: (ctx) => {
         if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
-        const hits = (ctx.codeBlob.match(/toISOString\s*\(/g) || []).length;
+        const hits = (ctx.codeExec.match(/toISOString\s*\(/g) || []).length;
         return hits ? { ok: false, note: `toISOString() used ${hits}× — ローカル日付が UTC に化ける` }
                     : { ok: true, note: 'no wall-clock ISO usage' };
       } },
@@ -134,19 +134,34 @@ function builtinChecks() {
         if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
         const html = ctx.files.filter(f => /\.html?$/i.test(f));
         if (!html.length) return { ok: true, note: 'no HTML artifact — nothing to judge' };
-        const hits = (ctx.codeBlob.match(/(?:src|href)\s*=\s*["']https?:\/\/[^"']+["']|@import\s+url\(\s*["']?https?:/gi) || []);
+        const hits = (ctx.codeExec.match(/(?:src|href)\s*=\s*["']https?:\/\/[^"']+["']|@import\s+url\(\s*["']?https?:/gi) || []);
         return hits.length ? { ok: false, note: `${hits.length} external reference(s): ${hits.slice(0, 3).join(' , ').slice(0, 120)}` }
                            : { ok: true, note: 'no external references' };
       } },
     { id: 'domain-markers-present', severity: 'smell',
-      desc: '純粋関数の domain 層は /* DOMAIN:START */〜/* DOMAIN:END */ で囲む (テストが抽出する)',
+      desc: '純粋関数の domain 層は一対のマーカで囲み、テストが抽出できるようにする',
       run: (ctx) => {
         if (ctx.isSelf) return { ok: true, note: 'engine code is exempt (creations-only law)' };
         const hasCode = ctx.files.some(f => /\.(html|js)$/i.test(f));
         if (!hasCode) return { ok: true, note: 'no code artifact' };
-        return /DOMAIN:START/.test(ctx.codeBlob)
-          ? { ok: true, note: 'domain markers present' }
-          : { ok: false, note: 'no DOMAIN:START/END markers — domain layer is not extractable for tests' };
+        if (/DOMAIN:START/.test(ctx.codeBlob)) return { ok: true, note: 'domain markers present' };
+        // 求めているのは **抽出可能であること** であって、特定の綴りではない
+        // (第42条: 門は現物を見る)。天秤は `TENBIN-CORE-BEGIN/END` という独自の
+        // 一対マーカで同じ目的を達し、テストが実際にそこを切り出して回している。
+        // 名前だけを見て実質を見ない門は、正しく解いた創造物を smell と呼ぶ。
+        // 条件: BEGIN/END (または START/END) を成す一対が、それぞれ1回ずつ現れること。
+        const pairs = {};
+        const re = /([A-Z][A-Z0-9]*(?:[-_][A-Z0-9]+)*)[-_](BEGIN|START|END)\b/g;
+        let m;
+        while ((m = re.exec(ctx.codeBlob)) !== null) {
+          const key = m[1], kind = (m[2] === 'END') ? 'end' : 'begin';
+          pairs[key] = pairs[key] || { begin: 0, end: 0 };
+          pairs[key][kind]++;
+        }
+        const named = Object.keys(pairs).find(k => pairs[k].begin === 1 && pairs[k].end === 1);
+        return named
+          ? { ok: true, note: `domain markers present (custom pair: ${named}-BEGIN/END)` }
+          : { ok: false, note: 'no extractable domain markers — domain layer is not extractable for tests' };
       } },
 
     // --- discovery grounding (Constitution Art. 8) ---
@@ -310,14 +325,46 @@ function listFiles(dir) {
   return out;
 }
 
+/** コメントを剥いだコード。**掟が裁くのは振る舞いであって、散文ではない** (第42条)。
+ *
+ * かつて `no-wall-clock-iso` は codeBlob をそのまま数えていた。天秤 (tenbin) が
+ * 掟通り `localStamp()` に直し、その理由を「toISOString() は UTC に変換するため
+ * 前日の日付として表示されてしまう」とコメントに書いたところ、**その説明文が
+ * 違反として数えられた**。掟を説明した者が掟破りとして裁かれる門は、正しい
+ * 行いを罰し、コードから注釈を追い出す。
+ *
+ * 文字列リテラルは残す — `eval("new Date().toISOString()")` のような迂回を
+ * 見逃さないためである。剥ぐのはコメントだけでよい。
+ *
+ * ただし **DOMAIN:START/END マーカはコメントの形で書く規約** であり、素朴に
+ * 剥ぐとマーカごと消えて「ドメイン層が無い」と誤検知する。マーカは剥ぐ前に
+ * 退避する — 門を1つ直して別の門を壊すのは、直したことにならない。
+ */
+function stripComments(src) {
+  // 退避トークンは英数字のみで作る。制御文字を混ぜると RegExp 経路で扱いが
+  // 環境依存になり、退避したはずのマーカが黙って消える(実際に消えた)。
+  const KEEP = 'PARADISEDOMAINMARK';
+  return String(src)
+    .replace(/DOMAIN:(START|END)/g, KEEP + '$1')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')      // ブロックコメント (JS/CSS 共通)
+    .replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1 ') // 行コメント (URL の // は除く)
+    .replace(/<!--[\s\S]*?-->/g, ' ')       // HTML コメント
+    .replace(new RegExp(KEEP + '(START|END)', 'g'), 'DOMAIN:$1');
+}
+
 function collect(dir, opts = {}) {
   const files = listFiles(dir);
   const codeFiles = files.filter(f => /\.(js|ts|jsx|tsx|py|html|css)$/.test(f) && !/\.test\./.test(f));
   const codeBlob = codeFiles.map(f => readIf(dir, f)).join('\n');
+  // 掟 (law) はコメントを剥いだ姿で裁く。教訓 (mechanism) は逆に、コメントに
+  // 現れた意図も証拠として数える — 「その概念が扱われているか」を問うからである。
+  // 同じ blob を両方に使うと、掟が説明文を罰するか、教訓が意図を見落とすかの
+  // どちらかになる。**問いが違えば見る面も違う。**
+  const codeExec = stripComments(codeBlob);
   let lessons = [];
   if (opts.lessons) { try { lessons = JSON.parse(fs.readFileSync(opts.lessons, 'utf8')); } catch {} }
   return {
-    dir, files, codeBlob,
+    dir, files, codeBlob, codeExec,
     findings: readIf(dir, 'findings.md'),
     requirements: readIf(dir, 'requirements.md'),
     prd: readIf(dir, 'prd.md'),
