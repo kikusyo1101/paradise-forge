@@ -36,6 +36,7 @@ const { execFileSync } = require('child_process');
 
 const clergy = require('./clergy.js');
 const forge = require('./forge.js');
+const wiring = require('./wiring.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const ARCHIFY = path.join(ROOT, 'overlay', 'vendor', 'archify', 'bin', 'archify.mjs');
@@ -51,6 +52,9 @@ const SUBJECTS = {
   // 下手さではなく図の大きさそのものである(第47条(c))。巻物として読む。
   dag:       { type: 'architecture', title: '道の全形 — forge の SDLC DAG', scroll: true },
   run:       { type: 'lifecycle',    title: '相の一生 — 走行状態の機械' },
+  // 結線もまた「収まらないと最初から認めた」主題である。engine は 30 を超え、
+  // 段の一つに十以上が並ぶ — それは配置の下手さではなく機構の数そのものである。
+  wiring:    { type: 'architecture', title: '結線の相関 — engine が engine を呼ぶ', scroll: true },
 };
 
 // ── 版元の情報 (第20条(c): 借りたものは必ず出典を刻む) ────────────────
@@ -329,35 +333,107 @@ function irDispatch(phaseId) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 主題 4: dag — 道の全形 (層化グラフ描画)
+// 層化グラフ配置器 — 「依存の絵」を描く者は皆これを使う
+//
+// 道(dag)と結線(wiring)は、見た目こそ違うが**同じ問題**である:
+// 有向グラフを段に分け、席を並べ、交差を減らし、段飛ばしの辺を直角に縫う。
+// ここを写経で二つに増やせば、片方だけが直った日に図が食い違う。
+// ゆえに配置は一箇所に住み、主題はデータを渡すだけにする (第29条の作図版)。
+//
+//   layered(items, opts) → { posOf, depth, byDepth, edges, minCrossings, size }
+//     items: [{ id, deps: [id...] }]  — 事実は呼び手が engine から読む
 // ══════════════════════════════════════════════════════════════════════
-function irDag(scale) {
-  const dag = forge.buildDag('<神託>', scale);
-  const byId = new Map(dag.tasks.map(t => [t.id, t]));
+function layered(items, opts = {}) {
+  const W = opts.W || 148, H = opts.H || 58, COL = opts.COL || 178, ROW = opts.ROW || 132;
+  const PAD_L = opts.PAD_L != null ? opts.PAD_L : 40, PAD_T = opts.PAD_T != null ? opts.PAD_T : 40;
+  /**
+   * 流れの向き。既定は縦(段が下へ降りる)。
+   *
+   * 向きは好みではなく**図の形が決める**。深さ3・幅15の結線を縦に流したら
+   * 図幅が 2112px になり、1440 の画面に収めるための縮小で副題が 5.57px ——
+   * 描画器の読みやすさの床(6px)を割った。同じ図を横に流せば、幅は段の数
+   * (3)で決まり、多い方の次元が巻物の長さになる。**長い辺を巻物の向きに
+   * 合わせる** — それだけで字は縮まずに済む。
+   *
+   * 実装は座標の入れ替えである。段は breadth(席の並ぶ軸)と depth(段の進む軸)
+   * の二軸で組み、最後に向きへ写す。層化の論理は一つのまま増えない。
+   */
+  const horizontal = opts.flow === 'horizontal';
+  // 席の広がりと段の厚み。横流しでは席は縦に並ぶので、席の広がりは箱の「高さ」。
+  const SEAT = horizontal ? H : W, SEAT_PITCH = horizontal ? ROW : COL;
+  const RANK = horizontal ? W : H, RANK_PITCH = horizontal ? COL : ROW;
+  const PAD_B = horizontal ? PAD_T : PAD_L;      // 席の軸の余白
+  const PAD_D = horizontal ? PAD_L : PAD_T;      // 段の軸の余白
+  /** breadth/depth の対を、向きに従って [x, y] へ写す。 */
+  const xy = (b, d) => horizontal ? [d, b] : [b, d];
+  const byId = new Map(items.map(t => [t.id, t]));
+  const allDepsOf = (id) => (byId.get(id).deps || []).filter(d => byId.has(d));
+  // 段が決まるまでは全ての辺を前向きとみなす。環の辺は下で名指しして外す。
+  let depsOf = allDepsOf;
+
+  /**
+   * **環の辺を名指しして外す** (層化描画の第0段)。
+   *
+   * 層化は非循環を前提にする。だが実測すると楽園の engine には環が在った —
+   * upstream.js と vendor.js は互いを require する(取り込みは上流を知り、
+   * 上流は取り込みを知る)。環を無いことにすれば段が矛盾し、辺は上へ逆走し、
+   * 描画器が endpoint-side-direction で正しく鳴く。
+   *
+   * ここでも道は三つあり、二つは不正である:
+   *   ✗ 環の辺を黙って捨てる  — 図が嘘になる(相互依存は事実である)
+   *   ✗ 段を無理に付け替える  — 依存の意味が変わる
+   *   ✓ **後退辺として区別し、経路を描画器に委ねて描く** — 事実は残り、
+   *      層化は成立する。呼び手はそれを破線で「環」と語ればよい。
+   *
+   * 見つけ方は深さ優先探索。段を測ってから「上へ戻る辺」を後退辺と呼ぶのでは
+   * 遅い — 段そのものが環に汚染された後だからである(実測: 深さを先に測ると
+   * ALAP が環越しに節点を押し下げ、健全な辺まで逆走に見えた)。
+   * ゆえに **段を測る前に** 環を切る。順序は id 順で決定的にする。
+   */
+  const backKeys = new Set();
+  {
+    const WHITE = 0, GREY = 1, BLACK = 2;
+    const color = {};
+    for (const t of items) color[t.id] = WHITE;
+    const visit = (id) => {
+      color[id] = GREY;
+      for (const dep of allDepsOf(id).slice().sort()) {
+        if (color[dep] === GREY) backKeys.add(`${dep}->${id}`);   // 環を閉じる辺
+        else if (color[dep] === WHITE) visit(dep);
+      }
+      color[id] = BLACK;
+    };
+    for (const t of [...items].sort((a, b) => a.id < b.id ? -1 : 1)) if (color[t.id] === WHITE) visit(t.id);
+  }
+  const back = [];
+  for (const t of items) for (const dep of allDepsOf(t.id)) {
+    if (backKeys.has(`${dep}->${t.id}`)) back.push({ from: dep, to: t.id });
+  }
+  depsOf = (id) => allDepsOf(id).filter(dep => !backKeys.has(`${dep}->${id}`));
 
   // ── 段(rank)を決める: まず最長経路 ────────────────────────────────
   const depth = {};
   const d = (id) => {
     if (depth[id] != null) return depth[id];
-    const t = byId.get(id);
-    return depth[id] = (t.deps || []).length ? Math.max(...t.deps.map(d)) + 1 : 0;
+    const ds = depsOf(id);
+    return depth[id] = ds.length ? Math.max(...ds.map(d)) + 1 : 0;
   };
-  dag.tasks.forEach(t => d(t.id));
+  items.forEach(t => d(t.id));
 
   /**
    * 段を「できるだけ遅く」へ押し下げる (ALAP)。
    *
-   * 最長経路で段を決めると、子が一つだけ深い相が**段を飛ばす**辺を生む
+   * 最長経路で段を決めると、子が一つだけ深い節点が**段を飛ばす**辺を生む
    * (実測: standard の identity は深さ2、その唯一の子 build は深さ4)。
    * 段飛ばしは必ず幾何の問題を招くので、消せるものは先に消す。
-   * 子を持つ相を「最も早い子の一段上」まで押し下げれば、その辺は隣り合う段
+   * 子を持つ節点を「最も早い子の一段上」まで押し下げれば、その辺は隣り合う段
    * になる。ALAP 順位付けは層化描画の定石であり、依存の意味は変わらない。
    */
   const children = {};
-  for (const t of dag.tasks) for (const dep of (t.deps || [])) (children[dep] ||= []).push(t.id);
-  for (let pass = 0; pass < dag.tasks.length; pass++) {
+  for (const t of items) for (const dep of depsOf(t.id)) (children[dep] ||= []).push(t.id);
+  for (let pass = 0; pass < items.length; pass++) {
     let moved = false;
-    for (const t of [...dag.tasks].sort((a, b) => depth[b.id] - depth[a.id])) {
+    for (const t of [...items].sort((a, b) => depth[b.id] - depth[a.id])) {
       const kids = children[t.id];
       if (!kids || !kids.length) continue;                 // 終端は動かさない
       const want = Math.min(...kids.map(k => depth[k])) - 1;
@@ -366,30 +442,27 @@ function irDag(scale) {
     if (!moved) break;
   }
 
-  const byDepth = {};
-  for (const t of dag.tasks) (byDepth[depth[t.id]] ||= []).push(t);
-
   /**
-   * 段は**下へ**流し、同じ段の席は横に並べる。
+   * 広い段を折り返す道は**試して捨てた**。記録として残す。
    *
-   * 縦流しは深さ10段で 2693px になり、1440x900 の実ブラウザを溢れる
-   * (visual-check の実測)。だが横流しにすると幅が 1900px を超え、今度は
-   * 字が潰れて desktop-readability が鳴いた。**どちらも通らない。**
+   * 15席の段を7席ずつに畳めば図の比は画面に寄る。だが実測すると、
+   * 折り返した後段への辺が全て段飛ばしになり、**ダミー節点が段あたり20本**
+   * まで膨れて交差が 6 → 30 に増えた。加えて折り返しは意味も壊す —
+   * 同じ段の節点は「互いに依存しない」ことを示すのに、二段に分ければ
+   * 読み手はそこに順序を見る。
    *
-   * 相17・深さ10のグラフは、第一画面に収まらない。これは配置の下手さでは
-   * なく**図の大きさそのもの**である。ゆえに縦流しを保ち、溢れることを
-   * 測って認める(第47条(c)) — 道の全形は、巻物として読むものである。
-   * 席と段は詰められるだけ詰めた: 高さ58px・段間104pxが、描画器の
-   * 最小クリアランス(段間の隙間46px)を割らない下限である。
+   * 図の比が画面と噛み合わないとき、直すのは配置ではなく**主題の粒度**である。
+   * (irWiring は結線を持つ者だけを層に並べ、独立した engine を層の外へ出す。)
    */
-  const W = 148, H = 58, COL = 178, ROW = 132;
+  const byDepth = {};
+  for (const t of items) (byDepth[depth[t.id]] ||= []).push({ id: t.id });
 
   /**
    * 残った段飛ばしを **ダミー節点** で刻む (Sugiyama 法の第2段)。
    *
    * 五度、幾何で誤魔化そうとして五度とも門に鳴かれた:
-   *   ・真下に引けば間の段の相を貫く            (edge-through-node)
-   *   ・横辺から出せば同じ段の隣の相を貫く        (同上)
+   *   ・真下に引けば間の段の節点を貫く          (edge-through-node)
+   *   ・横辺から出せば同じ段の隣の節点を貫く      (同上)
    *   ・余白の車線は、列を降りる平凡な辺と交わる  (proper-crossing)
    *   ・車線どうしも、跨ぐ区間が半端に重なれば交わる
    * 左右2つの余白では足りないことも数で確かめた — reform の道では4本の
@@ -410,7 +483,7 @@ function irDag(scale) {
    * 廊下の混み具合は隙間ごとに違うのだから、車線も隙間ごとに配る。
    */
   const gapLane = {};      // `${key}@${lv}` → その隙間での順番
-  for (const t of dag.tasks) for (const dep of (t.deps || [])) {
+  for (const t of items) for (const dep of depsOf(t.id)) {
     if (depth[t.id] - depth[dep] <= 1) continue;
     const key = `${dep}->${t.id}`;
     skipRank[key] = Object.keys(skipPath).length;
@@ -426,7 +499,7 @@ function irDag(scale) {
     const perGap = {};
     for (const [key, p] of Object.entries(skipPath)) {
       const to = key.split('->')[1];
-      for (const lv of [...p.map(d => d.lv), depth[to]]) {
+      for (const lv of [...p.map(x => x.lv), depth[to]]) {
         (perGap[lv] ||= []).push(key);
         gapLane[`${key}@${lv}`] = perGap[lv].length - 1;
       }
@@ -435,7 +508,7 @@ function irDag(scale) {
   const isDummy = (t) => !!t.dummy;
   /** 席順の最適化のため、ダミーも「上流を持つ実体」として扱う。 */
   const upstreamOf = (t) => {
-    if (!isDummy(t)) return (byId.get(t.id).deps || []).map(dep => {
+    if (!isDummy(t)) return depsOf(t.id).map(dep => {
       const p = skipPath[`${dep}->${t.id}`];
       return p && p.length ? p[p.length - 1].id : dep;
     });
@@ -463,16 +536,52 @@ function irDag(scale) {
    * 段ごとに全順列を試し、改善が尽きるまで上下へ掃く。
    * 段あたりの席は実測で最大6つ — 6! = 720 通りなので**近似する理由が無い**。
    */
+  /**
+   * 席が7つを超えた段は、全順列(5040通り以上)を数え上げられない。
+   * かつてここは **その段を素通り** していた。楽園の道では段あたり最大6席
+   * だったので、誰も気づかなかった — そして結線の図(段に13席)を描いた瞬間、
+   * 触られない段が交差を56本生んだ。**「起こらない」と決めつけた枝は、
+   * 起こった日に黙って壊れる。**
+   *
+   * ゆえに広い段には教科書解(重心法)を当てる。上下の隣接段における
+   * 接続先の平均位置で並べ替えるのを繰り返すと、交差は単調に減っていく。
+   * 厳密ではないが、素通りよりは必ず良い。同値は元の順を保つ(決定的)。
+   */
+  const barycenter = (layer, up, dn) => {
+    const keyOf = (t, i) => {
+      const ns = [];
+      for (const u of upstreamOf(t)) { const j = posIn(up, u); if (j >= 0) ns.push(j * (dn.length ? 1 : 1)); }
+      for (const lo of dn) if (upstreamOf(lo).includes(t.id)) ns.push(posIn(dn, lo.id));
+      return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : i;
+    };
+    return layer.map((t, i) => [keyOf(t, i), i, t]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
+  };
   const sweepAll = (layers) => {
     for (let sweep = 0; sweep < 8; sweep++) {
       let improved = false;
       for (const k of (sweep % 2 === 0 ? depths : [...depths].reverse())) {
-        if (layers[k].length > 6) continue;             // 数え上げが爆発する段は触らない
         const up = layers[k - 1] || [], dn = layers[k + 1] || [];
         const score = (order) => crossings(up, order) + crossings(order, dn);
         const cur = score(layers[k]);
         let best = layers[k], bestN = cur;
-        for (const q of perms(layers[k])) { const n = score(q); if (n < bestN) { best = q; bestN = n; } }
+        const candidates = layers[k].length > 6 ? [barycenter(layers[k], up, dn)] : perms(layers[k]);
+        for (const q of candidates) { const n = score(q); if (n < bestN) { best = q; bestN = n; } }
+        // 重心法だけでは止まる場所がある(実測: 15席の段で交差13が動かなかった)。
+        // 隣どうしの入れ替えを、改善が尽きるまで繰り返す — Sugiyama 法の第3段。
+        // 全順列と違い O(席^2) で済み、席が幾つ増えても走る。
+        if (layers[k].length > 6) {
+          let cand = best, candN = bestN;
+          for (let pass = 0; pass < 6; pass++) {
+            let moved = false;
+            for (let i = 0; i + 1 < cand.length; i++) {
+              const q = [...cand]; [q[i], q[i + 1]] = [q[i + 1], q[i]];
+              const n = score(q);
+              if (n < candN) { cand = q; candN = n; moved = true; }
+            }
+            if (!moved) break;
+          }
+          if (candN < bestN) { best = cand; bestN = candN; }
+        }
         if (bestN < cur) { layers[k] = best; improved = true; }
       }
       if (!improved) break;
@@ -500,90 +609,128 @@ function irDag(scale) {
 
   // ── 座標を与える ──────────────────────────────────────────────────
   const maxRow = Math.max(...Object.values(byDepth).map(a => a.length));
-  const PAD_L = 40;
   const lvOf = (t) => t.lv !== undefined ? t.lv : depth[t.id];
   /**
    * 席の中心座標。ダミーも実体と同じ幅の席を占める — 席を細くすると辺が
    * 斜めに逃げ、直交が崩れる。
    *
    * ただしダミーの縦走りは**列の中心から半歩ずらす**。中心に置くと、上下の
-   * 段で同じ列に立つ相の縦線と同じ x を共有し、描画器が ambiguous-corridor
+   * 段で同じ列に立つ節点の縦線と同じ x を共有し、描画器が ambiguous-corridor
    * で鳴いた(実測17px の並走)。ダミーは箱を持たないので、席の中でずれても
    * 何も貫かない — これが「見えない席」の利点である。
+   * ずらし幅は辺ごとに変える。同じ段に二本のダミーが並ぶとき、同じ幅だけ
+   * ずらせば結局また並走する。
+   *
+   * そして幅は**席の幅から導く**。40px と固定していたら、席が 112px しか
+   * 無い結線の図でダミーが隣の席まではみ出し、無関係の箱を 2px の隙間で
+   * 貫いた(edge-through-node)。席の中に居るはずの「見えない席」が席の外に
+   * 出れば、それはもう見えない席ではない。
    */
-  // ずらし幅は辺ごとに変える。同じ段に二本のダミーが並ぶとき、同じ幅だけ
-  // ずらせば結局また並走する。席の幅(148px)の内側に収まる範囲で刻む。
-  const slotX = (t) => PAD_L + Math.round((byDepth[lvOf(t)].indexOf(t) + (maxRow - byDepth[lvOf(t)].length) / 2) * COL) + W / 2
-    + (t.dummy ? 40 + (skipRank[t.key] % 3) * 22 : 0);
-  const rankY = (lv) => 40 + lv * ROW;
+  const dummyDx = Math.max(12, Math.round(SEAT * 0.27));
+  const slotB = (t) => PAD_B + Math.round((byDepth[lvOf(t)].indexOf(t) + (maxRow - byDepth[lvOf(t)].length) / 2) * SEAT_PITCH) + SEAT / 2
+    + (t.dummy ? dummyDx + (skipRank[t.key] % 3) * Math.round(dummyDx * 0.55) : 0);
+  const rankD = (lv) => PAD_D + lv * RANK_PITCH;
   const seatOf = (id) => byDepth[depth[id]].find(x => x.id === id);
+  const posOf = (id) => xy(slotB(seatOf(id)) - SEAT / 2, rankD(depth[id]));
+
+  // ── 辺を縫う ──────────────────────────────────────────────────────
+  // 段は下(縦流し)あるいは右(横流し)へ進む。辺の側はその向きが決める。
+  const FWD = horizontal ? { fromSide: 'right', toSide: 'left' } : { fromSide: 'bottom', toSide: 'top' };
+  const BACK = horizontal ? { fromSide: 'left', toSide: 'right' } : { fromSide: 'top', toSide: 'bottom' };
+  const edges = [];
+  for (const t of items) for (const dep of depsOf(t.id)) {
+    const base = { from: dep, to: t.id, ...FWD };
+    const p = skipPath[`${dep}->${t.id}`];
+    if (!p || !p.length) { edges.push(base); continue; }
+    // ダミーの席を上から下へ縫う。折れは全て直角にする:
+    //   起点の真下 → 席の x へ横に寄る → 席を縦に通る → …
+    //   → 終点の x へ横に寄る → 終点の真上
+    // 横に寄るのは必ず「次の段に入る直前の隙間」、縦に降りるのは必ず席の
+    // 列の中。ゆえにどの節点の箱も貫かない。
+    /**
+     * 段の隙間 (RANK_PITCH - RANK) の中に、辺ごとの車線を刻む。
+     *
+     * 下限 26px は箱の辺からの最短クリアランス — これより浅いと
+     * 枠線に沿って走り container-border-run で鳴く。上限は向かいの箱の
+     * 辺 +8px を割ってはならない (edge-through-node)。
+     *
+     * かつてここは 26/40/54px と**数を焼き付けて**いた。段間 74px の道では
+     * 正しかったが、段を詰めた図(隙間 56px)では第三車線が向かいの箱に
+     * 2px まで迫り、描画器が正しく鳴いた。隙間の広さは呼び手が決めるもの
+     * なので、車線もそこから導く。三車線が入らない隙間では車線を減らす。
+     */
+    const key = `${dep}->${t.id}`;
+    const gapSpan = RANK_PITCH - RANK;
+    const laneStep = 14;
+    const lanes = Math.max(1, Math.min(3, Math.floor((gapSpan - 26 - 8) / laneStep) + 1));
+    const gapD = (lv) => rankD(lv) - (26 + (gapLane[`${key}@${lv}`] % lanes) * laneStep);
+    const bStart = slotB(seatOf(dep)), bEnd = slotB(seatOf(t.id));
+    const raw = [];
+    let prevB = bStart;
+    for (const dm of p) {
+      const d2 = gapD(dm.lv);
+      raw.push(xy(prevB, d2), xy(slotB(dm), d2));
+      prevB = slotB(dm);
+    }
+    const dLast = gapD(depth[t.id]);
+    raw.push(xy(prevB, dLast), xy(bEnd, dLast));
+
+    // 席の x が一致すると長さ0の折れが生まれ、描画器が micro-segment で
+    // 鳴く。同じ点と一直線上の点を畳んでから渡す — 経路の意味は変わらない。
+    const via = [];
+    for (const pt of raw) {
+      const lastP = via[via.length - 1];
+      if (lastP && lastP[0] === pt[0] && lastP[1] === pt[1]) continue;
+      const prevP = via[via.length - 2];
+      if (lastP && prevP && ((prevP[0] === lastP[0] && lastP[0] === pt[0]) || (prevP[1] === lastP[1] && lastP[1] === pt[1]))) via.pop();
+      via.push(pt);
+    }
+    edges.push({ ...base, via });
+  }
+  // 後退辺は座標を与えない。側も経路も描画器に委ねる — 上へ戻る線の廊下を
+  // 私が選べば、それは前向きの辺の廊下を必ず奪う。
+  for (const e of back) edges.push({ from: e.from, to: e.to, back: true, ...BACK });
+
+  const maxLv = Math.max(...depths);
+  const breadthTotal = PAD_B + (maxRow - 1) * SEAT_PITCH + SEAT + 40;
+  const depthTotal = PAD_D + maxLv * RANK_PITCH + RANK + 40;
+  return {
+    posOf, depth, byDepth, depths, edges, isDummy, horizontal,
+    minCrossings: bestTotal,
+    size: xy(breadthTotal, depthTotal).map(v => Math.max(320, v)),
+    // 同じ段に立つ実体(ダミーを除く) — 「同時に走りうる」札の材料
+    rows: depths.map(k => ({ depth: k, ids: byDepth[k].filter(x => !isDummy(x)).map(x => x.id) })),
+    box: [W, H],
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 主題 4: dag — 道の全形 (層化グラフ描画)
+// ══════════════════════════════════════════════════════════════════════
+function irDag(scale) {
+  const dag = forge.buildDag('<神託>', scale);
+  const L = layered(dag.tasks.map(t => ({ id: t.id, deps: t.deps || [] })));
+  const [W] = L.box;
 
   const components = dag.tasks.map(t => {
     const card = clergy.cardinalFor(t.id);
     return {
       id: idOf(t.id), type: t.gate ? 'security' : (card === 'tribunal' ? 'cloud' : 'backend'),
       label: t.id, sublabel: t.agent,
-      pos: [slotX(seatOf(t.id)) - W / 2, rankY(depth[t.id])],
-      size: [W, H], ...(t.gate ? { tag: '⚖ 門' } : {}),
+      pos: L.posOf(t.id).map(Math.round), size: L.box,
+      ...(t.gate ? { tag: '⚖ 門' } : {}),
     };
   });
-
-  const connections = [];
-  for (const t of dag.tasks) for (const dep of (t.deps || [])) {
-    const base = { id: idOf(`e-${dep}-${t.id}`), from: idOf(dep), to: idOf(t.id), fromSide: 'bottom', toSide: 'top', ...(t.gate ? { variant: 'security' } : {}) };
-    const p = skipPath[`${dep}->${t.id}`];
-    if (p && p.length) {
-      // ダミーの席を上から下へ縫う。折れは全て直角にする:
-      //   起点の真下 → 席の x へ横に寄る → 席を縦に通る → …
-      //   → 終点の x へ横に寄る → 終点の真上
-      // 横に寄るのは必ず「次の段に入る直前の隙間」、縦に降りるのは必ず席の
-      // 列の中。ゆえにどの相の箱も貫かない。
-      // 横走りの高さ(段の上端からの距離)には二つの制約がある:
-      //   ・浅すぎると枢機卿ドメインの枠線(箱の約16px外)に沿って走り、
-      //     container-border-run で鳴く。境界は跨ぐもので、なぞるものではない。
-      //   ・二本が近すぎると ambiguous-corridor(廊下の奪い合い)で鳴く。
-      // ゆえに 26px から**14px 刻み**で配る。隙間 (ROW - H) = 74px あるので
-      // 4本まで別々の廊下を持てる。dag は巻物と宣言してあるから、高さは惜しまない。
-      const xStart = slotX(seatOf(dep)), xEnd = slotX(seatOf(t.id));
-      const key = `${dep}->${t.id}`;
-      /**
-       * 隙間 (ROW - H) = 74px の中に、辺ごとの車線を刻む。
-       * 下限 26px は箱の下辺からの最短クリアランス — これより浅いと
-       * 枢機卿ドメインの枠線に沿って走り container-border-run で鳴く。
-       * 上限は箱の下辺 +8px を割ってはならない (micro-segment)。
-       * ゆえに 26/40/54 の三車線に収める。四本目は一本目と同じ廊下に戻るが、
-       * 同じ隙間を四本が通る道は実測で存在しない。
-       */
-      const gapY = (lv) => rankY(lv) - (26 + (gapLane[`${key}@${lv}`] % 3) * 14);
-      const raw = [];
-      let prevX = xStart;
-      for (const dm of p) {
-        const y = gapY(dm.lv);
-        raw.push([prevX, y], [slotX(dm), y]);
-        prevX = slotX(dm);
-      }
-      const yLast = gapY(depth[t.id]);
-      raw.push([prevX, yLast], [xEnd, yLast]);
-
-      // 席の x が一致すると長さ0の折れが生まれ、描画器が micro-segment で
-      // 鳴く。同じ点と一直線上の点を畳んでから渡す — 経路の意味は変わらない。
-      const via = [];
-      for (const pt of raw) {
-        const lastP = via[via.length - 1];
-        if (lastP && lastP[0] === pt[0] && lastP[1] === pt[1]) continue;
-        const prevP = via[via.length - 2];
-        if (lastP && prevP && ((prevP[0] === lastP[0] && lastP[0] === pt[0]) || (prevP[1] === lastP[1] && lastP[1] === pt[1]))) via.pop();
-        via.push(pt);
-      }
-      connections.push({ ...base, via });
-    } else {
-      connections.push(base);
-    }
-  }
+  const gateOf = new Map(dag.tasks.map(t => [t.id, !!t.gate]));
+  const connections = L.edges.map(e => ({
+    id: idOf(`e-${e.from}-${e.to}`), from: idOf(e.from), to: idOf(e.to),
+    fromSide: e.fromSide, toSide: e.toSide,
+    ...(gateOf.get(e.to) ? { variant: 'security' } : {}),
+    ...(e.via ? { via: e.via } : {}),
+  }));
 
   const domains = [...new Set(dag.tasks.map(t => clergy.cardinalFor(t.id)))];
   const gates = dag.tasks.filter(t => t.gate).map(t => t.id);
-  const maxLv = Math.max(...Object.values(depth));
 
   /**
    * 交差ゼロが**不可能な図がある** (第47条(c))。
@@ -601,7 +748,7 @@ function irDag(scale) {
    *      名乗り、その理由を図の札に書き、門にもそう報告させる。
    * 測って正直に格下げするのは敗北ではない。測らずに緑を名乗るのが敗北である。
    */
-  const irreducible = bestTotal;
+  const irreducible = L.minCrossings;
   return {
     schema_version: 1, diagram_type: 'architecture',
     meta: {
@@ -609,7 +756,7 @@ function irDag(scale) {
       quality_profile: irreducible ? 'standard' : 'showcase',
       // 描画器は viewBox に 320px の下限を課す。相が一列しかない道(quick)では
       // 式の答えが 258px になり、門が正しく鳴いた。式に下限を持たせる。
-      viewBox: [Math.max(320, PAD_L + (maxRow - 1) * COL + W + 40), Math.max(320, 40 + (maxLv + 1) * ROW + 40)],
+      viewBox: L.size,
       views: [
         { id: 'gates', label: '門 (gate)', focus: gates.map(idOf), note: '門の相は検証なしに前へ進めない。ここで嘘は止まる。' },
         { id: 'critical-path', label: '最長の道', focus: dag.tasks.filter(t => (t.deps || []).length <= 1).slice(0, 8).map(t => idOf(t.id)), note: '深さがそのまま順序であり、同じ深さは同時に走りうる。' },
@@ -623,8 +770,8 @@ function irDag(scale) {
     })),
     connections,
     cards: [
-      { dot: 'cyan', title: `道の性質 (${scale})`, items: [`相: ${dag.tasks.length}`, `深さ: ${maxLv + 1} 段`, `門: ${gates.join(', ')}`, `産物: ${dag.meta.produces}`] },
-      { dot: 'amber', title: '同じ深さは同時に走る', items: depths.filter(k => byDepth[k].filter(x => !isDummy(x)).length > 1).map(k => `深さ${k}: ${byDepth[k].filter(x => !isDummy(x)).map(t => t.id).join(' / ')}`) },
+      { dot: 'cyan', title: `道の性質 (${scale})`, items: [`相: ${dag.tasks.length}`, `深さ: ${L.depths.length} 段`, `門: ${gates.join(', ')}`, `産物: ${dag.meta.produces}`] },
+      { dot: 'amber', title: '同じ深さは同時に走る', items: L.rows.filter(r => r.ids.length > 1).map(r => `深さ${r.depth}: ${r.ids.join(' / ')}`) },
       ...(irreducible ? [{ dot: 'slate', title: '消せない交差', items: [
         `この道の層化グラフは平面的でない — 最小交差数 ${irreducible}`,
         '席順の全順列を数え上げても 0 にならない(近似ではなく厳密に測った)',
@@ -686,6 +833,197 @@ function irRun() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// 主題 6: wiring — 結線の相関 (神が問うた「オーケストレーションの関連図」)
+//
+// 位階図は「誰が誰を呼ぶか」を**人の階層**で語る。だが楽園を実際に動かして
+// いるのは engine である。どの engine がどの engine の上に建ち、その engine を
+// 誰が(門・命令・神官・器物・散文が)呼ぶのか — それは今まで誰も語らなかった。
+//
+// ここも事実は写経しない。wiring.js がディスクを走査して測った結線を、
+// そのまま図にする。engine が一つ生まれれば、翌朝この図はひとりでに増える。
+// ══════════════════════════════════════════════════════════════════════
+function irWiring() {
+  const m = wiring.map();
+  const ja = Object.fromEntries(wiring.SURFACES.map(s => [s.id, s.ja]));
+
+  /**
+   * **結線を持つ者だけを層に並べる。**
+   *
+   * 素朴に33の engine 全てを層化したら、警告が76件出た。原因は幾何ではない —
+   * require の辺を一本も持たない engine 8本(census/verdict/branch-guard ほか)が
+   * 段0に居座り、**結線を持つ者どうしを 2988px の彼方へ引き離していた**。
+   * 長い斜線は互いに交わり、廊下を奪い合う。
+   *
+   * だが彼らは孤児ではない。命令や門が直に呼ぶ、独立した engine である。
+   * 事実は「彼らに require の辺が無い」ことなので、**辺の図から出して、
+   * 独立した一群として描く**のが正しい。消すのでも、混ぜるのでもない。
+   */
+  const linked = m.engines.filter(e => e.requires.length || e.requiredBy.length);
+  const solo = m.engines.filter(e => !e.requires.length && !e.requiredBy.length);
+  /**
+   * 席は詰める。土台を require する engine は一段に15並び、道(dag)と同じ
+   * 148px の席で並べると図幅が 2988px になった。実ブラウザで測ると、
+   * 1440x900 に収めるための縮小で**副題が 4.05px** になり、描画器の
+   * 読みやすさの床(6px)を割った — 巻物と宣言しても字が読めなければ図ではない。
+   * 幅は席の数 × 席の幅でしか決まらないので、詰められるのは席の幅だけである。
+   */
+  /**
+   * 席の幅は**名が決める**。勘で 120px と置いたら、22文字の
+   * build-identity-catalog が箱をはみ出して描画器が正しく鳴いた。
+   * engine の名は engine が決めるものであり、次に長い名が生まれた日に
+   * 図が壊れてよい道理は無い。ゆえに最長の名から導く(描画器の実測では
+   * 半角相当で約 6.6px/字)。
+   */
+  const widthFor = (ids) => Math.max(112, Math.ceil(Math.max(...ids.map(x => x.length)) * 6.6) + 18);
+  const LW = widthFor(linked.map(e => e.id));
+  /**
+   * 図の広さは、席の数 × 席の幅でしか決まらない。席は15、名は engine が
+   * 決める — ならば**縮められるのは箱の中身だけ**である。
+   *
+   * 三つ試して二つ捨てた(実測):
+   *   ✗ 横に流す        504px 幅の短冊になり、viewer が引き伸ばして
+   *                     1440x900 に箱が4つしか映らなかった
+   *   ✗ 段を折り返す    ダミー節点が段あたり20本に膨れ、交差 6 → 30。
+   *                     おまけに「同じ段=並列」という意味を壊す
+   *   ✓ 副題を捨てる    呼び手の面は**札に移す**。箱には名だけを残す。
+   * 図が大きいとき削るのは線でも箱でもなく、まず**箱の中の字**である。
+   */
+  const L = layered(linked.map(e => ({ id: e.id, deps: e.requires })),
+                    { W: LW, H: 52, COL: LW + 12, ROW: 104 });
+  const [W, H] = L.box;
+  const SW = widthFor(solo.map(e => e.id));
+
+  /**
+   * 箱は**名だけ**を載せる。
+   *
+   * 副題(呼び手の面)を置いていたが、15席の段ではどんなに短くしても
+   * 1440x900 で 4.5〜5.6px に潰れ、読みやすさの床(6px)を割った(実測)。
+   * 読めない字は情報ではない。呼び手の面は色・タグ・札が語る。
+   */
+  const tagOf = (e) => e.orphan ? '孤児'
+    : e.callers.includes('ci') ? '門'
+    : e.requiredBy.length >= 3 ? `土台 ×${e.requiredBy.length}` : null;
+  const nodeOf = (e, pos, extra = {}) => {
+    const tag = tagOf(e);
+    return {
+      id: idOf('w-' + e.id),
+      // 門(CI)が呼ぶ engine は security。楽園の掟を実際に裁いている者である。
+      // 誰も呼ばない孤児は cloud — 目で見て「浮いている」と分かる形にする。
+      type: e.orphan ? 'cloud' : (e.callers.includes('ci') ? 'security' : 'backend'),
+      label: e.id,
+      pos: pos.map(Math.round),
+      ...(tag ? { tag } : {}),
+      ...extra,
+      size: extra.size || L.box,
+    };
+  };
+
+  // 独立の一群は、層の**下**に格子で置く。列数は層の幅に合わせる —
+  // 図の幅を独立群が広げてはならない(彼らは主題の脇役である)。
+  /**
+   * 孤児は独立群から**目に見えて離す**。
+   *
+   * 一度は格子の中に混ぜて枠だけ描いた。実際に開いて見ると、孤児の枠が
+   * 独立群の枠とほぼ重なり、二つの題が同じ行で潰れ合った — 図が
+   * 「この engine は他と違う」という己の主張を裏切っていた。
+   * 静的な検査はこれを咎めない。幾何は正しいからである(第47条・第18条)。
+   *
+   * 独立と孤児は意味が違う: 独立は面が呼ぶ engine、孤児は誰も呼ばない engine。
+   * 意味が違うものを同じ格子に並べれば、枠を足しても違いは伝わらない。
+   */
+  const alive = solo.filter(e => !e.orphan), dead = solo.filter(e => e.orphan);
+  const COLS = Math.max(1, Math.min(alive.length || 1, Math.floor((L.size[0] - 80) / (SW + 12))));
+  const soloTop = L.size[1] - 40 + 56;
+  const soloRowsN = Math.ceil(alive.length / COLS);
+  const deadTop = soloTop + soloRowsN * 84 + 56;
+  const components = [
+    ...linked.map(e => nodeOf(e, L.posOf(e.id))),
+    ...alive.map((e, i) => nodeOf(e, [40 + (i % COLS) * (SW + 12), soloTop + Math.floor(i / COLS) * 84], { size: [SW, 52] })),
+    // 枠の題は箱より広い。孤児が1本しか居ない図で箱を左端に置くと、
+    // 題(「呼ぶ者の居ない engine — 第44条 (1)」で約240px)が画布の外へ出て
+    // 描画器が正しく鳴く。枠を持つ一群は、**題の幅の分だけ内側に置く**。
+    ...dead.map((e, i) => nodeOf(e, [96 + i * (SW + 12), deadTop], { size: [SW, 52] })),
+  ];
+  /**
+   * 孤児は**枠を持たせて名指しする**。
+   *
+   * 実際に描いて見たところ、孤児は独立群の格子の中に同じ大きさで並び、
+   * 色(cloud)だけが違っていた。だが独立の engine も孤児も等しく「辺を持たない」
+   * ので、格子の中では見分けがつかない — 図が己の主張を裏切っていた。
+   * 静的な検査はこれを咎めない。幾何は正しいからである(第47条・第18条)。
+   */
+  const orphanIds = m.engines.filter(e => e.orphan).map(e => idOf('w-' + e.id));
+
+  // 相互依存(環)の辺は破線で語る。上へ戻る線を実線で引けば、読み手は
+  // 「段が間違っている」と読む — 事実は「そこに環が在る」である。
+  const connections = L.edges.map(e => ({
+    id: idOf(`w-${e.from}-${e.to}`), from: idOf('w-' + e.from), to: idOf('w-' + e.to),
+    // 側は配置器が向きから決めて渡してくる。ここで綴り直せば、流れの向きを
+    // 変えた日に**この一行だけが古い向きのまま**残る(実測で鳴かれた)。
+    // 後退辺は前向きの辺と逆の側を使う — 線が上(あるいは左)へ走るのに
+    // 「下へ出る」と名乗れば、描画器は endpoint-side-direction で正しく鳴く。
+    fromSide: e.fromSide, toSide: e.toSide,
+    ...(e.back ? { variant: 'dashed', label: '相互' } : (e.via ? { via: e.via } : {})),
+  }));
+  const cycles = L.edges.filter(e => e.back).map(e => `${e.to} ⇄ ${e.from}`);
+
+  const orphans = m.engines.filter(e => e.orphan).map(e => e.id);
+  const hubs = [...m.engines].sort((a, b) => b.requiredBy.length - a.requiredBy.length)
+    .filter(e => e.requiredBy.length > 0).slice(0, 4);
+  const byCi = m.engines.filter(e => e.callers.includes('ci')).map(e => e.id);
+
+  const bottom = dead.length ? deadTop + 52 + 24 : soloTop + soloRowsN * 84;
+  return {
+    schema_version: 1, diagram_type: 'architecture',
+    meta: {
+      // 交差が残るなら showcase を名乗らない — dag と同じ掟が同じ理由で効く。
+      title: SUBJECTS.wiring.title,
+      quality_profile: L.minCrossings ? 'standard' : 'showcase',
+      viewBox: [L.size[0], bottom + 48],
+      views: [
+        { id: 'foundation', label: '土台', focus: hubs.map(e => idOf('w-' + e.id)),
+          note: 'ここが壊れれば上の全てが壊れる。最も多く require される engine である。' },
+        { id: 'gates', label: '門が呼ぶ engine', focus: byCi.map(id => idOf('w-' + id)),
+          note: '執行官(CI)が毎PRで走らせる engine。掟を実際に裁いているのはこれらである。' },
+        ...(solo.length ? [{ id: 'standalone', label: '独立の engine', focus: solo.map(e => idOf('w-' + e.id)),
+          note: 'require の辺を持たない。門や命令が直に呼ぶ、単独で立つ engine である。' }] : []),
+        ...(orphans.length ? [{ id: 'orphans', label: '孤児', focus: orphans.map(id => idOf('w-' + id)),
+          note: '誰も require せず、どの面もその名を呼ばない。死んだ道具は先例として模倣される (第44条)。' }] : []),
+      ],
+    },
+    components,
+    boundaries: [
+      ...(alive.length ? [{
+        kind: 'region',
+        label: `独立の engine — require の辺を持たず、面が直に呼ぶ (${alive.length})`,
+        wraps: alive.map(e => idOf('w-' + e.id)),
+      }] : []),
+      ...(orphanIds.length ? [{
+        kind: 'security-group',
+        label: `呼ぶ者の居ない engine — 第44条 (${orphanIds.length})`,
+        wraps: orphanIds,
+      }] : []),
+    ],
+    connections,
+    cards: [
+      { dot: 'cyan', title: '結線の実測 (第48条)', items: [
+        `engine ${m.engines.length} / require の辺 ${m.edges.length}`,
+        `門(CI)が直に呼ぶ engine: ${byCi.length}`,
+        `土台: ${hubs.map(e => `${e.id}(×${e.requiredBy.length})`).join(' / ')}`,
+      ] },
+      { dot: orphans.length ? 'rose' : 'emerald', title: '呼ぶ者の居ない engine (第44条)',
+        items: orphans.length
+          ? [`孤児 ${orphans.length}: ${orphans.join(', ')}`, '生きているなら呼ぶ者を作り、死んでいるなら退治せよ']
+          : ['孤児なし — 全ての engine に呼ぶ者が居る', 'node graph/wiring.js check が毎PRで数える'] },
+      ...(cycles.length ? [{ dot: 'slate', title: '環 (相互依存)', items: [
+        ...cycles, '層化は非循環を前提にする。環の辺は破線で残し、段には使わない',
+      ] }] : []),
+    ],
+    __minCrossings: L.minCrossings,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 function buildIr(subject, opts = {}) {
   const scale = opts.scale || 'standard';
   switch (subject) {
@@ -694,6 +1032,7 @@ function buildIr(subject, opts = {}) {
     case 'dispatch': return irDispatch(opts.phase || 'build');
     case 'dag': return irDag(scale);
     case 'run': return irRun();
+    case 'wiring': return irWiring();
     default: throw new Error(`未知の主題: ${subject} (${Object.keys(SUBJECTS).join(' | ')})`);
   }
 }
@@ -738,10 +1077,24 @@ function firstScreen(htmlPath) {
     return { ok: true, receipt: JSON.parse(raw) };
   } catch (e) {
     let r = null; try { r = JSON.parse(String(e.stdout)); } catch {}
-    const over = (r && r.diagnostics || []).filter(d => d.code === 'viewer/viewport-overflow');
+    const ds = (r && r.diagnostics) || [];
+    const over = ds.filter(d => d.code === 'viewer/viewport-overflow');
     const worst = over.reduce((a, d) => Math.max(a, (d.evidence || {}).scrollHeight || 0), 0);
-    return { ok: false, overflow: worst, receipt: r,
-             reason: over.length ? `第一画面に収まらない (最大 ${worst}px)` : (r && r.status) || String(e.message).slice(0, 200) };
+    /**
+     * 実ブラウザの不合格には**溢れ以外**が在る。
+     *
+     * 実測: 結線の図は一画面に収まっていた(溢れ 0px)のに、縮小されて副題が
+     * 5.57px になり読みやすさの床(6px)を割っていた。ところが門は
+     * 「溢れていないなら scroll 免除の対象」としか見ておらず、
+     * **巻物と宣言するだけで「字が読めない」を通していた。**
+     * 巻物の許しは「長さ」への許しであって、「読めなさ」への許しではない。
+     */
+    const unreadable = ds.filter(d => d.code === 'viewer/projected-text-readability');
+    const px = unreadable.reduce((a, d) => Math.min(a, (d.evidence || {}).minimumProjectedNodeTextPx || 99), 99);
+    return { ok: false, overflow: worst, receipt: r, unreadable: unreadable.length ? px : 0,
+             reason: unreadable.length
+               ? `実ブラウザで字が読めない (最小 ${px.toFixed(2)}px / 床 ${(unreadable[0].evidence || {}).minimumRequiredNodeTextPx || 6}px) — 箱を広げるのではなく文言を短くするか、流れの向きを変えよ`
+               : over.length ? `第一画面に収まらない (最大 ${worst}px)` : (r && r.status) || String(e.message).slice(0, 200) };
   }
 }
 
@@ -781,12 +1134,13 @@ function check(opts = {}) {
       const profileOk = r.profile === 'showcase' ? !impossible : impossible;
       // 実ブラウザで第一画面に収まるか。巻物と宣言した主題だけ免除する。
       const fs2 = opts.skipBrowser ? { ok: true } : firstScreen(r.html);
-      const scrollOk = fs2.ok || SUBJECTS[subject].scroll === true;
+      // 巻物の宣言は「長い」ことだけを許す。読めないことは決して許さない。
+      const scrollOk = fs2.ok || (SUBJECTS[subject].scroll === true && !fs2.unreadable);
       rows.push({
         subject, type: r.type, profile: r.profile, minCrossings: r.minCrossings,
         ok: errorsOk && warnOk && profileOk && scrollOk,
         checks: `${v.checksPassed}/${v.checkCount}`, errors: v.errors, warnings: v.warnings,
-        screen: fs2.ok ? 'fits' : (SUBJECTS[subject].scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW'),
+        screen: fs2.ok ? 'fits' : (fs2.unreadable ? `字 ${fs2.unreadable.toFixed(1)}px` : (SUBJECTS[subject].scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW')),
         bytes: (r.receipt.artifact || {}).bytes,
         ...(!scrollOk ? { error: `${fs2.reason} — 図は第一画面に収まってこそ図である。巻物でよいなら SUBJECTS に scroll:true と宣言せよ (第47条c)` } : {}),
         ...(errorsOk && !profileOk ? { error: impossible
@@ -860,4 +1214,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { SUBJECTS, buildIr, draw, check, irHierarchy, irConclave, irDispatch, irDag, irRun, ARCHIFY };
+module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, ARCHIFY };

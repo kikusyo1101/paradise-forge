@@ -133,6 +133,11 @@ jobs:
             node graph/atlas.js check --scale "$s"
           done
 
+      - name: 🔗 Wiring — 機構の結線に孤児と宙吊りが無いか (第44条 / 第48条)
+        # engine の一覧は写経しない。ディスクを走査し、内の辺(require)と
+        # 外の辺(門・命令・神官・掟・試験・器物・散文・機構)を実測する。
+        run: node graph/wiring.js check
+
       - name: 🕊 Vendor — 取り込んだ道具が上流へ電話をかけないか (第20条・第47条d)
         run: node graph/vendor.js verify
 
