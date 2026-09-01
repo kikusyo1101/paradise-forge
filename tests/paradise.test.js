@@ -2944,6 +2944,37 @@ test('conclave: 配備された道は正典と一致する (第29条)', () => {
     '配備された /conclave が正典と食い違っている — 歩く者は古い道を歩く (deploy.js を走らせよ)');
 });
 
+test('conclave: 道は執行官が裁く宛先を知っている (第37条)', () => {
+  // 実測された欠陥: PR #28 を土台ブランチ宛に出したところ、執行官は起動せず
+  // `no checks reported` のまま静かに神の前に出た。裁かれていないものが
+  // 裁かれた顔をしていた。CI の発火条件は道が知っていなければならない。
+  const road = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'commands', 'conclave.md'), 'utf8');
+  const ci = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'tribunal.yml'), 'utf8');
+
+  // CI が本当に main 宛だけを裁いているか、現物で確かめる (第42条)。
+  // 最初この門は `on:` 全体から branches:[main] を1つ見つけて満足していた —
+  // だが push と pull_request の 二箇所に在るため、pull_request 側を
+  // develop に壊しても push 側が門を黙らせた。**壊しても鳴らぬ門であった。**
+  // 節を名指しで切り出して裁く: どこかに在ることは、そこに在ることではない。
+  const onBlock = ci.slice(ci.indexOf('on:'), ci.indexOf('jobs:'));
+  const prIdx = onBlock.indexOf('pull_request:');
+  assert.ok(prIdx >= 0, '執行官が pull_request で起動しない');
+  const after = onBlock.slice(prIdx + 'pull_request:'.length);
+  // 次のトップレベル項目 (2スペース字下げ) の手前までが pull_request の節
+  const NL = String.fromCharCode(10);
+  const nextKey = after.search(new RegExp(NL + '  [a-z_]+:'));
+  const prBlock = nextKey >= 0 ? after.slice(0, nextKey) : after;
+  assert.ok(/branches:\s*\[\s*main\s*\]/.test(prBlock),
+    'pull_request の宛先が main でない — 別ブランチ宛のPRは門を素通りする: ' + JSON.stringify(prBlock));
+
+  // 道がその制約を語っていること
+  assert.ok(/--base main/.test(road), '道が --base main を命じていない');
+  assert.ok(/no checks reported/.test(road),
+    '別ブランチ宛のPRが門を素通りする事実が道に書かれていない (第37条)');
+  assert.ok(/--body-file/.test(road),
+    '長い本文を --body に流し込めば入口で弾かれる — 道が --body-file を教えていない');
+});
+
 test('cron: 日次の発火は道を写経せず、道を指す (第46条)', () => {
   // 実測された病: 日次 cron が /conclave の 67 行の劣化コピーを抱え、
   // synod / convene / ratify / tribunal / delegate のいずれも持たなかった。
