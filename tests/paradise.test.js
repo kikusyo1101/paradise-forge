@@ -911,6 +911,82 @@ test('guard CATCHES UP when the machine was off for days', () => {
   }, 0);
 });
 
+// 第43条: 逃した窓は借金であって赦しではない。
+// 上の catch-up テストは hour=0（窓が常時開）で走るため、窓判定そのものを
+// 迂回していた —— 偽の緑である。以下は「窓が閉じている時刻」で検査する。
+test('guard: 22時前に起きた日でも、前日の逃した窓は借金として残る (第43条)', () => {
+  withGuard((g, ledger) => {
+    // 8/30 に走ったきり。8/31 22:00 は機械が OFF。9/1 の朝 9 時に起動した。
+    fs.writeFileSync(ledger, JSON.stringify({ lastDate: '2026-08-30', history: [] }));
+    const realDate = Date;
+    const fake = new realDate('2026-09-01T00:00:00Z'); // = 9/1 09:00 JST（窓の外）
+    global.Date = class extends realDate {
+      constructor(...a) { return a.length ? new realDate(...a) : new realDate(fake); }
+      static now() { return fake.getTime(); }
+    };
+    try {
+      const r = g.isDue();
+      assert.strictEqual(r.due, true, '朝9時でも 8/31 の逃した窓は owed のまま');
+      assert.strictEqual(r.catchUp, true, 'catch-up として立つ');
+      assert.strictEqual(r.owedDay, '2026-08-31', '負っているのは 8/31 の分');
+    } finally { global.Date = realDate; }
+  }, 22);
+});
+
+test('guard: まだ一度も窓が開いていない当日分を先取りしない (第43条)', () => {
+  withGuard((g, ledger) => {
+    fs.writeFileSync(ledger, JSON.stringify({ lastDate: '2026-08-31', history: [] }));
+    const realDate = Date;
+    const fake = new realDate('2026-09-01T00:00:00Z'); // = 9/1 09:00 JST
+    global.Date = class extends realDate {
+      constructor(...a) { return a.length ? new realDate(...a) : new realDate(fake); }
+      static now() { return fake.getTime(); }
+    };
+    try {
+      const r = g.isDue();
+      assert.strictEqual(r.due, false, '8/31 は済んでおり 9/1 の窓はまだ開いていない');
+    } finally { global.Date = realDate; }
+  }, 22);
+});
+
+test('guard: 定時と監視が同時に問うても、走る権利は一つしか出ない (リース)', () => {
+  withGuard((g) => {
+    const first = g.claim('定時22時');
+    assert.strictEqual(first.claimed, true, '先に問うた者がリースを得る');
+    const second = g.claim('30分監視');
+    assert.strictEqual(second.claimed, undefined, '二人目は権利を得られない');
+    assert.strictEqual(second.due, false, '二重発火は起きない');
+    assert.ok(/lease/.test(second.reason), '理由はリース保持であること: ' + second.reason);
+  }, 0);
+});
+
+test('guard: 中断した走行はリースを返し、次の監視が拾い直せる', () => {
+  withGuard((g) => {
+    assert.strictEqual(g.claim('中断する走行').claimed, true);
+    assert.strictEqual(g.isDue().due, false, '保持中は誰も走れない');
+    g.release();
+    assert.strictEqual(g.isDue().due, true, '返却後は再び owed — ノルマは失われない');
+  }, 0);
+});
+
+test('guard: キャッチアップ走行は「負っていた日」を精算する (当日ではなく)', () => {
+  withGuard((g, ledger) => {
+    fs.writeFileSync(ledger, JSON.stringify({ lastDate: '2026-08-30', history: [] }));
+    const realDate = Date;
+    const fake = new realDate('2026-09-01T00:00:00Z'); // 9/1 09:00 JST, 負債は 8/31
+    global.Date = class extends realDate {
+      constructor(...a) { return a.length ? new realDate(...a) : new realDate(fake); }
+      static now() { return fake.getTime(); }
+    };
+    try {
+      assert.strictEqual(g.claim('catchup').claimed, true);
+      const l = g.markDone('取り戻した');
+      assert.strictEqual(l.lastDate, '2026-08-31', '精算されるのは負っていた 8/31');
+      assert.strictEqual(l.lease, undefined, '完了時にリースは解ける');
+    } finally { global.Date = realDate; }
+  }, 22);
+});
+
 test('guard reports JST regardless of the machine timezone', () => {
   withGuard((g) => {
     const now = g.nowJst();
@@ -2718,6 +2794,79 @@ test('lexicon: 異名を門が行番号まで名指しで捕らえる (第21条:
 test('lexicon: 門は CI に配線されている — 配線されぬ門は飾りである (第21条)', () => {
   const ci = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'tribunal.yml'), 'utf8');
   assert.ok(/clergy\.js lexicon-check/.test(ci), 'lexicon-check must run in the tribunal workflow');
+});
+
+// --- 定期の営みの機構 (第43条) ---
+console.log('日次の営み (第43条):');
+
+test('watchdog: 監視スクリプトは正典に住み、配備された実物と一致する (第43条)', () => {
+  const canon = path.join(__dirname, '..', 'tools', 'paradise-catchup.py');
+  assert.ok(fs.existsSync(canon), '監視スクリプトが版管理下に無い — 版なき機構は静かに腐る');
+  const src = fs.readFileSync(canon, 'utf8');
+
+  // 機構の要点を現物で裁く (第42条: 門は現物を見る)
+  assert.ok(/"claim"/.test(src), 'due ではなく claim を使うこと — 権利を取らねば二重発火する');
+  assert.ok(/release\(\)/.test(src), '発火に失敗したらリースを返すこと — さもなくば当日のノルマが塞がる');
+  assert.ok(/FAILURE_MARKERS/.test(src), 'hermes cron run は失敗しても exit 0 を返す — 出力の実物で裁くこと');
+
+  // 配備先があるなら、正典と同じ中身であること (第29条: 派生は真実の写し)
+  // 改行コードは git の autocrlf が勝手に変える — 門は綴りでなく実質を裁く (第42条)。
+  const deployed = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'scripts', 'paradise-catchup.py');
+  if (fs.existsSync(deployed)) {
+    const norm = (s) => s.split(String.fromCharCode(13)).join('');
+    assert.strictEqual(norm(fs.readFileSync(deployed, 'utf8')), norm(src),
+      '配備された監視スクリプトが正典と食い違っている — どちらが真実か誰も知らなくなる');
+  }
+});
+
+test('tools: 呼ぶ者の居ない道具は住み続けない (第44条)', () => {
+  // 神の指摘で発覚: tools/ に、誰も呼ばず・cron も持たず・後継に取って代わられた
+  // 道具が2本住み続けていた。しかも1本は ~/.claude/settings.json を手編集する
+  // 代物で、第19条(b)「配備は産物であり手編集しない」に真正面から反していた。
+  // 死んだ道具は無害ではない — 教主がそれを「先例」と読み、腐敗を模倣する。
+  const toolsDir = path.join(__dirname, '..', 'tools');
+  const repoRoot = path.join(__dirname, '..');
+
+  // 楽園の散文・機構・配備定義の全文を一度だけ集める (第42条: 現物を見る)
+  const haystack = [];
+  const walk = (dir, depth) => {
+    if (depth > 3) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (['node_modules', '.git', 'tools'].includes(e.name)) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p, depth + 1);
+      else if (/\.(js|md|json|yml|yaml|py)$/.test(e.name)) {
+        try { haystack.push(fs.readFileSync(p, 'utf8')); } catch {}
+      }
+    }
+  };
+  walk(repoRoot, 0);
+  const all = haystack.join('\n');
+
+  const orphans = [];
+  for (const f of fs.readdirSync(toolsDir)) {
+    if (!/\.(js|py)$/.test(f)) continue;
+    if (!all.includes(f)) orphans.push(f);
+  }
+  assert.deepStrictEqual(orphans, [],
+    '楽園の何処からも名を呼ばれぬ道具が tools/ に住んでいる — ' +
+    '生きているなら誰かが呼び、死んでいるなら退治せよ: ' + orphans.join(', '));
+});
+
+test('tools: 配備は産物であり、手編集する道具を飼わない (第19条b / 第44条)', () => {
+  const toolsDir = path.join(__dirname, '..', 'tools');
+  const offenders = [];
+  for (const f of fs.readdirSync(toolsDir)) {
+    if (!/\.js$/.test(f)) continue;
+    const src = fs.readFileSync(path.join(toolsDir, f), 'utf8');
+    // settings.json を writeFileSync する道具は、apply-* 以外に存在してはならない。
+    // wire-paradise-hooks.js は配列へ並べて足す現役の機構であり、名指しで許す。
+    if (/settings\.json/.test(src) && /writeFileSync/.test(src) && f !== 'wire-paradise-hooks.js') {
+      offenders.push(f);
+    }
+  }
+  assert.deepStrictEqual(offenders, [],
+    '~/.claude を手編集する道具が住んでいる — 配備は overlay/ から建て直す産物である: ' + offenders.join(', '));
 });
 
 // --- report ---

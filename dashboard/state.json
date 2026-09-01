@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-01T03:40:04.663Z",
+  "generated": "2026-09-01T12:27:19.115Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 82,
+    "nodeCount": 87,
     "edgeCount": 33,
     "nodes": [
       {
@@ -620,6 +620,36 @@
         "type": "creation",
         "label": "天秤 — 重み付き決断マトリクス。逆転閾値の閉形式で『どの基準が結論を支配しているか』を数値で示す単一HTML",
         "degree": 0
+      },
+      {
+        "id": "count-what-is-declared-not-what-grep-found",
+        "type": "lesson",
+        "label": "裁定・矛盾・項目の件数は、成果物が自ら宣言した番号体系(X-nn/AC-nn/T-nn)を数える。grepで拾えた行数を実数と思い込むと、拾えなかった裁定が指示から丸ごと落ちる|check",
+        "degree": 0
+      },
+      {
+        "id": "grep-absence-is-not-absence",
+        "type": "lesson",
+        "label": "grepで出なかったことを『無い』と結論するな。同一行での共起や特定の綴りを条件にした検査は、節をまたいだ記述・言い換え・留保付きの引用を拾えない。赤が出たら実物の該当箇所を読んでから判定する(教主が同一走行で3度この誤りを犯した)|check",
+        "degree": 0
+      },
+      {
+        "id": "separation-needs-gates-on-both-sides",
+        "type": "lesson",
+        "label": "第30条で創造物をengineから分離したとき、門はengine側にしか無く分離先が無検査で残った。天秤のPRはチェック0件で開いていた。責務を分けたら門も分けて建てる — 分離は片方だけ守ればよいことを意味しない|check",
+        "degree": 0
+      },
+      {
+        "id": "daily-window-debt",
+        "type": "lesson",
+        "label": "逃した窓は借金",
+        "degree": 0
+      },
+      {
+        "id": "dead-tools-teach",
+        "type": "lesson",
+        "label": "死んだ道具は先例として腐敗を伝染させる",
+        "degree": 0
       }
     ],
     "edges": [
@@ -796,7 +826,7 @@
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 48
+      "lesson": 53
     }
   },
   "lessons": [
@@ -1039,6 +1069,31 @@
       "id": "gate-sees-the-thing",
       "label": "門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check",
       "check": "門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check|applies:paradise-internal"
+    },
+    {
+      "id": "count-what-is-declared-not-what-grep-found",
+      "label": "裁定・矛盾・項目の件数は、成果物が自ら宣言した番号体系(X-nn/AC-nn/T-nn)を数える。grepで拾えた行数を実数と思い込むと、拾えなかった裁定が指示から丸ごと落ちる|check",
+      "check": "裁定・矛盾・項目の件数は、成果物が自ら宣言した番号体系(X-nn/AC-nn/T-nn)を数える。grepで拾えた行数を実数と思い込むと、拾えなかった裁定が指示から丸ごと落ちる|check|applies:paradise-internal"
+    },
+    {
+      "id": "grep-absence-is-not-absence",
+      "label": "grepで出なかったことを『無い』と結論するな。同一行での共起や特定の綴りを条件にした検査は、節をまたいだ記述・言い換え・留保付きの引用を拾えない。赤が出たら実物の該当箇所を読んでから判定する(教主が同一走行で3度この誤りを犯した)|check",
+      "check": "grepで出なかったことを『無い』と結論するな。同一行での共起や特定の綴りを条件にした検査は、節をまたいだ記述・言い換え・留保付きの引用を拾えない。赤が出たら実物の該当箇所を読んでから判定する(教主が同一走行で3度この誤りを犯した)|check|applies:paradise-internal"
+    },
+    {
+      "id": "separation-needs-gates-on-both-sides",
+      "label": "第30条で創造物をengineから分離したとき、門はengine側にしか無く分離先が無検査で残った。天秤のPRはチェック0件で開いていた。責務を分けたら門も分けて建てる — 分離は片方だけ守ればよいことを意味しない|check",
+      "check": "第30条で創造物をengineから分離したとき、門はengine側にしか無く分離先が無検査で残った。天秤のPRはチェック0件で開いていた。責務を分けたら門も分けて建てる — 分離は片方だけ守ればよいことを意味しない|check|applies:paradise-internal"
+    },
+    {
+      "id": "daily-window-debt",
+      "label": "逃した窓は借金",
+      "check": "定期ジョブの窓判定は日付跨ぎで負債を消してはならない。走る権利は claim/release で排他配布し、終了コードでなく出力の実物で成否を判ずる|applies:paradise-internal"
+    },
+    {
+      "id": "dead-tools-teach",
+      "label": "死んだ道具は先例として腐敗を伝染させる",
+      "check": "役目を終えた道具は退治する。tools/ の各器物は楽園の何処かから名を呼ばれること。配備(~/.claude)を手編集する道具を飼わない|applies:paradise-internal"
     }
   ],
   "creations": [],
