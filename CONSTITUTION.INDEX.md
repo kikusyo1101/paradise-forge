@@ -5,7 +5,7 @@
 > 常時運ぶのはこの索引だけでよい。**条文が要るときは引く**:
 > `node graph/codex.js article <番号>`
 
-全 41 条 / 本文 49,435 B / 索引はその約 92% 減
+全 47 条 / 本文 64,665 B / 索引はその約 93% 減
 
 | 条 | 題 | B |
 |---:|---|---:|
@@ -50,4 +50,10 @@
 | 39 | The always-loaded page is a first screen, not a codex | 2055 |
 | 40 | The whole harness is on the scale, not just one page | 1971 |
 | 41 | The names of the hierarchy have one source, and prose obeys it | 1578 |
+| 42 | A gate that does not look at the thing itself will lie about it | 1779 |
+| 43 | 逃した窓は借金であって赦しではない。走る権利は一つしか出ない。 | 2105 |
+| 44 | 死んだ道具は無害ではない。教主がそれを先例と読む。 | 1884 |
+| 45 | 発令する者は走る者ではない。同じ鍵を渡すな。 | 2170 |
+| 46 | 発火器は道を写経しない。道を指す。 | 3351 |
+| 47 | 楽園は己の姿を語れねばならず、その語りは図でなければならない。 | 3941 |
 

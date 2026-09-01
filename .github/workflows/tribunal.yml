@@ -125,6 +125,17 @@ jobs:
       - name: 🕮 Lexicon — 位階と枢機卿団の名が正典に従うか (第41条)
         run: node graph/clergy.js lexicon-check
 
+      - name: 🗺 Atlas — 楽園が己の姿を図にできるか (第47条)
+        # 5つの主題 × 5つの道。IR が作れることと描画器が受理することは別である。
+        run: |
+          for s in quick standard full reform counsel; do
+            echo "── scale: $s ──"
+            node graph/atlas.js check --scale "$s"
+          done
+
+      - name: 🕊 Vendor — 取り込んだ道具が上流へ電話をかけないか (第20条・第47条d)
+        run: node graph/vendor.js verify
+
       - name: 🗝 Spawn authority — 下位を擁する者が起動の権能を持つか (第25条)
         run: node graph/apply-spawn.js verify
 

@@ -43,8 +43,14 @@ node graph/vendor.js wire --write # settings.json のフックを vendor 基準�
 node graph/vendor.js refresh --yes # 上流が在れば取り込み直す（人の承認が要る）
 ```
 
-取り込んだもの（62ファイル / MIT・出自は `NOTICE.md`）:
+取り込んだもの（130ファイル / MIT・出自は `NOTICE.md`）は二つの出自を持つ。
+
+上流 `everything-claude-code` の資産:
 `agents 9` / `commands 15` / `skills 11` / `rules 8` / `hooks 3` / `scripts 3` / `contexts 3`
+
+**描画器 `archify` v2.16.0**（`overlay/vendor/archify`、tt-a1i、MIT）:
+`graph/atlas.js` が JSON IR を渡す先。上流へ電話をかけないよう更新チェッカーを
+削いである（第20条: vendored 資産は供給線であってはならない）。
 
 **`~/.claude` は原本ではなく成果物**である。vendor + `overlay/` から常に再生成できる。
 手で `~/.claude` を編集しない — 編集は `overlay/` へ書く。
@@ -129,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 242/194 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 250/250 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -187,6 +193,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
+| `graph/atlas.js` | **楽園の自画像**。位階・道・環を JSON IR に写し、取り込んだ `archify` に描かせる。5主題 (hierarchy/conclave/dispatch/dag/run)。交差ゼロが不能なら測って standard を名乗る(第47条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
