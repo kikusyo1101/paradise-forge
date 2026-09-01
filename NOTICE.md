@@ -53,6 +53,38 @@ SOFTWARE.
 
 ---
 
+## 取り込んだ道具: archify (第47条)
+
+楽園が己の姿を図にするために取り込んだ**描画器**。ハーネス資産とは出自が違う。
+
+| | |
+|---|---|
+| 出自 | https://github.com/tt-a1i/archify |
+| 版 | v2.16.0 (取り込み時 commit `199360cc6687a7857b54dd188d4922b09e466a4b`) |
+| ライセンス | MIT (`overlay/vendor/archify/LICENSE` に原本を同梱) |
+| 住所 | `overlay/vendor/archify` |
+| 使う者 | `graph/atlas.js` — 位階・道・環を JSON IR に写し、これに渡す |
+
+**取り込みに際して削いだもの**: `scripts/check-update.mjs` と
+`scripts/update-contract.mjs`。上流の版を問い合わせる仕組みであり、
+**電話をかける vendored 資産は供給線である**(第20条)。実行時にも
+`ARCHIFY_UPDATE_CHECK_DISABLED=1` を強制し、`vendor.js verify` が
+これらの復活を門で捕らえる。
+
+**改造していない**。楽園が渡すのは型付きの JSON IR だけであり、結合面は
+コードではなくスキーマにある(第47条(a))。ゆえに上流の版を上げるときは
+`overlay/vendor/archify` を差し替え、`node graph/atlas.js check` が
+全主題で緑になるかを見ればよい — 赤は上流が schema を変えた証拠であり、
+直すのは `graph/atlas.js` の出力器だけである。
+
+```
+MIT License
+
+Copyright (c) 2026 tt-a1i (Archify)
+```
+
+---
+
 ## 上流の更新をどう扱うか
 
 独立したからといって、上流の進歩を捨てるわけではない。

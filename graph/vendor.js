@@ -25,6 +25,26 @@ const ROOT = path.resolve(__dirname, '..');
 const VENDOR = path.join(ROOT, 'overlay', 'vendor');
 const KINDS = ['agents', 'commands', 'skills', 'rules', 'hooks', 'scripts', 'contexts'];
 
+/**
+ * 上流のハーネス資産以外に取り込んだ**道具**。
+ *
+ * archify を入れたとき、`status` は 62 のままだった — KINDS しか数えないので、
+ * 68ファイルの道具がまるごと見えていなかった。**在庫に載らない資産は
+ * 独立の検査も受けない**（第20条が咎めたのと同じ盲点の別形である)。
+ * ゆえに道具も宣言し、数え、電話をかけないことを門が検める。
+ */
+const TOOLS = {
+  archify: {
+    version: 'v2.16.0',
+    origin: 'https://github.com/tt-a1i/archify',
+    license: 'MIT',
+    used_by: 'graph/atlas.js — 楽園の自画像を描く (第47条)',
+    // 取り込み時に削いだファイル。戻ってくれば供給線が復活したということ。
+    forbidden: ['scripts/check-update.mjs', 'scripts/update-contract.mjs'],
+    entry: 'bin/archify.mjs',
+  },
+};
+
 function expand(p) { return p && p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p; }
 function claudeHome() { return expand(process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude')); }
 function settingsPath() { return process.env.CLAUDE_SETTINGS || path.join(claudeHome(), 'settings.json'); }
@@ -46,14 +66,19 @@ function countFiles(dir) {
 function status() {
   const kinds = {};
   for (const k of KINDS) kinds[k] = countFiles(path.join(VENDOR, k));
-  const total = Object.values(kinds).reduce((a, b) => a + b, 0);
+  const harness = Object.values(kinds).reduce((a, b) => a + b, 0);
+  const tools = {};
+  for (const [name, t] of Object.entries(TOOLS))
+    tools[name] = { files: countFiles(path.join(VENDOR, name)), version: t.version, license: t.license, used_by: t.used_by };
+  const toolTotal = Object.values(tools).reduce((a, t) => a + t.files, 0);
   return {
     vendor: VENDOR,
     present: fs.existsSync(VENDOR),
-    total,
-    kinds,
+    total: harness + toolTotal,          // 在庫は**全て**を数える。数えぬ資産は検査もされない
+    harness, kinds,
+    tools, toolTotal,
     // 独立の核心: これが true なら上流が消えても楽園は動く
-    self_sufficient: total > 0 && fs.existsSync(path.join(VENDOR, 'scripts', 'hooks')),
+    self_sufficient: harness > 0 && fs.existsSync(path.join(VENDOR, 'scripts', 'hooks')),
   };
 }
 
@@ -144,6 +169,16 @@ function verify() {
   const st = status();
   if (!st.present) findings.push('overlay/vendor is missing — paradise cannot stand without the assets it adopted');
   else if (!st.self_sufficient) findings.push('vendored assets are incomplete (scripts/hooks missing)');
+  // 取り込んだ道具が上流へ電話をかけていないか。**在庫を数えるだけの門は
+  // 供給線を証明しない**(第19条が既に一度教えた過ち)。
+  for (const [name, t] of Object.entries(TOOLS)) {
+    const dir = path.join(VENDOR, name);
+    if (!fs.existsSync(dir)) { findings.push(`vendored tool missing: ${name} — ${t.used_by} は動かない`); continue; }
+    if (t.entry && !fs.existsSync(path.join(dir, t.entry)))
+      findings.push(`vendored tool ${name} has no entry point (${t.entry})`);
+    for (const f of (t.forbidden || [])) if (fs.existsSync(path.join(dir, f)))
+      findings.push(`vendored tool ${name} phones home again: ${f} — 取り込んだ写しは供給線であってはならない (第20条)`);
+  }
   return { ok: findings.length === 0, findings, status: st };
 }
 
@@ -159,7 +194,9 @@ if (require.main === module) {
     else if (cmd === 'verify') {
       const r = verify();
       console.log('═══════ 🕊  INDEPENDENCE ═══════');
-      console.log('vendored files:', r.status.total, JSON.stringify(r.status.kinds));
+      console.log('vendored files:', r.status.total,
+        `= harness ${r.status.harness} ${JSON.stringify(r.status.kinds)}` +
+        ` + tools ${r.status.toolTotal} ${JSON.stringify(Object.fromEntries(Object.entries(r.status.tools).map(([k, v]) => [k + ' ' + v.version, v.files])))}`);
       if (r.ok) console.log('  ✓ paradise stands on its own — no path leads back to the borrowed tree');
       else for (const f of r.findings) console.log('  🔴', f);
       console.log('════════════════════════════════');
@@ -169,4 +206,4 @@ if (require.main === module) {
   } catch (e) { console.error('ERROR: ' + e.message); process.exit(1); }
 }
 
-module.exports = { status, resolveHooks, wire, refresh, verify, VENDOR, KINDS };
+module.exports = { status, resolveHooks, wire, refresh, verify, VENDOR, KINDS, TOOLS };

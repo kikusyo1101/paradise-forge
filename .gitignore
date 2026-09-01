@@ -8,3 +8,8 @@ graph/kg-store/
 
 # 創造物は別の倉に住む (憲法 第30条) — github.com/kikusyo1101/paradise-creations
 creations/
+
+# 楽園の自画像は生成物である (第29条・第47条)。1枚700KBのHTMLを追跡すれば、
+# engine の履歴が図のバイト列で埋まり、並行PRでは必ず衝突する。
+# 作り直す命令は一つ: node graph/atlas.js all
+dashboard/atlas/

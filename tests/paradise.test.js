@@ -3009,6 +3009,87 @@ test('cron: 日次の発火は道を写経せず、道を指す (第46条)', () 
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// ATLAS — 楽園が己の姿を図にできるか (第47条)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\nAtlas (自画像):');
+const atlas = require(path.join(DIR, '..', 'graph', 'atlas.js'));
+
+test('atlas: 描画器が取り込まれ、電話をかけずに動く (第20条)', () => {
+  assert.ok(fs.existsSync(atlas.ARCHIFY), '描画器が取り込まれていない: ' + atlas.ARCHIFY);
+  const vroot = path.dirname(path.dirname(atlas.ARCHIFY));
+  // 上流の更新チェッカーは取り込み時に削いである。残っていれば供給線である。
+  for (const phone of ['scripts/check-update.mjs', 'scripts/update-contract.mjs'])
+    assert.ok(!fs.existsSync(path.join(vroot, phone)),
+      `取り込んだ写しが上流へ電話をかける: ${phone} — vendored 資産は供給線であってはならない (第20条)`);
+  const out = execFileSync(process.execPath, [atlas.ARCHIFY, 'doctor'], {
+    cwd: vroot, encoding: 'utf8', env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1' },
+  });
+  assert.ok(/Archify is ready/.test(out), '描画器が己を健全と言わない:\n' + out);
+});
+
+test('atlas: 事実を写経せず、位階の engine から読む (第29条)', () => {
+  const clergy = require(path.join(DIR, '..', 'graph', 'clergy.js'));
+  const ir = atlas.buildIr('hierarchy');
+  const labels = ir.components.map(c => c.label);
+  // 枢機卿の数が clergy と食い違えば、それは atlas が数を写経した証拠である
+  for (const name of Object.keys(clergy.COLLEGE))
+    assert.ok(labels.includes(clergy.LEXICON.college[name].ja),
+      `枢機卿 ${name} が位階図に居ない — clergy を読まず写経している疑い`);
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'atlas.js'), 'utf8');
+  assert.ok(!/6\s*名の枢機卿|5\s*名の枢機卿/.test(src),
+    'atlas.js が枢機卿の数を散文に焼き付けている — 数は census と engine が語る (第22条)');
+});
+
+test('atlas: 5つの主題すべてに IR が在り、種別が宣言と一致する', () => {
+  for (const [subject, spec] of Object.entries(atlas.SUBJECTS)) {
+    const ir = atlas.buildIr(subject);
+    assert.strictEqual(ir.diagram_type, spec.type,
+      `${subject} の種別が宣言と違う: ${ir.diagram_type} != ${spec.type}`);
+    assert.ok(ir.meta && ir.meta.title, `${subject} に題が無い`);
+  }
+});
+
+test('atlas: 同じ入力は同じ図を生む — 乱択は決定的である (第29条)', () => {
+  const a = JSON.stringify(atlas.buildIr('dag', { scale: 'full' }));
+  const b = JSON.stringify(atlas.buildIr('dag', { scale: 'full' }));
+  assert.strictEqual(a, b, '同じ道から二つの違う図が出た — 揺れる図は真実の写しではない');
+});
+
+test('atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)', () => {
+  // 実物を描かせる。IR が作れることと、描画器が受理することは別である。
+  const outdir = path.join(os.tmpdir(), 'paradise-test-atlas');
+  for (const scale of ['quick', 'standard', 'full', 'reform', 'counsel']) {
+    const res = atlas.check({ scale, outdir });
+    const bad = res.rows.filter(r => !r.ok);
+    assert.deepStrictEqual(bad.map(r => `${scale}/${r.subject}: ${r.error || r.checks}`), [],
+      `${scale} の道で図が壊れた`);
+  }
+  fs.rmSync(outdir, { recursive: true, force: true });
+});
+
+test('atlas: 交差を隠さない — 平面化不能なら standard を名乗り理由を書く (第47条)', () => {
+  // full の道は建造2相が品質3相すべてに掛かるので、層化しても交差が残る。
+  // それを showcase と偽れば、図は「綺麗だが嘘」になる。
+  const ir = atlas.buildIr('dag', { scale: 'full' });
+  assert.ok(ir.__minCrossings > 0,
+    'full の道が平面的だと主張している — 実測では交差が残るはずである');
+  assert.strictEqual(ir.meta.quality_profile, 'standard',
+    '平面化不能なのに showcase を名乗っている — 交差を隠している');
+  assert.ok(ir.cards.some(c => /消せない交差/.test(c.title)),
+    '交差が残る理由が図に書かれていない — 読み手は汚れを欠陥と誤解する');
+  // 逆も裁く: 平面的な道が理由なく格下げされていないこと
+  const clean = atlas.buildIr('dag', { scale: 'quick' });
+  assert.strictEqual(clean.meta.quality_profile, 'showcase',
+    '平面的な道が理由なく standard を名乗っている — 格下げは測ってから');
+});
+
+test('atlas: 自画像は生成物であり追跡されない (第29条)', () => {
+  const ign = fs.readFileSync(path.join(DIR, '..', '.gitignore'), 'utf8');
+  assert.ok(/dashboard\/atlas\//.test(ign),
+    '自画像が git 追跡下に置かれている — 700KBのHTMLは engine の履歴を埋め、並行PRで必ず衝突する');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
