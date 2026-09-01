@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-01T13:38:00.592Z",
+  "generated": "2026-09-01T13:49:14.282Z",
   "pipeline": [
     {
       "id": "discover",
@@ -1115,7 +1115,7 @@
     {
       "id": "igniter-points-not-copies",
       "label": "発火器は道を写経せず道を指す",
-      "check": "定期ジョブは既存の道(/conclave等)を名指しで指し、運転手順を写経しない。写経は本物から遅れて腐る。門は不在を通過にせず、壊して鳴らして確かめる|applies:paradise-internal"
+      "check": "定期ジョブは既存の道(conclave)を名指しで指し、運転手順を写経しない。門は不在を通過にせず、壊して鳴らして確かめる。節を名指しで切り出してから裁く|applies:paradise-internal"
     }
   ],
   "creations": [],

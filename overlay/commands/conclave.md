@@ -138,9 +138,21 @@ node graph/apply-guards.js verify
 git add <変更ファイルを個別指定>
 git -c user.name="Paradise" -c user.email="paradise@localhost" commit -m "<日本語で何を発見し何を直したか>"
 git push -u origin <branch>
-gh pr create --base main --title "<題>" --body "<神託/位階/発見/修復/門の実出力/憲法照合>"
+gh pr create --base main --title "<題>" --body-file <DIR>/pr-body.md
 gh pr checks <番号>
 ```
+**`--base` は必ず `main`。** 執行官(CI)は `main` 宛のPRしか裁かない
+(`.github/workflows/tribunal.yml` の `on.pull_request.branches`)。
+別のブランチ宛に出すと `no checks reported` のまま静かに門を素通りし、
+**裁かれていないものが裁かれた顔で神の前に出る**(第37条)。
+やむを得ず積み上げたときは、土台がマージされた後に
+`gh pr edit <番号> --base main` で戻し、**さらに実体のある push を一度行う**
+— base の切替だけでは `pull_request` イベントが再発火せず執行官は起きない。
+
+本文が長いときは `--body` に流し込まず `--body-file` を使う
+(巨大なインライン引数はシェルの入口で弾かれる)。
+reform の道なら本文も `reform/<slug>/pr-body.md` として残る — 成果物である。
+
 **教主は自らを承認しない。マージは神のみ。** PRを出したら止まる。
 
 ## The law (Constitution Art. 11)
