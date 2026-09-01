@@ -37,6 +37,15 @@ const LEDGER = process.env.PARADISE_DAILY_LEDGER ||
 const TARGET_HOUR = Number(process.env.PARADISE_DAILY_HOUR || 22);
 /** How long a claimed lease is honoured before it is presumed dead (minutes). */
 const LEASE_MINUTES = Number(process.env.PARADISE_DAILY_LEASE_MINUTES || 90);
+
+/**
+ * How long a DISPATCH lease survives (minutes). A dispatcher (the 30-minute
+ * watchdog) does not improve anything itself — it only fires the agent that
+ * will. Its lease is a BRIDGE held across the dispatch so no third runner slips
+ * in, and it is meant to be adopted by the runner it fired. If that runner
+ * never boots, the bridge must rot fast so the day's quota reopens.
+ */
+const DISPATCH_MINUTES = Number(process.env.PARADISE_DAILY_DISPATCH_MINUTES || 10);
 const TZ = 'Asia/Tokyo';
 
 /** The current JST date (YYYY-MM-DD) and hour, regardless of machine timezone. */
@@ -113,7 +122,11 @@ function isDue() {
   }
 
   const held = activeLease(l, now);
-  if (held) {
+  // A RUN lease means someone is improving right now — nobody else may start.
+  // A DISPATCH lease means someone fired an agent and is holding the door for
+  // it; the day is still owed and the fired runner is expected to ADOPT it.
+  // Leases written before dispatch existed carry no kind: treat them as runs.
+  if (held && held.kind !== 'dispatch') {
     return {
       due: false,
       reason: `another runner holds the lease (${held.holder}, until ${held.expires})`,
@@ -124,10 +137,13 @@ function isDue() {
   const catchUp = owedDay !== now.date || (l.lastDate && l.lastDate < prevDay(now.date));
   return {
     due: true,
-    reason: catchUp
-      ? `CATCH-UP: last run ${l.lastDate || '(never)'}; the ${owedDay} window opened and was missed`
-      : `today's run (${owedDay}) is owed — window open since ${TARGET_HOUR}:00 JST`,
+    reason: held
+      ? `dispatch lease held by ${held.holder} for ${owedDay} — awaiting the runner it fired (adoptable)`
+      : catchUp
+        ? `CATCH-UP: last run ${l.lastDate || '(never)'}; the ${owedDay} window opened and was missed`
+        : `today's run (${owedDay}) is owed — window open since ${TARGET_HOUR}:00 JST`,
     catchUp: !!catchUp,
+    adoptable: held ? held.holder : null,
     now, owedDay, ledger: l,
   };
 }
@@ -136,8 +152,15 @@ function isDue() {
  * Take the single right to run, atomically. Two callers racing at 22:00:00 and
  * 22:00:40 cannot both win: the ledger write is guarded by an exclusive lock
  * file, so the loser is told the lease is held.
+ *
+ * `kind` distinguishes two very different claimants (Art. 45):
+ *   'run'      (default) — I am about to improve the paradise myself.
+ *   'dispatch'            — I only fire the agent that will; my lease is a short
+ *                           bridge the fired runner is expected to ADOPT.
+ * A dispatcher that held a full run-lease would lock out its own child, and the
+ * catch-up path would be dead while every gate stayed green.
  */
-function claim(holder) {
+function claim(holder, kind) {
   const lock = LEDGER + '.lock';
   fs.mkdirSync(path.dirname(LEDGER), { recursive: true });
   let fd;
@@ -156,30 +179,42 @@ function claim(holder) {
   try {
     const r = isDue();
     if (!r.due) return r;
+    const dispatch = kind === 'dispatch';
     const l = readLedger();
-    const expiresAt = Date.now() + LEASE_MINUTES * 60 * 1000;
+    const minutes = dispatch ? DISPATCH_MINUTES : LEASE_MINUTES;
+    const expiresAt = Date.now() + minutes * 60 * 1000;
     l.lease = {
       holder: holder || 'unknown',
+      kind: dispatch ? 'dispatch' : 'run',
       day: r.owedDay,
       at: r.now.stamp,
       expires: new Date(expiresAt).toISOString(),
       expiresAt,
     };
+    // A real runner taking over a dispatcher's bridge is an ADOPTION, not a race.
+    if (!dispatch && r.adoptable) l.lease.adoptedFrom = r.adoptable;
     writeLedger(l);
-    return { ...r, claimed: true, holder: l.lease.holder, ledger: l };
+    return { ...r, claimed: true, holder: l.lease.holder, kind: l.lease.kind, adoptedFrom: l.lease.adoptedFrom, ledger: l };
   } finally {
     fs.closeSync(fd);
     fs.rmSync(lock, { force: true });
   }
 }
 
-/** Give the lease back without recording a run (the attempt aborted). */
-function release() {
+/**
+ * Give the lease back without recording a run (the attempt aborted).
+ * A dispatcher releasing its bridge must NOT tear down a lease that the runner
+ * it fired has already adopted — that would let a third party start mid-run.
+ */
+function release(holder) {
   const l = readLedger();
   const had = !!l.lease;
+  if (had && holder && l.lease.holder !== holder) {
+    return { released: false, reason: `lease belongs to ${l.lease.holder} (${l.lease.kind || 'run'}), not ${holder}` };
+  }
   delete l.lease;
   writeLedger(l);
-  return had;
+  return { released: had, reason: had ? 'lease released' : 'no lease held' };
 }
 
 function markDone(note) {
@@ -204,11 +239,19 @@ function main() {
     process.exit(r.due ? 0 : 1);          // exit 0 = OWED
   }
   if (cmd === 'claim') {
-    const r = claim(process.argv.slice(3).join(' ') || 'cli');
-    console.log(JSON.stringify({ due: r.due, claimed: !!r.claimed, catchUp: !!r.catchUp, owedDay: r.owedDay, reason: r.reason, jst: r.now.stamp }, null, 2));
+    const args = process.argv.slice(3);
+    const dispatch = args.includes('--dispatch');
+    const holder = args.filter(a => a !== '--dispatch').join(' ') || 'cli';
+    const r = claim(holder, dispatch ? 'dispatch' : 'run');
+    console.log(JSON.stringify({ due: r.due, claimed: !!r.claimed, kind: r.kind, adoptedFrom: r.adoptedFrom, catchUp: !!r.catchUp, owedDay: r.owedDay, reason: r.reason, jst: r.now.stamp }, null, 2));
     process.exit(r.claimed ? 0 : 1);      // exit 0 = OWED and the lease is YOURS
   }
-  if (cmd === 'release') { console.log(release() ? 'lease released' : 'no lease held'); return; }
+  if (cmd === 'release') {
+    const holder = process.argv.slice(3).join(' ') || null;
+    const r = release(holder);
+    console.log(r.reason);
+    return;
+  }
   if (cmd === 'done') { const l = markDone(process.argv.slice(3).join(' ')); console.log('recorded: ' + l.lastDate + ' @ ' + l.lastStamp); return; }
   if (cmd === 'reset') { writeLedger({ lastDate: null, history: [] }); console.log('ledger cleared: ' + LEDGER); return; }
   if (cmd === 'status') {
@@ -234,4 +277,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { isDue, claim, release, markDone, nowJst, readLedger, lastOpenWindow, LEDGER, TARGET_HOUR };
+module.exports = { isDue, claim, release, markDone, nowJst, readLedger, lastOpenWindow, LEDGER, TARGET_HOUR, LEASE_MINUTES, DISPATCH_MINUTES };
