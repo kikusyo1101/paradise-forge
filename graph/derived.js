@@ -59,6 +59,15 @@ const DERIVED = {
     needs: 'KG',
     note: 'file:// で読むための同内容の写し',
   },
+  'graph/identity/catalog.json': {
+    from: 'VoltAgent/awesome-design-md (MIT) の DESIGN.md 群',
+    by: 'node graph/build-identity-catalog.js <srcDir>',
+    needs: '上流の DESIGN.md 群 (取り込み時のみ)',
+    note: '視覚語彙の索引。第20条により実行時に取りに行かず同梱するので、'
+        + '生成元は普段この機械に無い — 件数や中身を前提にした検査を書かない。'
+        + '結線の門(第44条)がこの engine を孤児と裁いたことで、生成物であるのに'
+        + '**どこにも宣言が無かった**ことが露見した (第29条)',
+  },
 };
 
 const isDerived = (p) => Object.keys(DERIVED).some(d => p.replace(/\\/g, '/').endsWith(d));

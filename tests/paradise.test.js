@@ -3115,6 +3115,83 @@ test('atlas: 自画像は生成物であり追跡されない (第29条)', () =>
     '自画像が git 追跡下に置かれている — 700KBのHTMLは engine の履歴を埋め、並行PRで必ず衝突する');
 });
 
+
+test('atlas: 巻物の許しは長さにだけ効く — 読めない字は免除しない (第48条e)', () => {
+  // `scroll: true` は「第一画面に収まらない」ことだけを免じる宣言である。
+  // かつてこの免除は読みやすさの不合格まで通していた: 溢れ 0px なのに副題が
+  // 5.57px に潰れた図が緑を出した。門の免除は、免じる対象を名指ししなければ穴になる。
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'atlas.js'), 'utf8');
+  assert.ok(/projected-text-readability/.test(src),
+    'atlas が実ブラウザの「字が読めない」診断を見ていない — 巻物と名乗れば何でも通る');
+  assert.ok(/scroll === true && !\w+\.unreadable/.test(src),
+    '巻物の免除が読みやすさまで免除している (第48条e)');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// WIRING — 機構の結線 (第44条 / 第48条)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n結線 (第48条):');
+const wiring = require(path.join(DIR, '..', 'graph', 'wiring.js'));
+
+test('wiring: engine の一覧を写経せず、ディスクを走査する (第29条)', () => {
+  const onDisk = fs.readdirSync(path.join(DIR, '..', 'graph'))
+    .filter(f => f.endsWith('.js')).map(f => f.slice(0, -3)).sort();
+  const measured = wiring.map().engines.map(e => e.id).sort();
+  assert.deepStrictEqual(measured, onDisk,
+    'wiring が語る engine の一覧が実ディスクと食い違う — 数を写経した証拠である (第22条)');
+});
+
+test('wiring: 楽園の結線に孤児も宙吊りも無い (第44条 / 第48条)', () => {
+  const r = wiring.check();
+  assert.deepStrictEqual(r.orphans, [],
+    '誰も require せず、どの面も名を呼ばない engine が住んでいる — ' +
+    '生きているなら呼ぶ者を作り、死んでいるなら退治せよ: ' + r.orphans.join(', '));
+  assert.deepStrictEqual(r.dangling.map(d => `${d.file} -> graph/${d.name}.js`), [],
+    '存在しない engine の名を呼ぶ参照がある (第21条)');
+});
+
+test('wiring: 自分で自分を呼んでも呼ばれたことにならない (第48条c)', () => {
+  // どの engine も冒頭に自分の使い方を書く。それを呼び手に数えれば孤児は
+  // 永久にゼロになり、門は常に緑を出す。常に緑の門は門ではない (第21条)。
+  const gdir = path.join(DIR, '..', 'graph');
+  const selfOnly = wiring.map().engines.filter(e =>
+    !e.requires.length && !e.requiredBy.length &&
+    e.callers.length === 1 && e.callers[0] === 'engine');
+  for (const e of selfOnly) {
+    const esc = e.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const others = fs.readdirSync(gdir)
+      .filter(f => f.endsWith('.js') && f !== e.id + '.js')
+      .filter(f => new RegExp('graph[/\\\\]' + esc + '\\.js')
+        .test(fs.readFileSync(path.join(gdir, f), 'utf8')));
+    assert.ok(others.length > 0,
+      `${e.id} が自分の註釈だけで孤児を免れている — 門が己を欺いている (第48条c)`);
+  }
+});
+
+test('wiring: 呼び方の綴りで裁かない — path 結合も「呼んだ」である (第48条b)', () => {
+  // 実測: 30分ごとに engine を起動する現役の器物は、斜線を一つも書かずに
+  // path を組み立てていた。綴りしか見ない門は、生きた engine を殺す。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wiring-'));
+  const f = path.join(tmp, 'caller.py');
+  fs.writeFileSync(f, 'GUARD = os.path.join(PARADISE, "graph", "daily-guard.js")\n');
+  const before = wiring.map().engines.find(e => e.id === 'daily-guard');
+  assert.ok(before && before.callers.length > 0,
+    'path 結合で呼ばれた engine を wiring が見落とす — 孤児の誤審は見逃しより悪い (第48条b)');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('wiring: 結線の図は engine から生まれ、写経しない (第29条 / 第47条)', () => {
+  const ir = atlas.buildIr('wiring');
+  const m = wiring.map();
+  const drawn = new Set(ir.components.map(c => c.label));
+  for (const e of m.engines) {
+    assert.ok(drawn.has(e.id),
+      `結線の図が engine「${e.id}」を落としている — 図は真実の写しでなければならない`);
+  }
+  assert.strictEqual(ir.components.length, m.engines.length,
+    '図の箱の数が実測の engine 数と食い違う');
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}

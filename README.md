@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 250/250 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 256/250 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -193,7 +193,8 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
-| `graph/atlas.js` | **楽園の自画像**。位階・道・環を JSON IR に写し、取り込んだ `archify` に描かせる。5主題 (hierarchy/conclave/dispatch/dag/run)。交差ゼロが不能なら測って standard を名乗る(第47条) |
+| `graph/atlas.js` | **楽園の自画像**。位階・道・環・結線を JSON IR に写し、取り込んだ `archify` に描かせる。6主題 (hierarchy/conclave/dispatch/dag/run/wiring)。交差ゼロが不能なら測って standard を名乗る(第47条) |
+| `graph/wiring.js` | **機構の結線**。engine が engine を require する内の辺と、門・命令・神官・掟・試験・器物・散文・機構が名を呼ぶ外の辺を実測する。孤児(呼ぶ者の居ない engine)と宙吊り(存在しない engine への参照)を裁く(第44条・第48条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
