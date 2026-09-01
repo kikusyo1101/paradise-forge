@@ -285,8 +285,33 @@ function extractMustHaves(findings) {
 function safeSize(p) { try { return fs.statSync(p).size; } catch { return 0; } }
 function readIf(dir, name) { try { return fs.readFileSync(path.join(dir, name), 'utf8'); } catch { return ''; } }
 
+/** 創造物のファイルを1階層下まで数える。
+ *
+ * かつてこれは `readdirSync(dir)` のトップ階層だけを見ていた。tests/ に規約通り
+ * テストを置いた創造物が「テストが無い」と裁かれ、50/50 で緑のテストが門には
+ * 見えなかった (第21条: 門が現物を見ずに裁けば、門のほうが嘘をつく)。
+ * 見えない場所を作らないため、tests/ や src/ のような下位ディレクトリも数える。
+ * 深さは1段に限る — それ以上は node_modules 等を吸い込み、門が遅くなるだけである。
+ */
+function listFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  const SKIP = new Set(['node_modules', '.git', 'dist', 'build', '.cache']);
+  const out = [];
+  for (const entry of fs.readdirSync(dir)) {
+    const p = path.join(dir, entry);
+    let st; try { st = fs.statSync(p); } catch { continue; }
+    if (st.isFile()) { out.push(entry); continue; }
+    if (!st.isDirectory() || SKIP.has(entry) || entry.startsWith('.')) continue;
+    for (const sub of fs.readdirSync(p)) {
+      let s2; try { s2 = fs.statSync(path.join(p, sub)); } catch { continue; }
+      if (s2.isFile()) out.push(entry + '/' + sub);
+    }
+  }
+  return out;
+}
+
 function collect(dir, opts = {}) {
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => fs.statSync(path.join(dir, f)).isFile()) : [];
+  const files = listFiles(dir);
   const codeFiles = files.filter(f => /\.(js|ts|jsx|tsx|py|html|css)$/.test(f) && !/\.test\./.test(f));
   const codeBlob = codeFiles.map(f => readIf(dir, f)).join('\n');
   let lessons = [];
@@ -334,7 +359,34 @@ function lessonChecks(lessons) {
       const hay = ctx.codeBlob + ctx.requirements + ctx.findings;
 
       // ── 教訓の種別で裁き方を変える (憲法 第28条) ─────────────────────
-      // 「規範(conduct)」の教訓は行いの掟であり、コードに文字列として現れよう
+      // 「工程(artifact)」の教訓は「その工程を踏んだか」を問うものであり、
+      // 踏んだ証拠は**成果物の実在**である。文字列照合で裁くと、39KB の
+      // findings.md を書き切った創造物が、その本文にたまたま "findings" という
+      // 英単語を含まないというだけで「調査を飛ばした」と断じられる —
+      // 現物を見ずに単語を数える門は、門のほうが嘘をつく (第21条)。
+      if (l.kind === 'artifact' || l.artifact) {
+        // 工程の教訓は「創造物が SDLC の工程を踏んだか」を問う。engine 自身は
+        // 創造物ではなく、findings.md を持つ筋合いがない — self には適用しない
+        // (第36条: 門は消さず分ける)。
+        if (ctx.isSelf) {
+          return { ok: true, soft: true, note: '工程の教訓は engine 自身には適用されない (第36条)' };
+        }
+        const want = String(l.artifact || needle);
+        const names = want.split(/[|,]/).map(s => s.trim()).filter(Boolean);
+        const hitFile = ctx.files.find(f => names.some(n =>
+          f.toLowerCase() === n.toLowerCase() ||
+          f.toLowerCase().replace(/\.[a-z]+$/, '') === n.toLowerCase()));
+        if (hitFile) {
+          const bytes = safeSize(path.join(ctx.dir, hitFile));
+          return bytes > 200
+            ? { ok: true, note: `工程の証拠あり: ${hitFile} (${bytes}b)` }
+            : { ok: false, note: `工程の成果物が実質空である: ${hitFile} (${bytes}b)` };
+        }
+        return { ok: false, note: `LESSON REGRESSION — 工程の成果物が無い: ${names.join(' / ')}` };
+      }
+
+      // ── 「規範(conduct)」の教訓 (憲法 第28条) ───────────────────────
+      // 規範の教訓は行いの掟であり、コードに文字列として現れよう
       // がない。文字列照合で裁けば永久に赤を出し、赤が常態化した門は無視される
       // ようになる — 無視される門は、無い門より悪い(第21条の教訓)。
       // だが緑にして黙らせるのも誤りである。**思い出させる**のが正しい扱い。

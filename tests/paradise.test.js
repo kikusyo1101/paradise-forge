@@ -1957,7 +1957,7 @@ test('lessons: a lesson declares its kind, defaulting to mechanism (Art.28)', ()
   const lessons = require('../graph/lessons.json');
   for (const l of lessons) {
     assert.ok(l.kind, `lesson ${l.id} must carry a kind`);
-    assert.ok(['mechanism', 'conduct'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
+    assert.ok(['mechanism', 'conduct', 'artifact'].includes(l.kind), `lesson ${l.id} has unknown kind ${l.kind}`);
   }
   // 既定が mechanism であることは、生成物ではなく **engine** に対して検める。
   // こちらは KG の有無に依存しない真実である。
@@ -2494,6 +2494,51 @@ test('critic: 創造物の掟は engine 自身 (--self) には適用されない
   const ids = r.results.filter(x => !x.ok).map(x => x.id);
   assert.ok(!ids.includes('no-wall-clock-iso'), 'engines may use toISOString — the law is for creations');
   assert.ok(!ids.includes('no-external-deps'), 'the external-deps law is for creations');
+});
+
+test('critic: 門は tests/ の下も見る — 規約通りに置いたテストを「無い」と裁かない (第21条)', () => {
+  // かつて collect() は readdirSync のトップ階層しか見ず、tests/ に規約通り
+  // 置いた 50/50 で緑のテストが門には見えなかった。現物を見ない門は嘘をつく。
+  const d = makeCreation('# spec\n- AC-01: works', 'function f(){return 1;}\nmodule.exports=f;');
+  fs.mkdirSync(path.join(d, 'tests'));
+  fs.writeFileSync(path.join(d, 'tests', 'thing.test.js'),
+    'const assert=require("assert");\nassert.ok(1);\nassert.ok(2);\nassert.ok(3);\nconsole.log("passed: 3");\n'
+    + '// padding to clear the 400-byte substance floor '.repeat(12));
+  const r = critic.review(d, {});
+  const failed = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(!failed.includes('tests-exist'),
+    'a suite under tests/ must be seen: ' + failed.join(','));
+
+  // 壊して鳴らす: サブディレクトリを消せば門は再び鳴る。
+  fs.rmSync(path.join(d, 'tests'), { recursive: true, force: true });
+  const r2 = critic.review(d, {});
+  assert.ok(r2.results.filter(x => !x.ok).map(x => x.id).includes('tests-exist'),
+    'with no tests anywhere the gate must fire');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)', () => {
+  const artifactLesson = [{ id: 'require-discovery', label: '調査フェーズを飛ばすな',
+    check: 'findings', artifact: 'findings.md', applies: null, kind: 'artifact' }];
+  const lf = path.join(os.tmpdir(), 'paradise-lesson-artifact.json');
+  fs.writeFileSync(lf, JSON.stringify(artifactLesson));
+
+  // 本文に "findings" という英単語を1度も含まない、実在する調査成果物。
+  const d = makeCreation('# spec\n- AC-01: works', 'function f(){return 1;}',
+    { findings: '# 市場調査\n'.repeat(4) + '実在の製品を13件調べ、採用度で三層に分けた。\n'.repeat(20) });
+  const r = critic.review(d, { lessons: lf });
+  const lesson = r.results.find(x => x.id === 'lesson:require-discovery');
+  assert.ok(lesson && lesson.ok,
+    '39KB の調査を書いた創造物を、本文の単語だけで「調査を飛ばした」と断じてはならない: '
+    + (lesson ? lesson.note : 'check missing'));
+
+  // 壊して鳴らす: 成果物を消せば門は鳴る。
+  fs.rmSync(path.join(d, 'findings.md'), { force: true });
+  const r2 = critic.review(d, { lessons: lf });
+  const lesson2 = r2.results.find(x => x.id === 'lesson:require-discovery');
+  assert.ok(lesson2 && !lesson2.ok, '調査成果物が無ければ門は鳴らねばならない');
+  fs.rmSync(d, { recursive: true, force: true });
+  fs.rmSync(lf, { force: true });
 });
 
 // --- Harness diet gate (第40条: ハーネス全体が秤に乗る) ---
