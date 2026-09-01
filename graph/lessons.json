@@ -422,5 +422,21 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-09-01T12:25:25.118Z"
+  },
+  {
+    "id": "art45-dispatcher-not-runner",
+    "label": "発令者は走者ではない — 同じリースを渡すな",
+    "check": "排他リースを、自ら走らぬ発令者(watchdog)にも同じ形で渡すと、発火された当の走者が締め出され機構が自分の子を殺す。門は全て緑のまま道だけが死ぬ。権利にkind(run/dispatch)を持たせ、走者が継承(adoptedFrom)し、発令の橋は短命にし、他人の鍵は返せなくせよ",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-01T13:06:08.246Z"
+  },
+  {
+    "id": "igniter-points-not-copies",
+    "label": "発火器は道を写経せず道を指す",
+    "check": "定期ジョブは既存の道(/conclave等)を名指しで指し、運転手順を写経しない。写経は本物から遅れて腐る。門は不在を通過にせず、壊して鳴らして確かめる",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-01T13:37:50.935Z"
   }
 ]

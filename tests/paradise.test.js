@@ -2918,6 +2918,66 @@ test('tools: 配備は産物であり、手編集する道具を飼わない (�
     '~/.claude を手編集する道具が住んでいる — 配備は overlay/ から建て直す産物である: ' + offenders.join(', '));
 });
 
+// --- 定期の営みは道を歩く (第46条) ---
+console.log('日次の営みは道を歩く (第46条):');
+
+const DAILY_JOB_PROMPT_MARKERS = ['conclave.md', 'claim', 'daily-guard'];
+
+test('conclave: 道は reform の住所を知っている (第23条 / 第30条)', () => {
+  const road = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'commands', 'conclave.md'), 'utf8');
+  // 楽園自身の改修は創造物ではない。道がその違いを語らなければ、
+  // 歩く者は workspace.js init を呼び、楽園の外へ engine を置こうとする。
+  assert.ok(/reform/.test(road), '道が reform の存在を知らない — 楽園自身を直す者は迷う');
+  assert.ok(/reform\/<slug>/.test(road), 'reform の成果物の住所が道に書かれていない (第23条)');
+  assert.ok(/workspace\.js init/.test(road), '創造の道の住所も残っていること (第30条)');
+  // 教主は自らを承認しない — reform は PR で神の御手へ渡る
+  assert.ok(/gh pr create/.test(road), 'reform の終いに PR が無い — 誰が神へ渡すのか (第23条)');
+  assert.ok(/マージは神のみ|マージは神の/.test(road), '三権分立の一文が道から消えている');
+});
+
+test('conclave: 配備された道は正典と一致する (第29条)', () => {
+  const canon = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'commands', 'conclave.md'), 'utf8');
+  const deployed = path.join(os.homedir(), '.claude', 'commands', 'conclave.md');
+  if (!fs.existsSync(deployed)) return;      // 未配備なら問わない
+  const norm = (t) => t.split(String.fromCharCode(13)).join('');
+  assert.strictEqual(norm(fs.readFileSync(deployed, 'utf8')), norm(canon),
+    '配備された /conclave が正典と食い違っている — 歩く者は古い道を歩く (deploy.js を走らせよ)');
+});
+
+test('cron: 日次の発火は道を写経せず、道を指す (第46条)', () => {
+  // 実測された病: 日次 cron が /conclave の 67 行の劣化コピーを抱え、
+  // synod / convene / ratify / tribunal / delegate のいずれも持たなかった。
+  // 写経は本物から遅れて腐り、劣化した影が本物の顔で走る。
+  const jobs = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'cron', 'jobs.json');
+  if (!fs.existsSync(jobs)) return;          // ハーネス不在の環境では問わない
+
+  const raw = JSON.parse(fs.readFileSync(jobs, 'utf8'));
+  const list = Array.isArray(raw) ? raw : (raw.jobs || Object.values(raw));
+  const prompts = list.filter(j => j && typeof j.prompt === 'string');
+  if (!prompts.length) return;               // ジョブ未登録なら問わない
+
+  // 日次改善のジョブは daily-guard を握る者として名指しで探す。
+  // 見つからないことを「通過」にしてはならない — 不在は通過ではない (第37条)。
+  // かつて、探索条件が壊れた版に当たらず門が無言で緑を返した (己の門もまた飾りでありうる)。
+  const daily = prompts.filter(j => /daily-guard/.test(j.prompt));
+  assert.ok(daily.length > 0,
+    'daily-guard を握る日次ジョブが cron 台帳に居ない — ' +
+    'ノルマの機構は建てたのに、それを発火する者が消えている (第37条)');
+
+  for (const j of daily) {
+    const p = j.prompt;
+    // (a) 道を名指しで指すこと
+    assert.ok(/conclave\.md/.test(p),
+      '日次の発火が /conclave を指していない — 道が在るのに呼ばれぬなら、それは眠っている (第23条): ' +
+      (j.name || j.id || '(無名)'));
+    // (b) 道の中身を写経しないこと: 環の運転手順は道が持つ
+    const copied = ['conclave.js convene', 'conclave.js next', 'conclave.js ratify']
+      .filter(sig => p.includes(sig));
+    assert.deepStrictEqual(copied, [],
+      '日次の発火が道の運転手順を写経している — 写経は本物から遅れて腐る: ' + copied.join(', '));
+  }
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
