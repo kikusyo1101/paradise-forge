@@ -969,6 +969,55 @@ test('guard: 中断した走行はリースを返し、次の監視が拾い直�
   }, 0);
 });
 
+// 第45条: 発令者は走者ではない。
+// 30分監視は自ら改善せず、改善する者を発火させるだけである。にもかかわらず
+// 完全な走行リースを掴んでいたため、発火された当の agent が権利を求めると
+// 「他の走者が保持中」と拒まれ、何もせず終了していた。門は全て緑のまま
+// キャッチアップの道だけが死んでいた（実測: 発火された agent の claimed=false）。
+test('guard: 発令者のリースは、発火した当の走者を締め出さない (第45条)', () => {
+  withGuard((g) => {
+    const watchdog = g.claim('catchup-watchdog', 'dispatch');
+    assert.strictEqual(watchdog.claimed, true, '監視は橋としてのリースを得る');
+    assert.strictEqual(watchdog.kind, 'dispatch', '発令者は dispatch として立つ');
+
+    const agent = g.claim('定時22時ジョブ');
+    assert.strictEqual(agent.claimed, true, '発火された走者は締め出されない');
+    assert.strictEqual(agent.adoptedFrom, 'catchup-watchdog', '橋は継承される');
+    assert.strictEqual(agent.kind, 'run', '継承後は本物の走行リース');
+  }, 0);
+});
+
+test('guard: 継承された後は第三者を締め出す — 排他は失われない (第45条)', () => {
+  withGuard((g) => {
+    g.claim('catchup-watchdog', 'dispatch');
+    g.claim('real-runner');
+    const third = g.claim('third-party');
+    assert.strictEqual(!!third.claimed, false, '走行中の者が居れば誰も入れない');
+    assert.ok(/lease/.test(third.reason), '理由はリース保持: ' + third.reason);
+  }, 0);
+});
+
+test('guard: 発令者は、継承された走行リースを取り上げられない (第45条)', () => {
+  withGuard((g) => {
+    g.claim('catchup-watchdog', 'dispatch');
+    g.claim('real-runner');
+    // 発火に失敗したと誤認した監視が release しても、走行中の者は守られる
+    const r = g.release('catchup-watchdog');
+    assert.strictEqual(r.released, false, '他人のリースは返せない');
+    assert.strictEqual(!!g.claim('intruder').claimed, false, '走者は守られたまま');
+  }, 0);
+});
+
+test('guard: 発令の橋は走行リースより早く腐る — 走者が来なければ窓は再び開く (第45条)', () => {
+  withGuard((g, ledger) => {
+    g.claim('catchup-watchdog', 'dispatch');
+    const lease = JSON.parse(fs.readFileSync(ledger, 'utf8')).lease;
+    const minutes = Math.round((lease.expiresAt - Date.now()) / 60000);
+    assert.ok(minutes <= 15, `橋は短命であること (実測 ${minutes} 分)`);
+    assert.ok(minutes < g.LEASE_MINUTES, '橋は走行リースより短い');
+  }, 0);
+});
+
 test('guard: キャッチアップ走行は「負っていた日」を精算する (当日ではなく)', () => {
   withGuard((g, ledger) => {
     fs.writeFileSync(ledger, JSON.stringify({ lastDate: '2026-08-30', history: [] }));

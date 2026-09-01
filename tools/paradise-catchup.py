@@ -17,6 +17,14 @@ Two hard-won rules are encoded here; do not "simplify" them away:
    right to run exclusive, so the paradise can never improve itself twice and
    open two competing PRs.
 
+1b. Claim as a DISPATCHER (`--dispatch`), never as a runner. This watchdog does
+   not improve anything itself; it fires the agent that will. A full run-lease
+   held here locks out the very agent being fired -- it boots, asks for the
+   right to run, is told "another runner holds the lease", and exits doing
+   nothing. That deadlock is invisible: every gate stays green while the
+   catch-up path is dead. A dispatch lease is a short bridge (10 min) that the
+   fired runner ADOPTS when it claims for real (Art. 45).
+
 2. `hermes cron run` EXITS 0 EVEN WHEN IT FAILS. Verified by hand:
        $ hermes cron run ZZZnotarealjob
        Failed to run job: Job with ID or name 'ZZZnotarealjob' not found.
@@ -51,7 +59,7 @@ def run(cmd):
 def release():
     node = shutil.which("node")
     if node:
-        run([node, GUARD, "release"])
+        run([node, GUARD, "release", HOLDER])
 
 
 def main():
@@ -67,8 +75,9 @@ def main():
         print(f"   node={node} hermes={hermes}")
         return 1
 
-    # Take the single right to run. Exit 0 here means: owed AND the lease is ours.
-    p = run([node, GUARD, "claim", HOLDER])
+    # Take the right to run as a DISPATCHER: a short bridge the fired agent
+    # adopts. Claiming a full run-lease here would lock out that very agent.
+    p = run([node, GUARD, "claim", HOLDER, "--dispatch"])
     if p.returncode != 0:
         return 0  # not owed, or another runner holds it -> silent
 

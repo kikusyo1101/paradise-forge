@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-09-01T12:27:19.115Z",
+  "generated": "2026-09-01T13:06:27.709Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 87,
+    "nodeCount": 88,
     "edgeCount": 33,
     "nodes": [
       {
@@ -650,6 +650,12 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "死んだ道具は先例として腐敗を伝染させる",
         "degree": 0
+      },
+      {
+        "id": "art45-dispatcher-not-runner",
+        "type": "lesson",
+        "label": "発令者は走者ではない — 同じリースを渡すな",
+        "degree": 0
       }
     ],
     "edges": [
@@ -826,7 +832,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 53
+      "lesson": 54
     }
   },
   "lessons": [
@@ -1094,6 +1100,11 @@ window.PARADISE_STATE = {
       "id": "dead-tools-teach",
       "label": "死んだ道具は先例として腐敗を伝染させる",
       "check": "役目を終えた道具は退治する。tools/ の各器物は楽園の何処かから名を呼ばれること。配備(~/.claude)を手編集する道具を飼わない|applies:paradise-internal"
+    },
+    {
+      "id": "art45-dispatcher-not-runner",
+      "label": "発令者は走者ではない — 同じリースを渡すな",
+      "check": "排他リースを、自ら走らぬ発令者(watchdog)にも同じ形で渡すと、発火された当の走者が締め出され機構が自分の子を殺す。門は全て緑のまま道だけが死ぬ。権利にkind(run/dispatch)を持たせ、走者が継承(adoptedFrom)し、発令の橋は短命にし、他人の鍵は返せなくせよ|applies:paradise-internal"
     }
   ],
   "creations": [],
