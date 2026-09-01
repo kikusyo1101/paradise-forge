@@ -55,11 +55,17 @@ function nowJst() {
     hour: '2-digit', minute: '2-digit', hour12: false,
   });
   const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type, p.value]));
+  // ⚠️ `hour12: false` は真夜中を **"24"** と綴る実装がある(ICU/hourCycle h24)。
+  // 実際に CI が JST 00:38 に落ちた — 手元では 0 が返り、日付が変わる一時間
+  // だけ 24 になる。**時々しか出ない嘘**であり、門が捕まえなければ
+  // 「22時に走るか」の判定が真夜中だけ狂う。0..23 に畳んで正典とする。
+  const hour = Number(parts.hour) % 24;
+  const hh = String(hour).padStart(2, '0');
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,
-    hour: Number(parts.hour),
+    hour,
     minute: Number(parts.minute),
-    stamp: `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} JST`,
+    stamp: `${parts.year}-${parts.month}-${parts.day} ${hh}:${parts.minute} JST`,
   };
 }
 

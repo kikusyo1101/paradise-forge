@@ -1040,8 +1040,33 @@ test('guard reports JST regardless of the machine timezone', () => {
   withGuard((g) => {
     const now = g.nowJst();
     assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(now.date), 'JST calendar date');
-    assert.ok(now.hour >= 0 && now.hour <= 23, 'JST hour');
+    assert.ok(now.hour >= 0 && now.hour <= 23, 'JST hour: ' + now.hour);
     assert.ok(/JST$/.test(now.stamp));
+    assert.ok(/ (?:[01]\d|2[0-3]):\d{2} JST$/.test(now.stamp), '刻印の時も 0..23: ' + now.stamp);
+  }, 0);
+});
+
+test('guard: 真夜中を 24 時と綴る実装でも 0..23 に畳む', () => {
+  // CI が JST 00:38 に落ちた実害の回帰。`hour12:false` は ICU の hourCycle に
+  // より真夜中を "24" と綴る。**一日のうち一時間だけ嘘をつく門**は、
+  // 緑を見ているだけでは永遠に見つからない (第34条: 壊して鳴らして確かめる)。
+  withGuard((g) => {
+    const realIntl = global.Intl;
+    global.Intl = { DateTimeFormat: class {
+      constructor() {}
+      formatToParts() {
+        return [
+          { type: 'year', value: '2026' }, { type: 'month', value: '09' },
+          { type: 'day', value: '02' }, { type: 'hour', value: '24' },
+          { type: 'minute', value: '38' },
+        ];
+      }
+    } };
+    try {
+      const now = g.nowJst();
+      assert.strictEqual(now.hour, 0, '24時は 0時である');
+      assert.ok(/ 00:38 JST$/.test(now.stamp), '刻印も畳まれる: ' + now.stamp);
+    } finally { global.Intl = realIntl; }
   }, 0);
 });
 
