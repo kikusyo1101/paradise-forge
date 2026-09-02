@@ -152,6 +152,59 @@ async function main() {
       'file:// の origin は null。CORS が無いと第2層の fetch が死ぬ');
   });
 
+  await test('B-1(DoS): SSE をブラウザの上限 6 本を超えて張っても、断面は返り続ける', async () => {
+    // ■ 「未検査」を「検査済み」に変える門 —— 設計には「7 枚目以降のタブで
+    //   何が起きるか」を書いたが、**実測していなかった**(第16条)。
+    //   ブラウザの同時接続上限は 6。12 本張って、上限の倍を踏ませる。
+    //   上の常駐サーバは既に閉じているので、この門は自前で一つ起こして自分で閉じる。
+    const pulse2 = require(path.join(ROOT, 'graph', 'pulse.js'));
+    const s2 = await pulse2.serve({ port: 0, quiet: true });
+    const p2 = s2.port;
+    const conns = [];
+    try {
+      const open = () => new Promise((res) => {
+        const req = http.get({ host: '127.0.0.1', port: p2, path: '/events' }, (r) => {
+          let got = 0; r.on('data', () => { got++; });
+          res({ status: r.statusCode, got: () => got, close: () => req.destroy() });
+        });
+        req.on('error', (e) => res({ status: 'ERR:' + e.code, got: () => 0, close: () => {} }));
+      });
+      for (let i = 0; i < 12; i++) conns.push(await open());
+      await new Promise(r => setTimeout(r, 1200));
+
+      const bad = conns.filter(c => c.status !== 200);
+      assert.strictEqual(bad.length, 0, `${bad.length} 本が 200 を返さなかった: ${bad.map(b => b.status).join(', ')}`);
+      const fed = conns.filter(c => c.got() > 0).length;
+      assert.strictEqual(fed, 12, `${fed}/12 本しか配信を受けていない — 上限超過で無言になる`);
+
+      // **張ったまま通常の要求が通ること** —— 塞がれば実質の DoS である
+      const r = await get(p2, '/snapshot.json');
+      assert.strictEqual(r.status, 200, `12 本張ったまま snapshot が ${r.status}`);
+      assert.ok(r.body.length > 100, '断面が空で返っている');
+
+      // 閉じたら回復すること(掴んだまま離さない設計でないこと)
+      conns.forEach(c => c.close());
+      await new Promise(r => setTimeout(r, 800));
+      const after = await get(p2, '/snapshot.json');
+      assert.strictEqual(after.status, 200, `全接続を閉じた後も回復しない: ${after.status}`);
+    } finally { conns.forEach(c => c.close()); s2.close(); }
+  });
+
+  await test('B-1(DoS): 監視対象を連打してもサーバは応え続ける (fs.watch の暴発)', async () => {
+    const fs = require('fs'); const os = require('os');
+    const pulse3 = require(path.join(ROOT, 'graph', 'pulse.js'));
+    const s3 = await pulse3.serve({ port: 0, quiet: true });
+    const target = path.join(os.tmpdir(), 'pd-dos-' + process.pid + '.json');
+    fs.writeFileSync(target, '{}');
+    try {
+      for (let i = 0; i < 100; i++) fs.writeFileSync(target, JSON.stringify({ i }));
+      await new Promise(r => setTimeout(r, 1000));
+      const r = await get(s3.port, '/snapshot.json');
+      assert.strictEqual(r.status, 200, `連打 100 回の後 snapshot が ${r.status}`);
+      assert.ok(r.body.length > 100, '断面が空で返っている');
+    } finally { try { fs.rmSync(target, { force: true }); } catch {} s3.close(); }
+  });
+
   s.close();
   const rep = H.report();
   if (require.main === module) process.exit(rep.fail === 0 ? 0 : 1);

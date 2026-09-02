@@ -120,6 +120,25 @@ test('AC-20f(F-7): 深掘り画面も null を数のように描かない — �
     'null と 0 を分ける分岐が無い — 0 は「数えて 0」、null は「数えられなかった」である');
 });
 
+test('B-2(XSS): 断面の値は文字として描かれる — 実際に注入して確かめる (第16条)', () => {
+  // ■ 「未検査」を「検査済み」に変える門。
+  //   コードを読んで textContent だと確かめるだけでは足りない —— **読んだだけで
+  //   試していない**ものを「安全」と呼ばない。実ブラウザでの注入は
+  //   reform/dashboard-living-gate/security.md に実測を記した(発火せず、
+  //   img 0 個 / script 0 個、生の文字列として表示)。
+  //   この門はその性質を**壊れたら鳴る形**で固定する。
+  const ctl = fs.readFileSync(path.join(DASH, 'control.html'), 'utf8');
+  for (const [name, src] of [['paradise.js', js], ['index.html', html], ['control.html', ctl]]) {
+    // 生の HTML を流し込む道が一本も無いこと
+    const holes = src.match(/\.(innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(/g) || [];
+    assert.deepStrictEqual(holes, [],
+      `${name} に生 HTML の注入口がある: ${holes.join(', ')} — 断面の値がそこを通れば実行される`);
+  }
+  // 値を描く道が textContent であること(el() の 'text' 経路)
+  assert.ok(/n\.textContent = String\(/.test(js), 'paradise.js が値を textContent で描いていない');
+  assert.ok(/textContent = String\(/.test(ctl), 'control.html が値を textContent で描いていない');
+});
+
 test('AC-06d: census 未取得のとき data-state="empty" + data-awaiting="census"', () => {
   const snap = pulse.snapshot();
   assert.strictEqual(snap.census, null, 'census が同期経路で取られている(120 秒が画面に入る)');
