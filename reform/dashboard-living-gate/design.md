@@ -59,15 +59,53 @@ const wiring    = require('./wiring.js');
 ゆえに **NFR-07 / AC-N07a(`grep -cE "child_process|execFileSync|spawnSync|execSync" graph/pulse.js` が `0`)**
 を構造として満たす。
 
-**API の罠を設計時に固定する**(findings-speed.md で実測):
+**API の罠を設計時に固定する。**
+**本表は「実際に走らせて確かめた」ものだけを載せる**(則1)。走らせた全出力は **§10 附録**に在る。
 
-| 誤り | 正 | 誤ると |
-|---|---|---|
-| `clergy.college()` | `clergy.COLLEGE` / `clergy.orgChart()` | `is not a function` |
-| `forge.plan(w,{scale})` | `forge.buildDag(w, 'reform')` — **第2引数は文字列** | `SCALES[scale] is not a function` |
-| `conclave.js status --run <slug>` | `--run <root>/<slug>/conclave.json` | ENOENT 例外(**D-13**) |
-| `gauge.js score --json` | `gauge.js score <run.json> --json` | ENOENT / exit 2(**R-2**) |
-| `kg.query('')` | 正しい(全 99 ノード) | — |
+| # | 誤り | 正 | 誤ると | 実走で確認 |
+|---|---|---|---|---|
+| T-1 | `clergy.college()` | `clergy.COLLEGE`(7)/ `clergy.orgChart()` | `is not a function` | ✔ |
+| T-2 | `forge.plan(w,{scale})` | `forge.buildDag(w, 'reform')` — **第2引数は文字列** | `SCALES[scale] is not a function` | ✔ |
+| T-3 | `conclave.js status --run <slug>` | `--run <root>/<slug>/conclave.json` | ENOENT 例外(**D-13**) | ✔ |
+| T-4 | `gauge.js score --json` | `gauge.js score <run.json> --json` | ENOENT / exit 2(**R-2**) | ✔ |
+| **T-5** | **`gauge.score(<path 文字列>)`** | **`gauge.score(JSON.parse(fs.readFileSync(path)))`** | **THROW** `run-state carries no phases — 測れないものに点は付かない(第37条)` | **✔ D-2** |
+| **T-6** | **`spawnTrace.report(<path 文字列>)`** | **`spawnTrace.report(<run オブジェクト>)`** | **例外を投げず `{ok:true,total:0,noTrace:0}` を返す。§1.3.4 の防御が必須** | **✔ D-3** |
+| **T-7** | **`vendor.check()`** | **`vendor.verify()`** → `{ok, findings, status}` | `vendor.check is not a function` | **✔ D-4** |
+| **T-8** | **`workspace.check()`** | **`workspace.hardcodedRefs()` + `workspace.strayCreations()`** の 2 本を合成 | `ws.check is not a function` | **✔ D-4** |
+| T-9 | `lessons.exportLessons()` | `lessons.exportLessons(<outPath>)` — **outPath 必須**。読了後 `unlink` する(AC-18c) | `The "path" argument must be of type string … Received undefined` | ✔ |
+| T-10 | `kg.query('')` | 正しい(全 99 ノード) | — | ✔ |
+
+**実在する export を `Object.keys(require(...))` で確定させた**(推測で書かない — NFR-06):
+
+```
+$ node -e "for(const m of ['clergy','forge','workspace','kg','wiring','vendor','derived',
+    'check-agents','gauge','spawn-trace','daily-guard','lessons','codex'])
+    console.log(m, Object.keys(require('./graph/'+m+'.js')).join(','))"
+
+clergy         RANKS,EFFORT_SUPPORT,supportsEffort,COLLEGE,TRIBUNAL,MODEL_EXCEPTIONS,SPAWN_TOOL,
+               MAX_SPAWN_DEPTH,MAX_CONCURRENT,RUNTIME_CONCURRENT,EFFECTIVE_CONCURRENT,PARALLEL_SAFE,
+               cardinalFor,modelFor,allPriests,allBelievers,marshalPlan,believerRole,groupByCardinal,
+               orgChart,LEXICON,title,lexiconCheck
+forge          CONSTITUTION,SCALES,SCALE_PRODUCES,chooseScale,buildDag,REFORM_RE,COUNSEL_RE,
+               CREATE_RE,DOC_RE,DIAGRAM_RE,isCounsel,isCartography
+workspace      resolve,root,defaultRoot,creationDir,init,strayCreations,hardcodedRefs,
+               REPO_ROOT,SIBLING_NAME                                     ← check は無い
+kg             remember,link,forget,query,getNode,neighbors,snapshot,stats,observe,predict,cochangeCounts
+wiring         SURFACES,listEngines,requiresOf,map,check                  ← check は在る
+vendor         status,resolveHooks,wire,refresh,verify,VENDOR,KINDS,TOOLS ← check は無い / verify が正
+derived        DERIVED,isDerived,offendingAssertions,check,drift          ← check は在る
+check-agents   check,requiredAgents,referenceMap,installedAgents,ungovernedPhases,
+               misroutedPhases,hierarchyIntegrity,PSEUDO                  ← check は在る
+gauge          score,normalize,record,baseline,compare,readLedger,ledgerPath,WEIGHTS
+spawn-trace    record,verify,report
+daily-guard    isDue,claim,release,markDone,nowJst,readLedger,lastOpenWindow,LEDGER,
+               TARGET_HOUR,LEASE_MINUTES,DISPATCH_MINUTES
+lessons        exportLessons
+codex          parse,renderIndex,check,article,weigh,write,SOURCE,INDEX,ARTICLE_RE
+```
+
+**この一覧に無い名前を設計に書いてはならない。**
+`vendor.check` / `workspace.check` を書いた前版は、**5 門のうち 2 門が常時例外**になる設計だった。
 
 ## 1.3 断面(snapshot)の JSON スキーマ — 鍵ごとの定義
 
@@ -85,9 +123,11 @@ const wiring    = require('./wiring.js');
 | `transportHint` | `"sse"\|"poll"\|"frozen"` | サーバが配信経路に応じ付す | 0 | — |
 | `connections` | `number` | サーバ内の SSE 接続カウンタ | 0 | — |
 | `counts` | `object` | §1.3.2 | — | 個別 |
-| `gates[]` | `array` | §1.3.3 | ~200 | 個別 |
-| `runs[]` | `array` | §1.3.4 | ~1.0 | 個別 |
-| `daily` | `object` | §1.3.5 | ~30 | `null` |
+| `gates[]` | `array` | §1.3.3 | **cold 53〜67 / warm はキャッシュで 0**(実測) | 個別 |
+| `gatesCached` | `boolean` | mtime 鍵が前回と同じなら `true`(§1.7) | 0.7 | `false` |
+| `runs[]` | `array` | §1.3.4 | ~1.5 | 個別 |
+| `ledger[]` | `array\|null` | §1.3.7(**FR-22**)`gauge.readLedger()` | 0.5 | `null` + errors |
+| `daily` | `object` | §1.3.5 | ~9 | `null` |
 | `scale` | `object` | §1.3.6 | ~1 | `{}` |
 | `lessonsByKind` | `{mechanism:n, conduct:n}` | `lessons.js export --out` | ~40 | `{}` |
 | `census` | `object\|null` | 非同期キャッシュ(§1.6) | 0(同期経路で呼ばない) | `null` |
@@ -105,15 +145,76 @@ const wiring    = require('./wiring.js');
 | `articles` | `codex.js` の索引長 | `node graph/codex.js index` の条数 | ~3 | `null` + errors |
 | `engines` | `fs.readdirSync('graph').filter(/\.js$/)` | `ls graph/*.js \| wc -l` | 0.7 | `null` + errors |
 | `cardinals` | `Object.keys(clergy.COLLEGE).length` | `clergy.js college \| grep -c '^枢機卿'` | 0.0 | `null` + errors |
-| `creations` | `workspace.resolve()` の root 直下、`_` 始まりでない dir | `ls -d <root>/*/` | 0.2 | `null` + errors |
-| `workshops` | 同 root 直下、`_` 始まりの dir | 同上 | 0.2 | `null` + errors |
-| `runs` | `<root>/*/conclave.json` の実在数 | `ls <root>/*/conclave.json \| wc -l` | 1.0 | `0` + errors |
-| `agents` / `commands` / `skills` | `check-agents.js` / `~/.claude` 配下の実数え(**読むだけ**) | 同 engine | ~30 | `null` + errors |
-| `lessons` | `lessons.js export --out <tmp>` の要素数 | export した JSON の length | ~40 | `null` + errors |
-| `kgNodes` | `~/.claude/paradise-kg/nodes.jsonl` の解釈できた行数 | `wc -l < nodes.jsonl` | ~2 | 解釈できた行数(部分成功) |
-| `kgEdges` | 同 `edges.jsonl` | `wc -l < edges.jsonl` | ~2 | 同上 |
+| `creations` | §1.3.2a の `visibleDirs()` のうち `_` 始まりでないもの | `ls -d <root>/*/ \| grep -vc '/_[^/]*/$'` | 0.2 | `null` + errors |
+| `workshops` | 同 `visibleDirs()` のうち `_` 始まりのもの | `ls -d <root>/*/ \| grep -c '/_[^/]*/$'` | 0.2 | `null` + errors |
+| `runs` | `<root>/<creation>/conclave.json` の実在数 | `ls <root>/*/conclave.json \| wc -l` | 1.0 | `0` + errors |
+| `agents` / `commands` / `skills` | `check-agents.js` / `~/.claude` 配下の実数え(**読むだけ**) | 同 engine | ~7 | `null` + errors |
+| `lessons` | `lessons.exportLessons(<tmp>)` の要素数(**outPath 必須** — 罠 T-9) | export した JSON の length | ~2 | `null` + errors |
+| `kgNodes` | `~/.claude/paradise-kg/nodes.jsonl` の解釈できた行数 | `wc -l < nodes.jsonl` | ~0.5 | 解釈できた行数(部分成功) |
+| `kgEdges` | 同 `edges.jsonl` | `wc -l < edges.jsonl` | ~0.5 | 同上 |
 
-**執筆時点の実測**: engines 33 / cardinals 7 / articles 50 / creations 7 / kgNodes 99 / lessons 65。
+### 1.3.2a `creations` / `workshops` の数え方 — **一つに決める(D-5 の是正)**
+
+前版は「`_` 始まりでない dir」とだけ書き、**`.git` / `.github` を数えてしまう実装**を招いた。
+審査官の実測は node=9 / bash=8 / 本書記載=7 の**三者不一致**であった。
+**数え方を実装レベルで一本に決める**:
+
+```js
+// graph/pulse.js — 創造物と作業場を数える唯一の関数。ここ以外で readdirSync しない
+function visibleDirs(root) {
+  return fs.readdirSync(root, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .filter(e => !e.name.startsWith('.'));   // ← .git / .github を除く(これが欠けていた)
+}
+function countCreations(root) {              // 創造物 = 見えるディレクトリのうち _ 始まりでないもの
+  return visibleDirs(root).filter(e => !e.name.startsWith('_')).length;
+}
+function countWorkshops(root) {              // 作業場 = 見えるディレクトリのうち _ 始まりのもの
+  return visibleDirs(root).filter(e =>  e.name.startsWith('_')).length;
+}
+// 不変条件(実装内で assert する): countCreations + countWorkshops == visibleDirs().length
+```
+
+**除外規則は 2 段である。順序も含めて固定する**:
+
+| 段 | 規則 | 除かれるもの | なぜ |
+|---|---|---|---|
+| 1 | `isDirectory()` | ファイル(`gauge-ledger.jsonl` 等) | 倉直下には engine の台帳も置かれる |
+| 2 | **`!name.startsWith('.')`** | `.git` `.github` | **VCS と CI の骨組みは創造物ではない。** bash 側の `ls -d */` は元からドットを出さないので、**node 側をこれに合わせる**(両辺が同じ規則になる) |
+| 3 | `startsWith('_')` で **分ける**(除かない) | — | `_` 始まりは**作業場**であり、`creations` からは外すが `workshops` として**必ず数える**。捨てない |
+
+**実際に数えた**(AC-01b との一致確認 — 則1):
+
+```
+$ node -e "const fs=require('fs'),ws=require('./graph/workspace.js');const r=ws.resolve().root;
+  const all=fs.readdirSync(r,{withFileTypes:true}).filter(e=>e.isDirectory());
+  const vis=all.filter(e=>!e.name.startsWith('.'));
+  console.log('all      ='+all.length+' ['+all.map(e=>e.name)+']');
+  console.log('visible  ='+vis.length+' ['+vis.map(e=>e.name)+']');
+  console.log('creations='+vis.filter(e=>!e.name.startsWith('_')).length);
+  console.log('workshops='+vis.filter(e=> e.name.startsWith('_')).length)"
+
+all      =10 [.git,.github,coin,habit,pomodoro,reform-claude-md-diet,reform-eval-gauge,rps,tenbin,_scratch]
+visible  =8  [coin,habit,pomodoro,reform-claude-md-diet,reform-eval-gauge,rps,tenbin,_scratch]
+creations=7        ← coin, habit, pomodoro, reform-claude-md-diet, reform-eval-gauge, rps, tenbin
+workshops=1        ← _scratch
+不変条件 7 + 1 == 8 : true
+
+$ ROOT=$(node -e "process.stdout.write(require('./graph/workspace.js').resolve().root)")
+$ ls -d "$ROOT"/*/ | grep -vc '/_[^/]*/$'   → 7      ← AC-01b の突合相手
+$ ls -d "$ROOT"/*/ | grep -c  '/_[^/]*/$'   → 1
+```
+
+**node 側 7/1 と bash 側 7/1 が一致した。**
+requirements.md AC-01b の定義(**創造物 7 + 作業場 1 = 8**)とも一致する。
+**7 / 1 / 8 は執筆時点の参考値であって期待値ではない**(則3)——
+門が裁くのは常に「断面の数 == その場で数えた数」であり、明日 8 個目の創造物が生まれても両辺が同時に動く。
+
+**`counts.runs` も同じ `visibleDirs()` から引く**(`.git` の下に `conclave.json` は無いが、
+**数え方の入口を 2 つ持たない**ことが要点である。入口が 2 つあれば、いつか片方だけが直る)。
+
+**執筆時点の実測**: engines 33 / cardinals 7 / articles 50 / **creations 7 / workshops 1** / kgNodes 99 /
+kgEdges 33 / lessons 65 / runs 5。
 **これらは期待値ではない**(則3)。門は常に「断面の数 == その場で数えた数」で裁く(AC-01a/b/f/g)。
 
 **`counts.engines` は pulse.js 自身を含んで 34 になる。** AC-E3 が命じるとおり、
@@ -128,14 +229,65 @@ gates[i] = { name, ok, ms, at, detail }
 | 鍵 | source | 型 | 落ちたとき |
 |---|---|---|---|
 | `name` | 5 門固定: `wiring` `vendor` `derived` `check-agents` `workspace` | `string` | — |
-| `ok` | 各 engine の `check()` を **module として**呼び、例外なし・`ok:true` | `boolean` | `false` + errors に理由 |
+| `ok` | **門ごとに入口が違う。下表の関数**を module として呼び、例外なし・`ok:true` | `boolean` | `false` + errors に理由 |
 | `ms` | `process.hrtime.bigint()` 差分 | `number` | 計測できた分 |
 | `at` | 実行時刻(ms epoch) | `number` | — |
-| `detail` | `wiring` のみ `{orphans:[], dangling:[]}`(件数と内訳) | `object` | `{}` |
+| `detail` | 門ごとの内訳(下表) | `object` | `{}` |
 
-**実測**: 5 門とも 27〜53ms、合計 200ms 未満。**AC-15c(合計 1000ms 未満)** に構造的に収まる。
+**【D-4 の是正】門ごとの正しい入口 — 実走して確定させた**:
+
+| 門 | **正しい呼び方** | 返り | `detail` | 実測 ms |
+|---|---|---|---|---|
+| `wiring` | `wiring.check()` | `{ok, orphans, dangling, map}` | `{orphans:[], dangling:[]}` | 17.3〜21.4 |
+| `vendor` | **`vendor.verify()`**(**`check` は存在しない**) | `{ok, findings, status}` | `{findings:n}` | 1.5〜2.3 |
+| `derived` | `derived.check()` | `{ok, findings, undeclared, note}` | `{undeclared:n}` | 13.0〜19.5 |
+| `check-agents` | `check-agents.check()` | `{ok, skipped, dir, need, sources, missing, dangling, ungoverned, misrouted, hierarchy, note}` | `{missing:n, ungoverned:n}` | 4.8〜7.9 |
+| `workspace` | **単一の門関数が無い。`hardcodedRefs()` と `strayCreations()` の 2 本を合成する** | それぞれ配列 | `{hardcodedRefs:n, strayCreations:n}` | 14.0〜24.6 |
+
+```js
+// graph/pulse.js — gates の定義。名前と入口を 1 箇所に固定する
+const GATES = [
+  ['wiring',       () => { const r = wiring.check();
+                           return { ok: r.ok, detail: { orphans: r.orphans||[], dangling: r.dangling||[] } }; }],
+  ['vendor',       () => { const r = vendor.verify();          // ← check ではない(T-7)
+                           return { ok: r.ok, detail: { findings: (r.findings||[]).length } }; }],
+  ['derived',      () => { const r = derived.check();
+                           return { ok: r.ok, detail: { undeclared: (r.undeclared||[]).length } }; }],
+  ['check-agents', () => { const r = checkAgents.check();
+                           return { ok: r.ok, detail: { missing: (r.missing||[]).length } }; }],
+  ['workspace',    () => { const h = workspace.hardcodedRefs();  // ← check は無い(T-8)
+                           const s = workspace.strayCreations(); // ← 2 本を合成して ok を作る
+                           return { ok: h.length === 0 && s.length === 0,
+                                    detail: { hardcodedRefs: h.length, strayCreations: s.length } }; }],
+];
+```
+
+**実走の出力**(則1 — 走らせて確かめた):
+
+```
+$ node -e "const v=require('./graph/vendor.js'),ws=require('./graph/workspace.js');
+           try{v.check()}catch(e){console.log('vendor.check   ->',e.message)}
+           try{ws.check()}catch(e){console.log('workspace.check->',e.message)}"
+vendor.check    -> vendor.check is not a function          ← 前版の設計はここで毎回落ちていた
+workspace.check -> ws.check is not a function
+
+$ (正しい入口で 5 門を 5 周)
+pass1 cold: wiring=true(21.4) vendor=true(2.3) derived=true(19.0) check-agents=true(7.9) workspace=true(16.7)  SUM=67.2ms
+pass2 warm: wiring=true(18.6) vendor=true(1.6) derived=true(13.6) check-agents=true(5.2) workspace=true(14.5)  SUM=53.5ms
+pass3 warm: wiring=true(17.9) vendor=true(1.7) derived=true(13.7) check-agents=true(4.8) workspace=true(14.6)  SUM=52.8ms
+pass4 warm: wiring=true(17.3) vendor=true(1.6) derived=true(13.0) check-agents=true(5.2) workspace=true(14.0)  SUM=51.1ms
+pass5 warm: wiring=true(18.2) vendor=true(1.5) derived=true(14.0) check-agents=true(5.2) workspace=true(14.2)  SUM=53.2ms
+```
+
+**5 門とも `ok:true` で走り、合計 cold 67.2ms / warm 51〜53ms。**
+**AC-15c(合計 1000ms 未満)** に大きな余裕をもって収まる。
+(審査官の機では warm 29.1ms。**測る機と時によって 29〜67ms の幅がある** ——
+だからこそ **固定値を書かず、`ms` を断面に載せて実測を語らせる**。§1.7 の時間収支もこの実測に改めた。)
+
 **`ok:false` は errors[] に積まない** — 門が赤いのは engine の故障ではなく**事実**だからである。
 積むのは「engine が例外を投げて合否そのものが取れなかった」場合に限る。
+**そして `vendor.check` / `workspace.check` を書くことは、まさにその「例外」を 5 門中 2 門で常時発生させる。**
+前版の設計は **AC-15a/15b を着工初日に落とす**ものだった。
 
 ### 1.3.4 `runs[]` — 走行中の環(FR-14)
 
@@ -152,30 +304,145 @@ runs[i] = { name, path, phasesDone, phasesTotal, domainsRatified, domainsTotal,
 |---|---|---|---|
 | `name` | dir 名 | — | — |
 | `path` | `<root>/<slug>/conclave.json`(**D-13**: slug を CLI に渡さない) | — | — |
-| `phasesDone`/`phasesTotal` | `domains[].phases[]` を舐めて `status==='done'` を数える | 直読み | run 単位で skip + errors |
-| `domainsRatified`/`domainsTotal` | `domains[].status==='ratified'` | 直読み | 同上 |
+| `run`(内部) | **`JSON.parse(fs.readFileSync(path,'utf8'))`。以降の engine には必ず「この run オブジェクト」を渡す** | 直読み | run 単位で skip + errors |
+| `phasesDone`/`phasesTotal` | `run.domains[].phases[]` を舐めて `status==='done'` を数える | 直読み | run 単位で skip + errors |
+| `domainsRatified`/`domainsTotal` | `run.domains[].status==='ratified'` | 直読み | 同上 |
 | `state` | **`phasesDone < phasesTotal` → `stalled` / それ以外 → `complete`** | 派生 | `unknown` |
-| `score` | `gauge.js` を **module として** `score(runPath)` | 〜10ms | `null` + errors |
-| `spawn.*` | `spawn-trace.js` を module として。三値 | 〜20ms | `null` + errors |
-| `contradiction` | **`score >= 90 && spawn.noTrace > 0`** の真偽 | 派生 | `false` |
-| `metrics.*` | gauge の 5 指標 | 同 score | `null` |
-| `historyLength` | `history.length` | 直読み | `0` |
-| `lastEvent` | `history[history.length-1]` | 直読み | `null` |
-| `scaleGuess` | `phasesTotal` を §1.3.6 の相数表に照合して道名を引く | 派生 | `null` |
+| `score` | **`gauge.score(run)` — 引数は run オブジェクト。パスを渡すと THROW**(T-5) | 0.2ms | `null` + errors |
+| `spawn.*` | **`spawnTrace.report(run)` — 引数は run オブジェクト。§1.3.4a の防御必須**(T-6) | 0.1ms | `null` + errors |
+| `contradiction` | **`score >= 90 && spawn.noTrace > 0`。ただし `score` か `spawn` が `null` なら `null`**(§1.3.4a) | 派生 | `null` |
+| `metrics.*` | `gauge.score(run)` の 5 指標(同じ返り値を使い回す。2 回呼ばない) | 同 score | `null` |
+| `historyLength` | `run.history.length` | 直読み | `0` |
+| `lastEvent` | `run.history[run.history.length-1]` | 直読み | `null` |
+| `scaleGuess` | `phasesTotal` を §1.3.6 の相数表に逆引き。**一意に定まらないときは `null`** | 派生 | `null` |
+| `scaleCandidates[]` | 同逆引きの候補全部(`11` → `['reform','cartography']`) | 派生 | `[]` |
+
+### 1.3.4a **【D-3 の是正】`spawn-trace.report()` の偽陰性に対する防御**
+
+**これは本設計で最も重要な一節である。**
+
+`spawn-trace.report()` にパス文字列を渡すと、**例外を投げずに `{ok:true, total:0, noTrace:0}` を返す。**
+源(`graph/spawn-trace.js`)が `if (run.domains) … else collect(run.phases)` の形をしており、
+文字列には `domains` も `phases` も無いため、**phases が空のまま「問題なし」を宣言する。**
+
+```
+$ node -e "const st=require('./graph/spawn-trace.js');
+   const p='<root>/tenbin/conclave.json';
+   console.log('path  ->', JSON.stringify(st.report(p)));
+   console.log('object->', JSON.stringify(st.report(JSON.parse(require('fs').readFileSync(p,'utf8')))))"
+
+path  -> {"ok":true,"total":0,"observed":0,"assertedOnly":0,"noTrace":0,"rows":[],"bypassed":[]}
+object-> {"ok":false,"total":17,"observed":0,"assertedOnly":0,"noTrace":17,...}
+```
+
+**これは第16条「判定不能は緑ではない」の最悪の形である**:
+
+1. **例外を投げない。** ゆえに §1.5 の try/catch 殻に捕まらず、**`errors[]` にも積まれない**。
+2. `noTrace:0` になり、矛盾規則 `score>=90 && noTrace>0` が **構造的に永久 false**。
+3. **FR-13 が「本改修の本分」と呼ぶ矛盾**(tenbin = gauge 100 点なのに 17 相すべて起動証跡なし)を、
+   **設計自身の呼び方が握り潰す。**
+4. しかも画面は緑を出す。**本改修が是正しようとしている当の病(第50条)を、本改修が再生産する。**
+
+**`ok:true` をそのまま信じてはならない。設計上の防御を必ず入れる**:
+
+```js
+// graph/pulse.js — spawn の読み取りは必ずこの関数を通す。素の report() を直接呼ばない
+function readSpawn(run, runName, errors) {
+  const rep = spawnTrace.report(run);          // ← 引数は必ず run オブジェクト(T-6)
+  // ★ 事前 assert: total > 0 でなければ「測れなかった」と表明する。ok:true を信じない
+  if (!rep || typeof rep.total !== 'number' || rep.total <= 0) {
+    errors.push({
+      engine: 'spawn-trace', key: `runs[${runName}].spawn`,
+      reason: `spawn-trace.report returned total=${rep && rep.total} — 測れていない(引数型を疑え)`,
+      at: Date.now(), fatal: false,
+    });
+    return null;                                // ← 0 ではなく null。「数えて 0」ではない
+  }
+  return { total: rep.total, observed: rep.observed,
+           assertedOnly: rep.assertedOnly, noTrace: rep.noTrace, ok: rep.ok };
+}
+
+// contradiction は spawn が測れて初めて言える。測れなければ false ではなく null
+const contradiction = (score !== null && spawn !== null)
+  ? (score >= 90 && spawn.noTrace > 0)
+  : null;                                       // ← 第16条: 判定不能を緑(false)にしない
+```
+
+**`total > 0` を assert する根拠**: `report()` が `total:0` を返す事態は 2 つしかない。
+(a) 引数の型を間違えた、(b) run に相が 1 つも無い。
+**どちらも「起動証跡に問題が無い」を意味しない。** 前者は測り損ね、後者は測る対象が無い。
+**いずれの場合も緑を出す資格が無い。**
+
+**防御が効くことを実走で確かめた**(則1):
+
+```
+$ (防御なし = 前版の設計)
+  raw = {"ok":true,"total":0,"observed":0,"assertedOnly":0,"noTrace":0,"rows":[],"bypassed":[]}
+  contradiction(score100 && noTrace>0) = false   <<< 偽陰性。矛盾が消える
+
+$ (防御あり = 本節の設計)
+  パス渡し(誤)         -> spawn=null  errors に積んだ
+  オブジェクト渡し(正) -> spawn= {"total":17,"noTrace":17,"ok":false}
+  contradiction(bad)  = null(測れなかった — 緑ではない)
+  contradiction(good) = true
+  errors = [{"engine":"spawn-trace","key":"runs[tenbin].spawn",
+             "reason":"spawn-trace.report returned total=0 — 測れていない(引数型を疑え)","fatal":false}]
+```
+
+**画面への波及**: `spawn === null` の run は `data-state="error"` +
+`data-awaiting="spawn-trace"` で「起動実績を測れませんでした」と**名指しで**出す
+(`ux.md` §2.4)。**「起動証跡あり」の緑として描いてはならない。**
+
+**テスト設計への波及**(§6.1 `dashboard-run-panel.test.js`):
+AC-13b / AC-13e の検査は**固定値との比較ではなく、まず `total > 0` を assert する**。
+さらに**故障注入**として「`report()` にパスを渡す実装に差し替えたら赤くなる」ことを検査する
+(§6.4 の G-01 系に 1 行追加)。**引数型の誤りが門に鳴ること**が要件である(第50条)。
 
 **`spawn-trace` の exit 1 を errors に積んではならない**(AC-13c)。
 **exit 1 は「起動証跡なし」という事実**であって engine の故障ではない。
 module として呼べば exit code は存在せず、返り値の三値をそのまま読める — **これが子プロセスを避ける副次的利得である。**
+(ただし上の `total<=0` は事実ではなく**測り損ね**であり、これは errors に積む。両者を混同しないこと。)
 
-**執筆時点の実測**(期待値ではない):
+**`gauge.score()` も同じ罠を持つが、こちらは THROW する**(T-5)。
+パスを渡すと `run-state carries no phases — 測れないものに点は付かない(第37条)` で例外になり、
+§1.5 の try/catch 殻に**捕まる**。**`spawn-trace` だけが捕まらない** —— ゆえに専用の防御が要る。
+
+**執筆時点の実測 — 訂正後の呼び方で全 5 run を実走した**(参考値であって期待値ではない・則3):
 
 ```
-coin                     11/11  6/6  22 events   complete
-habit                    11/11  6/6  40 events   complete
-reform-claude-md-diet     5/11  4/6  15 events   stalled  ← 唯一の停止中
-reform-eval-gauge        11/11  6/6  26 events   complete
-tenbin                   17/17  6/6  27 events   complete + contradiction(score 100 / noTrace 17)
+$ (gauge.score(run) と spawnTrace.report(run) を run オブジェクトで呼んだ結果)
+  coin                     11/11 complete  score=100 total= 11 noTrace= 11 contradiction=true  hist=22
+  habit                    11/11 complete  score= 45 total= 11 noTrace= 11 contradiction=false hist=40
+  reform-claude-md-diet     5/11 stalled   score= 80 total= 11 noTrace= 11 contradiction=false hist=15
+  reform-eval-gauge        11/11 complete  score=100 total= 11 noTrace= 11 contradiction=true  hist=26
+  tenbin                   17/17 complete  score=100 total= 17 noTrace= 17 contradiction=true  hist=27
+  CONTRADICTION_COUNT = 3
 ```
+
+**⚠ 矛盾は tenbin だけではない。実測 3 件である。**
+前版は「contradiction が付くのは tenbin のみ」と読める書き方をしていた。
+requirements.md も同じ箇所で tenbin のみを挙げるが、**いずれも執筆時点の参考値**である(則3)。
+AC-13e は「1 個以上」を求めるので門は落ちないが、
+**実装者が「1 件しか出ないはず」と読み、3 件出た画面を不具合と誤認してはならない。**
+**矛盾の件数は固定値ではなく、規則を全 run に適用した結果である。**
+
+**`scaleGuess` は一意に定まらないことがある** — 実測の相数逆引き:
+
+```
+$ node -e "const f=require('./graph/forge.js');const o={};
+   for(const k of Object.keys(f.SCALES))o[k]=f.buildDag('x',k).tasks.length;
+   const d={};for(const[k,v] of Object.entries(o))(d[v]=d[v]||[]).push(k);
+   console.log(JSON.stringify(o));console.log(JSON.stringify(d))"
+
+{"quick":6,"standard":14,"full":17,"reform":11,"counsel":6,"cartography":11}
+{"6":["quick","counsel"],"11":["reform","cartography"],"14":["standard"],"17":["full"]}
+```
+
+**相数 6 は `quick` と `counsel`、相数 11 は `reform` と `cartography` が衝突する。**
+ゆえに `phasesTotal` だけでは道を一意に引けない。
+**設計: 候補が 1 本のときだけ `scaleGuess` に道名を入れ、2 本以上なら `scaleGuess: null` とし、
+`scaleCandidates: ['reform','cartography']` に両論を併記する。**
+**推測で 1 本に決めてはならない**(NFR-06)。画面は候補が複数なら「reform または cartography」と出す。
 
 **`run.json` 形式(旧 orchestrator)の混在**: `domains` を持たないファイルは
 その run 単位で skip し `errors[]` に `{engine:'conclave-read', run:<name>, reason:'no domains[]'}` を積む。
@@ -185,11 +452,28 @@ tenbin                   17/17  6/6  27 events   complete + contradiction(score 
 
 | 鍵 | source | 落ちたとき |
 |---|---|---|
-| `due` / `catchUp` / `owedDay` / `reason` / `jst` | `daily-guard.js` を module として | `null` + errors |
+| `due` / `catchUp` / `owedDay` / `reason` / `jst` | **`dailyGuard.isDue()` を module として。引数なし** | `null` + errors |
 | `lease` | `status --json` に保持者欄が**現れる場合のみ**。無ければ鍵ごと出さない | 鍵を出さない |
 
+**実走した出力**(則1):
+
+```
+$ node -e "console.log(JSON.stringify(require('./graph/daily-guard.js').isDue()))"
+{"due":false,
+ "reason":"already ran for 2026-09-01 (newest open window: 2026-09-01)",
+ "now":{"date":"2026-09-02","hour":18,"minute":7,"stamp":"2026-09-02 18:07 JST"},
+ "owedDay":"2026-09-01",
+ "ledger":{"lastDate":"2026-09-01","history":[…],"lastStamp":"2026-09-01 22:08 JST"}}
+実測 9.0ms。例外なし。exit code は存在しない
+```
+
+**断面への写し方**: `{ due, reason, owedDay, jst: now.stamp }`。
+`isDue()` の返り値にも `ledger` 鍵があるが、**これは日次ノルマの台帳であって FR-22 の gauge ledger ではない。**
+**同名の別物を断面の同じ場所に混ぜてはならない** —— FR-22 の台帳は最上位 `ledger[]`(§1.3.7)、
+日次の台帳は `daily` の中に留める。混ぜれば AC-22b の 3 値一致が意味を失う。
+
 **exit code を成否として読まない**(AC-16a)。実測 `due` は `{"due":false}` を返しつつ **exit=1**。
-**exit 1 = 債務なし**である。module として呼べばこの罠は構造的に消える。
+**exit 1 = 債務なし**である。module として呼べばこの罠は構造的に消える(上の実走に exit code は現れない)。
 `lease` は discover 未確認のため、**存在しなければ鍵を出さない**(推測を出さない — NFR-06)。
 
 ### 1.3.6 `scale` — 道の形(FR-21)
@@ -199,24 +483,124 @@ scale = { quick:{phases,gates}, standard:{...}, full:{...},
           reform:{...}, counsel:{...}, cartography:{...}, classifierAvailable:true }
 ```
 
-`source`: `forge.buildDag('x', '<name>').tasks.length`。**第2引数は文字列**(罠表)。
+`source`: `forge.buildDag('x', '<name>').tasks.length`。**第2引数は文字列**(罠 T-2)。
 実測 `quick 6 / standard 14 / full 17 / reform 11 / counsel 6 / cartography 11`。
 **ハードコードしない** — 相数は `Object.keys(forge.SCALES)` を舐めて動的に得る。
 道が 7 本目を迎えた朝、断面がひとりでに 7 本を描く。
+
+### 1.3.7 `ledger[]` — 点数履歴(**FR-22。前版に欠落していた**)
+
+**前版は `ledger` の語を 1 度も書いていなかった**(`grep -ci ledger design.md ux.md identity.md` → 0/0/0)。
+FR-22 が課すのは 3 つである:
+
+1. 点数履歴の源を **`gauge.js ledger` のみ**とし、**`baseline` を呼ばない**(AC-22a)
+2. 断面の **`ledger.length`** が `readLedger().length` と CLI 行数と **3 値一致**する(AC-22b)
+3. 画面に **`data-source="gauge-ledger"`** の出所ラベルを出す(AC-22c)
+
+#### source と実走
+
+```
+$ node -e "const g=require('./graph/gauge.js');
+   console.log('ledgerPath =', g.ledgerPath());
+   const l=g.readLedger();
+   console.log('length     =', l.length);
+   console.log('行の鍵     =', JSON.stringify(Object.keys(l[0])));
+   console.log('末尾1行    =', JSON.stringify(l[l.length-1]))"
+
+ledgerPath = C:\Users\kikus\Documents\workspace\paradise-creations\gauge-ledger.jsonl
+length     = 10                                          実測 0.5ms
+行の鍵     = ["ts","slug","scale","metrics"]
+末尾1行    = {"ts":"2026-09-02T07:03:12.474Z","slug":"tenbin","scale":"full",
+              "metrics":{"score":100,"complete":true,"phasesTotal":17,"phasesDone":17,
+                         "domainsTotal":6,"domainsRatified":6,"firstPassRate":1,
+                         "reworkCount":0,"retryOverhead":0,"loopGuardTrips":0,
+                         "durationMs":13520919}}
+
+$ node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'
+10                                                       ← CLI の日付行と一致(2 値一致を確認)
+```
+
+**源(`readLedger().length` = 10)と表示(CLI 行数 = 10)は既に一致している。**
+**欠けていたのは断面の 3 値目だけである。** 本節がそれを足す。
+
+#### 断面スキーマ
+
+```
+ledger[i] = { ts, slug, scale, score, phasesDone, phasesTotal }
+```
+
+| 鍵 | 型 | source | 落ちたとき |
+|---|---|---|---|
+| `ts` | `string`(ISO) | 台帳行の `ts` を**そのまま**。**再計算しない** | 行を落とさず `null` |
+| `slug` | `string` | 台帳行の `slug` | `null` |
+| `scale` | `string` | 台帳行の `scale`(`full` / `reform` …) | `null` |
+| `score` | `number` | `row.metrics.score` | `null` |
+| `phasesDone` / `phasesTotal` | `number` | `row.metrics.*` | `null` |
+| (配列全体) | `array\|null` | `gauge.readLedger()` を try/catch 殻で | **`null` + errors**。空配列で埋めない |
+
+```js
+// graph/pulse.js — FR-22。gauge.baseline() は呼ばない(AC-22a)
+const ledger = guard('gauge', 'ledger', () =>
+  gauge.readLedger().map(r => ({
+    ts: r.ts,                        // ← 台帳が記録した時刻をそのまま持つ。再計算しない
+    slug: r.slug, scale: r.scale,
+    score: r.metrics && r.metrics.score,
+    phasesDone: r.metrics && r.metrics.phasesDone,
+    phasesTotal: r.metrics && r.metrics.phasesTotal,
+  })), null);
+```
+
+**`baseline()` を呼ばない理由**(FR-22 の由来 R-29): `baseline` は `ledger` とほぼ同じ表示を出すが
+**タイムスタンプを再計算する**。実測で `2026-09-02T07:03` に化けた。
+**同じ出来事に 2 つの時刻が生まれれば、画面はそのどちらかで嘘をつく。**
+ゆえに断面は **`readLedger()` 一本**を源とし、`ts` を**加工せずに**運ぶ。
+`gauge.baseline` は export に存在する(`typeof === 'function'`)が、**pulse.js からは呼ばない。**
+AC-22a の検査 `grep -o "gauge.js baseline\|gauge baseline" graph/pulse.js dashboard/*.js dashboard/*.html | wc -l` → `0` を構造として満たす。
+
+**`ts` は ISO のまま断面に載せ、画面には `toISOString()` の文字列を出さない**(§1.3.1 と同じ原則)。
+表示は `ux.md` §3 の局所時刻規則が担う。
+
+#### 画面への出し方(FR-22 / AC-22c)
+
+**新しい領域は作らない。** §4.2 の**領域 4 `runs-score`(点数と起動実績の並置)の内側**に、
+run ごとの「点数の履歴」として置く。理由は §4.1 と同じ —— 領域を増やせば導線の維持費が上がる。
+そして **FR-13 の並置(点数 / 起動実績)と FR-22 の履歴(その点数がいつ付いたか)は、
+同じ問いの現在形と過去形**であり、離すほうが読み難い。
+
+| 出すもの | 断面の鍵 | 実装上の掟 |
+|---|---|---|
+| 履歴行 | `ledger[]` を `slug` で絞り `ts` 降順 | **`data-source="gauge-ledger"` を根要素に付す(AC-22c)** |
+| 各行の時刻 | `ledger[i].ts` | 「**ledger 記録時刻**」と明示するラベルを添える(FR-22 の要求)。相対表記は `ux.md` §3.2 |
+| 各行の点数 | `ledger[i].score` | 直近との差を併記してよい(**engine を呼ばずに断面内で引き算する**) |
+| `ledger` が `null` | — | `data-state="error"` + `data-awaiting="gauge"`。**空配列として描かない** |
+| `ledger` が `[]` | — | `data-state="empty"`「まだ採点の記録がありません」。**`null` と区別する**(§1.5) |
+
+**`ledger.length` が断面に載ることで AC-22b の 3 値一致が測れるようになる**:
+
+```
+源  : node -e 'console.log(require("./graph/gauge.js").readLedger().length)'        → 10
+表示: node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'                → 10
+断面: node graph/pulse.js snapshot --json | node -e '…JSON.parse(s).ledger.length'  → 10  ★本節が足した
+```
+
+**10 は執筆時点の参考値であって期待値ではない**(則3)。
+`ledger` は**追記型**であり、run を採点し直すたびに増える。**測るのは 3 つの数え方が一致することである。**
 
 ### 1.4 run 列挙の設計(D-13 の構造的回避)
 
 ```js
 function listRuns() {
   const root = workspace.resolve().root;          // 第30条。住所を知るのは workspace.js だけ
-  return fs.readdirSync(root, { withFileTypes: true })
-    .filter(e => e.isDirectory() && !e.name.startsWith('_'))
+  return visibleDirs(root)                        // §1.3.2a と同じ関数。数え方の入口を 2 つ持たない
+    .filter(e => !e.name.startsWith('_'))         // 作業場は run ではない
     .map(e => ({ name: e.name, path: path.join(root, e.name, 'conclave.json') }))
     .filter(r => fs.existsSync(r.path));          // D-6: 不在と 0 件を取り違えない
 }
 ```
 
 **slug を CLI に渡す経路が構造上どこにも無い。** D-13 の罠は設計で消える。
+**`visibleDirs()` を共有することで `counts.creations` と `runs[]` の母集合がずれない**(D-5 の再発防止)。
+実測 `listRuns().length` = 5(coin / habit / reform-claude-md-diet / reform-eval-gauge / tenbin)。
 
 ## 1.5 `errors[]` — engine が落ちたときに積むもの
 
@@ -241,6 +625,34 @@ errors[i] = { engine, key, reason, at, fatal:false }
 **故障注入**: 環境変数 `PULSE_FAULT=<engine名>` で当該 engine の呼び出しを強制的に例外にする。
 これは **AC-01e / AC-20d が要求する検査手段**であり、テスト専用の入口である。
 
+### 1.5.1 **例外を投げない故障 — try/catch では捕まらないもの**
+
+**try/catch の殻は「engine が投げてくれる」ことを前提にしている。投げない engine がある。**
+
+| engine | 誤った呼び方をしたときの挙動 | 殻に捕まるか | 対処 |
+|---|---|---|---|
+| `gauge.score` | **THROW**(第37条の番人) | ✔ 捕まる | 殻だけで足りる |
+| `vendor.check` / `workspace.check` | **THROW**(`is not a function`) | ✔ 捕まる | §1.3.3 で正しい入口に直した |
+| `lessons.exportLessons()` | **THROW**(`path` 引数が undefined) | ✔ 捕まる | 殻だけで足りる |
+| **`spawnTrace.report`** | **投げない。`{ok:true,total:0}` を返す** | **✘ 捕まらない** | **§1.3.4a の `total > 0` 事前 assert** |
+
+**「静かに緑を返す故障」は殻を素通りする。** ゆえに設計は 2 段構えを取る:
+
+1. **殻**(try/catch)= 投げる故障を捕らえる
+2. **事前 assert** = 投げない故障を、**返り値の妥当性**で捕らえる
+
+**返り値の妥当性を確かめるべき鍵**(すべて「0 や空が正常でありうるが、
+それが『測った結果の 0』なのか『測れていない 0』なのかを区別できない」もの):
+
+| 鍵 | assert | 破れたとき |
+|---|---|---|
+| `runs[].spawn` | `rep.total > 0` | `spawn = null` + errors(§1.3.4a) |
+| `counts.creations` | `creations + workshops === visibleDirs().length` | `null` + errors(§1.3.2a) |
+| `ledger[]` | `Array.isArray(rows)` | `null` + errors(§1.3.7) |
+| `scale` | `Object.keys(forge.SCALES).length > 0` | `{}` + errors |
+
+**第16条「判定不能は緑ではない」は、engine が緑を返してきた場合にも適用される。**
+
 ## 1.6 census の隔離(FR-06 / S-2)
 
 **`pulse.js` は census を一切 require しない**(AC-06a: `grep -rn "census" graph/pulse.js` が `0`)。
@@ -260,24 +672,88 @@ census が未取得のとき `census: null` となり、画面は `data-state="e
 `data-awaiting="census"` を出す(AC-06d / `ux.md` §2)。
 `census.js` 側には **`--no-tests` フラグ**を足す(FR-06)。既定挙動は変えない。
 
-## 1.7 断面生成の時間収支
+## 1.7 断面生成の時間収支 — **すべて実測に置き換えた**
 
-| 区分 | 実測/見積 | 備考 |
+**前版は gates を「~200ms」と見積もり、合計 ~250ms と書いた。これは過大見積であった。**
+審査官の機での実測は warm **29.1ms**、本機での実測は warm **51〜53ms**。
+**見積を捨て、実測を載せる**(則1):
+
+| 区分 | 実測 | 備考 |
 |---|---|---|
-| require 4 engine(初回のみ) | 4.7ms | 常駐後は 0 |
-| orgChart + buildDag×6 | 0.53ms | 毎フレーム可 |
-| conclave 直読み 5 件 | 1.0ms | |
-| gates 5 門 | ~200ms | **最大の費目** |
-| lessons export + 読取 + 削除 | ~40ms | 一時ファイルは必ず削除(AC-18c) |
-| KG JSONL 2 本 | ~4ms | |
-| **合計(常駐 2 回目以降)** | **~250ms** | |
+| require 13 engine(初回のみ) | 4.7ms | 常駐後は 0 |
+| `counts` 一式(articles/engines/cardinals/creations/kg) | ~3.5ms | codex.parse() が 2.1ms で最大 |
+| conclave 直読み + gauge.score + spawn.report ×5 run | ~1.5ms | score 0.2ms / report 0.1ms(**オブジェクト渡し**) |
+| `ledger`(`gauge.readLedger()`) | 0.5ms | FR-22 |
+| `daily`(`isDue()`) | 9.0ms | |
+| `scale`(buildDag ×6) | ~0.5ms | |
+| lessons export + 読取 + **unlink** | ~2ms | 一時ファイルは必ず削除(AC-18c) |
+| **gates 5 門** | **cold 67.2ms / warm 51〜53ms** | **依然として最大の費目だが 200ms ではない** |
+| **合計(gates 込み・毎回走らせる)** | **cold 89.5ms / warm 61〜70ms** | 実測 5 周 |
+| **合計(gates をキャッシュ)** | **cold 93.7ms / warm 5.4〜8.9ms** | 実測 6 周 |
 
-**NFR-01 の 50ms 未満(AC-N01d)を満たすため、gates を毎回走らせない。**
+**実走の出力**(則1):
 
-**gates のキャッシュ設計**: `gates` は engine ファイル群の mtime が変わったときのみ再走査する。
-`graph/*.js` の最大 mtime を鍵にし、変化が無ければ前回値を `at` 付きで返す。
-これにより 2 回目以降の `/snapshot.json` は **~50ms 未満**に収まり、
-かつ「いつ測った門の合否か」を `at` が正直に語る(NFR-06)。
+```
+--- gates キャッシュ無し(毎回走らせる) ---
+  pass1 = 89.5ms (cold)
+  pass2 = 70.5ms   pass3 = 69.3ms   pass4 = 62.1ms   pass5 = 61.5ms
+--- gates キャッシュ有り ---
+  pass1 = 7.3ms    pass2 = 5.4ms    pass3 = 5.8ms    pass4 = 7.5ms   pass5 = 6.2ms
+
+--- 断面まるごと 6 周(キャッシュ有りの設計そのまま) ---
+=== 断面 #1 (COLD) ms=93.7 gatesCached=false ===
+=== 断面 #6 (WARM) ms=7.2  gatesCached=true  ===
+timings: [93.7, 7.9, 7.5, 7.5, 8.9, 7.2]
+WARM_MAX = 8.9ms   (AC-N01d / AC-01i の 50ms 未満)
+errors : []
+```
+
+### mtime キャッシュの要否 — **再検討した結果、残す**
+
+審査官は「実測 29.1ms なのだからキャッシュは無くても AC-N01d(50ms 未満)を満たす」と申し送った。
+**その通りであるが、それは審査官の機での話である。本機では違った**:
+
+| 機 | gates warm | キャッシュ無しの断面 warm | AC-N01d(50ms) |
+|---|---|---|---|
+| 審査官の機 | 29.1ms | 実測なし(gates 単体のみ) | 余裕あり |
+| **本機**(同一構成・別時刻) | **51〜53ms** | **61〜70ms** | **超える** |
+
+**29ms と 53ms の差は engine の変更ではなく、機と時の揺らぎである。**
+**その揺らぎが 50ms の閾を跨ぐ以上、キャッシュ無しの設計は「速い日は緑、遅い日は赤」になる。**
+不定に赤くなる門は、§5.4 で我々自身が病と断じたもの(motion-probe の不定赤)と同じ形である。
+
+**ゆえに mtime キャッシュは残す。ただし動機を実測に基づいて書き直す**:
+
+> ~~gates は 200ms かかるから~~ → **gates は cold 67ms / warm 51〜53ms かかり、
+> 断面全体を 61〜70ms に押し上げる。AC-N01d の 50ms を跨ぐ揺らぎの中にあるため、
+> キャッシュで 5.4〜8.9ms に落として閾から遠ざける。**
+
+**キャッシュの規則**(簡素に保つ — 賢くしない):
+
+```js
+// 鍵は graph/*.js の最大 mtime。engine が 1 本でも書き換われば全門を測り直す
+function graphMtimeKey() {
+  let max = 0;
+  for (const f of fs.readdirSync(GRAPH)) if (f.endsWith('.js'))
+    max = Math.max(max, fs.statSync(path.join(GRAPH, f)).mtimeMs);
+  return max;                                   // 実測 0.7ms。門 5 本を測るより 70 倍安い
+}
+// 鍵が変わらなければ前回の gates 配列をそのまま返す。at はそのとき測った時刻を保つ
+```
+
+**門ごとに細かく無効化しない。** engine は互いを require しており、
+「wiring.js だけ変わったから wiring 門だけ測り直す」は**依存の向きを人が推測すること**になる。
+**推測を設計に入れない**(NFR-06)。全門まとめて測り直すほうが安全で、cold 67ms なら払える。
+
+**キャッシュを持つことの代償と、その支払い方**:
+`gates[i].at` は**その門を実際に測った時刻**であり、`generatedAt` より古くなりうる。
+**古い合否を「いま測った」として出せば NFR-06 違反である。**
+ゆえに `ux.md` §2.1 の**パネル単位の最終更新**を必ず実装し、
+門のパネルは `gates[i].at` を自分の鮮度として出す(断面全体の鮮度を借りない)。
+**キャッシュを持つなら、その事実を画面が語らねばならない。**
+
+**`gatesCached: boolean` を断面の最上位に載せる** —— テストが
+「2 回目はキャッシュが効いた」ことを機械で確かめられるようにするためである(AC-01i の補助)。
 
 ---
 
@@ -503,12 +979,17 @@ NFR-03 の同時接続 6 上限に当たった 7 枚目のタブは**沈黙す�
 | 0 | (領域外・最上部固定) | 経路バッジ + 鮮度 | `transportHint` / `generatedAt` / `ageMs` |
 | 1 | `running-ring` | **走行中の環**(最上位) | `runs[]` |
 | 2 | `counts` | 数の看板 | `counts` |
-| 3 | `gates` | 門の合否 5 列 | `gates[]` |
-| 4 | `runs-score` | 点数と起動実績の**並置** | `runs[].score` / `runs[].spawn` |
+| 3 | `gates` | 門の合否 5 列 + **各門の測定時刻** | `gates[]`(`gates[i].at` / `gatesCached`) |
+| 4 | `runs-score` | 点数と起動実績の**並置** + **点数履歴(FR-22)** | `runs[].score` / `runs[].spawn` / **`ledger[]`** |
 | 5 | `daily` | 日次ノルマの債務 | `daily` |
 | 6 | `scales` | 道の形 6 本 | `scale` |
 | 7 | `memory` | 教訓 / KG | `lessonsByKind` / `counts.kg*` |
-| 8 | `atlas-index` | **全画面への索引** | 静的 + 実在検査 |
+| 8 | `atlas-index` | **全画面への索引** | `atlas[]` + 実在検査 |
+
+**領域 4 が 3 つの鍵を担う理由**(FR-13 + FR-22): 「点数」「起動実績」「その点数がいつ付いたか」は
+**同じ問いの 3 つの面**である。並べれば矛盾が見え、離せば見えない。
+`ledger[]` はこの領域の内側に **`data-source="gauge-ledger"`** を付した小節として置く(AC-22c / §1.3.7)。
+**領域は 8 のまま増やさない** —— 増設は導線の維持費を上げる(§4.1)。
 
 **「数の看板」と「走行中の環」を別領域に分ける**(Zylos の Activity Panel 分離則)。
 混ぜると認知が過負荷になり、**何をしたかの監査が不可能になる**。
@@ -720,7 +1201,7 @@ renderHuman(data);                           // 既定の人間向け出力は 1
 | `tests/dashboard-watch.test.js` | (FR-11 / NFR-04) | AC-11a〜e, AC-N04a, AC-17e | ~3s |
 | `tests/dashboard-freshness.test.js` | (FR-07) | AC-07a/b/c | ~1s |
 | `tests/dashboard-sse.test.js` | (FR-09 / FR-10) | AC-09a〜e, AC-10c/d/e, AC-N03a | ~22s |
-| `tests/dashboard-run-panel.test.js` | (FR-13 / FR-14) | AC-13a〜e, AC-14a〜i | ~2s |
+| `tests/dashboard-run-panel.test.js` | (FR-13 / FR-14 / **FR-22**) | AC-13a〜e, AC-14a〜i, **AC-22a/b/c** | ~2s |
 | `tests/motion-probe-leak.test.js` | **G-09** | AC-23a〜e/g | ~5s |
 | **G-03 / G-05 / G-08** | ファイルを新設しない | AC-04a〜d は既存 `paradise.test.js` に追記(G-03)。AC-G05a/b と AC-G08a/b は **`tribunal.yml` の grep + 既存 `derived.js check`** で足りる | ~0s |
 
@@ -768,6 +1249,9 @@ console.log((Number(process.hrtime.bigint()-t0)/1e6).toFixed(1)+"ms")'
 | 門 | 壊し方 | 期待 |
 |---|---|---|
 | G-01 | `pulse.js` の `counts.engines` を +1 | `paradise.test.js` exit 1 |
+| **G-01(D-5)** | **`visibleDirs()` から `.` 除外を外す**(`.git`/`.github` を数える) | **`dashboard-count.test.js` exit 1**(AC-01b の両辺が割れる) |
+| **G-01(D-3)** | **`spawnTrace.report(run)` を `report(r.path)` に戻す** | **`dashboard-run-panel.test.js` exit 1** — `total > 0` の事前 assert が `spawn=null` を出し、`data-contradiction="true"` が 0 個になる(AC-13e) |
+| **FR-22** | **`ledger` 鍵を断面から外す / `gauge.baseline()` に差し替える** | **`dashboard-run-panel.test.js` exit 1**(AC-22a の grep が 1 以上 / AC-22b の 3 値一致が崩れる) |
 | G-02 | `template.html` に `fonts.googleapis` を 1 行戻す | CI exit 1 |
 | G-03 | 合成の見本を `graph/` に置く(検査後**必ず削除**) | `workspace.js check` exit 1 |
 | G-04 | 新 `dashboard/*.html` を足しリンクを張らない | CI exit 1 |
@@ -777,6 +1261,10 @@ console.log((Number(process.hrtime.bigint()-t0)/1e6).toFixed(1)+"ms")'
 | G-08 | 新設テストに `require('../dashboard/state.json')` を 1 行 | `derived.js check` exit 1 |
 | G-09 | `browser.close()` を `child.kill()` に戻す | `motion-probe-leak.test.js` exit 1 |
 | G-10 | `pulse.js` に `execFileSync` を 1 行 | CI exit 1 |
+
+**D-3 の故障注入が最も重要である。** これは「引数の型を間違えると門が鳴る」ことの検査であり、
+**前版の設計が踏んだ罠を、二度と静かに踏めなくする**ためのものである(第50条)。
+壊した状態で緑が出るなら、その門は D-3 を見ていない。
 
 ## 6.5 AC を書くときの掟(則1〜4 を新設 AC にも適用する)
 
@@ -822,7 +1310,179 @@ console.log((Number(process.hrtime.bigint()-t0)/1e6).toFixed(1)+"ms")'
 | 何ページ作るか・8 領域の割当 | 領域の並び順が神の視線をどう導くか → `ux.md` §1 |
 | engine 修正の差分と理由 | — |
 | テスト 13 本の割当と 60 秒の収め方 | — |
+| `ledger[]` の断面スキーマと `data-source="gauge-ledger"` を出すこと(FR-22 / §1.3.7) | 履歴行の書体・色・区切り → `identity.md` / `ux.md` §5.4 |
 | **`data-contradiction` / `data-run-state` を出すこと**(印の**有無**) | **印をどう見せるか**(色・枠・字) → `identity.md` / `ux.md` §5 |
 
 **印そのものを省いてはならない**(要件 §9.5)。design が決めてよいのは**どう見せるか**だけである。
 本書は印を**出す**と決め、**どう見せるか**は姉妹文書に委ねた。
+
+**本改稿でも色は 1 件も足していない**(第17条):
+
+```
+$ grep -coE '#[0-9a-fA-F]{6}' reform/dashboard-living-gate/design.md   → 0
+```
+
+---
+
+# §9. 実装時の罠 — **build 相はここを先に読め**
+
+**本節は審査報告 `ratify-design.md` §6.3 の申し送り 8 件を全て取り込み、
+本改稿で確定させた事実を各項に併記したものである。**
+**すべて実際に走らせて確かめてある**(則1)。走らせた全出力は §10 附録に在る。
+
+| # | 罠 | 正しい形 | 誤ると何が起きるか | 本書の該当節 |
+|---|---|---|---|---|
+| **罠1** | **`spawn-trace.report()` / `gauge.score()` に**パスを渡す** | **必ずパース済みの run オブジェクトを渡す** | `gauge` は THROW するが **`spawn-trace` は例外を投げず `{ok:true,total:0}` を返す**。矛盾が永久に false になり、しかも門が鳴らない。**`total > 0` を先に確かめること** | §1.2 T-5/T-6 / **§1.3.4a** |
+| **罠2** | gates 5 門を**一律 `check()`** で呼ぶ | **入口は門ごとに違う** — `wiring.check()` / `derived.check()` / `check-agents.check()` は `check()`、**`vendor` は `verify()`**、**`workspace` は `hardcodedRefs()` + `strayCreations()` の合成** | 5 門中 2 門が毎回 `is not a function` で例外 → 常時赤 → AC-15a/15b が落ちる | §1.2 T-7/T-8 / §1.3.3 |
+| **罠3** | `counts.engines` を**固定値 33** と比較する | **`pulse.js` 自身を含んで 34 になる。** その場で数えた数と突き合わせる(AC-E3) | 着工初日に赤。しかも「正しい赤」ではなく則3 違反の赤 | §1.3.2 |
+| **罠4** | `counts.creations` で**ドットディレクトリを除かない** | **`!name.startsWith('.')` を必ず入れる。** `.git` / `.github` を数えると node=9 / bash=7 で両辺が割れる。`_` 始まりは**捨てず**に `workshops` として数える | AC-01a/b が偽陽性で赤くなる(画面の嘘ではなく数え方の食い違い) | **§1.3.2a** |
+| **罠5** | `lessons.exportLessons()` を**引数なし**で呼ぶ / **一時ファイルを消し忘れる** | **`exportLessons(<outPath>)` は outPath 必須。** 読了後 **必ず `unlink`** する。実測 1.8ms / count=65 / byKind={mechanism:63, conduct:2} | 引数なしは `The "path" argument must be of type string … Received undefined` で THROW。消し忘れると **AC-18c が落ちる**(審査官が実演済み) | §1.2 T-9 / §1.3.2 |
+| **罠6** | `daily-guard` を**CLI で呼び exit code を成否と読む** | **`isDue()` を module として呼ぶ。** module 呼びなら **exit code が存在しない**。実測 `{"due":false, reason:"already ran for 2026-09-01", …}` / 9.0ms | CLI では `due:false` なのに **exit=1** が返る。exit 1 を「失敗」と読むと日次パネルが常にエラーになる(AC-16a) | §1.3.5 |
+| **罠7** | `..` 脱出の 403 分岐を **`http.get` で検査する** | **生ソケット(`net.Socket` に `GET /../../x HTTP/1.1` を直書き)で検査する** | `http.get` は送信前にパスを正規化するため `..` がサーバに届かず **404 が返る**。**「塞げている」と誤認する**(審査官が実測) | §2.3 |
+| **罠8** | `census.js --no-tests` を**新規に実装しようとする** | **内部 API は既に `opts.runTests !== false` の分岐を持つ。CLI フラグを `opts.runTests` に繋ぐだけでよい**(`grep -c 'no-tests' graph/census.js` → 0 = CLI 配線のみが未実装) | 既にある分岐を二重に書くと、既定挙動(テストを走らせる)を壊す危険がある。**FR-06 は既定挙動を変えないことを課している** | §1.6 |
+
+**加えて、本改稿で見つけた 2 件**:
+
+| # | 罠 | 正しい形 |
+|---|---|---|
+| **罠9** | `scaleGuess` を `phasesTotal` から**一意に引けると思う** | **相数 6 は `quick`/`counsel`、相数 11 は `reform`/`cartography` が衝突する。** 候補が 1 本のときだけ `scaleGuess` を埋め、複数なら **`null` + `scaleCandidates[]` に両論併記**(§1.3.4) |
+| **罠10** | `daily.ledger` と FR-22 の `ledger[]` を**同じものと思う** | **別物である。** `isDue()` の返り値の `ledger` は**日次ノルマの台帳**、FR-22 の `ledger[]` は **gauge の点数台帳**(`gauge-ledger.jsonl`)。混ぜれば AC-22b の 3 値一致が意味を失う(§1.3.5 / §1.3.7) |
+
+**着工前の門(PRE-03)**: 審査官の実測で `archify-visual-check-profile` の残骸が
+**683 個**まで悪化している(本書 §5.4 が引用した 529 から +154)。
+PRE-03 は掃除後 **10 未満**を求める。**この数を先に落としてから着工すること。**
+掃除前後の数は PR 本文に記録する(設計文書ではなく build/PR の責務)。
+
+---
+
+# §10. 附録 — 本改稿で走らせた engine 呼び出しと実出力
+
+**則1(走らせて確かめる)の証拠である。** 検証スクリプトは `$LOCALAPPDATA/Temp` に置き、
+`reform/dashboard-living-gate/` には 1 件も残していない。
+
+```
+======== A. counts の source ========
+OK   clergy.COLLEGE keys                       (0.0ms)  ->  7
+OK   codex.parse().length (articles)           (2.1ms)  ->  50
+OK   fs.readdirSync('graph').filter(.js)       (0.2ms)  ->  33
+OK   kg.query('').length                       (0.7ms)  ->  99
+
+======== B. counts.creations / workshops の数え方 ========
+OK   workspace.resolve()  (0.2ms)
+     -> {"root":"C:\\Users\\kikus\\Documents\\workspace\\paradise-creations",
+         "source":"sibling","legacy":false,"exists":true}
+  全ディレクトリ = 10  [.git, .github, coin, habit, pomodoro, reform-claude-md-diet,
+                        reform-eval-gauge, rps, tenbin, _scratch]
+  ドット除外後(visible) = 8
+  creations (! _ 始まり) = 7  [coin, habit, pomodoro, reform-claude-md-diet,
+                               reform-eval-gauge, rps, tenbin]
+  workshops (_ 始まり)   = 1  [_scratch]
+  AC-01b 期待: creations + workshops == visible : true
+  counts.runs (conclave.json 実在) = 5
+  $ ls -d "$ROOT"/*/ | grep -vc '/_[^/]*/$'   → 7      ← bash 側も 7。両辺一致
+  $ ls -d "$ROOT"/*/ | grep -c  '/_[^/]*/$'   → 1
+
+======== C. gates 5 門 — 正しい入口 ========
+OK    wiring.check()            (258.4ms 初回)  ->  {"ok":true,"keys":["ok","orphans","dangling","map"]}
+THROW vendor.check()   [誤]     (0.0ms)  ->  vendor.check is not a function
+OK    vendor.verify()  [正]     (8.6ms)  ->  {"ok":true,"keys":["ok","findings","status"]}
+OK    derived.check()           (143.2ms 初回) ->  {"ok":true,"keys":["ok","findings","undeclared","note"]}
+OK    check-agents.check()      (7.5ms)  ->  {"ok":true,"keys":["ok","skipped","dir","need","sources",
+                                              "missing","dangling","ungoverned","misrouted","hierarchy","note"]}
+THROW workspace.check() [誤]    (0.0ms)  ->  ws.check is not a function
+OK    ws.hardcodedRefs()  [正]  (3.6ms)  ->  {"isArray":true,"len":0}
+OK    ws.strayCreations() [正]  (14.4ms) ->  {"isArray":true,"len":0}
+
+-- 正しい入口で 5 門を 5 周 --
+pass1 cold: wiring=true(21.4) vendor=true(2.3) derived=true(19.0) check-agents=true(7.9) workspace=true(16.7)  SUM=67.2ms
+pass2 warm: wiring=true(18.6) vendor=true(1.6) derived=true(13.6) check-agents=true(5.2) workspace=true(14.5)  SUM=53.5ms
+pass3 warm: ... SUM=52.8ms   pass4 warm: ... SUM=51.1ms   pass5 warm: ... SUM=53.2ms
+
+======== D. gauge.score — パス vs オブジェクト ========
+  target = C:\Users\kikus\Documents\workspace\paradise-creations\tenbin\conclave.json
+THROW gauge.score(<path string>)  [誤]
+      -> run-state carries no phases — 測れないものに点は付かない(第37条)
+OK    gauge.score(JSON.parse(read(path))) [正]  (0.2ms)
+      -> {"score":100,"keys":["score","complete","phasesTotal","phasesDone","domainsTotal",
+          "domainsRatified","firstPassRate","reworkCount","retryOverhead","loopGuardTrips","durationMs"]}
+
+======== E. spawn-trace.report — パス vs オブジェクト(偽陰性) ========
+OK  spawn-trace.report(<path string>) [誤/静かに 0]
+    -> {"ok":true,"total":0,"observed":0,"assertedOnly":0,"noTrace":0}
+OK  spawn-trace.report(<run object>)  [正]
+    -> {"ok":false,"total":17,"observed":0,"assertedOnly":0,"noTrace":17}
+  >>> パス渡しは例外を投げない = try/catch 殻に捕まらない = errors[] に積まれない
+
+-- §1.3.4a の防御を実装して確かめた --
+  (防御なし) contradiction(score100 && noTrace>0) = false   <<< 偽陰性。矛盾が消える
+  (防御あり) パス渡し   -> spawn=null  errors に積んだ
+             オブジェクト -> spawn={"total":17,"noTrace":17,"ok":false}  contradiction=true
+  errors = [{"engine":"spawn-trace","key":"runs[tenbin].spawn",
+             "reason":"spawn-trace.report returned total=0 — 測れていない(引数型を疑え)","fatal":false}]
+
+======== F. gauge ledger (FR-22) ========
+OK  gauge.ledgerPath()        -> C:\Users\kikus\Documents\workspace\paradise-creations\gauge-ledger.jsonl
+OK  gauge.readLedger().length -> 10        (0.5ms)
+    行の鍵  = ["ts","slug","scale","metrics"]
+    末尾1行 = {"ts":"2026-09-02T07:03:12.474Z","slug":"tenbin","scale":"full",
+               "metrics":{"score":100,"complete":true,"phasesTotal":17,"phasesDone":17,…}}
+$ node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'   → 10   ← 2 値一致
+
+======== G. daily-guard / lessons ========
+OK    daily-guard.isDue()  (9.0ms)
+      -> {"due":false,"reason":"already ran for 2026-09-01 (newest open window: 2026-09-01)",
+          "now":{"date":"2026-09-02","hour":18,"minute":7,"stamp":"2026-09-02 18:07 JST"},
+          "owedDay":"2026-09-01","ledger":{…}}
+THROW lessons.exportLessons(undefined) [誤]
+      -> The "path" argument must be of type string or an instance of Buffer or URL. Received undefined
+OK    lessons.exportLessons(<outPath>) [正]  (1.8ms)  -> {"count":65,"byKind":{"mechanism":63,"conduct":2}}
+      一時ファイル unlink 済み(AC-18c): true
+
+======== H. forge.SCALES / KG JSONL ========
+OK  Object.keys(forge.SCALES) -> ["quick","standard","full","reform","counsel","cartography"]
+    buildDag("x",<name>).tasks.length = {"quick":6,"standard":14,"full":17,
+                                         "reform":11,"counsel":6,"cartography":11}
+    相数 -> 道名 逆引き = {"6":["quick","counsel"],"11":["reform","cartography"],
+                           "14":["standard"],"17":["full"]}   ← 6 と 11 が衝突(罠9)
+OK  KG 直読み nodes.jsonl -> {"lines":99,"parsed":99}
+OK  KG 直読み edges.jsonl -> {"lines":33,"parsed":33}
+
+======== I. atlas[] の source ========
+OK  dashboard/atlas の *.html (visual-check 除く)
+    -> ["conclave.html","dag.html","dispatch.html","hierarchy.html","run.html","wiring.html"]
+
+======== J. 訂正後の設計で断面をまるごと 6 周 ========
+=== 断面 #1 (COLD) ms=93.7 gatesCached=false ===
+=== 断面 #6 (WARM) ms=7.2  gatesCached=true  ===
+counts       : {"articles":50,"engines":33,"cardinals":7,"creations":7,"workshops":1,
+                "runs":5,"kgNodes":99,"kgEdges":33,"lessons":65}
+gates        : wiring=true(20.4ms) vendor=true(2.1ms) derived=true(19.5ms)
+                check-agents=true(7.3ms) workspace=true(24.6ms)
+gates.detail : {"hardcodedRefs":0,"strayCreations":0}  {"orphans":[],"dangling":[]}
+scale        : {"quick":{"phases":6},"standard":{"phases":14},"full":{"phases":17},
+                "reform":{"phases":11},"counsel":{"phases":6},"cartography":{"phases":11}}
+lessonsByKind: {"mechanism":63,"conduct":2}
+ledger.length: 10   ledger[last]: {"ts":"2026-09-02T07:03:12.474Z","slug":"tenbin",
+                                   "scale":"full","score":100,"phasesDone":17,"phasesTotal":17}
+daily        : {"due":false,"reason":"already ran for 2026-09-01 …","owedDay":"2026-09-01",
+                "jst":"2026-09-02 18:08 JST"}
+atlas        : 6  conclave,dag,dispatch,hierarchy,run,wiring
+errors       : []
+runs:
+   coin                     11/11 complete  score=100 total= 11 noTrace= 11 contradiction=true  scaleGuess=null cand=[reform,cartography]
+   habit                    11/11 complete  score= 45 total= 11 noTrace= 11 contradiction=false scaleGuess=null cand=[reform,cartography]
+   reform-claude-md-diet     5/11 stalled   score= 80 total= 11 noTrace= 11 contradiction=false scaleGuess=null cand=[reform,cartography]
+   reform-eval-gauge        11/11 complete  score=100 total= 11 noTrace= 11 contradiction=true  scaleGuess=null cand=[reform,cartography]
+   tenbin                   17/17 complete  score=100 total= 17 noTrace= 17 contradiction=true  scaleGuess=full cand=[full]
+CONTRADICTION_COUNT = 3
+
+timings: [93.7, 7.9, 7.5, 7.5, 8.9, 7.2]     WARM_MAX = 8.9ms   (AC-N01d 50ms 未満)
+
+-- gates キャッシュの要否を実測で決めた --
+キャッシュ無し: 89.5(cold) / 70.5 / 69.3 / 62.1 / 61.5 ms   ← 50ms を超える。閾を跨ぐ
+キャッシュ有り:  7.3 / 5.4 / 5.8 / 7.5 / 6.2 ms             ← 閾から遠い
+```
+
+**`errors[] = []`** —— 訂正後の呼び方で、設計した鍵はすべて実際に埋まった。
+**前版の呼び方では `vendor` / `workspace` の 2 門が例外、全 run の `score` が `null`、
+そして `spawn` は静かに 0 を返して矛盾 3 件を握り潰していた。**
