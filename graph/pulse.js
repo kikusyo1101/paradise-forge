@@ -249,7 +249,7 @@ function buildRuns(root, errors, scalePhases) {
   const out = [];
   let entries;
   try { entries = listRuns(root); } catch (e) {
-    errors.push({ engine: 'conclave-read', key: 'runs', reason: String(e.message), at: nowMs(), fatal: false });
+    errors.push({ engine: 'conclave', key: 'runs', reason: String(e.message), at: nowMs(), fatal: false });
     return out;
   }
   for (const r of entries) {
@@ -257,12 +257,12 @@ function buildRuns(root, errors, scalePhases) {
     try {
       run = JSON.parse(fs.readFileSync(r.path, 'utf8'));
     } catch (e) {
-      errors.push({ engine: 'conclave-read', key: `runs[${r.name}]`, reason: String(e.message).split('\n')[0], at: nowMs(), fatal: false });
+      errors.push({ engine: 'conclave', key: `runs[${r.name}]`, reason: String(e.message).split('\n')[0], at: nowMs(), fatal: false });
       continue;
     }
     if (!Array.isArray(run.domains)) {
       // run.json 形式 (旧 orchestrator) の混在。run 単位で skip し、断面全体は exit 0 で返る
-      errors.push({ engine: 'conclave-read', run: r.name, key: `runs[${r.name}]`, reason: 'no domains[]', at: nowMs(), fatal: false });
+      errors.push({ engine: 'conclave', run: r.name, key: `runs[${r.name}]`, reason: 'no domains[]', at: nowMs(), fatal: false });
       continue;
     }
     let phasesDone = 0, phasesTotal = 0, domainsRatified = 0;
@@ -338,7 +338,7 @@ function buildAtlas(errors) {
 
 /** census は同期経路で呼ばない。別ファイルが書いたキャッシュを読むだけ (§1.6) */
 function readCensusCache(errors) {
-  return guard(errors, 'pulse-census', 'census', () => {
+  return guard(errors, 'census', 'census', () => {
     const p = path.join(os.tmpdir(), 'pulse-census-cache.json');
     if (!fs.existsSync(p)) return null;
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -367,7 +367,7 @@ function snapshot(opts = {}) {
   // --- counts (§1.3.2) ---
   const counts = {};
   counts.articles = guard(errors, 'codex', 'counts.articles', () => codex.parse().length, null);
-  counts.engines = guard(errors, 'fs', 'counts.engines', () => fs.readdirSync(GRAPH).filter(f => f.endsWith('.js')).length, null);
+  counts.engines = guard(errors, 'pulse', 'counts.engines', () => fs.readdirSync(GRAPH).filter(f => f.endsWith('.js')).length, null);
   counts.cardinals = guard(errors, 'clergy', 'counts.cardinals', () => Object.keys(clergy.COLLEGE).length, null);
 
   const dirCount = guard(errors, 'workspace', 'counts.creations', () => {
@@ -382,7 +382,7 @@ function snapshot(opts = {}) {
   counts.creations = dirCount ? dirCount.creations : null;
   counts.workshops = dirCount ? dirCount.workshops : null;
 
-  counts.runs = guard(errors, 'conclave-read', 'counts.runs', () => {
+  counts.runs = guard(errors, 'conclave', 'counts.runs', () => {
     if (!root) throw new Error('workspace.resolve() が住所を返さなかった');
     return listRuns(root).length;
   }, 0);
@@ -394,8 +394,8 @@ function snapshot(opts = {}) {
     if (!s || typeof s.size !== 'number') throw new Error('installedAgents(dir) が Set を返さなかった');
     return s.size;
   }, null);
-  counts.commands = guard(errors, 'fs', 'counts.commands', () => countEntries(claudeDir('commands')), null);
-  counts.skills = guard(errors, 'fs', 'counts.skills', () => countEntries(claudeDir('skills')), null);
+  counts.commands = guard(errors, 'pulse', 'counts.commands', () => countEntries(claudeDir('commands')), null);
+  counts.skills = guard(errors, 'pulse', 'counts.skills', () => countEntries(claudeDir('skills')), null);
 
   const kgRoot = process.env.PARADISE_KG || claudeDir('paradise-kg');
   counts.kgNodes = guard(errors, 'kg', 'counts.kgNodes', () => countJsonl(path.join(kgRoot, 'nodes.jsonl')), null);
@@ -474,13 +474,13 @@ function snapshot(opts = {}) {
       watchDebounceMs: T.WATCH_DEBOUNCE_MS,
     },
     source: {
-      articles: 'codex', engines: 'fs', cardinals: 'clergy',
-      creations: 'workspace', workshops: 'workspace', runs: 'conclave-read',
-      agents: 'check-agents', commands: 'fs', skills: 'fs',
+      articles: 'codex', engines: 'pulse', cardinals: 'clergy',
+      creations: 'workspace', workshops: 'workspace', runs: 'conclave',
+      agents: 'check-agents', commands: 'pulse', skills: 'pulse',
       kgNodes: 'kg', kgEdges: 'kg', lessons: 'lessons',
       gates: 'wiring,vendor,derived,check-agents,workspace',
       ledger: 'gauge', daily: 'daily-guard', scale: 'forge',
-      atlas: 'fs', census: 'pulse-census',
+      atlas: 'atlas', census: 'census',
     },
     buildMs: msSince(t0),
     errors,
