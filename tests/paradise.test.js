@@ -3141,6 +3141,53 @@ test('atlas: 巻物の許しは長さにだけ効く — 読めない字は免�
     '巻物の免除が読みやすさまで免除している (第48条e)');
 });
 
+test('atlas: 全ての主題が動きを名乗る — 黙秘は静止画への同意である (第50条a)', () => {
+  // 神が「signal が動かない・play story が非活性」と告げたとき、静的検査は
+  // 6主題すべて 9/9 の緑だった。壊れていたのは図ではなく、名乗りの不在である。
+  // 版元の正典: "Omit it … for the default static output" (archify/schemas/README.md)
+  for (const subject of Object.keys(atlas.SUBJECTS)) {
+    const ir = atlas.buildIr(subject);
+    assert.strictEqual(ir.meta.animation, 'trace',
+      subject + ' が meta.animation を名乗っていない — 描画器は仕様どおり静止画を作り、' +
+      'Live も Signal Flow も Play story も眠る (第50条a)');
+  }
+});
+
+test('atlas: 静止を選んだ走行は、黙るのではなく断る (第50条a)', () => {
+  // 版元の enum は 'trace' | 'none' の二値。名乗らないことと 'none' は同じ結果を
+  // 生むが、意図の記録としては別物である。
+  const ir = atlas.buildIr('hierarchy', { static: true });
+  assert.strictEqual(ir.meta.animation, 'none',
+    '--static が meta.animation を落としている — 静止の選択は記録として残さねばならない');
+});
+
+test('atlas: 動きの検器が実在し、門がそれを見ている (第50条c)', () => {
+  const probe = path.join(DIR, '..', 'graph', 'motion-probe.mjs');
+  assert.ok(fs.existsSync(probe), '動きの検器が無い — 門は動きについて何も測れない (第50条c)');
+  const psrc = fs.readFileSync(probe, 'utf8');
+  // 「押せる」は「動く」ではない。押して、待って、進みを測ることを要求する。
+  assert.ok(/beatAdvanced/.test(psrc),
+    '検器が章の進みを測っていない — 釦の活性は再生の証拠ではない (第50条c)');
+  // 測る側の環境設定で健全な図を落とさない。headless の既定は reduce である。
+  assert.ok(/prefers-reduced-motion/.test(psrc) && /no-preference/.test(psrc),
+    '検器が reduced-motion を降ろしていない — 測る側の環境が嘘の赤を出す (第50条b)');
+
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'atlas.js'), 'utf8');
+  assert.ok(/motionAlive/.test(src) && /mo\.ok/.test(src),
+    'atlas の門が動きを裁定に加えていない — 門が見ない機能は壊れても鳴らない (第50条)');
+});
+
+test('atlas: 版元の既定値を記憶ではなく正典から引く (第50条d)', () => {
+  // 借りた道具の作法は、借りた道具の正典が決める。取り込んだ写しの中に
+  // 根拠が在ることを確かめる — 上流が変われば、ここが最初に食い違う。
+  const readme = path.join(DIR, '..', 'overlay', 'vendor', 'archify', 'schemas', 'common.schema.json');
+  const common = JSON.parse(fs.readFileSync(readme, 'utf8'));
+  const anim = common.$defs && common.$defs.animation;
+  assert.ok(anim && Array.isArray(anim.enum), '版元の animation 定義が読めない');
+  assert.deepStrictEqual(anim.enum.slice().sort(), ['none', 'trace'],
+    '版元の animation enum が変わっている — atlas の名乗りを正典に合わせ直せ (第50条d)');
+});
+
 // ══════════════════════════════════════════════════════════════════════
 // WIRING — 機構の結線 (第44条 / 第48条)
 // ══════════════════════════════════════════════════════════════════════

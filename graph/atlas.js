@@ -41,6 +41,8 @@ const wiring = require('./wiring.js');
 const ROOT = path.resolve(__dirname, '..');
 const ARCHIFY = path.join(ROOT, 'overlay', 'vendor', 'archify', 'bin', 'archify.mjs');
 const OUTDIR = path.join(ROOT, 'dashboard', 'atlas');
+// 動きの検器 (第50条)。CJS からは呼べない ESM なので、門は子として走らせる。
+const PROBE = path.join(ROOT, 'graph', 'motion-probe.mjs');
 
 /** 主題 → 図の種別。archify のどの道具で描くかは主題の性質が決める。 */
 const SUBJECTS = {
@@ -1041,17 +1043,46 @@ function irWiring() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+/**
+ * **動きは名乗らねば宿らない** (第50条)。
+ *
+ * 実測: 神が「signal の機能が動いていない、play story が非活性」と告げた。
+ * 開いて測ると `data-motion-capable` が付いておらず、`[data-animate]` は
+ * **0個**、motionGovernor は capable:false で死んでいた。図が壊れていたのでは
+ * ない — 描画器は最初から静止画を作っていたのである。
+ *
+ * 版元の正典が理由を述べている:
+ *   schemas/README.md — "Every `meta` object also accepts `animation: \"trace\"`
+ *     for opt-in SVG/CSS motion in generated HTML. **Omit it**, or set `\"none\"`,
+ *     **for the default static output**."
+ *   SKILL.md:120     — "`meta.animation: \"trace\"` is **opt-in**"
+ * そして viewer は `svg[data-animation="trace"]` が無ければ motionGovernor を
+ * capable:false にし、Live/Still も、Signal Flow の走査も、Play story も
+ * まとめて眠らせる。**押せない釦は壊れた釦ではなく、名乗らなかった代償である。**
+ *
+ * atlas.js は6主題のどれにも animation を書いていなかった (実測 0箇所)。
+ * ゆえに宣言は主題ごとの気まぐれにせず、**ここ一箇所**で全主題に課す。
+ * 静止させたい走行(印刷・回帰の固定など)だけが --static で降ろせる。
+ */
+const MOTION = 'trace';
+
 function buildIr(subject, opts = {}) {
   const scale = opts.scale || 'standard';
-  switch (subject) {
-    case 'hierarchy': return irHierarchy();
-    case 'conclave': return irConclave(scale);
-    case 'dispatch': return irDispatch(opts.phase || 'build');
-    case 'dag': return irDag(scale);
-    case 'run': return irRun();
-    case 'wiring': return irWiring();
-    default: throw new Error(`未知の主題: ${subject} (${Object.keys(SUBJECTS).join(' | ')})`);
-  }
+  const ir = (() => {
+    switch (subject) {
+      case 'hierarchy': return irHierarchy();
+      case 'conclave': return irConclave(scale);
+      case 'dispatch': return irDispatch(opts.phase || 'build');
+      case 'dag': return irDag(scale);
+      case 'run': return irRun();
+      case 'wiring': return irWiring();
+      default: throw new Error(`未知の主題: ${subject} (${Object.keys(SUBJECTS).join(' | ')})`);
+    }
+  })();
+  // 版元の enum は 'trace' | 'none' の二値。名乗らないことと 'none' は同義だが、
+  // **黙るのと断るのは違う** — 静止を選んだ走行はそう書き残す。
+  ir.meta.animation = opts.static ? 'none' : MOTION;
+  return ir;
 }
 
 /**
@@ -1134,6 +1165,41 @@ function draw(subject, opts = {}) {
 }
 
 /** 門: 全主題が実際に 9/9 で通るか。図が壊れたまま気付かない、を許さない。 */
+/**
+ * 動きが実際に宿っているか (第50条)。
+ *
+ * 静的な 9/9 も、第一画面の実測も、**動きについては何も言わない**。
+ * 神が「signal が動いていない・play story が非活性」と告げたとき、
+ * 門は6主題すべて緑だった — 門が見ていない事実は、壊れても鳴らない。
+ *
+ * 実測で判った原因は**二つ**あり、どちらも「図の壊れ」ではなかった:
+ *   (a) atlas.js が `meta.animation` を一度も名乗っていなかった (実測 0箇所)。
+ *       版元の正典 (schemas/README.md) は "Omit it … for the default static
+ *       output" と述べている — 黙れば静止画になるのが仕様である。ゆえに
+ *       motionGovernor は capable:false、`[data-animate]` は 0個 だった。
+ *   (b) この PC は Windows の「アニメーションを表示する」が OFF で
+ *       (SPI_GETCLIENTAREAANIMATION=0)、実機 Brave が
+ *       `prefers-reduced-motion: reduce` を名乗る。viewer はこれを尊重して
+ *       Still に落ち、Play story を正しく非活性にする。
+ *
+ * (b) は viewer の**正しい振る舞い**であって欠陥ではない。ゆえに門は
+ * reduced-motion を明示的に降ろした上で (a) だけを裁く — さもなくば
+ * 測る側の環境設定が、健全な図を不合格にしてしまう。
+ */
+function motionAlive(htmlPath) {
+  try {
+    const raw = execFileSync(process.execPath, [PROBE, htmlPath, '--json'], {
+      cwd: ROOT, encoding: 'utf8', env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1' },
+    });
+    return JSON.parse(raw);
+  } catch (e) {
+    let r = null; try { r = JSON.parse(String(e.stdout)); } catch {}
+    // 検器が動かなかったこと(Chrome 不在等)と、図が動かないことは別である。
+    // 前者を後者として報告すれば、門は嘘の赤を出す。
+    return r || { ok: false, failures: [`動きの検器が走らなかった: ${String(e.message).slice(0, 160)}`], before: null };
+  }
+}
+
 function check(opts = {}) {
   const outdir = opts.outdir || path.join(os.tmpdir(), 'paradise-atlas-check');
   /**
@@ -1167,17 +1233,22 @@ function check(opts = {}) {
       const fs2 = opts.skipBrowser ? { ok: true } : firstScreen(r.html);
       // 巻物の宣言は「長い」ことだけを許す。読めないことは決して許さない。
       const scrollOk = fs2.ok || (SUBJECTS[subject].scroll === true && !fs2.unreadable);
+      // 動きは名乗らねば宿らない (第50条)。図として正しくとも、静止画なら
+      // Live も Signal Flow も Play story も全て死んでいる。
+      const mo = opts.skipBrowser ? { ok: true } : motionAlive(r.html);
       rows.push({
         subject, type: r.type, profile: r.profile, minCrossings: r.minCrossings,
-        ok: errorsOk && warnOk && profileOk && scrollOk,
+        ok: errorsOk && warnOk && profileOk && scrollOk && mo.ok,
         checks: `${v.checksPassed}/${v.checkCount}`, errors: v.errors, warnings: v.warnings,
         screen: fs2.ok ? 'fits' : (fs2.unreadable ? `字 ${fs2.unreadable.toFixed(1)}px` : (SUBJECTS[subject].scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW')),
+        motion: mo.ok ? `動 ${(mo.before && mo.before.animatedEls) || 0}` : '静止',
         bytes: (r.receipt.artifact || {}).bytes,
         ...(!scrollOk ? { error: `${fs2.reason} — 図は第一画面に収まってこそ図である。巻物でよいなら SUBJECTS に scroll:true と宣言せよ (第47条c)` } : {}),
         ...(errorsOk && !profileOk ? { error: impossible
           ? '平面化不能なのに showcase を名乗っている — 交差を隠している'
           : 'showcase を満たせる図が standard を名乗っている — 格下げの根拠が無い' } : {}),
         ...(errorsOk && profileOk && !warnOk ? { error: `警告 ${v.warnings} 件 — 平面化は可能なのに図が汚れている` } : {}),
+        ...(scrollOk && !mo.ok ? { error: `${(mo.failures || []).join(' / ')} — 動きは名乗らねば宿らない。meta.animation:"trace" を宣言せよ (第50条)` } : {}),
       });
     } catch (e) {
       rows.push({ subject, type: SUBJECTS[subject].type, ok: false, checks: '—', error: String(e.diagnostics || e.message).slice(0, 900) });
@@ -1192,7 +1263,7 @@ function parse(argv) { const f = {}; const pos = []; for (let i = 0; i < argv.le
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const { f, pos } = parse(rest);
-  const opts = { scale: f.scale, phase: f.phase, out: f.out, outdir: f.outdir };
+  const opts = { scale: f.scale, phase: f.phase, out: f.out, outdir: f.outdir, static: !!f.static };
 
   if (cmd === 'subjects') {
     console.log('═══ 🗺  ATLAS — 描ける主題 ═══');
@@ -1228,7 +1299,7 @@ function main() {
     console.log('═══ 🗺  ATLAS GATE (第47条) ═══');
     for (const r of res.rows) {
       const note = r.profile === 'standard' ? `  standard(最小交差 ${r.minCrossings})` : '';
-      console.log(`  ${r.ok ? '✓' : '🔴'} ${r.subject.padEnd(11)} [${r.type.padEnd(12)}] ${String(r.checks).padEnd(4)} ${String(r.screen || '').padEnd(14)}${r.bytes ? r.bytes + 'b' : ''}${note}`);
+      console.log(`  ${r.ok ? '✓' : '🔴'} ${r.subject.padEnd(11)} [${r.type.padEnd(12)}] ${String(r.checks).padEnd(4)} ${String(r.screen || '').padEnd(14)}${String(r.motion || '').padEnd(7)}${r.bytes ? r.bytes + 'b' : ''}${note}`);
       if (r.error) console.log(`      ${r.error}`);
     }
     console.log('────────────────────────────────');

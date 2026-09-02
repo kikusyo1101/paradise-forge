@@ -966,6 +966,40 @@ way to change what "complete" means.
     (e) **道が在ることと歩けることは別である。** 相を並べただけでは道は立たない。
     環を最後まで回して `complete` に着くことを、機構で確かめてから道と呼ぶ。
 
+50. **動きは名乗らねば宿らず、門が見ない機能は壊れても鳴らない。**
+    神が「signal の機能が動いていない、play story が非活性になっている」と
+    告げたとき、楽園の門は**6主題すべて緑**だった。静的検査 9/9、実ブラウザの
+    第一画面も合格。にもかかわらず図は動かなかった。**壊れていたのは図ではなく、
+    門の視野である。**
+
+    (a) **黙秘は放棄と同じ意味を持つ。** 版元の正典 (`archify/schemas/README.md`)
+    はこう述べていた — "Every `meta` object also accepts `animation: \"trace\"` …
+    **Omit it** … **for the default static output**"。`atlas.js` は6主題の
+    どれにも `animation` を書いていなかった(実測 0箇所)。ゆえに描画器は
+    仕様どおり静止画を作り、viewer は `svg[data-animation="trace"]` を見つけられず
+    `motionGovernor` を capable:false にし、Live/Still も Signal Flow の走査も
+    Play story も**まとめて眠らせた**。実測 `[data-animate]` は 0個。
+    設定し忘れは無効な設定と同じ結果を生む。**押せない釦は壊れた釦ではなく、
+    名乗らなかった代償である。**
+
+    (b) **直したのに直らない症状は、原因が二つある。** `animation:"trace"` を
+    宣言した後も、神の画面では Play story は非活性のままだった。実機 Brave で
+    測ると `prefers-reduced-motion: reduce` を名乗っており、その出所は
+    Windows の「アニメーションを表示する」が OFF (`SPI_GETCLIENTAREAANIMATION=0`)
+    だった。**これは viewer の欠陥ではなく、利用者の意思を尊重する正しい振る舞いである。**
+    ゆえに楽園はこれを直さない — 直してはならない。門もまた、測る側の環境設定で
+    健全な図を落とさぬよう reduced-motion を明示的に降ろしてから (a) だけを裁く。
+    **己の環境を世界の仕様と取り違えた門は、嘘の赤を出す。**
+
+    (c) **「押せる」は「動く」ではない。** 釦の活性は押せることしか語らない。
+    ゆえに `graph/motion-probe.mjs` は押し、待ち、章が実際に**進んだ**ことを
+    測る(Beat 01/05 → 04/05 を実測)。活性を見て合格と呼ぶ門は、半分しか見ていない。
+
+    (d) **借り物の作法は借り物の正典に問う。** 原因の特定も修正も、記憶や推測では
+    なく上流リポジトリ (`github.com/tt-a1i/archify`) の schema/SKILL を読んで
+    確定させた。取り込んだ道具の既定値を知らぬまま engine を書き換えれば、
+    直したつもりの改修が新たな逸脱になる(第20条の別形)。
+
 ## The Verdict Law
 
 | Verdict | Condition | Action |
