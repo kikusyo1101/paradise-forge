@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
 
 const ROOT = path.join(__dirname, '..');
 
@@ -32,6 +33,33 @@ const readRoot = f => {
   try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { return ''; }
 };
 
+/**
+ * 自己診断の出力から**総括の一行だけ**を読む。
+ *
+ * ⚠️ **位置で決めるな。名前で決めよ**(第29条の精神)。
+ *
+ * 実測(2026-09-02): ダッシュボードの門13本を新設したところ、自己診断の出力に
+ * 子テストの集計行が現れた —— `dashboard-count: 15 passed, 0 failed` ほか計8本。
+ * 旧実装は `out.match(/([0-9]+) passed, ([0-9]+) failed/)` を使っており、
+ * **String.match は最初の一致しか返さない**。ゆえに census は 1件目の
+ * `15` を「楽園のテスト総数」と信じ、README の 256 と突き合わせて
+ * 第22条違反を叫んだ。**嘘をついていたのは README ではなく数え方だった。**
+ *
+ * 総括は「先頭」でも「末尾」でもなく `Paradise self-test:` と名乗る行である。
+ * 名前で狙えば、子テストが何本増えても、順序が変わっても壊れない。
+ * 名乗りが見つからないときだけ、最後の一致に落ちる(版が変わった場合の保険)。
+ *
+ * @returns {{passed:number, failed:number}|null} 読めなければ null(= 測れなかった)
+ */
+function summaryOf(out) {
+  const named = String(out).match(/Paradise self-test:\s*([0-9]+) passed, ([0-9]+) failed/);
+  if (named) return { passed: +named[1], failed: +named[2] };
+  const all = [...String(out).matchAll(/([0-9]+) passed, ([0-9]+) failed/g)];
+  if (!all.length) return null;
+  const last = all[all.length - 1];
+  return { passed: +last[1], failed: +last[2] };
+}
+
 /** 楽園の真の数を測る。推測は一つも無い — 全て実ファイル/実行結果から。 */
 function census(opts = {}) {
   const constitution = readRoot('CONSTITUTION.md');
@@ -39,15 +67,38 @@ function census(opts = {}) {
 
   let tests = null;
   if (opts.runTests !== false) {
+    /**
+     * **打ち切られた走行の部分出力を、真実として報告してはならない**(第16条)。
+     *
+     * 旧実装は timeout 120 秒で打ち切られた stdout から `N passed, M failed` を
+     * 拾い、その時点までに出た **15 件**を「楽園のテストは 15 件」として報告した。
+     * README の 256 と突き合わせて census が第22条違反を叫んだが、
+     * **嘘をついていたのは README ではなく census の数え方だった。**
+     *
+     * 途中まで数えた数は「数えた結果」ではなく「数え損ね」である。
+     * ゆえに打ち切られたら `tests: null` にして**測れなかったと表明する**。
+     * 呼び手は null を見て「(not measured)」と出す —— 0 や部分値で埋めない。
+     *
+     * ⚠️ **註釈に所要時間を書くな**(review 神官の指摘 F-2/F-3 を受けた是正)。
+     * かつてここには「自己診断は 282 秒」「census は 120,072ms」と書かれていた。
+     * だが **120,072ms は打ち切り時刻(120,000 + 72)であって所要ではない** ——
+     * 打ち切られた値を実測値として扱う、まさにこの註釈が禁じている過ちだった。
+     * 所要は機械と同時走行の有無で変わる。**数が要るなら測れ。註釈は約束をするな。**
+     */
+    const TIMEOUT_MS = Number(opts.testTimeoutMs || process.env.CENSUS_TEST_TIMEOUT_MS || 600000);
     try {
       const out = execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
-        { encoding: 'utf8', cwd: ROOT, timeout: 120000 });
-      const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
-      if (m) tests = { passed: +m[1], failed: +m[2] };
+        { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
+      tests = summaryOf(out);
     } catch (e) {
-      const out = String((e && (e.stdout || e.message)) || '');
-      const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
-      if (m) tests = { passed: +m[1], failed: +m[2] };
+      // 打ち切り (ETIMEDOUT / SIGTERM) は「測れなかった」。部分出力を採らない
+      const killed = !!(e && (e.killed || e.signal || e.code === 'ETIMEDOUT'));
+      if (killed) {
+        tests = null;
+      } else {
+        // 走り切ったが exit != 0(= 赤があった)。その数は事実なので読む
+        tests = summaryOf(String((e && (e.stdout || e.message)) || ''));
+      }
     }
   }
 
@@ -70,11 +121,33 @@ function census(opts = {}) {
     articles,
     tests,
     engines: countFiles('graph', '.js'),
-    creations: (() => {
+    /**
+     * ダッシュボードを守る門の本数。
+     * README が「門 N 本」と書くなら、その N はここが数え直す (第22条)。
+     * 門を 1 本足して README を直し忘れれば check が赤くなる —— 散文が腐る前に鳴る。
+     * 数える対象は「ダッシュボードの受入を担う試験ファイル」であり、
+     * tests/dashboard-*.test.js に motion-probe-leak (門が己の残骸で鳴らないこと) を加える。
+     */
+    dashboardGates: (() => {
       try {
-        return fs.readdirSync(path.join(ROOT, 'creations'), { withFileTypes: true })
-          .filter(e => e.isDirectory()).length;
+        return fs.readdirSync(path.join(ROOT, 'tests'))
+          .filter(f => /^dashboard-.+\.test\.js$/.test(f) || f === 'motion-probe-leak.test.js')
+          .length;
       } catch { return 0; }
+    })(),
+    creations: (() => {
+      // 第30条: 住所を知るのは workspace.js だけ。旧住所を ROOT 直下に直書きしていた頃は、
+      // 実在 8 件に対し catch { return 0 } が 0 を返して黙っていた。
+      // **解決に失敗したら 0 を返して黙るのではなく、null を返して明示的に告げる。**
+      try {
+        const r = workspace.resolve();
+        if (!r || !r.root || !r.exists) return null;
+        return fs.readdirSync(r.root, { withFileTypes: true })
+          .filter(e => e.isDirectory())
+          .filter(e => !e.name.startsWith('.'))    // .git / .github は創造物ではない
+          .filter(e => !e.name.startsWith('_'))    // _ 始まりは作業場
+          .length;
+      } catch { return null; }
     })(),
     overlayAgents: countFiles(path.join('overlay', 'agents'), '.md'),
     overlayCommands: countFiles(path.join('overlay', 'commands'), '.md'),
@@ -101,6 +174,8 @@ function claims(c) {
     { file: 'README.md', re: /`hooks (\d+)`/,                    actual: c.vendor.hooks,            label: 'README vendor hooks' },
     { file: 'README.md', re: /`scripts (\d+)`/,                  actual: c.vendor.scripts,          label: 'README vendor scripts' },
     { file: 'README.md', re: /`contexts (\d+)`/,                 actual: c.vendor.contexts,         label: 'README vendor contexts' },
+    // ダッシュボードの門の本数 (第22条)。散文が「門 N 本」と言うなら N を数え直す。
+    { file: 'README.md', re: /ダッシュボードの門 \*\*(\d+) 本\*\*/, actual: c.dashboardGates,       label: 'README ダッシュボード門数' },
   ];
   return list;
 }
@@ -218,20 +293,30 @@ function fix(opts = {}) {
 
 if (require.main === module) {
   const cmd = process.argv[2] || 'show';
+  // FR-06: 自己診断を回さないモード。内部 API は既に opts.runTests !== false の
+  // 分岐を持つので、CLI フラグをそこへ繋ぐだけでよい。**既定挙動は変えない。**
+  const noTests = process.argv.includes('--no-tests');
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log('commands: show [--no-tests] | check [--no-tests] | fix');
+    console.log('  --no-tests   自己診断 (tests/paradise.test.js) を回さない。');
+    console.log('               既定では回す — 実測 120,072ms かかり、同期経路では待てない。');
+    process.exit(0);
+  }
   if (cmd === 'show') {
-    const c = census();
+    const c = census({ runTests: !noTests });
     console.log('═══════ 🔢 PARADISE CENSUS ═══════');
     console.log('  constitution articles :', c.articles);
-    console.log('  self-test             :', c.tests ? `${c.tests.passed} passed, ${c.tests.failed} failed` : '(not run)');
+    console.log('  self-test             :', c.tests ? `${c.tests.passed} passed, ${c.tests.failed} failed`
+      : (noTests ? '(skipped: --no-tests)' : '(not run)'));
     console.log('  engines (graph/*.js)  :', c.engines);
-    console.log('  creations             :', c.creations);
+    console.log('  creations             :', c.creations === null ? '(unresolved — workspace.resolve() が住所を返さない)' : c.creations);
     console.log('  overlay agents/cmds   :', c.overlayAgents, '/', c.overlayCommands);
     console.log('  vendored files        :', c.vendorFiles, JSON.stringify(c.vendor));
     console.log('══════════════════════════════════');
     process.exit(0);
   }
   if (cmd === 'check') {
-    const res = check();
+    const res = check({ runTests: !noTests });
     console.log('═══════ 🔢 CENSUS CHECK ═══════');
     if (res.ok) console.log('  ✓ every number the paradise claims about itself is true');
     for (const f of res.findings) {
@@ -251,4 +336,4 @@ if (require.main === module) {
   process.exit(2);
 }
 
-module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };
+module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, summaryOf, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };

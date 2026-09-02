@@ -78,6 +78,20 @@ function builtinChecks() {
     { id: 'tests-exist', severity: 'gap',
       desc: 'A test artifact exists and is non-trivial',
       run: (ctx) => {
+        // ■ reform は三箇所に住む (D-2)。散文の下に門が無いのは当然であり、
+        //   それを「テストが無い」と裁くのは **形を取り違えている**。
+        //   門は tests/ に居るので、この走行が触れた門を数える。
+        if (ctx.reform) {
+          if (ctx.reform.testFiles === null) {
+            // 束ねられなかった。**「無い」と裁かず「測れなかった」と言う**(第16条)
+            return { ok: false, note: 'reform の門を束ねられなかった(git の差分が取れない) — 測れていない' };
+          }
+          const t = ctx.reform.testFiles;
+          if (!t.length) return { ok: false, note: 'この改修は tests/ に一本も門を書いていない' };
+          const big = t.some(f => safeSize(path.join(ctx.reform.root, f)) > 400);
+          return big ? { ok: true, note: `門 ${t.length} 本: ${t.slice(0, 4).join(', ')}${t.length > 4 ? ' …' : ''}` }
+                     : { ok: false, note: '門は在るが中身が薄い(<400 bytes)' };
+        }
         const tests = findTestFiles(ctx);
         if (!tests.length) return { ok: false, note: 'no test file found' };
         const big = tests.some(f => safeSize(path.join(ctx.dir, f)) > 400);
@@ -352,6 +366,50 @@ function stripComments(src) {
     .replace(new RegExp(KEEP + '(START|END)', 'g'), 'DOMAIN:$1');
 }
 
+/**
+ * reform の道は **三箇所に分かれて住む** (第23条 / D-2)。
+ *
+ *   reform/<slug>/   散文 (findings.md / requirements.md / design.md …)
+ *   graph/           実装 (engine)
+ *   tests/           門
+ *
+ * 創造物 (creations/<slug>/) は一つの倉に全てが揃うので dir を一つ見れば足りるが、
+ * reform を同じ形と仮定すると **散文だけを見て「テストが無い」と裁く** ——
+ * 実際 12 本の門が tests/ に在るのに `tests-exist: no test file found` が出た(実測)。
+ *
+ * ゆえに reform を裁くときは三箇所を束ねる。**束ねる相手は走行が名乗った物に限る**
+ * —— 楽園中の tests/ を無条件に数えれば、どの reform も常に緑になり、門が門でなくなる。
+ * 名乗りの出所は conclave.json の成果物(artifactPath)である。
+ */
+function reformSiblings(dir) {
+  const abs = path.resolve(dir);
+  const root = path.dirname(path.dirname(abs));           // <root>/reform/<slug> → <root>
+  if (path.basename(path.dirname(abs)) !== 'reform') return null;
+  const graph = path.join(root, 'graph');
+  const tests = path.join(root, 'tests');
+  if (!fs.existsSync(graph) || !fs.existsSync(tests)) return null;
+  return { root, graph, tests };
+}
+
+/**
+ * この走行が触れた物だけを拾う。走行が名乗らなかった物まで数えれば、
+ * 「この改修が門を書いたか」ではなく「楽園に門が在るか」を測ることになる。
+ * git が使えない場（配布物・他所の作業場）では **黙って全部を数えない** ——
+ * null を返し、呼ぶ側が「束ねられなかった」ものとして扱う。
+ */
+function touchedByRun(root, slug) {
+  const { execFileSync } = require('child_process');
+  const run = (args) => {
+    try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] }); }
+    catch { return null; }
+  };
+  // main との差分が「この改修が触れた物」である
+  const out = run(['diff', '--name-only', 'main...HEAD']);
+  if (out === null) return null;
+  const touched = out.split('\n').map(s => s.trim()).filter(Boolean);
+  return touched.filter(f => f.startsWith('graph/') || f.startsWith('tests/'));
+}
+
 function collect(dir, opts = {}) {
   const files = listFiles(dir);
   const codeFiles = files.filter(f => /\.(js|ts|jsx|tsx|py|html|css)$/.test(f) && !/\.test\./.test(f));
@@ -363,8 +421,25 @@ function collect(dir, opts = {}) {
   const codeExec = stripComments(codeBlob);
   let lessons = [];
   if (opts.lessons) { try { lessons = JSON.parse(fs.readFileSync(opts.lessons, 'utf8')); } catch {} }
+
+  // ■ reform は三箇所に住む (D-2 / 第23条)。散文だけを見て裁かない。
+  //   束ねるのは **この走行が触れた** graph/ tests/ のみ —— 楽園中の門を
+  //   数えれば、どの reform も常に緑になり、門が門でなくなる。
+  const sib = reformSiblings(dir);
+  let reform = null;
+  if (sib) {
+    const touched = touchedByRun(sib.root, path.basename(path.resolve(dir)));
+    reform = {
+      root: sib.root,
+      // null は「束ねられなかった」。空配列(触れていない)とは別物である(第16条)
+      touched,
+      testFiles: touched === null ? null : touched.filter(f => f.startsWith('tests/')),
+      codeFiles: touched === null ? null : touched.filter(f => f.startsWith('graph/')),
+    };
+  }
+
   return {
-    dir, files, codeBlob, codeExec,
+    dir, files, codeBlob, codeExec, reform,
     findings: readIf(dir, 'findings.md'),
     requirements: readIf(dir, 'requirements.md'),
     prd: readIf(dir, 'prd.md'),

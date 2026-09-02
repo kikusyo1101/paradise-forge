@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-01T13:49:14.282Z",
+  "generated": "2026-09-02T09:44:06.391Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 89,
+    "nodeCount": 99,
     "edgeCount": 33,
     "nodes": [
       {
@@ -662,6 +662,66 @@
         "type": "lesson",
         "label": "発火器は道を写経せず道を指す",
         "degree": 0
+      },
+      {
+        "id": "wiring-gate-self-call",
+        "type": "lesson",
+        "label": "門は自分の名を自分で呼んで緑になる",
+        "degree": 0
+      },
+      {
+        "id": "scroll-exempt-scope",
+        "type": "lesson",
+        "label": "免除は対象を名指ししなければ穴になる",
+        "degree": 0
+      },
+      {
+        "id": "layout-untouched-branch",
+        "type": "lesson",
+        "label": "起こらないと決めつけた枝は起こった日に黙って壊れる",
+        "degree": 0
+      },
+      {
+        "id": "missing-road-hijack",
+        "type": "lesson",
+        "label": "道が無ければ願いは最も近い嘘の道へ攫われる",
+        "degree": 0
+      },
+      {
+        "id": "dispatch-target-drift",
+        "type": "lesson",
+        "label": "宣言された神官と発令先は黙って食い違う",
+        "degree": 0
+      },
+      {
+        "id": "gate-own-debris",
+        "type": "lesson",
+        "label": "門が己の残骸で落ちるならそれは罠である",
+        "degree": 0
+      },
+      {
+        "id": "motion-must-be-declared",
+        "type": "lesson",
+        "label": "動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check",
+        "degree": 0
+      },
+      {
+        "id": "clickable-is-not-working",
+        "type": "lesson",
+        "label": "「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check",
+        "degree": 0
+      },
+      {
+        "id": "upstream-defaults-from-canon",
+        "type": "lesson",
+        "label": "借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check",
+        "degree": 0
+      },
+      {
+        "id": "two-causes-one-symptom",
+        "type": "lesson",
+        "label": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
+        "degree": 0
       }
     ],
     "edges": [
@@ -838,7 +898,7 @@
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 55
+      "lesson": 65
     }
   },
   "lessons": [
@@ -1116,9 +1176,102 @@
       "id": "igniter-points-not-copies",
       "label": "発火器は道を写経せず道を指す",
       "check": "定期ジョブは既存の道(conclave)を名指しで指し、運転手順を写経しない。門は不在を通過にせず、壊して鳴らして確かめる。節を名指しで切り出してから裁く|applies:paradise-internal"
+    },
+    {
+      "id": "wiring-gate-self-call",
+      "label": "門は自分の名を自分で呼んで緑になる",
+      "check": "engine が冒頭に書く自分の使い方を呼び手に数えれば孤児は永久にゼロ。常に緑の門は門ではない|check|applies:paradise-internal"
+    },
+    {
+      "id": "scroll-exempt-scope",
+      "label": "免除は対象を名指ししなければ穴になる",
+      "check": "atlas の scroll:true は溢れだけを免じるはずが、読みやすさの床(6px)まで免じていた。溢れ0pxの図が字5.57pxで落ちているのに緑を出した|check|applies:paradise-internal"
+    },
+    {
+      "id": "layout-untouched-branch",
+      "label": "起こらないと決めつけた枝は起こった日に黙って壊れる",
+      "check": "層化配置器は7席超の段を素通りしていた。楽園の道は6席以下なので誰も気づかず、結線の図(15席)で交差56を生んだ|check|applies:paradise-internal"
+    },
+    {
+      "id": "missing-road-hijack",
+      "label": "道が無ければ願いは最も近い嘘の道へ攫われる",
+      "check": "「図を描け」に道が無く、reform(engine改修)か standard(build/security)へ誤着していた。道が無いことはできないことではなく、代役が黙って務めることを意味する|check|applies:paradise-internal"
+    },
+    {
+      "id": "dispatch-target-drift",
+      "label": "宣言された神官と発令先は黙って食い違う",
+      "check": "PHASE_LEAD に無い相は枢機卿の筆頭へ落ちる。実測5件、うち security は宣言 security-reviewer→発令 code-reviewer で第31条の格上げが一度も効いていなかった|check|applies:paradise-internal"
+    },
+    {
+      "id": "gate-own-debris",
+      "label": "門が己の残骸で落ちるならそれは罠である",
+      "check": "atlas check の visual-check 生成物が次の走行の入力と衝突し二度目から不定に赤くなっていた。ただし掃除してよいのは門自身の作業場だけで、成果物の住処に触れてはならない|check|applies:paradise-internal"
+    },
+    {
+      "id": "motion-must-be-declared",
+      "label": "動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check",
+      "check": "動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check|applies:paradise-internal"
+    },
+    {
+      "id": "clickable-is-not-working",
+      "label": "「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check",
+      "check": "「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check|applies:paradise-internal"
+    },
+    {
+      "id": "upstream-defaults-from-canon",
+      "label": "借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check",
+      "check": "借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check|applies:paradise-internal"
+    },
+    {
+      "id": "two-causes-one-symptom",
+      "label": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
+      "check": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check|applies:paradise-internal"
     }
   ],
-  "creations": [],
+  "creations": [
+    {
+      "name": "coin",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
+    {
+      "name": "habit",
+      "files": 15,
+      "verdict": "REWORK",
+      "hasFindings": true
+    },
+    {
+      "name": "pomodoro",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
+    {
+      "name": "reform-claude-md-diet",
+      "files": 7,
+      "verdict": null,
+      "hasFindings": true
+    },
+    {
+      "name": "reform-eval-gauge",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
+    {
+      "name": "rps",
+      "files": 10,
+      "verdict": "SHIP",
+      "hasFindings": true
+    },
+    {
+      "name": "tenbin",
+      "files": 17,
+      "verdict": "SHIP",
+      "hasFindings": true
+    }
+  ],
   "hierarchy": {
     "ranks": {
       "god": {
@@ -1272,7 +1425,8 @@
         "priests": [
           "market-researcher",
           "auditor",
-          "reporter"
+          "reporter",
+          "requirements-analyst"
         ],
         "believers": [
           "web-scout",
@@ -1281,6 +1435,29 @@
         ],
         "reviewClass": "executor",
         "pdca": "plan: 問いを立てる → do: 外を調べ手元を測る → check: 反証に耐えたか? → act: 根拠を足すか結論を弱める"
+      },
+      "cartography": {
+        "domain": "Cartography (作図)",
+        "governs": [
+          "chart-survey",
+          "frame",
+          "draft",
+          "render",
+          "chart-measure",
+          "behold"
+        ],
+        "priests": [
+          "auditor",
+          "requirements-analyst",
+          "architect",
+          "ux-reviewer"
+        ],
+        "believers": [
+          "data-collector",
+          "interface-designer"
+        ],
+        "reviewClass": "executor",
+        "pdca": "plan: 何を語り何を語らぬか決める → do: engine から IR を組み描く → check: 実ブラウザで測り目で見る → act: 文言を削るか主題を分ける"
       }
     },
     "tribunal": {

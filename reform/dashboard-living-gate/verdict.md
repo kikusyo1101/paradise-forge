@@ -1,0 +1,211 @@
+# verdict — 断罪 (第12条)
+
+> **主張ではなく実走で裁く。** 以下はすべて教主がこの機で走らせた出力である。
+
+## 門 — 10種すべて緑
+
+| 門 | 条 | 結果 |
+|---|---|---|
+| `tests/paradise.test.js` | 自己診断 | **288 passed, 0 failed** |
+| `census.js check` | 第22条 | ✓ every number the paradise claims about itself is true |
+| `wiring.js check` | 第44条 | ✓ 孤児0・宙吊り0 (engine 34 / 辺 41) |
+| `workspace.js check` | 第30条 | ✓ 創造物の混入なし・住所の直書きなし |
+| `derived.js check` | 第29条 | ✓ 生成物に依存する試験なし |
+| `vendor.js verify` | 第20条 | ✓ paradise stands on its own |
+| `check-agents.js` | 第25条 | ✓ 階層は実在する |
+| `atlas.js check` | 第47条 | ✓ 6主題すべてが検査に通る |
+| `critic review graph --self` | 第9条 | ✓ the critic found nothing |
+| `critic review dashboard --self` | 第9条 | ✓ the critic found nothing |
+| `visual-verify check dashboard` | 第18条 | ✓ all visual checks pass |
+
+## 神託への回答 — 実測
+
+| 神の不満 | 改修前 | 改修後 |
+|---|---|---|
+| 見た目が憲法どおりでない | 5 gap + 1 smell | **all visual checks pass** |
+| ページから遷移できない | `a[href]` **0本** | **6本**(断面から生成) |
+| トップページがない | 無し | **「楽園の門」** |
+| 最新化されていない | engines 2(実33)・self-tests 10(実268)・創造物 0(実7) | **すべて engine の実出力** |
+| 静的でリアルタイムでない | `EventSource` 0 | **SSE / 書換に 91ms で追随** |
+| 何が流れているか分からない | 一切映らず | **停止1件 / 矛盾3件が第一画面** |
+
+```
+$ node -e "pulse.snapshot()"
+errors: 0
+runs: 5
+creations: 7  workshops: 1
+atlas(実在): 6 本
+停止: reform-claude-md-diet
+矛盾: coin, reform-eval-gauge, tenbin
+NFR-01: warm 5.2ms  (要求 1000ms)
+```
+
+## 第22条 — 断面と実地の一致
+
+```
+✓ engines:   断面=34 実地=34
+✓ articles:  断面=51 実地=51
+✓ cardinals: 断面=7  実地=7
+```
+
+## 門が本当に鳴ること — 11件を壊して確かめた
+
+教主が5件(G-01/G-02/G-04/G-06/第30条)、quality 枢機卿が6件
+(G-03/G-05/G-07/G-08/G-09/G-10)を破壊し、**11/11 が「壊すと赤・戻すと緑」**。
+
+加えて新設した `markDone` の門:
+```
+実在しない成果物 → exit=1
+実在する成果物   → exit=0
+```
+
+## この改修が engine に返した欠陥 — 5件
+
+1. **台帳が虚偽の done を記せた**(X-1) — executor が `ls` で暴いた教主の過ち
+2. **census が総括でなく先頭を読んでいた** — 嘘をついていたのは README ではなく数え方
+3. **`close()` が正常終了時にも例外を投げていた** — 三つの赤が一つの根から
+4. **検器が Chrome プロファイルを漏らしていた** — 483→683 が検器1回で差0へ
+5. **`--json` が出力を変えない engine が3つ**
+
+## 教主自身の過ちも記録した
+
+| 則 | 教主の過ち |
+|---|---|
+| 則D | 三度、自分の壊し方・測り方を誤った(実装は正しかった) |
+| 則F | 実在しない成果物を `done` と記録した |
+| 則G | **`git add -A` で兄弟の第51条c違反を自分のコミットに固定した** |
+
+則G の発覚は自己診断による:
+```
+✗ conclave: 回復は有限で、尽きたら閉塞して人を呼ぶ (第51条c)
+$ git log -S "MAX_PHASE_RESUME = Infinity" --oneline
+ea72f09 quality(reform): 自己診断 288/288 緑 — README を実数へ   ← 教主のコミット
+```
+
+**門が教主を咎めた。** これが第50条の本旨である。
+
+## 残る負債(7件) — 出荷を止めない理由付き
+
+| # | 内容 | 判断 |
+|---|---|---|
+| X-2 | 断面の `runs[].path` が絶対パス5件 | 127.0.0.1 限定 + 画面は `.path` を描かない(消費者0) |
+| F-5 | `pulse.js:469` の `thresholds` が消費者ゼロ | 死んだ定義。害なし |
+| F-6 | `control.html` が5関数を写経 | `POLL_MS` が3箇所目。門の射程外 |
+| F-7 | `counts=null` で画面に文字列 `null` | errors 表が理由を名指しする。**醜いが嘘ではない** |
+| — | `orchestrator.js` の `markDone` に同じ検査なし | 別の道。範囲を広げない |
+| — | `critic.js` が reform の三箇所を束ねられない | 同上 |
+| — | DoS 耐性・XSS が**未検査** | 第16条により「安全」ではなく「未検査」と明記 |
+| — | `spawn-trace` の起動証跡が11相すべて無い | 成果物と門が実在を証明する。台帳が証明するのは「何が在るか」で、この走行では「誰が」を記録し損ねた |
+
+## 走行そのものの実測(第38条) — 引継ぎ後に単独走行で測り直した
+
+```
+$ node graph/gauge.js score reform/dashboard-living-gate/conclave.json --json
+{"score":70,"complete":true,"phasesTotal":11,"phasesDone":11,
+ "domainsTotal":6,"domainsRatified":6,"firstPassRate":1,
+ "reworkCount":3,"retryOverhead":0,"loopGuardTrips":0}
+```
+
+環は 6/6 で閉じ、ループガードは一度も鳴っていない。
+
+### 正直に赤いもの — 起動証跡がゼロである
+
+```
+$ node graph/spawn-trace.js report <run>
+phases: 11   observed: 0   asserted-only: 0   no-trace: 11
+11 phase(s) bypassed the hierarchy — the ladder was declared but not walked
+```
+
+**この改修では `spawn-trace.record` を一度も呼んでいない。**
+位階は宣言されたが、機械の目から見れば歩いた証跡が無い。
+成果物・門・実測はすべて在るが、**「誰が作ったか」は台帳が証明できない。**
+これを「緑」と偽らず、負債として下に記す(第16条)。
+
+## 引き継ぎ後の第二幕 — CI の裁定を受けて
+
+PR を出した後、CI が四度落ちた。四度とも根が違い、四度とも実測で特定した。
+詳細は `pr-body.md` に記す。要点のみ:
+
+| # | 根 | 誰が間違っていたか |
+|---|---|---|
+| 1 | 兄弟倉は別リポジトリ。CI に隣は無い | **門**(則3: 環境を期待値にした) |
+| 2 | 教訓は KG に住む。CI に KG は無い | **門**(同上) |
+| 3 | 「生イベント 2 発」は Windows の癖 | **門**(同上) |
+| 4 | 借り物の constructor が profileRoot を漏らす | **実装**(本物の欠陥) |
+
+**四度のうち三度は門が間違っていた。** 則D はこの第二幕でも効き続けた。
+そして三つとも同じ形 —— この機の環境を掟にしていた。
+
+4 だけは実装が本当に壊れており、実測 `BEFORE=0 AFTER=1 差=1` が CI と同値だった。
+第20条により借り物には手を入れず、**呼ぶ側が失敗を引き受けた**。
+Linux では死が非同期に飛ぶ(EPIPE の unhandled rejection)ことも CI が教えたので、
+**プロセスが倒れる瞬間そのもの**に掃除を結んだ。
+
+## 残っていた宿題 6 件 — すべて片づけた
+
+| 優先 | 宿題 | 結果 |
+|---|---|---|
+| 2 | B-1 DoS 耐性 | ✓ **実測** 12本/200・連打100回後も 10ms・回復する → 門に据えた |
+| 2 | B-2 XSS | ✓ **実測** 隔離倉に毒を注入 → 発火せず・文字として描画 → 門に据えた |
+| 3 | D-1 orchestrator の markDone | ✓ 塞いだ(住所を名乗るなら実在せよ) |
+| 4 | F-6 control.html の写経 | ✓ 出所を 1 つにし、門の射程に入れた |
+| 5 | F-7 counts=null の「null」 | ✓ 「測れず」と名乗る + 門に据えた |
+| 6 | D-2 critic が reform を束ねない | ✓ 三箇所を束ねた(走行が触れた物に限る) |
+
+**「未検査」と書いて出荷した 2 件は、もう未検査ではない。**
+
+## 最終の実測
+
+```
+自己診断: 288 → 290 passed, 0 failed
+画面の門: 12 本すべて緑 / engine 10 種すべて exit 0
+両世界:   倉なし・KGなし(CI 再現) / 実環境 — どちらも 290/0
+資源:     Chrome プロファイル残 0 / 合成 run 屑 0
+
+CI: 検証ゲート SUCCESS / 執行官の裁定 SUCCESS
+    mergeStateStatus: CLEAN
+```
+
+壊して鳴ることを確かめた門は、第二幕だけで **10 件**。
+
+## 残る負債(更新)
+
+| # | 内容 | 判断 |
+|---|---|---|
+| X-2 | 断面の `runs[].path` が絶対パス5件 | 127.0.0.1 限定 + 画面は描かない |
+| F-5 | `pulse.js:469` の `thresholds` が消費者ゼロ | 死んだ定義 |
+| — | `spawn-trace` の起動証跡が11相すべて無い | 「何が在るか」は証明できるが「誰が」を記録し損ねた |
+
+**F-6 / F-7 / D-1 / D-2 / B-1 / B-2 は解消。残るは 3 件。**
+
+## 判定 — 機械が下した(第12条)
+
+```
+$ node graph/verdict.js judge reform/dashboard-living-gate/verdict-report.json
+═══════════ ⚖️  VERDICT ═══════════
+✅  SHIP
+All gates pass, no breach — creation is complete.
+
+Passed:
+  ✓ trajectory 70/100
+  ✓ build passes
+  ✓ types clean
+  ✓ lint clean
+  ✓ 290/290 tests pass
+  ✓ coverage 100% ≥ 80%
+  ✓ no security issues
+  ✓ spec satisfied
+═══════════════════════════════════
+EXIT=0
+```
+
+**SHIP。**
+
+神託の6つの不満すべてに実測で答えた。門は10種すべて緑で、11件を壊して
+鳴ることを確かめた。engine の欠陥5件を直し、教主自身の過ち3件も記録した。
+
+残る負債7件はいずれも**利用者が見る嘘を生まない**。F-7 は醜いが、
+同じ画面が「測れなかった engine」を名指しするので嘘ではない。
+未検査2件は「安全」と偽らず「未検査」と書いた。
+
+**神の御手を仰ぐ。**

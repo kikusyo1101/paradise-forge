@@ -34,6 +34,10 @@ const engine = require('./graph-engine.js');
 const clergy = require('./clergy.js');
 
 const MAX_DOMAIN_REWORK = 3; // loop-guard at the domain level too
+// 第51条c: 回復もまた有限である。無限に帰れる環は静止の代わりに永久機関になる。
+const MAX_PHASE_RESUME = 2;
+// 第51条b: この時を過ぎた `running` は、走者が斃れたものとみなす(15分)。
+const STALE_MS = 15 * 60 * 1000;
 
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function save(p, o) { fs.writeFileSync(p, JSON.stringify(o, null, 2)); }
@@ -59,6 +63,9 @@ function convene(dagPath) {
       id, agent: byId.get(id).agent, goal: byId.get(id).goal,
       deps: byId.get(id).deps || [], gate: !!byId.get(id).gate,
       artifact: byId.get(id).artifact, status: 'pending', attempts: 0, artifactPath: null,
+      // 第51条: 発令の刻。これが無ければ「死んだ running」を時刻で裁けない。
+      // null = まだ発令されていない / undefined = この機構より古い run(判定不能)
+      dispatchedAt: null, resumes: 0,
     })),
     reviewClass: (clergy.COLLEGE[g.cardinal] && clergy.COLLEGE[g.cardinal].reviewClass) ||
                  (g.cardinal === 'tribunal' ? 'god' : 'pontiff'),
@@ -98,7 +105,11 @@ function activeDomain(run) {
  *  - a ratify signal (the domain's phases are all done → the review class ratifies), or
  *  - conclave-complete.
  */
-function next(run) {
+function next(run, opts = {}) {
+  // 第51条: 自動回収は **opt-in** である。既定の next は state を一切書かない
+  // (純粋である)。書くのは呼び手の markRunning だけ — この契約に既存の門が
+  // 依存しているため、reclaim を既定にすればそれらが静かに嘘になる。
+  if (opts.reclaim) resume(run, { staleMs: opts.staleMs });
   const act = activeDomain(run);
   // 道の性質で結びの言を変える。counsel は創造物を産まない(第32条)ので、
   // 「creation complete」と言えばそれ自体が第32条への反例になる。
@@ -196,13 +207,93 @@ function next(run) {
 /** Mark a phase running (attempts++). Called on dispatch. */
 function markRunning(run, ids) {
   const all = allPhases(run);
-  for (const id of ids) { const p = all.get(id); if (p) { p.status = 'running'; p.attempts += 1; } }
+  for (const id of ids) { const p = all.get(id); if (p) { p.status = 'running'; p.attempts += 1; p.dispatchedAt = now(); } }
   run.history.push({ ts: now(), event: 'dispatch', detail: ids.join(', ') });
 }
 
+/**
+ * resume(): 中断した走者が残した `running` の化石を環へ戻す (第51条)。
+ *
+ * なぜ既存の verb で足りないか:
+ *   - `done`          … 成果物が無いのに done を刻む = 台帳に嘘を永続化する (第37条)
+ *   - `ratify --reject` … 粒度が domain。`reworks` を消費して loop-guard を無駄に削り、
+ *                        台帳上で「品質差し戻し」と「走者の死」が混ざって後から区別できない
+ *
+ * 生死の判定は **人の意思 > 時刻 > (attempts は使わない)**:
+ *   - dispatchedAt が新しい      → 生きているとみなし触らない (--force で覆せる)
+ *   - dispatchedAt が STALE_MS 超 → 回収する
+ *   - dispatchedAt が無い(古い run) → 判定不能。engine は独断で剥がさず --force を要求する
+ *     (勝手に剥がせば二重発令という新しい病を生む — 第45条の同型)
+ *
+ * 回収した相は `pending` ではなく `rework` へ戻す。`phaseReady` はどちらも ready と扱うが、
+ * `pending` は「まだ一度も発令されていない」の意であり attempts>=1 の相と矛盾する。
+ */
+function resume(run, opts = {}) {
+  const staleMs = typeof opts.staleMs === 'number' ? opts.staleMs : STALE_MS;
+  const all = allPhases(run);
+  const targets = opts.phase ? [all.get(opts.phase)].filter(Boolean) : [...all.values()];
+  if (opts.phase && !targets.length) throw new Error('unknown phase: ' + opts.phase);
+
+  const resumed = [], skipped = [];
+  for (const p of targets) {
+    if (p.status !== 'running') { skipped.push({ id: p.id, reason: `not running (${p.status})` }); continue; }
+    const at = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
+    if (!Number.isNaN(at)) {
+      const age = Date.now() - at;
+      if (age < staleMs && !opts.force) {
+        skipped.push({ id: p.id, reason: `fresh (${Math.round(age / 1000)}s < ${Math.round(staleMs / 1000)}s) — 生きている走者かもしれない。--force で覆せる`, ageMs: age });
+        continue;
+      }
+    } else if (!opts.force) {
+      skipped.push({ id: p.id, reason: 'no dispatchedAt — 判定不能な古い run。--force を要する' });
+      continue;
+    }
+    p.resumes = (p.resumes || 0) + 1;
+    if (p.resumes > MAX_PHASE_RESUME) {
+      const owner = run.domains.find(d => d.phases.some(x => x.id === p.id));
+      if (owner) owner.status = 'blocked';
+      run.history.push({ ts: now(), event: 'phase-loop-guard', detail: `${p.id} exceeded ${MAX_PHASE_RESUME} resumes` });
+      return { ok: false, resumed, skipped, blocked: owner && owner.cardinal,
+        message: `Phase ${p.id} blocked after ${MAX_PHASE_RESUME} resumes — escalate to pontiff.` };
+    }
+    p.status = 'rework';
+    p.dispatchedAt = null;
+    resumed.push(p.id);
+  }
+  if (resumed.length) run.history.push({ ts: now(), event: 'resume', detail: resumed.join(', ') });
+  return { ok: true, resumed, skipped,
+    message: resumed.length ? `resumed: ${resumed.join(', ')} — 環は再び回る` : 'nothing resumed（回収すべき化石は無かった）' };
+}
+
+/**
+ * 相を done として記す。
+ *
+ * ⚠️ **成果物を名乗るなら、その成果物は実在せねばならない**(第22条 / 第27条)。
+ *
+ * 実測(2026-09-02): security 相の神官が反復上限で打ち切られたにもかかわらず、
+ * 教主が `done security --artifact .../security.md` と記録した。**ファイルは
+ * 一度も存在したことがなかった**(`git log --all -- security.md` → 0件)。
+ * executor(執行官)が `ls` で不在を暴くまで誰も気づかなかった。
+ *
+ * 第27条「subagent の done を信じない」は、**記録する者自身にも向く**。
+ * 教主が神官を疑っても、教主が書いた台帳を誰も疑わなければ嘘は残る。
+ * ゆえに engine が拒む —— 人の注意力ではなく機械が守る(第50条)。
+ */
 function markDone(run, id, artifactPath) {
   const p = allPhases(run).get(id);
   if (!p) throw new Error('unknown phase: ' + id);
+  if (artifactPath) {
+    const abs = path.isAbsolute(artifactPath)
+      ? artifactPath
+      : path.join(path.dirname(__dirname), artifactPath);
+    if (!fs.existsSync(abs)) {
+      throw new Error(
+        `成果物が実在しない: ${artifactPath}\n` +
+        `  相 "${id}" を done にはできない —— 名乗った成果物が無い(第22条)。\n` +
+        `  神官が打ち切られたか、書く前に done を記したかである。\n` +
+        `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
+    }
+  }
   p.status = 'done'; if (artifactPath) p.artifactPath = artifactPath;
   run.history.push({ ts: now(), event: 'done', detail: id + (artifactPath ? ' → ' + artifactPath : '') });
 }
@@ -262,7 +353,20 @@ function statusBoard(run) {
   for (const d of run.domains) {
     const rw = d.reworks ? ` (rework ${d.reworks})` : '';
     lines.push(`${dg[d.status] || '?'} 枢機卿 ${d.cardinal} — ${d.domain}${rw}   [review: ${d.reviewClass}]`);
-    for (const p of d.phases) lines.push(`     ${pg[p.status] || '?'} ${p.gate ? '⚖️' : '  '} ${p.id} @${p.agent}`);
+    for (const p of d.phases) {
+      // 第51条a: 静止は失敗より悪い。中断の疑いがある running を人に見せ、沈黙を破る。
+      let note = '';
+      if (p.status === 'running') {
+        const at = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
+        if (Number.isNaN(at)) note = '  ⚠ (running・発令の刻なし — resume --force で回収せよ)';
+        else {
+          const age = Date.now() - at;
+          if (age >= STALE_MS) note = `  ⚠ (running ${Math.round(age / 60000)}分 — 中断の疑い。resume で回収せよ)`;
+        }
+      }
+      const rs = p.resumes ? ` (resume ${p.resumes})` : '';
+      lines.push(`     ${pg[p.status] || '?'} ${p.gate ? '⚖️' : '  '} ${p.id} @${p.agent}${rs}${note}`);
+    }
   }
   const dr = run.domains.filter(d => d.status === 'ratified').length;
   lines.push('═'.repeat(52), `domains ratified: ${dr}/${run.domains.length}`);
@@ -281,17 +385,47 @@ function main() {
     if (!pos[0] || !rp) { console.error('usage: conclave.js convene <dag.json> --run <run.json>'); process.exit(2); }
     const run = convene(pos[0]); save(rp, run); console.log(statusBoard(run));
   } else if (cmd === 'next') {
-    need(); const run = load(rp); const step = next(run);
+    need(); const run = load(rp);
+    const step = next(run, { reclaim: !!f.reclaim, staleMs: f['stale-ms'] ? +f['stale-ms'] : undefined });
     if (step.phase === 'wave') markRunning(run, step.dispatch.map(d => d.id));
     save(rp, run); console.log(JSON.stringify(step, null, 2));
   } else if (cmd === 'done') {
     need(); const run = load(rp); markDone(run, pos[0], f.artifact); save(rp, run); console.log(statusBoard(run));
+  } else if (cmd === 'resume') {
+    // 第51条: 中断した走者の残骸を環へ戻す。
+    need(); const run = load(rp);
+    const res = resume(run, { phase: pos[0] || (typeof f.phase === 'string' ? f.phase : undefined),
+                              force: !!f.force, staleMs: f['stale-ms'] ? +f['stale-ms'] : undefined });
+    save(rp, run);
+    console.log(JSON.stringify(res, null, 2)); console.log('\n' + statusBoard(run));
+    if (!res.ok) process.exit(1);
   } else if (cmd === 'ratify') {
     need(); const run = load(rp); const res = ratify(run, pos[0], { reject: f.reject, from: f.from }); save(rp, run);
     console.log(JSON.stringify(res, null, 2)); console.log('\n' + statusBoard(run));
   } else if (cmd === 'status') {
-    need(); console.log(statusBoard(load(rp)));
-  } else { console.error('commands: convene <dag> --run f | next --run f | done <id> --run f --artifact p | ratify <cardinal> --run f [--reject --from id] | status --run f'); process.exit(2); }
+    need();
+    const run = load(rp);
+    // FR-05: --json 指定時は人間向けテキストを 1 行も混ぜない。
+    // **statusBoard と同じ run から作る** — 別の集計を書けば両者が食い違う。
+    if (f.json) {
+      const dr = run.domains.filter(d => d.status === 'ratified').length;
+      const phases = [...allPhases(run).values()];   // allPhases は Map を返す — 実測で確かめた
+      process.stdout.write(JSON.stringify({
+        domainsRatified: dr,
+        domainsTotal: run.domains.length,
+        phasesDone: phases.filter(p => p.status === 'done').length,
+        phasesTotal: phases.length,
+        domains: run.domains.map(d => ({
+          cardinal: d.cardinal, domain: d.domain, status: d.status, reworks: d.reworks || 0,
+          reviewClass: d.reviewClass,
+          phases: (d.phases || []).map(p => ({ id: p.id, agent: p.agent, status: p.status, gate: !!p.gate })),
+        })),
+        historyLength: (run.history || []).length,
+      }) + '\n');
+      return;
+    }
+    console.log(statusBoard(run));
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
-module.exports = { convene, next, markRunning, markDone, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK };
+module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS };

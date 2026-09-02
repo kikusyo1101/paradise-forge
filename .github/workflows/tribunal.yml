@@ -138,6 +138,64 @@ jobs:
         # 外の辺(門・命令・神官・掟・試験・器物・散文・機構)を実測する。
         run: node graph/wiring.js check
 
+      # ── ダッシュボードの門 G-01〜G-10 (第22条 / 第50条) ──
+      # **門が見ていない機能は、壊れても鳴らない。**
+      # 改修前、tribunal.yml 全 207 行のうちダッシュボードに触れるのは atlas の 1 行のみで、
+      # dashboard/index.html は visual-verify も critic も一度も通っていなかった。
+      - name: 🔢 Dashboard counts — 画面の数が嘘をつかないか (G-01 / 第22条)
+        # 断面の数 == その場で数えた数。固定値とは比べない(則3)
+        run: node tests/dashboard-count.test.js
+
+      - name: 🚫 Dashboard deps — 外部依存が再び生えていないか (G-02 / NFR-02)
+        run: node tests/dashboard-no-deps.test.js
+
+      - name: 🔗 Dashboard links — 孤児ページが生まれていないか (G-04 / FR-19)
+        run: node tests/dashboard-links.test.js
+
+      - name: 🔒 Dashboard hardcode — 固定値が再発していないか (G-06 / FR-02)
+        run: node tests/dashboard-no-hardcode.test.js
+
+      - name: ⏱ Dashboard perf — 同期経路が遅く/子プロセス化していないか (G-07 + G-10)
+        run: node tests/dashboard-perf.test.js
+
+      - name: 🖥 Dashboard states — 5 状態と経路とスピナー禁止 (FR-20 / FR-07 / FR-08)
+        run: |
+          node tests/dashboard-transport.test.js
+          node tests/dashboard-freshness.test.js
+          node tests/dashboard-states.test.js
+
+      - name: ⚖️ Dashboard run panel — 点数と起動実績の矛盾が見えるか (FR-13/14/22)
+        # spawn-trace.report() にパスを渡すと例外を投げず {ok:true,total:0} を返す。
+        # **引数の型を間違えると門が鳴ること**を、故障注入で確かめる(D-3)
+        run: node tests/dashboard-run-panel.test.js
+
+      - name: 📡 Dashboard SSE — 形式・ポート・接続数 (FR-09 / FR-10 / NFR-03)
+        run: node tests/dashboard-sse.test.js
+
+      - name: 👀 Dashboard watch — デバウンスと change/rename の等価 (FR-11 / NFR-04)
+        run: node tests/dashboard-watch.test.js
+
+      - name: 🎨 Dashboard surface — visual-verify と critic が画面を見る (G-05 / 第50条)
+        # 第50条の直接の是正。dashboard/index.html と dashboard/control.html を門に載せる
+        #
+        # ⚠️ **`|| true` を付けるな**(quality 枢機卿が審査で指摘・教主が是正)。
+        # 付けた瞬間、critic が何を言おうと CI は緑になる —— それは
+        # 「門の形をした飾り」であり、第50条が名指しした『見ていない門』そのものである。
+        # 実測(2026-09-02): `critic.js review dashboard --self` は exit=0 で
+        # 5項目すべて緑。**通る門なのだから、通らせる必要が無い。**
+        run: |
+          node graph/visual-verify.js check dashboard --json
+          node graph/critic.js review dashboard --self
+
+      - name: 🧹 Motion probe leak — 門が己の残骸で不定に鳴らないか (G-09 / 第50条の裏面)
+        # **症状(0 failed)ではなく原因(プロファイル数の差分)を裁く。**
+        # 漏れが 529 個まで悪化した状態でも自己診断は 0 failed を出した。
+        run: node tests/motion-probe-leak.test.js
+
+      - name: 🧊 Dashboard fallback — file:// で凍結を正直に名乗るか (FR-08 / NFR-06)
+        # Chrome の file:// からの fetch は network error になる。node では再現できない
+        run: node tests/dashboard-fallback.test.js
+
       - name: 🕊 Vendor — 取り込んだ道具が上流へ電話をかけないか (第20条・第47条d)
         run: node graph/vendor.js verify
 

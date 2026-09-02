@@ -101,9 +101,41 @@ function markRunning(run, ids) {
   run.history.push({ ts: now(), event: 'dispatch', detail: ids.join(', ') });
 }
 
+/**
+ * 成果物が「住所」を名乗っているか。
+ *
+ * orchestrator の artifact は conclave と違い **自由な名も許す**
+ * (`'tests'` `'implementation'` — 実装や試験そのものを指す名)。
+ * ゆえに「実在せよ」を全てに課すと、正しい走行まで止まる。
+ *
+ * だが **パスを名乗ったなら実在せねばならない** ——
+ * 「成果物を名乗るなら実在せねばならない」は道を問わないからである
+ * (第10条の道でも第11条の道でも、台帳が嘘をつく害は同じ)。
+ * 区切り (`/` `\`) か拡張子を持つものを住所と見なす。
+ */
+function looksLikePath(s) {
+  return /[\\/]/.test(s) || /\.[a-z0-9]{1,8}$/i.test(s);
+}
+
 /** Record a phase completion with its artifact (the subagent contract result). */
 function markDone(run, id, artifact, note) {
   if (!run.phases[id]) throw new Error('unknown phase: ' + id);
+  // ■ 第22条 / 第27条 — 台帳に虚偽の done を記させない
+  //   conclave.js には同じ門が在るが、orchestrator には空いていた。
+  //   X-1(台帳が虚偽の done を記せた)を生んだ穴と**同型**である。
+  //   次に台帳が嘘をつくならここからなので、同じ厳しさで塞ぐ。
+  if (artifact && looksLikePath(artifact)) {
+    const abs = path.isAbsolute(artifact)
+      ? artifact
+      : path.join(path.dirname(__dirname), artifact);
+    if (!fs.existsSync(abs)) {
+      throw new Error(
+        `成果物が実在しない: ${artifact}\n` +
+        `  相 "${id}" を done にはできない —— 名乗った成果物が無い(第22条)。\n` +
+        `  神官が打ち切られたか、書く前に done を記したかである。\n` +
+        `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
+    }
+  }
   run.phases[id].status = 'done';
   if (artifact) run.phases[id].artifact = artifact;
   if (note) run.phases[id].note = note;

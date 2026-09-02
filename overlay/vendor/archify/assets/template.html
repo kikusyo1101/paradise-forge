@@ -31,14 +31,9 @@
       } catch (_) {}
     })();
   </script>
-  <!-- Async font load: a blackholed network must not block first paint.
-       The body font stack falls back to system monospace until it lands. -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </noscript>
+  <!-- 外部書体は取りに行かない (楽園の掟: 外部依存ゼロ / FR-12)。
+       同ファイル内に local('JetBrains Mono') の @font-face 退避が既に在り、
+       在れば使い、無ければ system monospace に落ちる。取りに行く 3 行だけを削った。 -->
   <style>
     /* ==========================================================
        THEME VARIABLES — switch by toggling [data-theme] on <html>
@@ -4849,6 +4844,14 @@
   </style>
 </head>
 <body>
+  <!-- 図から門へ戻る道 (楽園 AC-19d)。生成物 dashboard/atlas/*.html を手で書き換えず、
+       生成器であるこの template を直すことで 6 枚すべてに戻り道が宿る (第29条 / N-6)。
+       図の外に置かれた図は孤児になる — 孤児は「先例」として模倣される (第44条)。 -->
+  <a href="../index.html" class="paradise-home"
+     style="position:fixed;left:12px;bottom:12px;z-index:60;display:inline-flex;align-items:center;
+            min-height:32px;padding:6px 12px;font:500 13px/1.4 system-ui,sans-serif;
+            border:2px solid currentColor;border-radius:4px;text-decoration:none;
+            background:Canvas;color:LinkText;">← 楽園の門へ戻る</a>
   <!-- Toolbar: theme, live visual style, trace motion, presentation stage, and export.
        Motion appears only for trace-enabled artifacts and has no shortcut;
        Keyboard: T toggles theme, S cycles style, F toggles the stage, E opens export. -->

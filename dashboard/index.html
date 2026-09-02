@@ -1,417 +1,300 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🏛️ Paradise — Live Dashboard</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>楽園の門 — いま何が起きているか</title>
+<!--
+  DOMAIN: dashboard-gate
+  外部依存ゼロ。CDN も Web フォントも読まない (楽園の掟 / NFR-02)。
+  画面に出る全ての数は graph/pulse.js の断面 (snapshot) 由来である。
+  数値リテラルをこの HTML に埋めてはならない (FR-02)。
+-->
 <style>
+/* ══════════════════════════════════════════════════════════
+   identity.md §7 — wired [editorial]。両テーマを同じ変数名で持つ。
+   画面側は var(--ok) としか書かないので、テーマ追加でコードが変わらない。
+   ══════════════════════════════════════════════════════════ */
+:root {
+  --canvas: #ffffff;  --canvas-soft: #f5f5f5;  --paper: #eae6dd;
+  --ink: #12100e;     --body: #595959;         --hairline: #767676;
+  --link: #1a5fb4;    --primary: #000000;      --on-primary: #ffffff;
+  --ok: #1a6b3c;      --warn: #8a4b00;         --bad: #b3251e;
+  --contradiction: #6b21a8;                    --focus: #7a4a00;
+  color-scheme: light;
+
+  /* §5 書体 — 外部フォント禁止。system font stack のみ */
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS PMincho", Georgia, "Times New Roman", serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Consolas", "Liberation Mono", "Menlo", monospace;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117;
-    --bg-elev: #161b22;
-    --bg-elev-2: #1c2230;
-    --border: #2a3242;
-    --border-soft: #222834;
-    --text: #e6edf3;
-    --text-dim: #8b949e;
-    --text-faint: #6e7681;
-    --cyan: #22d3ee;
-    --violet: #a78bfa;
-    --accent-grad: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
-    --green: #3fb950;
-    --red: #f85149;
-    --amber: #d29922;
+    --canvas: #12100e;  --canvas-soft: #1c1a17;  --paper: #26231e;
+    --ink: #f7f4ee;     --body: #b0a99f;         --hairline: #837b6d;
+    --link: #5fb3e8;    --primary: #f7f4ee;      --on-primary: #12100e;
+    --ok: #6ec08a;      --warn: #e0a83a;         --bad: #ef6f62;
+    --contradiction: #c08ad8;                    --focus: #e8c46a;
+    color-scheme: dark;
   }
+}
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark; }
 
-  * { box-sizing: border-box; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  font-family: var(--font-ui); font-size: 1rem; line-height: 1.6;
+}
+.mono { font-family: var(--font-mono); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: .02em; }
+h1 { font-size: 1.5rem; margin: 0; }
+h2 { font-size: 1.15rem; margin: 0 0 .5rem; }
+h3 { font-size: 1rem; margin: 0 0 .35rem; }
+h4 { font-size: .875rem; margin: 0 0 .25rem; color: var(--body); font-family: var(--font-ui); }
+a { color: var(--link); }
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
-      "Yu Gothic", Meiryo, Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
+/* §6 焦点。:focus ではなく :focus-visible — マウスで出れば消したくなる */
+:focus-visible {
+  outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 2px;
+}
+.skip {
+  position: absolute; left: -9999px; top: 0; z-index: 10;
+  background: var(--canvas); padding: 8px 12px; min-height: 32px;
+}
+.skip:focus { left: 8px; }
 
-  body {
-    background:
-      radial-gradient(1200px 600px at 15% -10%, rgba(34,211,238,0.08), transparent 60%),
-      radial-gradient(1000px 500px at 100% 0%, rgba(167,139,250,0.10), transparent 55%),
-      var(--bg);
-    min-height: 100vh;
-  }
+/* ── 領域 0: 状況の一行。スクロールで消えない ── */
+.status-bar {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--canvas-soft); border-bottom: 2px solid var(--hairline);
+  padding: .6rem 1rem; display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline;
+}
+.badge {
+  font-family: var(--font-mono); font-size: .8125rem;
+  border: 2px solid var(--hairline); padding: 4px 10px;
+  min-height: 24px; min-width: 24px; display: inline-flex; align-items: center;
+}
+/* 経路バッジ: 3 値のいずれかを必ず表示する (FR-08) */
+[data-transport="sse"]  .badge-transport { border-color: var(--ok); color: var(--ok); }
+[data-transport="poll"] .badge-transport { border-color: var(--ok); color: var(--ok); }
+[data-transport="frozen"] .badge-transport { border-color: var(--body); color: var(--body); }
+/* 鮮度: 生 / 遅延 / 凍結 の 3 区分。凍結を赤にしない — 故障ではないからである */
+[data-freshness="live"]    .badge-fresh { color: var(--ok);   border-color: var(--ok); }
+[data-freshness="lagging"] .badge-fresh { color: var(--warn); border-color: var(--warn); }
+[data-freshness="frozen"]  .badge-fresh { color: var(--body); border-color: var(--body); }
+[data-anomaly="true"] { color: var(--bad); font-weight: 700; }
 
-  .wrap {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 24px 64px;
-  }
+main { padding: 1rem; display: grid; gap: 1rem;
+       grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.full { grid-column: 1 / -1; }
+section[data-panel] {
+  background: var(--canvas-soft); border: 1px solid var(--hairline); padding: .9rem;
+}
+.note { margin: .25rem 0; }
+.hint { margin: .15rem 0; font-size: .8125rem; color: var(--body); }
+.src  { margin: .5rem 0 0; font-size: .8125rem; color: var(--body); font-family: var(--font-mono); }
+.ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
 
-  /* ---- Header ---- */
-  header.hero {
-    margin-bottom: 36px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border-soft);
-  }
-  header.hero h1 {
-    margin: 0;
-    font-size: 2.6rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-  header.hero .subtitle {
-    margin-top: 8px;
-    font-size: 1.05rem;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .grad-text {
-    background: var(--accent-grad);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
+/* §2 の 5 状態。色は第 2 の手掛かりであって第 1 ではない — 語を必ず添える */
+[data-state="error"]        { border-left: 4px solid var(--bad); }
+[data-state="empty"]        { border-left: 4px solid var(--hairline); }
+[data-state="loading"]      { border-left: 4px solid var(--warn); }
+[data-state="disconnected"] { border-left: 4px solid var(--warn); }
+[data-state="ready"]        { border-left: 4px solid var(--ok); }
+[data-state]::before {
+  content: attr(data-state); font-family: var(--font-mono); font-size: .75rem;
+  color: var(--body); float: right;
+}
 
-  /* ---- Section labels ---- */
-  .section-label {
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--text-faint);
-    font-weight: 700;
-    margin: 40px 0 16px;
-  }
+/* ── 走行中の環 ── */
+.run { background: var(--paper); border: 1px solid var(--hairline); padding: .7rem; margin: 0 0 .7rem; }
+.run[data-run-state="stalled"] { border-left: 4px solid var(--bad); }
+.run[data-run-state="complete"] { border-left: 4px solid var(--ok); }
+.run.collapsed .domains, .run.collapsed .hint { display: none; }
+.run-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.run-state-word { font-weight: 700; }
+.tag-contradiction { color: var(--contradiction); font-weight: 700; }
+[data-contradiction="true"] { border: 2px solid var(--contradiction); }
+.domains { list-style: none; padding: 0; margin: .4rem 0;
+           display: grid; gap: .25rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.domain { font-size: .8125rem; display: flex; gap: .4rem; justify-content: space-between; }
+.bar { display: block; height: 10px; background: var(--canvas); border: 1px solid var(--hairline); margin: .35rem 0; }
+.bar-fill { display: block; height: 100%; background: var(--primary); }
+.expander { min-height: 32px; padding: 4px 12px; font-family: var(--font-ui);
+            background: var(--canvas); color: var(--ink); border: 2px solid var(--hairline); cursor: pointer; }
+.run-group { margin-top: .5rem; }
 
-  /* ---- Layer cards ---- */
-  .layers {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-  }
-  @media (max-width: 860px) { .layers { grid-template-columns: 1fr; } }
+/* ── 点数と起動実績: 横に並べる。縦だと矛盾が矛盾に見えない ── */
+.score-card { background: var(--paper); border: 1px solid var(--hairline); padding: .7rem; margin: 0 0 .7rem; }
+.pair { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.half { border: 1px solid var(--hairline); padding: .5rem; background: var(--canvas); }
+.big { font-family: var(--font-mono); font-size: 1.5rem; margin: .2rem 0; }
+.verdict-line { color: var(--contradiction); font-weight: 700; margin: .5rem 0; }
+.metrics { list-style: none; padding: 0; margin: .5rem 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.metric { font-size: .8125rem; border: 1px solid var(--hairline); padding: 2px 8px; min-height: 24px; }
+.ledger { margin-top: .6rem; border-top: 1px dashed var(--hairline); padding-top: .5rem; }
+.ledger ul { list-style: none; padding: 0; margin: 0; }
+.ledger li { display: flex; gap: .6rem; flex-wrap: wrap; font-size: .8125rem; }
+.diff { color: var(--warn); }
 
-  .card {
-    background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 22px 20px;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.18s ease, border-color 0.18s ease;
-  }
-  .card:hover { transform: translateY(-3px); border-color: #3a4658; }
-  .card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: var(--accent-grad);
-    opacity: 0.9;
-  }
-  .card .layer-tag {
-    display: inline-block;
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--cyan);
-    border: 1px solid rgba(34,211,238,0.35);
-    background: rgba(34,211,238,0.08);
-    border-radius: 999px;
-    padding: 2px 10px;
-    margin-bottom: 10px;
-    font-weight: 700;
-  }
-  .card h2 {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 700;
-  }
-  .card .card-sub {
-    margin: 6px 0 16px;
-    font-size: 0.86rem;
-    color: var(--text-dim);
-  }
+/* ── 門のチップ。2px は触れない。24×24 CSS px 以上 (WCAG 2.5.8) ── */
+.gates { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip.gate {
+  min-height: 24px; min-width: 24px; padding: 4px 10px;
+  border: 2px solid var(--hairline); background: var(--canvas);
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .8125rem;
+}
+.chip.gate[data-ok="true"]  { border-color: var(--ok); }
+.chip.gate[data-ok="false"] { border-color: var(--bad); }
 
-  .stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  .stat {
-    background: rgba(167,139,250,0.08);
-    border: 1px solid rgba(167,139,250,0.25);
-    border-radius: 10px;
-    padding: 8px 10px;
-    min-width: 62px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .stat .v {
-    font-size: 1.25rem;
-    font-weight: 800;
-    line-height: 1;
-    color: var(--violet);
-  }
-  .stat .k {
-    font-size: 0.66rem;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
+/* ── 数の看板 ── */
+.counts { list-style: none; padding: 0; margin: 0;
+          display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.count { border: 1px solid var(--hairline); background: var(--canvas); padding: .4rem .6rem; }
+.count-value { display: block; font-size: 1.375rem; }
+.count[data-measured="false"] .count-value { color: var(--bad); font-size: .9375rem; }
+.count-label { display: block; font-size: .8125rem; }
+.census { margin-top: .6rem; border-top: 1px dashed var(--hairline); padding-top: .5rem; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip {
-    font-size: 0.74rem;
-    color: var(--text);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
-  }
+/* ── 道の形 ── */
+.scales { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.scale { display: grid; grid-template-columns: 8rem 4rem 1fr; gap: .5rem; align-items: center; font-size: .875rem; }
+.scale[data-in-use="true"] .scale-name { font-weight: 700; text-decoration: underline; }
+.kinds { list-style: none; padding: 0; margin: 0 0 .4rem; display: flex; gap: .75rem; flex-wrap: wrap; }
 
-  /* ---- Graph execution panel ---- */
-  .panel {
-    background: linear-gradient(180deg, var(--bg-elev) 0%, #12161f 100%);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
-  }
-  .panel-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-  .panel-head h2 { margin: 0; font-size: 1.35rem; font-weight: 700; }
-  .count-line {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
-  }
-  .count-line .num { color: var(--cyan); font-weight: 700; }
-  .goal-line { font-size: 0.85rem; color: var(--text-faint); margin-bottom: 20px; }
+/* ── 索引。行全体を的にする ── */
+.atlas { list-style: none; padding: 0; margin: 0; }
+.atlas a { display: block; padding: 8px 0; min-height: 32px; }
 
-  .waves {
-    display: flex;
-    gap: 0;
-    align-items: stretch;
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-  .wave-col {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 190px;
-    flex: 1 1 0;
-    padding: 0 14px;
-    position: relative;
-  }
-  .wave-col:not(:last-child)::after {
-    content: "→";
-    position: absolute;
-    right: -8px;
-    top: 40px;
-    color: var(--text-faint);
-    font-size: 1.3rem;
-    z-index: 2;
-  }
-  .wave-title {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-faint);
-    font-weight: 700;
-    padding-bottom: 8px;
-    border-bottom: 1px dashed var(--border);
-    margin-bottom: 4px;
-  }
-  .wave-title .badge {
-    color: var(--cyan);
-    font-weight: 800;
-  }
+/* ── 経路の一行ログ ── */
+.log { list-style: none; padding: 0; margin: .3rem 0 0; font-size: .8125rem; max-height: 9rem; overflow: auto; }
 
-  .node {
-    background: var(--bg-elev-2);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--cyan);
-    border-radius: 10px;
-    padding: 10px 12px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-  .node:hover {
-    border-color: var(--cyan);
-    box-shadow: 0 0 0 1px rgba(34,211,238,0.25), 0 6px 18px rgba(0,0,0,0.35);
-  }
-  .node .node-id {
-    font-weight: 700;
-    font-size: 0.95rem;
-    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
-    color: var(--text);
-  }
-  .node .node-agent {
-    font-size: 0.75rem;
-    color: var(--violet);
-    font-weight: 600;
-    margin-top: 2px;
-  }
-  .node .node-goal {
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-  .node .node-deps {
-    font-size: 0.68rem;
-    color: var(--text-faint);
-    margin-top: 6px;
-    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
-  }
-  .node .node-deps .arrow { color: var(--cyan); }
-  .node .node-deps.root { color: var(--green); }
+/* ══════════════════════════════════════════════════════════
+   幅への応答 (ux.md §8)。狭 1 カラム / 広 2 カラム。
+   auto-fit だけでは足りない —— **狭い画面では余白と字も詰めねば、
+   control.html が 390px 幅で縦 21,925px の巻物になった当の轍を踏む。**
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  /* 携帯: 1 カラム。領域の余白を削り、巻物の長さを抑える */
+  main { grid-template-columns: 1fr; padding: .6rem; gap: .6rem; }
+  section[data-panel] { padding: .6rem; }
+  .status-bar { padding: .5rem .6rem; gap: .5rem; }
+  h1 { font-size: 1.25rem; }
+  /* 数の看板は 2 列に畳む。1 列では 12 項目が縦 12 行になる */
+  .counts { grid-template-columns: repeat(2, 1fr); }
+  .domains { grid-template-columns: 1fr; }
+  .pair { grid-template-columns: 1fr; }
+  .scale { grid-template-columns: 6.5rem 3.5rem 1fr; font-size: .8125rem; }
+  /* 履歴は狭い画面では最新 1 行だけを見せる。畳むことは隠すことではない */
+  .ledger li:nth-child(n+3) { display: none; }
+}
+@media (min-width: 1200px) {
+  /* 広い画面: 2 カラム。【状況の一行】と【走行中の環】は全幅を占める(最重要) */
+  main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .counts { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1800px) {
+  /* さらに広ければ 3 カラム。領域を増やすのではなく、同じ 8 領域を並べる */
+  main { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
-  .errors {
-    margin-top: 16px;
-    color: var(--red);
-    font-size: 0.85rem;
-    font-family: monospace;
-  }
-
-  footer {
-    margin-top: 48px;
-    color: var(--text-faint);
-    font-size: 0.78rem;
-    text-align: center;
-  }
-
-  .fatal {
-    color: var(--red);
-    background: rgba(248,81,73,0.08);
-    border: 1px solid rgba(248,81,73,0.35);
-    border-radius: 12px;
-    padding: 16px;
-    font-family: monospace;
-  }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="hero">
-      <h1><span class="grad-text">🏛️ Paradise</span></h1>
-      <div class="subtitle">Harness → Loop → Graph Engineering</div>
-    </header>
+<a class="skip" href="#main">本文へ飛ぶ</a>
 
-    <div class="section-label">System Layers</div>
-    <section id="layers" class="layers"><!-- layer cards injected --></section>
+<!-- ═══ 領域 0 — 状況の一行。data-transport は 3 値のいずれかを必ず持つ ═══ -->
+<header class="status-bar" data-transport="frozen" data-freshness="frozen">
+  <h1>楽園の門</h1>
+  <span class="badge badge-transport" data-field="transport-badge">凍結</span>
+  <span class="badge badge-fresh"><span data-field="freshness-word">凍結</span></span>
+  <span class="mono" data-field="age">断面をまだ受け取っていません</span>
+  <span data-field="headline" data-anomaly="false">断面の到着を待っています</span>
+</header>
 
-    <div class="section-label">Execution</div>
-    <section class="panel">
-      <div class="panel-head">
-        <h2>⚡ Live Graph Execution</h2>
-        <div id="count-line" class="count-line"></div>
-      </div>
-      <div id="goal-line" class="goal-line"></div>
-      <div id="waves" class="waves"><!-- waves injected --></div>
-      <div id="errors" class="errors"></div>
-    </section>
+<main id="main">
 
-    <footer>Rendered live from <code>window.PARADISE</code> · paradise.js · no build step</footer>
-  </div>
+  <!-- ═══ 領域 1 — 走行中の環。停止中が先頭 ═══ -->
+  <section class="full" data-panel="running-ring" data-state="loading" data-awaiting="pulse">
+    <h2>走行中の環</h2>
+    <div data-body><p class="note">pulse を待っています(断面の到着待ち)</p></div>
+  </section>
 
-  <script src="paradise.js"></script>
-  <script>
-    (function () {
-      'use strict';
-      var root = document.querySelector('.wrap');
+  <!-- ═══ 領域 2 — 点数と起動実績の並置 + 点数履歴。矛盾がここに出る ═══ -->
+  <section class="full" data-panel="runs-score" data-state="loading" data-awaiting="pulse">
+    <h2>点数と起動実績</h2>
+    <p class="hint">満点でありながら起動証跡が無い環には <span data-contradiction="true" class="tag-contradiction">[矛盾]</span> の印が付く。
+      緑でも赤でもない第 3 の色である —— 矛盾は「良い」でも「悪い」でもなく「辻褄が合わない」だからである。</p>
+    <!--
+      軌跡指標 5 種の凡例 (第38条 / AC-13d)。**測らなかった走行は改善を語れない。**
+      値は断面の runs[].metrics が入れる。ここに数値リテラルは書かない。
+    -->
+    <ul class="metrics" data-field="metric-legend">
+      <li class="metric mono" data-metric="firstPassRate">初回通過率 — 差戻さずに通った相の割合</li>
+      <li class="metric mono" data-metric="reworkCount">差戻 — ドメインが開き直された回数</li>
+      <li class="metric mono" data-metric="retryOverhead">再試行超過 — 同じ相をやり直した分</li>
+      <li class="metric mono" data-metric="loopGuardTrips">loop-guard — 環の番人が止めた回数</li>
+      <li class="metric mono" data-metric="durationMs">所要 — 環が回りきるまでの時間</li>
+    </ul>
+    <!-- 点数履歴の出所は gauge の台帳のみ。baseline は時刻を再計算するので呼ばない (FR-22) -->
+    <p class="hint" data-source="gauge-ledger">点数の履歴は <span class="mono">gauge-ledger.jsonl</span> に記録された時刻をそのまま運ぶ(再計算しない)。</p>
+    <div data-body><p class="note">pulse を待っています</p></div>
+  </section>
 
-      if (!window.PARADISE) {
-        root.insertAdjacentHTML('beforeend',
-          '<div class="fatal">⚠ paradise.js failed to load — window.PARADISE is undefined.</div>');
-        return;
-      }
-      var P = window.PARADISE;
+  <!-- ═══ 領域 3 — 門の合否 ═══ -->
+  <section data-panel="gates" data-state="loading" data-awaiting="pulse">
+    <h2>門の合否</h2>
+    <div data-body><p class="note">pulse を待っています</p></div>
+  </section>
 
-      function esc(s) {
-        return String(s).replace(/[&<>"']/g, function (c) {
-          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-        });
-      }
+  <!-- ═══ 領域 4 — 数の看板 ═══ -->
+  <section data-panel="counts" data-state="loading" data-awaiting="pulse">
+    <h2>数の看板</h2>
+    <div data-body><p class="note">pulse を待っています</p></div>
+  </section>
 
-      // ---- Layer cards from INVENTORY ----
-      var layerOrder = ['harness', 'loop', 'graph'];
-      var layersEl = document.getElementById('layers');
-      layerOrder.forEach(function (key) {
-        var L = P.INVENTORY[key];
-        if (!L) return;
-        var stats = (L.metrics || []).map(function (m) {
-          return '<div class="stat"><span class="v">' + esc(m.v) +
-                 '</span><span class="k">' + esc(m.k) + '</span></div>';
-        }).join('');
-        var chips = (L.items || []).map(function (it) {
-          return '<span class="chip">' + esc(it) + '</span>';
-        }).join('');
-        var card = document.createElement('div');
-        card.className = 'card';
-        card.id = 'layer-' + key;
-        card.innerHTML =
-          '<span class="layer-tag">' + esc(key) + '</span>' +
-          '<h2>' + esc(L.title) + '</h2>' +
-          '<div class="card-sub">' + esc(L.subtitle) + '</div>' +
-          '<div class="stats">' + stats + '</div>' +
-          '<div class="chips">' + chips + '</div>';
-        layersEl.appendChild(card);
-      });
+  <!-- ═══ 領域 5 — 日次ノルマ ═══ -->
+  <section data-panel="daily" data-state="loading" data-awaiting="daily-guard">
+    <h2>日次ノルマ</h2>
+    <div data-body><p class="note">daily-guard を待っています</p></div>
+  </section>
 
-      // ---- Live graph execution from SELF_DAG ----
-      var dag = P.SELF_DAG;
-      var plan = P.planWaves(dag);
-      var tasks = Array.isArray(dag) ? dag : dag.tasks;
-      var taskCount = tasks.length;
-      var waveCount = plan.waves.length;
+  <!-- ═══ 領域 6 — 道の形 ═══ -->
+  <section data-panel="scales" data-state="loading" data-awaiting="forge">
+    <h2>道の形</h2>
+    <div data-body><p class="note">forge を待っています</p></div>
+  </section>
 
-      document.getElementById('count-line').innerHTML =
-        '<span class="num">' + taskCount + '</span> tasks → ' +
-        '<span class="num">' + waveCount + '</span> waves' +
-        (plan.ok ? ' · <span style="color:var(--green)">ok</span>'
-                 : ' · <span style="color:var(--red)">errors</span>');
+  <!-- ═══ 領域 7 — 記憶(教訓 / KG)。トップは件数のみ ═══ -->
+  <section data-panel="memory" data-state="loading" data-awaiting="lessons">
+    <h2>記憶</h2>
+    <div data-body><p class="note">lessons を待っています</p></div>
+  </section>
 
-      if (dag && dag.meta && dag.meta.goal) {
-        document.getElementById('goal-line').textContent = '🎯 ' + dag.meta.goal;
-      }
+  <!-- ═══ 領域 8 — 全画面への索引。断面の atlas[] から描く ═══ -->
+  <section class="full" data-panel="atlas-index" data-state="loading" data-awaiting="atlas">
+    <h2>全画面への索引</h2>
+    <div data-body><p class="note">atlas を待っています</p></div>
+  </section>
 
-      var wavesEl = document.getElementById('waves');
-      plan.waves.forEach(function (wave, i) {
-        var col = document.createElement('div');
-        col.className = 'wave-col';
-        var html = '<div class="wave-title">Wave <span class="badge">' + (i + 1) +
-                   '</span> · ' + wave.length + '</div>';
-        wave.forEach(function (id) {
-          var t = plan.byId.get(id) || { id: id };
-          var deps = t.deps && t.deps.length
-            ? '<div class="node-deps"><span class="arrow">← deps:</span> ' +
-              t.deps.map(esc).join(', ') + '</div>'
-            : '<div class="node-deps root">● root (no deps)</div>';
-          var goal = t.goal ? '<div class="node-goal">' + esc(t.goal) + '</div>' : '';
-          html += '<div class="node">' +
-            '<div class="node-id">' + esc(t.id) + '</div>' +
-            '<div class="node-agent">@' + esc(t.agent || 'general') + '</div>' +
-            goal + deps + '</div>';
-        });
-        col.innerHTML = html;
-        wavesEl.appendChild(col);
-      });
+  <!-- 経路の一行ログ。降格・昇格のたびに理由とともに追記する -->
+  <section class="full">
+    <h2>経路の記録</h2>
+    <p class="hint">
+      サーバが居れば <span class="mono">生(SSE)</span>、居なければ <span class="mono">生(2秒ごと)</span>、
+      どちらも届かなければ <span class="mono">凍結</span> に落ちる。**落ちても嘘はつかない。**
+      ブラウザの <strong>同時接続</strong> は 1 つの起点につき既定で 6 本までであり、
+      タブを 7 枚以上開くと 7 枚目以降の SSE は沈黙する —— そのときも 2 秒ごとのポーリングで画面は成立する。
+    </p>
+    <ul class="log" data-log="transport"></ul>
+  </section>
 
-      if (plan.errors && plan.errors.length) {
-        document.getElementById('errors').textContent = '⚠ ' + plan.errors.join(' · ');
-      }
-    })();
-  </script>
+</main>
+
+<!-- 第3層(凍結)の源。<script src> は CORS を経由しないので file:// でも届く -->
+<script src="state.js"></script>
+<script src="paradise.js"></script>
 </body>
 </html>

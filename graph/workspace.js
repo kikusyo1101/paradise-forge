@@ -94,13 +94,40 @@ function strayCreations(repoRoot = REPO_ROOT) {
  * 対象は graph/*.js のみ(文書は道を説明するので除く)。自分自身は除く。
  * @returns {{file:string, line:number, text:string}[]}
  */
+/**
+ * 旧住所の直書きを咎める規則。
+ *
+ * ⚠️ **形を見る門が意味を見逃した** (第19条の再発)。
+ * 従来は /['"`][^'"`]*creations\// の 1 本しか持たず、**引用符の直後にスラッシュが
+ * 続く形しか咎めなかった。** ゆえに path.join 経由で組み立てた旧住所を素通りさせ、
+ * census.js:75 と export-state.js:32 の 2 件を抱えたまま門は緑を出し続けた。
+ * 実在 8 件に対し 0 件と報告する欠陥を、門が守っているつもりで見逃していた。
+ */
+const HARDCODE_PATTERNS = [
+  { re: /['"`][^'"`]*creations\//, why: "引用符の中の 'creations/'" },
+  { re: /path\.(join|resolve)\s*\([^)]*['"`]creations['"`]/, why: "path.join/resolve の引数の 'creations'" },
+];
+
+/**
+ * 除外リストは**コード内に明示する**。
+ * 除外を暗黙にすると、除外したこと自体が見えなくなる — それがこの門の元の病である。
+ */
+const HARDCODE_EXCLUDE_FILES = new Set([
+  'workspace.js',   // 自分自身。住所を知るのが職務である
+]);
+
+/**
+ * Find hardcoded creation-path references in graph/*.js.
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
 function hardcodedRefs(repoRoot = REPO_ROOT) {
   const dir = path.join(repoRoot, 'graph');
   const out = [];
   let names;
   try { names = fs.readdirSync(dir); } catch { return out; }
   for (const name of names) {
-    if (!name.endsWith('.js') || name === 'workspace.js') continue;
+    if (!name.endsWith('.js')) continue;
+    if (HARDCODE_EXCLUDE_FILES.has(name)) continue;
     const file = path.join(dir, name);
     let src;
     try { src = fs.readFileSync(file, 'utf8'); } catch { continue; }
@@ -108,9 +135,12 @@ function hardcodedRefs(repoRoot = REPO_ROOT) {
       const t = line.trim();
       // 註釈は道を説明してよい。咎めるのは実際に走るコードの中の住所だけ。
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
-      // 引用符の中の 'creations/' だけを咎める。
-      if (/['"`][^'"`]*creations\//.test(line)) {
-        out.push({ file: `graph/${name}`, line: i + 1, text: t.slice(0, 100) });
+      for (const p of HARDCODE_PATTERNS) {
+        if (p.re.test(line)) {
+          // **必ず名指しする。** 名指ししない門は、赤くなっても直せない。
+          out.push({ file: `graph/${name}`, line: i + 1, text: t.slice(0, 100), why: p.why });
+          return;
+        }
       }
     });
   }

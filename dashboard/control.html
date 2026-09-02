@@ -1,768 +1,279 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🏛️ Paradise · Control Panel</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>楽園の深掘り — 門の内訳・記憶・履歴の全件</title>
+<!--
+  DOMAIN: dashboard-control
+  外部依存ゼロ。CDN も Web フォントも読まない (NFR-02)。
+  トップ(門)は「いま何が起きているか」を、この画面は「その内訳」を担う。
+  トップに一覧を置けば、増えた日に【状況の一行】が押し流される (ux.md §8)。
+-->
 <style>
+:root {
+  --canvas: #ffffff;  --canvas-soft: #f5f5f5;  --paper: #eae6dd;
+  --ink: #12100e;     --body: #595959;         --hairline: #767676;
+  --link: #1a5fb4;    --primary: #000000;      --on-primary: #ffffff;
+  --ok: #1a6b3c;      --warn: #8a4b00;         --bad: #b3251e;
+  --contradiction: #6b21a8;                    --focus: #7a4a00;
+  color-scheme: light;
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS PMincho", Georgia, "Times New Roman", serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Consolas", "Liberation Mono", "Menlo", monospace;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --panel-2: #1c2230;
-    --border: #2a3140;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --cyan: #39d0d8;
-    --cyan-dim: #1f6f74;
-    --violet: #a371f7;
-    --violet-dim: #5a3d8c;
-    --green: #3fb950;
-    --amber: #d29922;
-    --gold: #e3b341;
-    --red: #f85149;
-    --radius: 14px;
-    --shadow: 0 4px 20px rgba(0,0,0,0.4);
+    --canvas: #12100e;  --canvas-soft: #1c1a17;  --paper: #26231e;
+    --ink: #f7f4ee;     --body: #b0a99f;         --hairline: #837b6d;
+    --link: #5fb3e8;    --primary: #f7f4ee;      --on-primary: #12100e;
+    --ok: #6ec08a;      --warn: #e0a83a;         --bad: #ef6f62;
+    --contradiction: #c08ad8;                    --focus: #e8c46a;
+    color-scheme: dark;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
-    padding: 28px 20px 60px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  a { color: var(--cyan); }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-ui); line-height: 1.6; }
+.mono { font-family: var(--font-mono); }
+h1, h2, h3 { font-family: var(--font-display); }
+h1 { font-size: 1.375rem; margin: 0; }
+h2 { font-size: 1.0625rem; margin: 0 0 .5rem; }
+a { color: var(--link); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+.status-bar { position: sticky; top: 0; z-index: 5; background: var(--canvas-soft);
+  border-bottom: 2px solid var(--hairline); padding: .6rem 1rem;
+  display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline; }
+.badge { font-family: var(--font-mono); font-size: .8125rem; border: 2px solid var(--hairline);
+  padding: 4px 10px; min-height: 24px; display: inline-flex; align-items: center; }
+[data-transport="sse"] .badge-transport, [data-transport="poll"] .badge-transport { border-color: var(--ok); color: var(--ok); }
+[data-transport="frozen"] .badge-transport { border-color: var(--body); color: var(--body); }
+.home { display: inline-block; padding: 8px 12px; min-height: 32px; }
+main { padding: 1rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.full { grid-column: 1 / -1; }
+section[data-panel] { background: var(--canvas-soft); border: 1px solid var(--hairline); padding: .9rem; }
+[data-state="error"] { border-left: 4px solid var(--bad); }
+[data-state="empty"] { border-left: 4px solid var(--hairline); }
+[data-state="loading"] { border-left: 4px solid var(--warn); }
+[data-state="disconnected"] { border-left: 4px solid var(--warn); }
+[data-state="ready"] { border-left: 4px solid var(--ok); }
+.hint { font-size: .8125rem; color: var(--body); }
+.note { margin: .25rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .8125rem; }
+th, td { border: 1px solid var(--hairline); padding: 6px 8px; text-align: left; font-family: var(--font-mono); }
+th { background: var(--paper); font-family: var(--font-ui); }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: 4px 0; }
 
-  /* Header */
-  .header {
-    background: linear-gradient(135deg, rgba(57,208,216,0.08), rgba(163,113,247,0.08));
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 26px 28px;
-    box-shadow: var(--shadow);
-    margin-bottom: 26px;
-  }
-  .header h1 {
-    margin: 0 0 6px;
-    font-size: 30px;
-    letter-spacing: 0.5px;
-    background: linear-gradient(90deg, var(--cyan), var(--violet));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .header .subtitle { color: var(--muted); font-size: 15px; margin-bottom: 4px; }
-  .header .generated { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .badges { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
-  .badge {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 16px;
-    min-width: 96px;
-    text-align: center;
-  }
-  .badge .num { font-size: 24px; font-weight: 700; color: var(--cyan); display: block; }
-  .badge .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-  .badge.violet .num { color: var(--violet); }
-
-  /* Section shell */
-  section {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px 24px;
-    margin-bottom: 24px;
-    box-shadow: var(--shadow);
-  }
-  section > h2 {
-    margin: 0 0 4px;
-    font-size: 19px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  section > .hint { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
-
-  /* Pipeline */
-  .pipeline-flow {
-    display: flex;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .flow-terminal {
-    display: flex; align-items: center; justify-content: center;
-    padding: 0 14px;
-    font-size: 13px; font-weight: 600; color: var(--muted);
-    background: var(--panel-2);
-    border: 1px dashed var(--border);
-    border-radius: 10px;
-    white-space: nowrap;
-  }
-  .flow-arrow { display: flex; align-items: center; color: var(--muted); font-size: 18px; padding: 0 2px; }
-  .chip {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    min-width: 92px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .chip .pid { font-weight: 700; font-size: 14px; color: var(--text); }
-  .chip .agent { font-size: 11px; color: var(--cyan); font-family: ui-monospace, Menlo, Consolas, monospace; }
-  .chip.gate {
-    border-color: var(--violet);
-    border-width: 2px;
-    background: linear-gradient(135deg, rgba(163,113,247,0.14), rgba(28,34,48,0.6));
-    box-shadow: 0 0 0 1px rgba(163,113,247,0.25), 0 4px 14px rgba(163,113,247,0.15);
-  }
-  .chip.gate .pid { color: #d9c4ff; }
-  .gate-badge {
-    position: absolute;
-    top: -9px; right: -9px;
-    background: var(--violet);
-    color: #fff;
-    font-size: 11px;
-    border-radius: 50%;
-    width: 22px; height: 22px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-  }
-
-  /* Graph */
-  .graph-wrap { display: flex; flex-wrap: wrap; gap: 20px; }
-  .graph-svg-box {
-    flex: 1 1 560px;
-    min-width: 300px;
-    background: radial-gradient(circle at 50% 45%, #10151f, #0b0e14);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  svg { display: block; width: 100%; height: auto; }
-  .legend { flex: 0 1 220px; min-width: 180px; }
-  .legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 4px 0 12px; }
-  .legend-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
-  .legend-swatch { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
-  .legend-count { margin-left: auto; color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
-  .edge-line { stroke: #33404f; stroke-width: 1; }
-  .node-label { fill: var(--text); font-size: 9px; font-family: ui-monospace, Menlo, Consolas, monospace; pointer-events: none; }
-  .node-circle { stroke: #0b0e14; stroke-width: 1.5; }
-
-  /* Lessons + creations */
-  .cols { display: flex; flex-wrap: wrap; gap: 22px; }
-  .lessons-col { flex: 2 1 480px; min-width: 300px; }
-  .creations-col { flex: 1 1 240px; min-width: 220px; }
-  .lesson-card {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--amber);
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
-  }
-  .lesson-card .flow { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .lesson-card .label { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
-  .lesson-card .check {
-    font-size: 12.5px; color: var(--muted);
-    background: rgba(0,0,0,0.25);
-    border-radius: 6px;
-    padding: 6px 9px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-  }
-  .lesson-card .check .kw { color: var(--cyan); }
-  .creation-item {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
-  }
-  .creation-item .cname { font-weight: 700; }
-  .creation-item .cfiles { font-size: 12px; color: var(--muted); }
-  .verdict-badge {
-    margin-left: auto;
-    font-size: 11px; font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-  }
-  .verdict-badge.ship { background: rgba(63,185,80,0.18); color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
-  .verdict-badge.other { background: rgba(210,153,34,0.18); color: var(--amber); border: 1px solid rgba(210,153,34,0.4); }
-  .findings-dot { font-size: 12px; color: var(--cyan); }
-
-  /* Ecclesiastical Hierarchy */
-  .hier-chain-wrap {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 18px;
-    margin-bottom: 24px;
-  }
-  .rank-ladder {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex: 1 1 420px;
-    min-width: 280px;
-  }
-  .rank-tier {
-    position: relative;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--cyan);
-    border-radius: 10px;
-    padding: 11px 16px;
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-  }
-  .rank-tier .lvl {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12px;
-    color: var(--cyan);
-    background: rgba(57,208,216,0.1);
-    border-radius: 6px;
-    padding: 2px 8px;
-    flex: 0 0 auto;
-  }
-  .rank-tier .rtitle { font-weight: 700; font-size: 15px; flex: 0 0 auto; }
-  .rank-tier .rrole { font-size: 12px; color: var(--muted); }
-  .rank-tier.l0 { border-left-color: var(--gold); }
-  .rank-tier.l0 .lvl { color: var(--gold); background: rgba(227,179,65,0.12); }
-  .rank-tier.l1 { border-left-color: var(--violet); }
-  .rank-tier.l1 .lvl { color: var(--violet); background: rgba(163,113,247,0.12); }
-  .rank-arrow { text-align: center; color: var(--muted); font-size: 14px; line-height: 1; margin: -3px 0; }
-  .exec-aside {
-    flex: 0 1 260px;
-    min-width: 230px;
-    display: flex;
-    align-items: stretch;
-    gap: 14px;
-  }
-  .exec-divider {
-    flex: 0 0 auto;
-    width: 0;
-    border-left: 2px dashed var(--red);
-    position: relative;
-  }
-  .exec-divider::after {
-    content: "‖";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    color: var(--red);
-    font-size: 22px;
-    background: var(--panel);
-    padding: 4px 2px;
-  }
-  .exec-box {
-    flex: 1 1 auto;
-    background: linear-gradient(135deg, rgba(248,81,73,0.1), rgba(28,34,48,0.6));
-    border: 1px solid rgba(248,81,73,0.45);
-    border-radius: 10px;
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .exec-box .elvl {
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12px;
-    color: var(--red);
-    align-self: flex-start;
-    background: rgba(248,81,73,0.14);
-    border-radius: 6px;
-    padding: 2px 8px;
-  }
-  .exec-box .etitle { font-weight: 700; font-size: 16px; color: #ffb3ad; }
-  .exec-box .erole { font-size: 12.5px; color: var(--muted); }
-  .exec-box .indep-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--red); margin-top: 2px; }
-
-  .college-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    margin-bottom: 22px;
-  }
-  .cardinal-card {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--violet);
-    border-radius: 12px;
-    padding: 16px 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .cardinal-card .cdomain { font-weight: 700; font-size: 16px; color: #d9c4ff; }
-  .cardinal-card .csub { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 2px; }
-  .govern-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .govern-chip {
-    font-size: 11.5px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    background: rgba(57,208,216,0.1);
-    border: 1px solid var(--cyan-dim);
-    color: var(--cyan);
-    border-radius: 20px;
-    padding: 3px 10px;
-  }
-  .priest-block {
-    background: rgba(0,0,0,0.22);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--cyan);
-    border-radius: 8px;
-    padding: 8px 10px;
-  }
-  .priest-name {
-    font-weight: 600;
-    font-size: 13.5px;
-    color: var(--cyan);
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .priest-name .kanji { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
-  .believer-list {
-    list-style: none;
-    margin: 6px 0 0;
-    padding: 0 0 0 16px;
-    border-left: 1px dotted var(--border);
-    display: flex; flex-direction: column; gap: 3px;
-  }
-  .believer-list li {
-    font-size: 12px;
-    color: var(--muted);
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-  }
-  .believer-list li::before { content: "↳ "; color: var(--violet); }
-  .priests-loose { display: flex; flex-direction: column; gap: 8px; }
-  .review-line {
-    font-size: 12.5px;
-    color: var(--text);
-  }
-  .review-line .rlabel { color: var(--muted); text-transform: uppercase; font-size: 10.5px; letter-spacing: 1px; }
-  .review-line .rval {
-    color: var(--amber);
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    background: rgba(210,153,34,0.1);
-    border-radius: 5px;
-    padding: 1px 7px;
-  }
-  .pdca-box {
-    font-size: 11.5px;
-    color: var(--muted);
-    background: rgba(0,0,0,0.28);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    line-height: 1.5;
-  }
-  .tribunal-card {
-    background: linear-gradient(135deg, rgba(248,81,73,0.09), rgba(227,179,65,0.06), rgba(28,34,48,0.55));
-    border: 1px solid rgba(227,179,65,0.5);
-    border-top: 3px solid var(--gold);
-    border-radius: 12px;
-    padding: 18px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .tribunal-card .tdomain { font-weight: 700; font-size: 17px; color: var(--gold); display: flex; align-items: center; gap: 10px; }
-  .tribunal-card .tdomain .indep-pill {
-    font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--red); border: 1px solid rgba(248,81,73,0.5);
-    border-radius: 20px; padding: 2px 10px; font-weight: 600;
-  }
-  .officer-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .officer-chip {
-    font-size: 12.5px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    background: rgba(227,179,65,0.1);
-    border: 1px solid rgba(227,179,65,0.4);
-    color: var(--gold);
-    border-radius: 8px;
-    padding: 5px 12px;
-  }
-  .tribunal-note { font-size: 12.5px; color: var(--muted); }
-  .tribunal-note strong { color: #ffb3ad; }
-  .hier-chain-line {
-    font-size: 12.5px;
-    color: var(--muted);
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    background: rgba(0,0,0,0.25);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-top: 4px;
-    text-align: center;
-  }
-
-  .fallback {
-    background: rgba(210,153,34,0.12);
-    border: 1px solid var(--amber);
-    color: #f0d089;
-    border-radius: 10px;
-    padding: 14px 18px;
-    font-size: 14px;
-  }
-  .fallback code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+/* 幅への応答 (ux.md §8)。狭い画面では表が横に溢れるので、余白と字を詰める。
+   **390px 幅で縦 21,925px の巻物になった当の画面である。同じ轍を踏まない。** */
+@media (max-width: 720px) {
+  main { grid-template-columns: 1fr; padding: .6rem; gap: .6rem; }
+  section[data-panel] { padding: .6rem; }
+  .status-bar { padding: .5rem .6rem; gap: .5rem; }
+  h1 { font-size: 1.1875rem; }
+  table { font-size: .75rem; display: block; overflow-x: auto; }
+  th, td { padding: 4px 6px; white-space: nowrap; }
+  /* 台帳の全件は狭い画面では上位 10 行に畳む。全件は広い画面で読む */
+  [data-panel="ledger-all"] tbody tr:nth-child(n+11) { display: none; }
+}
+@media (min-width: 1200px) {
+  main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-  <div id="app">
-    <div class="fallback" id="loading">Loading Paradise state…</div>
-  </div>
+<header class="status-bar" data-transport="frozen" data-freshness="frozen">
+  <h1>楽園の深掘り</h1>
+  <!-- 相互性 (AC-19d): この画面から門へ 1 ホップで戻れる -->
+  <a class="home" href="index.html">← 門(トップ)へ戻る</a>
+  <span class="badge badge-transport" data-field="transport-badge">凍結</span>
+  <span class="mono" data-field="age">断面をまだ受け取っていません</span>
+</header>
 
-  <!-- Prefer the inlined companion so the page renders offline over file:// -->
-  <script src="state.js"></script>
-  <script>
-  (function () {
-    "use strict";
+<main>
+  <section class="full" data-panel="gates-detail" data-state="loading" data-awaiting="pulse">
+    <h2>門の内訳</h2>
+    <div data-body><p class="note">pulse を待っています</p></div>
+  </section>
 
-    var TYPE_COLORS = {
-      system:    "#39d0d8",
-      component: "#a371f7",
-      decision:  "#d29922",
-      run:       "#58a6ff",
-      creation:  "#3fb950",
-      verdict:   "#f778ba",
-      lesson:    "#ff9d5c"
-    };
-    function colorFor(type) { return TYPE_COLORS[type] || "#8b949e"; }
-    function esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+  <section class="full" data-panel="history" data-state="loading" data-awaiting="conclave">
+    <h2>出来事の全件</h2>
+    <p class="hint">トップは最新 1 件だけを出す。全件はここに在る —— 40 件の履歴をトップに並べれば【状況の一行】が押し流される。</p>
+    <div data-body><p class="note">conclave を待っています</p></div>
+  </section>
+
+  <section class="full" data-panel="ledger-all" data-state="loading" data-awaiting="gauge">
+    <h2>点数の台帳(全件)</h2>
+    <p class="hint" data-source="gauge-ledger">出所は <span class="mono">gauge-ledger.jsonl</span> のみ。時刻は台帳が記録したものをそのまま運ぶ。</p>
+    <div data-body><p class="note">gauge を待っています</p></div>
+  </section>
+
+  <section data-panel="memory-detail" data-state="loading" data-awaiting="lessons">
+    <h2>記憶(教訓 / KG)</h2>
+    <div data-body><p class="note">lessons を待っています</p></div>
+  </section>
+
+  <section data-panel="errors" data-state="loading" data-awaiting="pulse">
+    <h2>測れなかった鍵</h2>
+    <p class="hint">断面の <span class="mono">errors[]</span>。どの鍵が欠けたかを名指しする —— 埋めた値ではなく、欠けた事実を出す。</p>
+    <div data-body><p class="note">pulse を待っています</p></div>
+  </section>
+</main>
+
+<script src="state.js"></script>
+<!-- 閾値と経路の解決は paradise.js が唯一の出所である (F-6 / 第50条)。
+     この画面固有の描画だけを下で書く —— 規則を写経しない。 -->
+<script src="paradise.js"></script>
+<script>
+/* この画面は断面の一覧表示だけを担う。閾値も経路も index.html と同じ規則で解決する。 */
+(function () {
+  'use strict';
+  // ■ **閾値も経路も paradise.js から受け取る** (F-6 / 第50条)
+  //   以前はここに DEFAULT_PORT / POLL_MS / base() を写経していた。写経は
+  //   **片方だけ古くなる** —— しかもこの画面は門の射程外だったので、
+  //   古くなっても鳴らなかった。出所を一つにして、その状態を終わらせる。
+  //   file:// で script が読めない等の事態では、**黙って既定値に落ちない** ——
+  //   写経を復活させれば同じ病が戻るので、名指しで止める。
+  var P = window.PARADISE;
+  if (!P) {
+    document.body.setAttribute('data-state', 'error');
+    var w = document.querySelector('[data-panel]') || document.body;
+    var p = document.createElement('p');
+    p.className = 'note';
+    p.textContent = 'paradise.js を読めていません — 閾値と経路の出所が無いので、この画面は推測で描きません(第16条)';
+    w.appendChild(p);
+    return;
+  }
+  var POLL_MS = P.TH.POLL_INTERVAL_MS;
+  var base = P.base;
+  function el(t, a, k) {
+    var n = document.createElement(t);
+    if (a) for (var x in a) if (Object.prototype.hasOwnProperty.call(a, x)) {
+      if (a[x] === null || a[x] === undefined) continue;
+      if (x === 'text') n.textContent = String(a[x]); else if (x === 'class') n.className = a[x]; else n.setAttribute(x, String(a[x]));
     }
+    if (k) for (var i = 0; i < k.length; i++) if (k[i]) n.appendChild(k[i]);
+    return n;
+  }
+  /**
+   * 数を描く。**null / undefined は「測れず」と名乗る** (第16条 / NFR-06)。
+   * 0 は「数えて 0 だった」、null は「数えられなかった」であり、別の事実である。
+   * 素朴な文字列連結は null を "null" と描いてしまう —— 画面が測れなかったことを
+   * 値のように見せるのは、醜さではなく**嘘に近づく**。
+   */
+  function num(v) { return (v === null || v === undefined) ? '測れず' : String(v); }
 
-    function render(state) {
-      var app = document.getElementById("app");
-      var g = state.graph || { nodes: [], edges: [], byType: {} };
-      var pipeline = state.pipeline || [];
-      var lessons = state.lessons || [];
-      var creations = state.creations || [];
+  function body(name, state, awaiting) {
+    var p = document.querySelector('[data-panel="' + name + '"]');
+    if (!p) return null;
+    p.setAttribute('data-state', state);
+    if (state === 'loading' || state === 'error' || state === 'disconnected') p.setAttribute('data-awaiting', awaiting || 'pulse');
+    else p.removeAttribute('data-awaiting');
+    var b = p.querySelector('[data-body]');
+    while (b && b.firstChild) b.removeChild(b.firstChild);
+    return b;
+  }
+  function rel(ms) {
+    if (ms < 2000) return 'たった今';
+    if (ms < 60000) return Math.floor(ms / 1000) + ' 秒前';
+    if (ms < 3600000) return Math.floor(ms / 60000) + ' 分前';
+    if (ms < 86400000) return Math.floor(ms / 3600000) + ' 時間 ' + Math.floor((ms % 3600000) / 60000) + ' 分前';
+    return Math.floor(ms / 86400000) + ' 日前';
+  }
+  function table(head, rows) {
+    return el('table', {}, [
+      el('thead', {}, [el('tr', {}, head.map(function (h) { return el('th', { text: h }); }))]),
+      el('tbody', {}, rows.map(function (r) { return el('tr', {}, r.map(function (c) { return el('td', { text: String(c) }); })); })),
+    ]);
+  }
+  function render(snap, transport) {
+    var top = document.querySelector('[data-transport]');
+    if (top) top.setAttribute('data-transport', transport);
+    var tb = document.querySelector('[data-field="transport-badge"]');
+    if (tb) tb.textContent = transport === 'sse' ? '生(SSE)' : (transport === 'poll' ? '生(2秒ごと)' : '凍結');
+    var age = document.querySelector('[data-field="age"]');
+    if (age && snap) age.textContent = rel(Math.max(0, Date.now() - snap.generatedAtMs));
+    if (!snap) return;
 
-      var html = "";
+    var b = body('gates-detail', (snap.gates && snap.gates.length) ? 'ready' : 'empty');
+    if (b && snap.gates && snap.gates.length) {
+      b.appendChild(table(['門', '合否', 'ms', '測った時刻', '内訳'], snap.gates.map(function (g) {
+        return [g.name, g.ok ? '✓緑' : '🔴赤', g.ms.toFixed(1), rel(Math.max(0, Date.now() - g.at)),
+          Object.keys(g.detail || {}).map(function (k) { return k + '=' + g.detail[k]; }).join(' ') || '—'];
+      })));
+    } else if (b) { b.appendChild(el('p', { class: 'note', text: '門はまだ測られていません' })); }
 
-      /* ---- Section 1: Header ---- */
-      html += '<div class="header">';
-      html += '<h1>🏛️ Paradise · Control Panel</h1>';
-      html += '<div class="subtitle">The living state of the creation paradise</div>';
-      html += '<div class="generated">generated: ' + esc(state.generated) + '</div>';
-      html += '<div class="badges">';
-      html += badge(g.nodeCount != null ? g.nodeCount : (g.nodes || []).length, "graph nodes", false);
-      html += badge(g.edgeCount != null ? g.edgeCount : (g.edges || []).length, "edges", true);
-      html += badge(lessons.length, "lessons", false);
-      html += badge(creations.length, "creations", true);
-      html += '</div></div>';
+    var rows = [];
+    (snap.runs || []).forEach(function (r) {
+      if (r.lastEvent) rows.push([r.name, String(r.historyLength), String(r.lastEvent.event || r.lastEvent.note || '—').slice(0, 60)]);
+    });
+    var hb = body('history', rows.length ? 'ready' : 'empty');
+    if (hb && rows.length) hb.appendChild(table(['環', '出来事の数', '最後の出来事'], rows));
+    else if (hb) hb.appendChild(el('p', { class: 'note', text: '出来事はまだ記録されていません' }));
 
-      /* ---- Section 2: Creation Pipeline ---- */
-      html += '<section>';
-      html += '<h2>🔨 Creation Pipeline</h2>';
-      html += '<p class="hint">Reads like <strong>wish</strong> → [phases] → <strong>creation</strong>. Gate phases (⚖️) block advancement until verified.</p>';
-      html += '<div class="pipeline-flow">';
-      html += '<div class="flow-terminal">✨ wish</div>';
-      for (var i = 0; i < pipeline.length; i++) {
-        var p = pipeline[i];
-        html += '<div class="flow-arrow">→</div>';
-        html += '<div class="chip' + (p.gate ? ' gate' : '') + '">';
-        if (p.gate) { html += '<span class="gate-badge" title="Gate phase">⚖️</span>'; }
-        html += '<span class="pid">' + esc(p.id) + '</span>';
-        html += '<span class="agent">@' + esc(p.agent) + '</span>';
-        html += '</div>';
-      }
-      html += '<div class="flow-arrow">→</div>';
-      html += '<div class="flow-terminal">🎁 creation</div>';
-      html += '</div></section>';
-
-      /* ---- Section 3: Knowledge Graph ---- */
-      html += '<section>';
-      html += '<h2>🕸️ Knowledge Graph</h2>';
-      html += '<p class="hint">' + esc((g.nodes || []).length) + ' nodes · ' + esc((g.edges || []).length) + ' edges — radial layout, node size ∝ degree, colored by type.</p>';
-      html += '<div class="graph-wrap">';
-      html += '<div class="graph-svg-box">' + buildGraphSvg(g) + '</div>';
-      html += buildLegend(g.byType || {});
-      html += '</div></section>';
-
-      /* ---- Section 4: Lessons + Creations ---- */
-      html += '<section>';
-      html += '<h2>🧠 Lessons <span style="color:var(--muted);font-size:13px;font-weight:400;">(Reflexion memory)</span></h2>';
-      html += '<p class="hint">Each lesson is a <strong>past-miss → permanent check</strong>.</p>';
-      html += '<div class="cols">';
-
-      html += '<div class="lessons-col">';
-      for (var j = 0; j < lessons.length; j++) {
-        var L = lessons[j];
-        html += '<div class="lesson-card">';
-        html += '<div class="flow">past-miss → permanent check</div>';
-        html += '<div class="label">' + esc(L.label) + '</div>';
-        html += '<div class="check">check: <span class="kw">' + esc(L.check) + '</span></div>';
-        html += '</div>';
-      }
-      html += '</div>';
-
-      html += '<div class="creations-col">';
-      html += '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:4px 0 12px;">Creations</h3>';
-      for (var k = 0; k < creations.length; k++) {
-        var c = creations[k];
-        var isShip = String(c.verdict).toUpperCase() === "SHIP";
-        html += '<div class="creation-item">';
-        html += '<div><span class="cname">' + esc(c.name) + '</span>';
-        html += '<div class="cfiles">' + esc(c.files) + ' files' + (c.hasFindings ? ' · <span class="findings-dot">findings ✓</span>' : '') + '</div></div>';
-        html += '<span class="verdict-badge ' + (isShip ? 'ship' : 'other') + '">' + esc(c.verdict) + '</span>';
-        html += '</div>';
-      }
-      html += '</div>';
-
-      html += '</div></section>';
-
-      /* ---- Section 5: Ecclesiastical Hierarchy ---- */
-      html += buildHierarchy(state.hierarchy || {});
-
-      app.innerHTML = html;
-    }
-
-    function badge(num, lbl, violet) {
-      return '<div class="badge' + (violet ? ' violet' : '') + '"><span class="num">' + esc(num) + '</span><span class="lbl">' + esc(lbl) + '</span></div>';
-    }
-
-    function buildHierarchy(h) {
-      var ranks = h.ranks || {};
-      var college = h.college || {};
-      var tribunal = h.tribunal || {};
-
-      var out = '<section>';
-      out += '<h2>⛪ Ecclesiastical Hierarchy <span style="color:var(--muted);font-size:13px;font-weight:400;">(聖職位階)</span></h2>';
-      out += '<p class="hint">A nested clergy: <strong>god → pontiff → cardinal → priest → believer</strong>. The <span style="color:var(--red);">executor</span> stands apart — an independent tribunal answering to no cardinal.</p>';
-
-      /* --- Rank ladder + executor aside --- */
-      var ladderOrder = ["god", "pontiff", "cardinal", "priest", "believer"];
-      out += '<div class="hier-chain-wrap">';
-      out += '<div class="rank-ladder">';
-      for (var i = 0; i < ladderOrder.length; i++) {
-        var rk = ranks[ladderOrder[i]];
-        if (!rk) continue;
-        var cls = ladderOrder[i] === "god" ? " l0" : (ladderOrder[i] === "pontiff" ? " l1" : "");
-        out += '<div class="rank-tier' + cls + '">';
-        out += '<span class="lvl">L' + esc(rk.level) + '</span>';
-        out += '<span class="rtitle">' + esc(rk.title) + '</span>';
-        out += '<span class="rrole">' + esc(rk.role) + '</span>';
-        out += '</div>';
-        if (i < ladderOrder.length - 1) { out += '<div class="rank-arrow">▼</div>'; }
-      }
-      out += '</div>';
-
-      /* executor off to the side, separated by a ‖ divider */
-      var ex = ranks.executor;
-      if (ex) {
-        out += '<div class="exec-aside">';
-        out += '<div class="exec-divider"></div>';
-        out += '<div class="exec-box">';
-        out += '<span class="elvl">L' + esc(ex.level) + '</span>';
-        out += '<span class="etitle">' + esc(ex.title) + '</span>';
-        out += '<span class="erole">' + esc(ex.role) + '</span>';
-        out += '<span class="indep-tag">⚖ independent</span>';
-        out += '</div></div>';
-      }
-      out += '</div>';
-
-      /* --- College of cardinals --- */
-      out += '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:6px 0 12px;">College of Cardinals · 枢機卿団</h3>';
-      out += '<div class="college-grid">';
-      var keys = Object.keys(college);
-      for (var c = 0; c < keys.length; c++) {
-        var card = college[keys[c]];
-        out += '<div class="cardinal-card">';
-        out += '<div class="cdomain">🎓 ' + esc(card.domain) + '</div>';
-
-        /* governs chips */
-        out += '<div><div class="csub">Governs</div><div class="govern-chips">';
-        var gov = card.governs || [];
-        for (var gi = 0; gi < gov.length; gi++) {
-          out += '<span class="govern-chip">' + esc(gov[gi]) + '</span>';
-        }
-        out += '</div></div>';
-
-        /* priests with believers nested under them */
-        out += '<div><div class="csub">Priests 神官 → Believers 信徒</div><div class="priests-loose">';
-        var priests = card.priests || [];
-        var believers = card.believers || [];
-        for (var pi = 0; pi < priests.length; pi++) {
-          out += '<div class="priest-block">';
-          out += '<div class="priest-name">⛨ ' + esc(priests[pi]) + ' <span class="kanji">神官</span></div>';
-          /* believers nested only under the first priest to convey the layer without duplication */
-          if (pi === 0 && believers.length) {
-            out += '<ul class="believer-list">';
-            for (var bi = 0; bi < believers.length; bi++) {
-              out += '<li>' + esc(believers[bi]) + ' <span style="opacity:.6;">信徒</span></li>';
-            }
-            out += '</ul>';
-          }
-          out += '</div>';
-        }
-        out += '</div></div>';
-
-        /* reviewClass (who ratifies) */
-        out += '<div class="review-line"><span class="rlabel">Ratified by</span> <span class="rval">' + esc(card.reviewClass) + '</span></div>';
-
-        /* inner PDCA */
-        out += '<div><div class="csub">Inner PDCA</div><div class="pdca-box">' + esc(card.pdca) + '</div></div>';
-
-        out += '</div>';
-      }
-      out += '</div>';
-
-      /* --- Tribunal card (distinct gold/red accent) --- */
-      if (tribunal && tribunal.domain) {
-        out += '<div class="tribunal-card">';
-        out += '<div class="tdomain">⚖️ ' + esc(tribunal.domain) + ' <span class="indep-pill">independent</span></div>';
-        out += '<div><div class="csub" style="color:var(--gold);">Governs</div><div class="govern-chips">';
-        var tg = tribunal.governs || [];
-        for (var ti = 0; ti < tg.length; ti++) {
-          out += '<span class="govern-chip" style="background:rgba(227,179,65,0.1);border-color:rgba(227,179,65,0.4);color:var(--gold);">' + esc(tg[ti]) + '</span>';
-        }
-        out += '</div></div>';
-        out += '<div><div class="csub" style="color:var(--gold);">Officers 執行官</div><div class="officer-row">';
-        var offs = tribunal.officers || [];
-        for (var oi = 0; oi < offs.length; oi++) {
-          out += '<span class="officer-chip">⚑ ' + esc(offs[oi]) + '</span>';
-        }
-        out += '</div></div>';
-        if (tribunal.independence) {
-          out += '<div class="tribunal-note"><strong>Independence:</strong> ' + esc(tribunal.independence) + '</div>';
-        }
-        if (tribunal.law) {
-          out += '<div class="tribunal-note"><strong>Law:</strong> ' + esc(tribunal.law) + '</div>';
-        }
-        out += '</div>';
-      }
-
-      /* --- chain summary line --- */
-      if (h.chain) {
-        out += '<div class="hier-chain-line">' + esc(h.chain) + '</div>';
-      }
-
-      out += '</section>';
-      return out;
-    }
-
-    function buildLegend(byType) {
-      var html = '<div class="legend"><h3>Node types</h3>';
-      var keys = Object.keys(byType);
-      for (var i = 0; i < keys.length; i++) {
-        var t = keys[i];
-        html += '<div class="legend-item">';
-        html += '<span class="legend-swatch" style="background:' + colorFor(t) + '"></span>';
-        html += '<span>' + esc(t) + '</span>';
-        html += '<span class="legend-count">' + esc(byType[t]) + '</span>';
-        html += '</div>';
-      }
-      html += '</div>';
-      return html;
-    }
-
-    function buildGraphSvg(g) {
-      var nodes = (g.nodes || []).slice();
-      var edges = g.edges || [];
-      var W = 560, H = 460;
-      var cx = W / 2, cy = H / 2;
-      var R = Math.min(W, H) * 0.40;
-
-      // Radial layout, ordered so high-degree nodes are spread out.
-      var pos = {};
-      var n = nodes.length || 1;
-      // Sort a copy for placement: highest degree first for visual balance, but keep index mapping.
-      var order = nodes.map(function (nd, idx) { return { idx: idx, deg: nd.degree || 0, id: nd.id }; });
-      order.sort(function (a, b) { return b.deg - a.deg; });
-
-      // Place highest-degree node near center, rest on ring by alternating.
-      for (var i = 0; i < order.length; i++) {
-        var nd = nodes[order[i].idx];
-        var ang = (i / n) * Math.PI * 2 - Math.PI / 2;
-        // Highest-degree node pulled slightly inward.
-        var ringR = R * (0.55 + 0.45 * (i === 0 ? 0 : 1));
-        pos[nd.id] = {
-          x: cx + Math.cos(ang) * ringR,
-          y: cy + Math.sin(ang) * ringR
-        };
-      }
-      // A tiny relaxation pass to reduce overlap.
-      for (var pass = 0; pass < 40; pass++) {
-        for (var a = 0; a < nodes.length; a++) {
-          for (var b = a + 1; b < nodes.length; b++) {
-            var pa = pos[nodes[a].id], pb = pos[nodes[b].id];
-            var dx = pb.x - pa.x, dy = pb.y - pa.y;
-            var d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-            var minD = 46;
-            if (d < minD) {
-              var push = (minD - d) / d * 0.5;
-              pa.x -= dx * push; pa.y -= dy * push;
-              pb.x += dx * push; pb.y += dy * push;
-            }
-          }
-        }
-      }
-      // Clamp within bounds.
-      for (var id in pos) {
-        pos[id].x = Math.max(30, Math.min(W - 30, pos[id].x));
-        pos[id].y = Math.max(24, Math.min(H - 20, pos[id].y));
-      }
-
-      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Knowledge graph">';
-
-      // Edges first
-      for (var e = 0; e < edges.length; e++) {
-        var f = pos[edges[e].from], tp = pos[edges[e].to];
-        if (!f || !tp) continue;
-        svg += '<line class="edge-line" x1="' + f.x.toFixed(1) + '" y1="' + f.y.toFixed(1) + '" x2="' + tp.x.toFixed(1) + '" y2="' + tp.y.toFixed(1) + '"><title>' + esc(edges[e].from + ' —' + edges[e].rel + '→ ' + edges[e].to) + '</title></line>';
-      }
-      // Nodes
-      for (var m = 0; m < nodes.length; m++) {
-        var nn = nodes[m];
-        var p = pos[nn.id];
-        var r = 6 + (nn.degree || 0) * 2.2;
-        svg += '<circle class="node-circle" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + colorFor(nn.type) + '"><title>' + esc(nn.id + ' (' + nn.type + ', deg ' + (nn.degree || 0) + ') — ' + nn.label) + '</title></circle>';
-        svg += '<text class="node-label" x="' + p.x.toFixed(1) + '" y="' + (p.y - r - 3).toFixed(1) + '" text-anchor="middle">' + esc(nn.id) + '</text>';
-      }
-      svg += '</svg>';
-      return svg;
-    }
-
-    function showFallback(reason) {
-      var app = document.getElementById("app");
-      app.innerHTML = '<div class="fallback"><strong>⚠️ Could not load Paradise state.</strong><br>' +
-        esc(reason) + '<br><br>The companion <code>state.js</code> (which sets <code>window.PARADISE_STATE</code>) was not found, and <code>fetch(\'state.json\')</code> is blocked over <code>file://</code> in this browser.<br>' +
-        'Fix: keep <code>state.js</code> next to <code>control.html</code>, or serve the folder over HTTP (e.g. <code>python -m http.server</code>).</div>';
-    }
-
-    // 1) Prefer the inlined companion (works offline / file://).
-    if (typeof window.PARADISE_STATE === "object" && window.PARADISE_STATE) {
-      try { render(window.PARADISE_STATE); return; }
-      catch (err) { showFallback("Error rendering embedded state: " + err.message); return; }
-    }
-
-    // 2) Fall back to fetching state.json (works over HTTP).
-    if (typeof fetch === "function") {
-      fetch("state.json")
-        .then(function (r) {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.json();
-        })
-        .then(function (data) { render(data); })
-        .catch(function (err) { showFallback("fetch failed: " + err.message); });
+    var lb;
+    if (snap.ledger === null || snap.ledger === undefined) {
+      lb = body('ledger-all', 'error', 'gauge');
+      if (lb) lb.appendChild(el('p', { class: 'note', text: '点数履歴を読めませんでした' }));
+    } else if (snap.ledger.length === 0) {
+      lb = body('ledger-all', 'empty');
+      if (lb) lb.appendChild(el('p', { class: 'note', text: 'まだ採点の記録がありません' }));
     } else {
-      showFallback("No embedded state and fetch() is unavailable.");
+      lb = body('ledger-all', 'ready');
+      if (lb) lb.appendChild(table(['記録時刻(ledger)', '環', '道', '点', '相'], snap.ledger.slice().reverse().map(function (l) {
+        var ts = Date.parse(l.ts);
+        return [isFinite(ts) ? rel(Math.max(0, Date.now() - ts)) : '不明', l.slug || '—', l.scale || '—',
+          l.score === null ? '—' : l.score, (l.phasesDone === null ? '—' : l.phasesDone) + '/' + (l.phasesTotal === null ? '—' : l.phasesTotal)];
+      })));
     }
-  })();
-  </script>
+
+    var kinds = Object.keys(snap.lessonsByKind || {});
+    var mb = body('memory-detail', kinds.length ? 'ready' : 'empty');
+    if (mb && kinds.length) {
+      mb.appendChild(el('ul', { class: 'plain' }, kinds.map(function (k) {
+        return el('li', { class: 'mono', text: k + ': ' + snap.lessonsByKind[k] });
+      })));
+      // **null は「数えられなかった」であって 0 ではない** (第16条 / NFR-06)。
+      // 文字列連結は null をそのまま "null" と描く —— 画面に「KG ノード null」と
+      // 出るのは醜いだけでなく、**測れなかったことを値のように見せる**。
+      // 同画面の errors 表が engine と理由を名指しするので、ここは「測れず」と名乗る。
+      mb.appendChild(el('p', { class: 'mono', text: 'KG ノード ' + num(snap.counts.kgNodes) + ' / エッジ ' + num(snap.counts.kgEdges) }));
+    } else if (mb) { mb.appendChild(el('p', { class: 'note', text: '教訓はまだありません' })); }
+
+    var eb = body('errors', (snap.errors && snap.errors.length) ? 'ready' : 'empty');
+    if (eb && snap.errors && snap.errors.length) {
+      eb.appendChild(table(['engine', '欠けた鍵', '理由'], snap.errors.map(function (e) { return [e.engine, e.key, e.reason]; })));
+    } else if (eb) { eb.appendChild(el('p', { class: 'note', text: '測れなかった鍵はありません — 断面のすべての鍵が埋まりました' })); }
+  }
+
+  var es = null;
+  function frozen() {
+    var st = window.PARADISE_STATE;
+    render(st && st.generatedAt ? { generatedAtMs: Date.parse(st.generatedAt), counts: {}, gates: [], runs: [],
+      ledger: null, lessonsByKind: {}, errors: [] } : null, 'frozen');
+  }
+  function poll() {
+    if (typeof fetch !== 'function') { frozen(); return; }
+    var fails = 0;
+    setInterval(function () {
+      fetch(base() + '/snapshot.json', { cache: 'no-store' }).then(function (r) { return r.json(); })
+        .then(function (s) { fails = 0; render(s, 'poll'); })
+        .catch(function () { if (++fails >= 2) frozen(); });
+    }, POLL_MS);
+  }
+  if (typeof EventSource === 'function') {
+    try {
+      es = new EventSource(base() + '/events');
+      es.addEventListener('snapshot', function (ev) { try { render(JSON.parse(ev.data), 'sse'); } catch (e) { /* 壊れた 1 通で落とさない */ } });
+      es.onerror = function () { try { es.close(); } catch (e) { /* 既に閉じていればよい */ } poll(); };
+    } catch (e) { poll(); }
+  } else { poll(); }
+  setTimeout(function () {
+    var t = document.querySelector('[data-transport]');
+    if (t && t.getAttribute('data-transport') === 'frozen') poll();
+  }, 5000);
+})();
+</script>
 </body>
 </html>

@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 256/250 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 290/290 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -195,6 +195,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
 | `graph/atlas.js` | **楽園の自画像**。位階・道・環・結線を JSON IR に写し、取り込んだ `archify` に描かせる。6主題 (hierarchy/conclave/dispatch/dag/run/wiring)。交差ゼロが不能なら測って standard を名乗る(第47条) |
 | `graph/wiring.js` | **機構の結線**。engine が engine を require する内の辺と、門・命令・神官・掟・試験・器物・散文・機構が名を呼ぶ外の辺を実測する。孤児(呼ぶ者の居ない engine)と宙吊り(存在しない engine への参照)を裁く(第44条・第48条) |
+| `graph/pulse.js` | **楽園の断面 (snapshot)**。数・門の合否・走行・台帳・記憶を 1 個の JSON に写す唯一の engine。画面はここしか見ない — 突合点が 1 つだから門が 1 式で書ける(第22条・第16条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
@@ -204,8 +205,88 @@ wish → 🔍discover → specify → design → detail → build → verify →
 創造物を敵対的監査し、欠陥があれば REWORK。見逃した欠陥は lesson として知識グラフに
 永久記録され、以後の全創造で自動チェックされる — **楽園は同じ欠陥をユーザーに二度指摘させない。**
 
-**可視化:** `dashboard/control.html` が創造パイプライン・知識グラフ・lesson・創造物を
-生きた管理盤として表示。
+**可視化:** 楽園の生きた姿は `dashboard/` が見せる — 下の「[ダッシュボード](#ダッシュボード--楽園の門)」を見よ。
+
+---
+
+## ダッシュボード — 楽園の門
+
+楽園が今どうなっているかを、**engine の実測だけで**見せる画面。散文でも記憶でもなく、
+`graph/pulse.js` が作る **断面 (snapshot)** が唯一の出所である。
+
+### 起動
+
+```bash
+node graph/pulse.js serve            # 既定 127.0.0.1:7317 (--port n で変えられる)
+```
+
+→ `pulse listening port=7317` と名乗ったら `http://127.0.0.1:7317/` を開く。
+ポートが埋まっていれば **落ちずに別ポートを取る**（二重起動しても両方生きる）。
+待ち受けは `127.0.0.1` のみ — 外へは開かない。
+
+常駐させずに断面だけ見たいときは:
+
+```bash
+node graph/pulse.js snapshot --json                              # 断面を 1 個 stdout へ
+node graph/pulse.js freshness --age-ms 5000 --transport sse      # → live
+node graph/pulse.js freshness --age-ms 30000 --transport poll    # → lagging
+node graph/pulse.js freshness --age-ms 90000 --transport sse     # → frozen
+```
+
+### 何が見えるか
+
+| 画面 | 入口 | 見えるもの |
+|---|---|---|
+| **楽園の門** | `/`（`dashboard/index.html`） | 走行中の環・点数と起動実績・**門の合否**・数の看板・日次ノルマ・道の形・記憶・全画面への索引・経路の記録 |
+| **深掘り** | `/control.html` | 門の内訳・出来事の全件・点数の台帳(全件)・記憶(教訓/KG)・**測れなかった鍵** |
+
+サーバが開ける口は 3 つ:
+
+| 口 | 返すもの |
+|---|---|
+| `GET /events` | SSE。接続直後に `event: snapshot` を 1 発、以後 `fs.watch` の変化で押し出す |
+| `GET /snapshot.json` | 断面 1 個（no-store） |
+| `GET /health` | `{ok,port,connections,rescans}` |
+
+`dashboard/` の外を指す静的パスは 403、無いものは 404 で拒む。
+
+**「測れなかった」は緑ではない**（第16条）。engine が答えなかった鍵は `null` のまま
+断面に残り、画面は「何を待っているか」を名指しする。ゼロで埋めない。
+`census` は断面に**含めない** — 自己診断を丸ごと回すため実測 2 分かかり、同期経路に置けば画面が固まる。
+
+### 三層フォールバック
+
+```
+① EventSource (/events)  ──5秒無音 or onerror 2連続──▶  ② fetch ポーリング (/snapshot.json, 2秒間隔)
+        ▲                                                          │
+        └────────── 30秒ごとに①へ再挑戦 ──────────────┘   ③ file:// 直開き → 埋め込みJS の断面
+```
+
+境界の定数（`FIRST_EVENT_TIMEOUT_MS` `POLL_INTERVAL_MS` `FRESH_LIVE_MS` `FRESH_FROZEN_MS` …）は
+`pulse.js` の `T` **1 箇所**にだけ住む。画面と engine が別々に数を持てば、同じ断面に対して
+違う鮮度を言う — 嘘は齟齬から生まれる。
+
+### どの門が守っているか
+
+ダッシュボードの門 **13 本**（この数は `census.js` が `tests/` を数え直す — 第22条）。
+
+```bash
+node tests/dashboard-count.test.js        # 画面の数 == その場で数えた数（固定値を期待値にしない）
+node tests/dashboard-no-hardcode.test.js  # ハードコード数値・架空DAGの再発を拒む
+node tests/dashboard-no-deps.test.js      # 外部依存/子プロセスが再び生えない
+node tests/dashboard-sse.test.js          # SSE の枠組み（終端 \n\n・retry・keepalive）
+node tests/dashboard-transport.test.js    # 三層の構造と定数の単一管理
+node tests/dashboard-fallback.test.js     # 実ブラウザでの降格・復帰
+node tests/dashboard-freshness.test.js    # 鮮度の境界を全数（10000/10001・60000/60001）
+node tests/dashboard-watch.test.js        # fs.watch のデバウンスと復帰
+node tests/dashboard-states.test.js       # 5状態の設計（スピナー禁止・経過秒は嘘をつけない）
+node tests/dashboard-run-panel.test.js    # 走行パネルと故障注入（ok:true を信じない）
+node tests/dashboard-links.test.js        # 孤児ページが生まれない（導線が切れない）
+node tests/dashboard-perf.test.js         # 同期経路の所要と子プロセス不在
+node tests/motion-probe-leak.test.js      # 門が己の残骸で不定に鳴らない（第50条の裏面）
+```
+
+全門は `node tests/paradise.test.js` に載っている。個別に走らせるのは、赤の在り処を狭めるとき。
 
 ---
 

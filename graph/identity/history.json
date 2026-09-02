@@ -22,6 +22,16 @@
         "luxury"
       ],
       "ts": "2026-09-01T00:38:23.577Z"
+    },
+    {
+      "slug": "dashboard",
+      "id": "wired",
+      "family": "editorial",
+      "traits": [
+        "editorial-serif",
+        "brutalist"
+      ],
+      "ts": "2026-09-02T08:34:45.275Z"
     }
   ]
 }

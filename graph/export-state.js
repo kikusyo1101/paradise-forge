@@ -13,6 +13,7 @@ const os = require('os');
 const kg = require('./kg.js');
 const forge = require('./forge.js');
 const clergy = require('./clergy.js');
+const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
 
 const ROOT = path.join(__dirname, '..');
 
@@ -29,9 +30,20 @@ function readGraph() {
 }
 
 function creations() {
-  const dir = path.join(ROOT, 'creations');
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter(f => fs.statSync(path.join(dir, f)).isDirectory()).map(name => {
+  // 第30条: 住所を知るのは workspace.js だけ。旧住所を ROOT 直下に直書きしていた頃は、
+  // 実在 8 件に対し [] を返して黙り、state.json が 0 件になった。
+  const r = workspace.resolve();
+  if (!r || !r.root || !r.exists) {
+    console.error(`⚠️  創造物の倉が解決できない: ${r && r.root} (source=${r && r.source}) — 0 件と黙らず告げる`);
+    return null;                                   // 0 件ではなく「数えられなかった」
+  }
+  const dir = r.root;
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .filter(e => !e.name.startsWith('.'))          // .git / .github は創造物ではない
+    .filter(e => !e.name.startsWith('_'))          // _ 始まりは作業場
+    .map(e => e.name)
+    .map(name => {
     const cdir = path.join(dir, name);
     const files = fs.readdirSync(cdir);
     let verdict = null;
@@ -85,7 +97,7 @@ function main() {
   // hand-off in the pipeline). Sits beside state.json.
   const jsPath = path.join(path.dirname(out), 'state.js');
   fs.writeFileSync(jsPath, 'window.PARADISE_STATE = ' + json + ';\n');
-  console.error(`state exported -> ${out}  (+ state.js)  (nodes:${state.graph.nodeCount} edges:${state.graph.edgeCount} lessons:${lessons.length} creations:${state.creations.length})`);
+  console.log(`state exported -> ${out}  (+ state.js)  (nodes:${state.graph.nodeCount} edges:${state.graph.edgeCount} lessons:${lessons.length} creations:${state.creations === null ? 'unresolved' : state.creations.length})`);
 }
 if (require.main === module) main();
 module.exports = { readGraph };

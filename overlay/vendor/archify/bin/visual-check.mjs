@@ -155,7 +155,12 @@ class PipeCdp {
     child.once('error', (error) => this.failAll(this.failure('process launch', error)));
     child.once('close', (code, signal) => {
       const ending = signal ? `signal ${signal}` : `exit code ${code}`;
-      this.failAll(this.failure('process exit', new Error(`Chrome closed with ${ending}`)));
+      // **我々が閉じたのなら、Chrome の終了は事故ではない**(楽園による改変・第19条a)。
+      // close() は SIGTERM → SIGKILL を送る。その結果として必ずこの handler が走り、
+      // 待ち手の居ない Promise を reject して unhandled rejection を生んでいた。
+      // 意図した終了(closing)と、勝手に落ちた終了を区別する。
+      this.failAll(this.failure('process exit', new Error(`Chrome closed with ${ending}`)),
+        { graceful: this.closing === true });
     });
   }
 
@@ -232,14 +237,32 @@ class PipeCdp {
     });
   }
 
-  failAll(error) {
+  /**
+   * 保留中の待ち手をまとめて畳む。
+   *
+   * ⚠️ **正常終了は失敗ではない**(楽園による改変・第19条a / 第50条d)。
+   * `close()` はこれを「もう待つ必要が無くなった」の合図として呼ぶ。だが reject を
+   * 使うと、**待ち手が誰も居ない Promise が reject され unhandled rejection になり、
+   * Node が既定でプロセスを落とす。**
+   *
+   * 実測(楽園 2026-09-02): 単独の visual-check は 3 回とも exit=0 なのに、
+   * 5 つの道を連続で回すと落ちる主題が回ごとに変わった(dag / hierarchy / conclave)。
+   * IR は決定的(同じ入力から完全に同一の JSON)であり、揺れていたのは図ではなく
+   * **後始末の投げ方**だった。同じ例外が census 経由の自己診断も 15 本目で
+   * 落としていた —— `Error: visual-check finished at ChromeVisualBrowser.close`。
+   *
+   * ゆえに **終了理由を区別する**: 異常(パイプ断・Chrome の異常終了)は今まで通り
+   * reject して呼び手に知らせ、**正常終了(`graceful`)は resolve で静かに畳む**。
+   * 版元の意図(異常時は本当に reject する)は 1 ミリも変えていない。
+   */
+  failAll(error, { graceful = false } = {}) {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
-      pending.reject(error);
+      if (graceful) pending.resolve(undefined); else pending.reject(error);
     }
     for (const waiter of this.waiters) {
       clearTimeout(waiter.timer);
-      waiter.reject(error);
+      if (graceful) waiter.resolve(undefined); else waiter.reject(error);
     }
     this.pending.clear();
     this.waiters = [];
@@ -473,7 +496,11 @@ export class ChromeVisualBrowser {
   }
 
   async close() {
-    this.cdp.failAll(new Error('visual-check finished'));
+    // 正常終了である。**待ち手を reject してはならない** — 待ち手が誰も居なければ
+    // unhandled rejection になり、Node がプロセスを落とす(上の failAll の註釈)。
+    // 印を先に立てる: この後 SIGTERM/SIGKILL が child の 'close' を必ず走らせる
+    this.cdp.closing = true;
+    this.cdp.failAll(new Error('visual-check finished'), { graceful: true });
     if (this.child.exitCode === null && this.child.signalCode === null) {
       this.child.kill('SIGTERM');
       await new Promise((resolve) => {

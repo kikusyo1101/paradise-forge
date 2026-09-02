@@ -363,6 +363,9 @@ function layered(items, opts = {}) {
   const horizontal = opts.flow === 'horizontal';
   // 席の広がりと段の厚み。横流しでは席は縦に並ぶので、席の広がりは箱の「高さ」。
   const SEAT = horizontal ? H : W, SEAT_PITCH = horizontal ? ROW : COL;
+  // 席と席の間に必ず空ける隙間。描画器は 8px 未満を layout/constraint で咎める
+  const SEAT_GAP = Math.max(12, SEAT_PITCH - SEAT);
+  const SEAT_MIN = Math.max(48, Math.round(SEAT * 0.4));
   const RANK = horizontal ? W : H, RANK_PITCH = horizontal ? COL : ROW;
   const PAD_B = horizontal ? PAD_T : PAD_L;      // 席の軸の余白
   const PAD_D = horizontal ? PAD_L : PAD_T;      // 段の軸の余白
@@ -629,11 +632,54 @@ function layered(items, opts = {}) {
    * 出れば、それはもう見えない席ではない。
    */
   const dummyDx = Math.max(12, Math.round(SEAT * 0.27));
-  const slotB = (t) => PAD_B + Math.round((byDepth[lvOf(t)].indexOf(t) + (maxRow - byDepth[lvOf(t)].length) / 2) * SEAT_PITCH) + SEAT / 2
-    + (t.dummy ? dummyDx + (skipRank[t.key] % 3) * Math.round(dummyDx * 0.55) : 0);
+  /**
+   * **席の幅を名ごとに与える道は、呼び手が `widthOf` を渡したときだけ開く。**
+   *
+   * ここを既定にしてはならない —— 実測でそれを確かめた。
+   * 一律の席幅をやめた最初の版は、結線の図(段に 27 席)を 3416 → 2265px に縮めた
+   * 代わりに、**reform の道の DAG を壊した**: 図幅が 762 → 582px に詰まり、
+   * `build → security` の辺が建造の枠線に 106px 寄り添って
+   * composition/container-border-run で描画器が正しく鳴いた。
+   * 席が 5 つしかない図に、27 席の図のための詰め方を当てたのが誤りである。
+   *
+   * ゆえに**詰めるのは、詰めねば読めない図だけ**にする。
+   * `widthOf` を渡さない呼び手は、1 ピクセルも座標が変わらない(実測で確認済み)。
+   *
+   * ダミーの席を細くするのも同じ扱いにする。ダミーは箱を持たないので隣に箱の幅を
+   * 空ける必要が無いが、**その節約が要るのは席が溢れた図だけ**である。
+   */
+  const perName = typeof opts.widthOf === 'function';
+  const DUMMY_PITCH = perName ? Math.max(24, Math.round(dummyDx * 2.2)) : SEAT_PITCH;
+  const seatW = (t) => (t && t.dummy) ? (perName ? DUMMY_PITCH : SEAT)
+    : (perName ? Math.max(SEAT_MIN, opts.widthOf(t.id)) : SEAT);
+  const pitchOf = (t) => (t && t.dummy) ? DUMMY_PITCH : (perName ? seatW(t) + SEAT_GAP : SEAT_PITCH);
+  /** 段の中で t の左端までに積まれた間隔の総和 */
+  const offsetIn = (layer, t) => {
+    let acc = 0;
+    for (const s of layer) { if (s === t) break; acc += pitchOf(s); }
+    return acc;
+  };
+  const layerSpan = (layer) => layer.reduce((a, s) => a + pitchOf(s), 0);
+  const maxSpan = Math.max(...Object.values(byDepth).map(layerSpan));
+  const slotB = (t) => {
+    const layer = byDepth[lvOf(t)];
+    if (!perName) {
+      // 一律の席幅。**旧来の式をそのまま保つ** — 座標が 1px でも動けば、
+      // 図は同じ事実を語りながら描画器の裁定だけが変わる
+      return PAD_B + Math.round((layer.indexOf(t) + (maxRow - layer.length) / 2) * SEAT_PITCH) + SEAT / 2
+        + (t.dummy ? dummyDx + (skipRank[t.key] % 3) * Math.round(dummyDx * 0.55) : 0);
+    }
+    // 段は中央に揃える。狭い席が混ざっても中心は総幅で決まる
+    const start = PAD_B + Math.round((maxSpan - layerSpan(layer)) / 2);
+    return start + offsetIn(layer, t) + (t.dummy ? DUMMY_PITCH / 2 : seatW(t) / 2)
+      + (t.dummy ? (skipRank[t.key] % 3 - 1) * Math.round(dummyDx * 0.55) : 0);
+  };
   const rankD = (lv) => PAD_D + lv * RANK_PITCH;
   const seatOf = (id) => byDepth[depth[id]].find(x => x.id === id);
-  const posOf = (id) => xy(slotB(seatOf(id)) - SEAT / 2, rankD(depth[id]));
+  // 箱の左端は、その席の中心から**その席自身の幅**の半分だけ戻った点である。
+  // 一律 SEAT/2 を引いていた頃は、名ごとに幅を変えた瞬間に箱と辺がずれた
+  // (実測: endpoint-side-direction で描画器が正しく鳴いた)。
+  const posOf = (id) => { const t = seatOf(id); return xy(slotB(t) - seatW(t) / 2, rankD(depth[id])); };
 
   // ── 辺を縫う ──────────────────────────────────────────────────────
   // 段は下(縦流し)あるいは右(横流し)へ進む。辺の側はその向きが決める。
@@ -711,10 +757,14 @@ function layered(items, opts = {}) {
   for (const e of back) edges.push({ from: e.from, to: e.to, back: true, ...BACK });
 
   const maxLv = Math.max(...depths);
-  const breadthTotal = PAD_B + (maxRow - 1) * SEAT_PITCH + SEAT + 40;
+  // 幅は席の**間隔の総和**で決まる。名ごとの席幅を使うときはダミーが狭い席を占めるので、
+  // 「最大席数 × 席の間隔」では実際より広く見積もる(実測: 結線の図で 3416 と 2265 の差)。
+  // 一律の席幅のときは旧来の式をそのまま保つ — 他の図の座標を 1px も動かさない
+  const breadthTotal = perName ? (PAD_B + maxSpan - SEAT_PITCH + SEAT + 40)
+    : (PAD_B + (maxRow - 1) * SEAT_PITCH + SEAT + 40);
   const depthTotal = PAD_D + maxLv * RANK_PITCH + RANK + 40;
   return {
-    posOf, depth, byDepth, depths, edges, isDummy, horizontal,
+    posOf, depth, byDepth, depths, edges, isDummy, horizontal, sizeOf: (id) => xy(seatW({ id }), RANK),
     minCrossings: bestTotal,
     size: xy(breadthTotal, depthTotal).map(v => Math.max(320, v)),
     // 同じ段に立つ実体(ダミーを除く) — 「同時に走りうる」札の材料
@@ -907,8 +957,39 @@ function irWiring() {
    *   ✓ 副題を捨てる    呼び手の面は**札に移す**。箱には名だけを残す。
    * 図が大きいとき削るのは線でも箱でもなく、まず**箱の中の字**である。
    */
+  /**
+   * **席割りは実測で決める** (第47条c)。
+   *
+   * engine が 33 → 34 になり、census.js と export-state.js が第30条の是正で
+   * workspace.js を require した瞬間、両者が「辺を持たない engine」から
+   * 「層に並ぶ engine」へ移った。加えて pulse.js が 13 本を require したので
+   * 段飛ばしが 2 → 8 本に増え、最大席数が 18 → **27 席**に膨れた。
+   *
+   * 実測(教主が buildIr を直に呼んで測った数):
+   *   席の幅 112px / 席の間隔 124px → viewBox 幅 **3416px**
+   *   1440 / 3416 = 0.422 倍に縮小され、本来 10.27px の字が **4.33px** に潰れた
+   *   床 6px を満たすのに許される幅 = 1440 × 10.27 ÷ 6 = **2464px**
+   *
+   * **scroll:true では解けない** — 第48条e により巻物の許しは長さにだけ効き、
+   * 読めない字は免除しない。横に流すことも、段を折り返すことも、上の註釈が
+   * 既に実測で捨てている。ゆえに実際に描いて測り、四つ試して二つを採った:
+   *
+   *   ✗ 席の間隔だけを詰める   pitch 124→98 で 2358px / 字 5.99px。**床に届かない。**
+   *                            さらに詰めると箱が 8px 以内に接し描画器が鳴く
+   *   ✗ 箱を高くする           H 52→140 で 字 4.33px のまま。**縮小率は幅が決める**
+   *   ✓ ダミーの席を細くする   3416 → 2952px。ダミーは箱を持たないので
+   *                            箱の幅を確保する必要が無い(下の DUMMY_PITCH)
+   *   ✓ 席の幅を名ごとに与える 2952 → **2265px** / **床を満たす**。
+   *                            `kg` (2字) が `build-identity-catalog` (22字) と
+   *                            同じ席を占める理由は無かった(下の nameW)
+   *
+   * **2265px は 2464px の上限に 199px の余裕を持つ。** 明日 engine が 1 本増えても
+   * 幅は名の長さの分しか伸びない —— 席の数ではなく名の総和で決まるからである。
+   */
+  // 席の幅は名ごとに与える。**その無駄が 19 席の段では図幅そのものになる。**
+  const nameW = (id) => Math.max(56, Math.ceil(id.length * 6.6) + 18);
   const L = layered(linked.map(e => ({ id: e.id, deps: e.requires })),
-                    { W: LW, H: 52, COL: LW + 12, ROW: 104 });
+                    { W: LW, H: 52, COL: LW + 12, ROW: 104, widthOf: nameW });
   const [W, H] = L.box;
   const SW = widthFor(solo.map(e => e.id));
 
@@ -933,7 +1014,7 @@ function irWiring() {
       pos: pos.map(Math.round),
       ...(tag ? { tag } : {}),
       ...extra,
-      size: extra.size || L.box,
+      size: extra.size || [nameW(e.id), 52],
     };
   };
 

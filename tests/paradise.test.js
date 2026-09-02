@@ -372,22 +372,54 @@ test('orchestrator computes the first wave as discover only', () => {
 test('orchestrator hands off an upstream artifact to the next phase', () => {
   const run = makeRun('standard');
   orch.markRunning(run, ['discover']);
-  orch.markDone(run, 'discover', 'findings.md');
+  // **実在する成果物を渡す** —— markDone は住所を名乗ったなら実在を検める
+  // (第22条 / 第27条: conclave と同じ厳しさ)。この門が測るのは受け渡しであって
+  // 台帳の緩さではないので、実在する道を使う
+  orch.markDone(run, 'discover', 'tests/paradise.test.js');
   const nw = orch.nextWave(run);
   const specify = nw.wave.find(w => w.id === 'specify');
   assert.ok(specify, 'specify becomes ready');
   assert.strictEqual(specify.context_from[0].from, 'discover');
-  assert.strictEqual(specify.context_from[0].artifact, 'findings.md', 'artifact handed off');
+  assert.strictEqual(specify.context_from[0].artifact, 'tests/paradise.test.js', 'artifact handed off');
 });
 
 test('orchestrator runs independent phases in the same wave (parallel)', () => {
   const run = makeRun('standard');
   // build は design(構造)・ux(振る舞い)・identity(見た目)が揃って初めて始まる
-  for (const id of ['discover', 'specify', 'design', 'ux', 'identity', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
+  for (const id of ['discover', 'specify', 'design', 'ux', 'identity', 'detail']) {
+    orch.markRunning(run, [id]);
+    orch.markDone(run, id, 'tests/paradise.test.js');   // 実在する成果物(上と同じ理由)
+  }
   const nw = orch.nextWave(run);
   const ids = nw.wave.map(w => w.id).sort();
   assert.deepStrictEqual(ids, ['build', 'tests'], 'build & tests run in parallel after detail');
   assert.strictEqual(nw.parallel, 2);
+});
+
+test('orchestrator: 台帳に虚偽の done を記せない — 住所を名乗るなら実在せよ (第22条 / 第27条)', () => {
+  // X-1 を生んだ穴は conclave では塞いだが orchestrator では空いていた。
+  // **道が違っても、台帳が嘘をつく害は同じ**である
+  const run = makeRun('standard');
+  orch.markRunning(run, ['discover']);
+  const ghost = 'reform/no-such-dir/findings.md';
+  assert.throws(
+    () => orch.markDone(run, 'discover', ghost),
+    /成果物が実在しない/,
+    '存在しない成果物で done にできてしまう — 台帳が嘘をつける');
+  assert.notStrictEqual(run.phases.discover.status, 'done',
+    '例外を投げたのに status が done になっている(部分適用)');
+
+  // 実在するなら通る
+  orch.markDone(run, 'discover', 'tests/paradise.test.js');
+  assert.strictEqual(run.phases.discover.status, 'done');
+
+  // **住所でない名は従来どおり通る** —— orchestrator の artifact は
+  // 'tests' 'implementation' のような実体そのものの名も許す(conclave との違い)
+  const run2 = makeRun('standard');
+  orch.markRunning(run2, ['discover']);
+  orch.markDone(run2, 'discover', 'implementation');
+  assert.strictEqual(run2.phases.discover.status, 'done',
+    '住所でない名まで拒んだ — 正しい走行を止めている');
 });
 
 test('REWORK resets the target and its downstream closure', () => {
@@ -534,6 +566,34 @@ test('conclave convenes domains as cardinals with their phases', () => {
   assert.ok(run.domains.every(d => d.pdca), 'every domain has an inner PDCA');
 });
 
+test('conclave: 成果物を名乗るなら実在せねばならない — 台帳は虚偽の done を記せない (第22条/第27条)', () => {
+  // 実測(2026-09-02): security 相の神官が打ち切られたのに教主が
+  // `done security --artifact .../security.md` と記録した。ファイルは
+  // 一度も存在せず(`git log --all` → 0件)、executor が `ls` で暴くまで
+  // 誰も気づかなかった。第27条は subagent だけでなく**記録する者自身**にも向く。
+  const run = makeConclave();
+  const id = run.domains[0].phases[0].id;
+  const ghost = 'reform/__NO_SUCH_ARTIFACT__' + Date.now() + '.md';
+
+  assert.throws(
+    () => conclave.markDone(run, id, ghost),
+    /成果物が実在しない/,
+    '存在しない成果物で done にできてしまう — 台帳が嘘をつける');
+
+  // 拒んだ後、相の印は汚れていない(部分適用しない)
+  assert.notStrictEqual(run.domains[0].phases[0].status, 'done',
+    '例外を投げたのに status が done になっている');
+
+  // 実在するなら通る
+  conclave.markDone(run, id, 'tests/paradise.test.js');
+  assert.strictEqual(run.domains[0].phases[0].status, 'done');
+
+  // 成果物を名乗らない done は従来どおり通る
+  const run2 = makeConclave();
+  conclave.markDone(run2, run2.domains[0].phases[0].id);
+  assert.strictEqual(run2.domains[0].phases[0].status, 'done');
+});
+
 test('conclave next() dispatches the active domain\'s ready phases', () => {
   const run = makeConclave();
   const step = conclave.next(run);
@@ -546,7 +606,7 @@ test('conclave next() dispatches the active domain\'s ready phases', () => {
 test('conclave advances to ratify when a domain\'s phases are all done', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
-  conclave.markDone(run, 'discover', 'findings.md');
+  conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   const step = conclave.next(run);
   assert.strictEqual(step.phase, 'ratify');
   assert.strictEqual(step.reviewClass, 'pontiff', 'discovery is ratified by the pontiff');
@@ -555,20 +615,20 @@ test('conclave advances to ratify when a domain\'s phases are all done', () => {
 test('ratify advances the conclave to the next cardinal', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
-  conclave.markDone(run, 'discover', 'findings.md');
+  conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
   const step = conclave.next(run);
   assert.strictEqual(step.cardinal, 'requirements', 'next domain becomes active');
   // artifact handoff crosses the domain boundary
   const specify = step.dispatch.find(d => d.id === 'specify');
-  assert.strictEqual(specify.context_from[0].artifact, 'findings.md');
+  assert.strictEqual(specify.context_from[0].artifact, 'tests/paradise.test.js');
 });
 
 test('domain-level reject triggers an INNER rework (the small circle)', () => {
   const run = makeConclave();
-  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'f.md');
+  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
-  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'r.md');
+  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'requirements', { reject: true, from: 'specify' });
   assert.ok(res.reworked.includes('specify'), 'specify reset for inner rework');
   const d = run.domains.find(x => x.cardinal === 'requirements');
@@ -582,11 +642,11 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity', 'ux'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
-    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
-  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   // quality rejects and sends it back to BUILD, which lives in construction
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
   assert.strictEqual(res.ok, true);
@@ -609,11 +669,11 @@ test('cross-domain rework also resets DOWNSTREAM phases in later domains', () =>
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
-    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
-  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
   // everything that depended on build must be invalidated, including the finished reviews
   assert.ok(res.reworked.includes('review'), 'a review of stale code is itself stale');
@@ -621,6 +681,152 @@ test('cross-domain rework also resets DOWNSTREAM phases in later domains', () =>
     .phases.find(p => p.id === 'review').status, 'rework');
   assert.strictEqual(run.domains.find(x => x.cardinal === 'quality')
     .phases.find(p => p.id === 'review').artifactPath, null, 'stale artifact is dropped');
+});
+
+// ── 第51条: 走者の死は環の死ではない ──────────────────────────────
+// 中断した走者が残す `running` の化石は、かつて誰も回収できなかった。
+// `phaseReady` は pending/rework しか選ばないので、環は永遠に stuck になる。
+// 実際に定時ジョブが1本これで死んでいる。以下はその病を裁く門である。
+
+test('conclave: 中断した running が resume で環に戻る (第51条)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  // 走者が斃れた — 発令の刻を古くして中断を模す
+  conclave.allPhases(run).get('discover').dispatchedAt =
+    new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  assert.strictEqual(conclave.next(run).phase, 'stuck', '化石があると環は静止する');
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, ['discover'], 'resume が化石を回収する');
+  const p = conclave.allPhases(run).get('discover');
+  assert.strictEqual(p.status, 'rework',
+    'pending ではなく rework へ戻す — 一度手が付いた相を「未着手」と偽らない');
+  assert.strictEqual(p.artifactPath, null, '成果物を騙らない (done を刻まない)');
+  const step = conclave.next(run);
+  assert.strictEqual(step.phase, 'wave', '環が再び回る');
+  assert.ok(step.dispatch.some(x => x.id === 'discover'), '当該相が再発令される');
+});
+
+test('conclave: 中断→復帰→complete まで環が回りきる (第51条a)', () => {
+  const run = makeConclave();
+  let died = false, last = null;
+  for (let i = 0; i < 200; i++) {
+    const r = conclave.next(run);
+    last = r.phase;
+    if (r.phase === 'complete') break;
+    if (r.phase === 'ratify') { conclave.ratify(run, r.cardinal); continue; }
+    if (r.phase === 'blocked') break;
+    if (r.phase === 'stuck') {   // 走者の死からの復帰はここでしか起きない
+      const res = conclave.resume(run, { force: true });
+      assert.ok(res.resumed.length, 'stuck なら回収できる化石があるはずだ');
+      continue;
+    }
+    if (r.phase === 'wave' && r.dispatch) {
+      conclave.markRunning(run, r.dispatch.map(d => d.id));
+      // 最初の波の途中で走者を殺す — done を刻まずに次の周回へ落ちる
+      if (!died) { died = true; continue; }
+      for (const d of r.dispatch) conclave.markDone(run, d.id, 'tests/paradise.test.js');
+    }
+  }
+  assert.ok(died, '走者の死を実際に模したことを確かめる');
+  assert.strictEqual(last, 'complete',
+    `中断を経ても環は complete に着かねばならない (最後の相: ${last})`);
+});
+
+test('conclave: 生きている running を resume は既定で殺さない (第51条b/第45条)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);     // たった今発令された = 生きている
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, [], '生きている走者を横から奪えば二重発令になる');
+  assert.strictEqual(conclave.allPhases(run).get('discover').status, 'running');
+  assert.ok(/fresh/.test(res.skipped.find(s => s.id === 'discover').reason));
+  const forced = conclave.resume(run, { force: true });
+  assert.deepStrictEqual(forced.resumed, ['discover'], '人の明示的な意思は時刻に優先する');
+});
+
+test('conclave: 時刻を持たぬ古い run は --force を要求する (第51条b)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  delete conclave.allPhases(run).get('discover').dispatchedAt;  // この機構より古い run
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, [], '判定不能なとき engine は独断で印を剥がさない');
+  assert.ok(/no dispatchedAt/.test(res.skipped.find(s => s.id === 'discover').reason));
+  assert.deepStrictEqual(conclave.resume(run, { force: true }).resumed, ['discover'],
+    '--force があれば古い run も生き返る (後方互換)');
+});
+
+test('conclave: markRunning が発令の刻を記す (第51条b)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  const at = conclave.allPhases(run).get('discover').dispatchedAt;
+  assert.ok(at && !Number.isNaN(Date.parse(at)),
+    '刻が無ければ死者と生者を時刻で分けられない');
+});
+
+test('conclave: resume は reworks を消費せず台帳で区別される (第51条)', () => {
+  const run = makeConclave();
+  const d = run.domains.find(x => x.cardinal === 'discovery');
+  conclave.markRunning(run, ['discover']);
+  conclave.resume(run, { force: true });
+  assert.strictEqual(d.reworks, 0,
+    '走者の死は品質の差し戻しではない — loop-guard を削ってはならない');
+  assert.strictEqual(conclave.allPhases(run).get('discover').resumes, 1, '回復は別に数える');
+  assert.ok(run.history.some(h => h.event === 'resume'),
+    '台帳で domain-rework と区別できる event 名であること');
+});
+
+test('conclave: 回復は有限で、尽きたら閉塞して人を呼ぶ (第51条c)', () => {
+  const run = makeConclave();
+  let blocked = null;
+  // 上限そのものを反復の境界に使わない。上限が壊れて Infinity になったとき、
+  // 門は「落ちる」のではなく**永久に回り続けて OOM で死ぬ**(実測: heap out of memory)。
+  // 落ちない門は飾りである(第21条)。ゆえに境界は上限と独立した定数で持つ。
+  const HARD_STOP = 12;
+  assert.ok(conclave.MAX_PHASE_RESUME < HARD_STOP,
+    `MAX_PHASE_RESUME(${conclave.MAX_PHASE_RESUME}) が有限で、かつ十分小さくなければ回復は無限になる`);
+  for (let i = 0; i < HARD_STOP; i++) {
+    conclave.markRunning(run, ['discover']);
+    const res = conclave.resume(run, { force: true });
+    if (!res.ok) { blocked = res; break; }
+  }
+  assert.ok(blocked, `MAX_PHASE_RESUME(${conclave.MAX_PHASE_RESUME}) を超えたら止まらねばならない`);
+  assert.strictEqual(blocked.blocked, 'discovery');
+  assert.strictEqual(run.domains.find(x => x.cardinal === 'discovery').status, 'blocked');
+  assert.strictEqual(conclave.next(run).phase, 'blocked',
+    'stuck(回復可能な静止) と blocked(回復を使い切った閉塞) を混同しない');
+  assert.ok(run.history.some(h => h.event === 'phase-loop-guard'), '人を呼んだ記録が残る');
+});
+
+test('conclave: next --reclaim は opt-in で、既定の next は純粋である (第51条)', () => {
+  const mk = () => {
+    const r = makeConclave();
+    conclave.markRunning(r, ['discover']);
+    conclave.allPhases(r).get('discover').dispatchedAt =
+      new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    return r;
+  };
+  const a = mk();
+  // 既定の next は **相の status を書かない**。domain を pending→active にするのは
+  // 従来からの振る舞いであり(第11条の環の進行)、これは相の回収とは別物である。
+  // この門が守るのは「reclaim 無しに running が勝手に剥がされないこと」である。
+  const phasesBefore = JSON.stringify(a.domains.flatMap(d => d.phases.map(p => [p.id, p.status, p.resumes])));
+  assert.strictEqual(conclave.next(a).phase, 'stuck');
+  assert.strictEqual(
+    JSON.stringify(a.domains.flatMap(d => d.phases.map(p => [p.id, p.status, p.resumes]))),
+    phasesBefore,
+    '既定の next は相の status を書かない — 既存の門がこの契約に依存している');
+  const b = mk();
+  assert.strictEqual(conclave.next(b, { reclaim: true }).phase, 'wave',
+    '求められたときだけ自動回収する');
+});
+
+test('conclave: status が running の化石を人に見せる (第51条a)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  assert.ok(!/中断の疑い/.test(conclave.statusBoard(run)), '生きている走者を化石と呼ばない');
+  conclave.allPhases(run).get('discover').dispatchedAt =
+    new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  assert.ok(/中断の疑い/.test(conclave.statusBoard(run)),
+    '静止を黙って表示すれば、誰も回収しに来ない (沈黙は放棄と同じ)');
 });
 
 test('domain loop-guard blocks a cardinal after MAX_DOMAIN_REWORK', () => {
@@ -2222,6 +2428,37 @@ test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', ()
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+test('census: 総括は位置ではなく名前で読む — 子テストの集計行に騙されない (第22条 / 第29条)', () => {
+  const census = require('../graph/census.js');
+  // 実測(2026-09-02): ダッシュボードの門13本を新設したところ、自己診断の出力に
+  // 子テストの集計行が8本現れた。旧実装は String.match の**最初の一致**を拾い、
+  // `dashboard-count: 15 passed` を「楽園のテスト総数」と信じた。README の 256 と
+  // 突き合わせて第22条違反を叫んだが、**嘘をついていたのは README ではなく数え方だった**。
+  const withChildren = [
+    'dashboard-count: 15 passed, 0 failed',
+    'dashboard-no-deps: 10 passed, 0 failed',
+    'dashboard-run-panel: 16 passed, 0 failed',
+    '',
+    'Paradise self-test: 288 passed, 0 failed',
+    '',
+  ].join('\n');
+  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0 },
+    '子テストの集計行を総括と取り違えている — 先頭ではなく名乗りで狙え');
+
+  // 赤があっても総括を読む
+  assert.deepStrictEqual(
+    census.summaryOf('child: 3 passed, 0 failed\nParadise self-test: 287 passed, 1 failed\n'),
+    { passed: 287, failed: 1 });
+
+  // 名乗りが無い版でも壊れない — 最後の一致に落ちる
+  assert.deepStrictEqual(census.summaryOf('a: 1 passed, 0 failed\nb: 9 passed, 2 failed\n'),
+    { passed: 9, failed: 2 }, '名乗りが無いときは最後の一致に落ちるべき');
+
+  // 読めなければ null。0 で埋めてはならない(第16条: 判定不能は緑ではない)
+  assert.strictEqual(census.summaryOf('何も無い'), null,
+    '読めなかったときに 0 を返すと「テスト0件で全部通った」と嘘をつく');
+});
+
 // --- workspace: 創造物は楽園の外に住む (第30条) ---
 console.log('\nWorkspace (Art.30):');
 
@@ -2304,6 +2541,55 @@ test('workspace: 直書きの門は註釈で吠えず、コードでは吠える
   assert.strictEqual(found[0].file, 'graph/loud.js');
   fs.rmSync(base, { recursive: true, force: true });
 });
+
+/**
+ * G-03: **形を見る門が意味を見逃した**(第19条の再発)。
+ *
+ * 旧規則 /['"`][^'"`]*creations\// は引用符の直後にスラッシュが続く形しか咎めず、
+ * path.join 経由で組み立てた旧住所を素通りさせた。census.js:75 と
+ * export-state.js:32 の 2 件を抱えたまま門は緑を出し続け、
+ * **実在 8 件に対し 0 件と報告する欠陥**を守っているつもりで見逃していた。
+ * AC-04c が本試験の存在を求めている。
+ */
+test('workspace: hardcodedRefs は path.join(ROOT, \'creations\') 形も咎める (G-03)', () => {
+  const ws = require('../graph/workspace.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-join-'));
+  const g = path.join(base, 'graph');
+  fs.mkdirSync(g, { recursive: true });
+  // 旧規則が素通りさせた当の形。合成の見本で機械判定する (AC-04d)
+  fs.writeFileSync(path.join(g, 'sneaky.js'), "const dir = path.join(ROOT, 'creations');");
+  const found = ws.hardcodedRefs(base);
+  assert.strictEqual(found.length, 1, 'path.join 経由の旧住所を素通りさせた — 門の穴が開いたままである');
+  assert.strictEqual(found[0].file, 'graph/sneaky.js');
+  assert.ok(found[0].line >= 1 && found[0].why, '名指ししない門は、赤くなっても直せない');
+  // path.resolve / 二重引用符 / バッククォートも同じ規則で咎める
+  fs.writeFileSync(path.join(g, 'sneaky.js'), 'const dir = path.resolve(ROOT, "creations");');
+  assert.strictEqual(ws.hardcodedRefs(base).length, 1, 'path.resolve と二重引用符を見逃した');
+  // 註釈は道を説明してよい。走るコードだけを咎める
+  fs.writeFileSync(path.join(g, 'sneaky.js'), "// path.join(ROOT, 'creations') は旧住所である");
+  assert.strictEqual(ws.hardcodedRefs(base).length, 0, '註釈で吠える門は無視される(第21条)');
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+// --- dashboard: 画面の数が嘘をつかない (第22条 / G-01〜G-10) ---
+/**
+ * 新設した門を自己診断から呼ぶ(要件 §6「新設テストはすべて paradise.test.js から
+ * 呼ばれ、単独でも走ること」)。**同一プロセスで require する** —— node 起動代
+ * 27ms × 本数を払わないためである(design.md §6.2)。
+ * ブラウザを起こす門(fallback / motion-probe-leak)は CI と単独走行に委ねる ——
+ * 自己診断 282 秒をこれ以上伸ばさない。
+ */
+console.log('\nDashboard gates (Art.22 / G-01..G-10):');
+for (const name of ['dashboard-count', 'dashboard-no-deps', 'dashboard-links',
+  'dashboard-no-hardcode', 'dashboard-transport', 'dashboard-freshness',
+  'dashboard-states', 'dashboard-run-panel']) {
+  test(`dashboard-count 系: ${name} が緑 (G-01/02/04/06)`, () => {
+    const rep = require(path.join(DIR, name + '.test.js'));
+    assert.strictEqual(rep.fail, 0,
+      `${name} が ${rep.fail} 件落ちた: ${(rep.failures || []).join(' / ')}`);
+    assert.ok(rep.pass >= 1, `${name} が 1 件も検査していない — 空の門は門ではない`);
+  });
+}
 
 // --- seat: 教主の座は機構である (第31条) ---
 console.log('\nPontiff seat (Art.31):');
@@ -2665,6 +2951,59 @@ test('critic: 門は tests/ の下も見る — 規約通りに置いたテス�
   assert.ok(r2.results.filter(x => !x.ok).map(x => x.id).includes('tests-exist'),
     'with no tests anywhere the gate must fire');
   fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic: reform は三箇所を束ねて裁く — 散文だけを見て「門が無い」と言わない (D-2 / 第23条)', () => {
+  // ■ reform の道は散文 reform/<slug>/・実装 graph/・門 tests/ に分かれて住む。
+  //   critic はこれを創造物(一つの倉に全てが揃う)と同じ形だと仮定していたため、
+  //   12 本の門が tests/ に在るのに `tests-exist: no test file found` と裁いた(実測)。
+  //
+  // **この門は現物の走行に依らない。** main へマージされれば差分は消え、
+  // 現物を見る門は「触れた門 0 本」で赤くなる —— 走行の状態を期待値にしては
+  // ならない(則3)。ゆえに reform の形をした作業場を**その場で作って**測る。
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-reform-critic-'));
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
+    fs.mkdirSync(path.join(root, 'graph'));
+    fs.mkdirSync(path.join(root, 'tests'));
+    fs.mkdirSync(path.join(root, 'reform', 'demo'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'graph', 'thing.js'), 'module.exports = 1;\n');
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'findings.md'), '# 調査\n実測した。\n');
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'requirements.md'), '# 要件\n- AC-01: 動く\n');
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'base'], { cwd: root });
+    execFileSync('git', ['checkout', '-qb', 'reform/demo'], { cwd: root });
+
+    // 散文だけの走行 —— **門を一本も書いていない**。critic は赤でなければならない
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'design.md'), '# 設計\n形を決めた。\n');
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'prose only'], { cwd: root });
+    const dir = path.join(root, 'reform', 'demo');
+    let t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(!t.ok, `門を書いていない走行が緑になった: ${t.note}`);
+    assert.ok(/一本も門を書いていない/.test(t.note), `理由が的を外している: ${t.note}`);
+
+    // 門を tests/ に書いた走行 —— **散文の下に無くても見えねばならない**
+    fs.writeFileSync(path.join(root, 'tests', 'thing.test.js'),
+      'const assert=require("assert");\nassert.ok(1);\nassert.ok(2);\nassert.ok(3);\nconsole.log("passed: 3");\n'
+      + '// padding to clear the 400-byte substance floor '.repeat(12));
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'add gate'], { cwd: root });
+    t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(t.ok, `tests/ の門を見落としている: ${t.note}`);
+    assert.ok(/門 1 本/.test(t.note), `数え方が違う: ${t.note}`);
+
+    // **走行が触れた物だけ数える** —— 他所の門を数えれば常に緑になり門でなくなる。
+    // main に元から在る門は数に入らないこと
+    fs.writeFileSync(path.join(root, 'tests', 'unrelated.test.js'), 'assert.ok(1);\n'.repeat(40));
+    execFileSync('git', ['checkout', '-q', 'main'], { cwd: root });
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'unrelated'], { cwd: root });
+    execFileSync('git', ['checkout', '-q', 'reform/demo'], { cwd: root });
+    t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(/門 1 本/.test(t.note),
+      `この走行が触れていない門まで数えている: ${t.note} — 楽園中の門を数えれば門は門でなくなる`);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)', () => {
