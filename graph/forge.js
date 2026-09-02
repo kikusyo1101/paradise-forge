@@ -181,6 +181,78 @@ const SCALES = {
       goal: '諐問に答える: 推奨と、その根拠と、採らなかった選択肢とその理由。断罪(SHIP/REWORK/BLOCK)ではない — 神が決めるための材料を渡す',
       deps: ['synthesize'], gate: true, artifact: 'counsel.md' },
   ],
+
+  // Cartography — 作図の道: 楽園が己の姿を図にする (憲法 第47条・第48条)
+  //
+  // 実測された欠陥: 神が「オーケストレーションの相関図を作れ」と命じたとき、
+  // `chooseScale` はそれを **reform(11相・engine改修の道)** へ送った。
+  // 「オーケストレーション」が REFORM_RE に当たるからである。だが作図は
+  // engine の改修ではない。逆に「位階の図を描いてほしい」は standard(14相)へ
+  // 落ち、**存在しない実装物に向かって build/security/tests を走らせた**。
+  //
+  // 作図が他の道と決定的に違うのは、**判定が主観でなく機械にある**ことである:
+  //   - IR を作る engine が在り(atlas)、描くのは取り込んだ描画器(archify)
+  //   - 静的検査 9/9 と、**実ブラウザでの実測**(溢れ・字の大きさ)が門になる
+  //   - 「事実を写経したか」は engine と突き合わせれば判る(第29条)
+  // ゆえに creations の道の review/security/docs は要らず、代わりに
+  // **measure(実ブラウザで測る)と behold(人の目で見る)** が要る。
+  // 静的な 9/9 は「図として正しい」しか言わない。**意味の破れは開いて見るまで
+  // 分からない** — それを人手の判断に委ねず相として機構に埋める(第18条)。
+  cartography: (wish) => [
+    { id: 'chart-survey', agent: 'auditor',
+      goal: `何を図にするのかを実測せよ: ${wish}。まず \`node graph/atlas.js subjects\` で既存の主題を見、`
+          + '描くべき事実がどの engine に住んでいるかを突き止める(位階=clergy, 道=forge, 環=conclave, 結線=wiring)。'
+          + '**事実を持つ engine が無いなら、まずそれを作るのが先である** — 図に数を写経してはならない(第29条)。'
+          + '既存主題との重複、対象の形(深さ×幅)、想定される読み手を数で出す',
+      gate: true, artifact: 'findings.md' },
+    { id: 'frame', agent: 'requirements-analyst',
+      goal: '図の主題を定める: 何を語り、何を語らないか。主題ごとに種別(architecture/workflow/sequence/lifecycle/dataflow)を選び、'
+          + '理由を書く。**「全部入り」は主題ではない** — 語らないと決めたものを明記せよ。'
+          + '受入条件は機械が裁ける形にする: 静的検査 9/9、実ブラウザで第一画面に収まるか(巻物なら宣言)、字が床(6px)を割らないか',
+      deps: ['chart-survey'], gate: true, artifact: 'requirements.md' },
+    { id: 'draft', agent: 'architect',
+      goal: 'atlas に主題を実装する: engine から事実を読み、JSON IR を組む。'
+          + '**数も名も写経しない**(第29条)。配置が要るなら既存の `layered()` を使い、'
+          + '新しい配置器を書かない — 写経の複製は片方だけが直った日に図が食い違う',
+      deps: ['frame'], artifact: 'implementation' },
+    { id: 'render', agent: 'architect',
+      goal: '`node graph/atlas.js draw <subject>` を実際に走らせ、描画器の診断が消えるまで直す。'
+          + '**描画器の鳴きは幾何の助言ではなく仕様である** — 交差・廊下の奪い合い・箱を貫く辺は、'
+          + '小細工でなく配置で解く。己の思いつきが三度退けられたなら、解法そのものが誤っている',
+      deps: ['draft'], artifact: 'diagram' },
+    { id: 'chart-measure', agent: 'ux-reviewer',
+      goal: '**実ブラウザで測る**: `node graph/atlas.js check --scale <各道>` を全ての道で走らせる。'
+          + '静的な 9/9 は「図として正しい」しか言わない — 溢れ・字の大きさ・縮小率は開いてみるまで分からない。'
+          + '溢れるなら SUBJECTS に scroll:true と宣言し、**字が読めないなら宣言では逃げられない**(第48条e)。'
+          + '交差ゼロが不能なら最小交差数を厳密に数え、standard を名乗って理由を図の札に書く(第47条c)',
+      deps: ['render'], gate: true, artifact: 'measurements.md' },
+    { id: 'behold', agent: 'ux-reviewer',
+      goal: '**人の目で見る**: visual-check の PNG を実際に開いて読め。静的検査も実測も通った図が、'
+          + '意味を裏切っていることがある(実測: 「独立」を主張する箱が枠に触れて独立に見えなかった/'
+          + '孤児の枠が独立群の枠と重なって題が潰れた)。幾何は正しいので機械は咎めない。'
+          + '一目で読めるか、強調すべきものが強調されているか、線が追えるかを述べよ',
+      deps: ['chart-measure'], gate: true, artifact: 'review.md' },
+    { id: 'prove', agent: 'tdd-guide',
+      goal: '回帰テストで固定する: (1)図が engine から生まれ写経していないこと(engine の数と図の箱が一致)、'
+          + '(2)同じ入力から同じ図が出ること(決定的)、(3)**門をわざと壊して鳴るか**。'
+          + '健全な系で緑になるだけの門は証明されていない(第21条)',
+      deps: ['render'], gate: true, artifact: 'tests' },
+    { id: 'docs', agent: 'doc-updater',
+      goal: 'README の engine 表と主題一覧を更新し、`node graph/census.js check` を通す(第22条)。'
+          + '新しい門を建てたなら CI(tribunal.yml)に配線する — **配線されぬ門は飾りである**',
+      deps: ['render'], artifact: 'docs' },
+    { id: 'verify', agent: 'verification-loop',
+      goal: '全門を走らせる: tests/paradise.test.js, atlas check(全ての道), wiring check, census check, derived check。'
+          + '一つでも赤なら未完',
+      deps: ['chart-measure', 'behold', 'prove', 'docs'], gate: true, artifact: 'verification-report' },
+    { id: 'reflect', agent: 'self-critic',
+      goal: '敵対的自己批評: この図が**語らなかったこと**は何か。図を足したことで嘘になった既存の門は無いか。'
+          + '`node graph/critic.js review graph --self --lessons graph/lessons.json`',
+      deps: ['verify'], gate: true, artifact: 'critique.md' },
+    { id: 'verdict', agent: 'creation-judge',
+      goal: '作図を裁く: SHIP / REWORK / BLOCK。裁いた上で PR を出す — マージは神のみ',
+      deps: ['reflect'], gate: true, artifact: 'verdict' },
+  ],
 };
 
 /**
@@ -195,6 +267,11 @@ const SCALE_PRODUCES = {
   full: 'artifact',
   reform: 'artifact',
   counsel: 'document',
+  // 図は実装物ではない。build も security も無いので `artifact` を名乗れば
+  // verdict が「build が語られていない」と永久に REWORK を出す。かといって
+  // `document` でもない — 文書は読めばよいが、図は**実ブラウザで測れる**。
+  // ゆえに第三の産物を宣言する(第36条: 門は消すのではなく分ける)。
+  cartography: 'diagram',
 };
 
 /**
@@ -240,9 +317,45 @@ function isCounsel(wish) {
   return true;
 }
 
+/**
+ * 作図の語彙 — 「図にせよ」と言っている願い。
+ *
+ * **この判定は reform より先に立たねばならない。** 実測: 神が
+ * 「オーケストレーションの相関図を作れ」と命じたとき、「オーケストレーション」が
+ * REFORM_RE に当たり、願いは engine 改修の道(11相)へ攫われた。教主はそれを
+ * 手で歩き直したので着いたが、**機構としては誤着していた**。
+ * 逆に「位階の図を描いてほしい」は standard(14相)へ落ち、存在しない実装物に
+ * 向かって build/security を走らせる道が選ばれていた。
+ *
+ * 対象(楽園か否か)ではなく **求められている産物の種類** が道を決める。
+ * これは counsel が reform より先に立つのと同じ理屈である。
+ */
+const DIAGRAM_JA = '図解|図示|相関図|関連図|構成図|系統図|階層図|フロー図|ダイアグラム|チャート|図に|図を|作図|可視化';
+const DIAGRAM_EN = '\\b(?:diagram|chart|graph(?:viz)?|visualize|visualise|architecture[- ]?map|flowchart|sequence[- ]?diagram)\\b';
+const DIAGRAM_RE = new RegExp(`${DIAGRAM_JA}|${DIAGRAM_EN}`, 'i');
+
+/**
+ * ただし「図」の一字は他語に紛れる(意図/地図/図書/合図/構図…)。
+ * 素朴に一字で判定すれば「意図を汲んで実装せよ」が作図の道へ落ちる。
+ * ゆえに上の語彙は二字以上の複合語か、送り仮名を伴う形だけを拾う。
+ */
+const DIAGRAM_FALSE_FRIENDS = /意図|地図|図書|合図|構図|図々|壮図|企図/;
+
+/** その願いは作図(図を求める)か。 */
+function isCartography(wish) {
+  if (!DIAGRAM_RE.test(wish)) return false;
+  // 「図に」「図を」だけで当たった場合、それが紛れ語の一部でないか確かめる。
+  const onlyWeak = !new RegExp(`${DIAGRAM_JA.split('|').filter(w => w !== '図に' && w !== '図を').join('|')}|${DIAGRAM_EN}`, 'i').test(wish);
+  if (onlyWeak && DIAGRAM_FALSE_FRIENDS.test(wish)) return false;
+  return true;
+}
+
 /** Heuristically choose a scale from the wish text. */
 function chooseScale(wish) {
   const w = wish.toLowerCase();
+  // 産物の種類が道を決める。対象(楽園か否か)ではない — 作図も諐問も
+  // 「楽園について」語りうるが、engine を書き換える道ではない。
+  if (isCartography(wish)) return 'cartography';
   // 主題優先: 「楽園のエンジンを監査してほしい」は楽園の話だが改変ではない。
   // 諐問は reform より先に判定する — 対象ではなく **求められている答えの種類**が道を決める。
   if (isCounsel(wish)) return 'counsel';
@@ -322,4 +435,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, isCounsel };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography };

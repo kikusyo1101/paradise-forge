@@ -156,6 +156,45 @@ function hierarchyIntegrity(agentsDir) {
   return { skipped: false, findings };
 }
 
+/**
+ * 発令の宛先ずれ — 宣言された神官と、実際に発令される神官が違う (憲法 第25条)
+ *
+ * DAG の相は `agent` を宣言する。だが実際に誰へ発令されるかを決めるのは
+ * `clergy.marshalPlan()` であり、その裏には `PHASE_LEAD` と「枢機卿の筆頭神官」
+ * という二段の解決がある。**PHASE_LEAD に無い相は筆頭に落ちる。**
+ *
+ * 実測で二件の食い違いが住み着いていた:
+ *   prove : 宣言 tdd-guide  → 発令 architect     (construction の筆頭)
+ *   docs  : 宣言 doc-updater → 発令 code-reviewer (quality の筆頭)
+ * reform の道は毎PRこれを踏んでいた。**試験を書く者に実装者が、文書を書く者に
+ * 審査官が化けていた**のである。名は在り、主も居て、しかし宛先が違う —
+ * 既存のどの門もこれを見ていなかった。
+ *
+ * 名指しと発令が食い違う階層は、歩けているように見えて歩けていない。
+ */
+function misroutedPhases() {
+  // 執行官は枢機卿の麾下ではない。枢機卿の相であっても、宣言された担い手が
+  // 執行官なら「他家の神官」ではなく **位階が違う** のであり、marshalPlan が
+  // 筆頭へ落とすのは正しい振る舞いである(指揮系統を跨いだ発令はしない)。
+  // これを食い違いと呼べば門は狼少年になる — 直しようのない赤を出し続ける。
+  const officers = new Set([...(clergy.TRIBUNAL.officers || []), 'executor']);
+  const out = [];
+  for (const scale of Object.keys(forge.SCALES)) {
+    for (const t of forge.buildDag('probe', scale).tasks) {
+      if (!t.agent || PSEUDO.has(t.agent)) continue;          // 疑似agentは実体を持たない
+      if (officers.has(t.agent)) continue;                    // 執行官への宣言は位階の差
+      const card = clergy.cardinalFor(t.id);
+      if (!card || card === 'tribunal') continue;             // 執行官は枢機卿の発令を受けない
+      const plan = clergy.marshalPlan(t.id, { priestCanSpawn: true });
+      if (!plan || !plan.priest) continue;
+      if (plan.priest === t.agent) continue;
+      if (out.some(o => o.phase === t.id)) continue;
+      out.push({ phase: t.id, scale, declared: t.agent, dispatched: plan.priest, cardinal: card });
+    }
+  }
+  return out;
+}
+
 function installedAgents(dir) {
   try {
     return new Set(fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
@@ -177,19 +216,22 @@ function check(agentsDir, opts) {
   // 宙吊り参照 = 欠けている神官 × それを名指した出所
   const dangling = missing.map(a => ({ agent: a, namedBy: sources[a] }));
   const ungoverned = ungovernedPhases();
+  const misrouted = misroutedPhases();
   const hier = hierarchyIntegrity(dir);
   const hierFindings = hier.findings || [];
   return {
-    ok: missing.length === 0 && ungoverned.length === 0 && hierFindings.length === 0,
+    ok: missing.length === 0 && ungoverned.length === 0 && misrouted.length === 0 && hierFindings.length === 0,
     skipped: false,
-    dir, need, sources, missing, dangling, ungoverned, hierarchy: hierFindings,
+    dir, need, sources, missing, dangling, ungoverned, misrouted, hierarchy: hierFindings,
     note: missing.length
       ? `${missing.length} agent(s) named by the paradise do not exist`
       : (ungoverned.length
           ? `${ungoverned.length} phase(s) belong to no cardinal and no tribunal`
+          : (misrouted.length
+          ? `${misrouted.length} phase(s) are dispatched to a priest other than the one declared`
           : (hierFindings.length
               ? `${hierFindings.length} hierarchy defect(s): the ladder is declared but cannot be walked`
-              : 'every named priest exists, every phase has a master, the hierarchy is real')),
+              : 'every named priest exists, every phase has a master, every dispatch reaches the declared priest, the hierarchy is real'))),
   };
 }
 
@@ -211,6 +253,12 @@ if (require.main === module) {
     if (res.ungoverned && res.ungoverned.length) {
       for (const u of res.ungoverned) console.log(`  🔴 ungoverned phase: ${u.phase}  (scale: ${u.scale}) — no cardinal, no tribunal`);
     } else console.log('  ✓ every phase has a master');
+    if (res.misrouted && res.misrouted.length) {
+      for (const m of res.misrouted) {
+        console.log(`  🔴 misrouted: ${m.phase} (scale: ${m.scale}) — 宣言 ${m.declared} だが発令先は ${m.dispatched} ` +
+                    `(${m.cardinal} の筆頭に落ちている) → clergy.js の PHASE_LEAD に ${m.phase} を書け`);
+      }
+    } else console.log('  ✓ every dispatch reaches the declared priest');
     if (res.hierarchy && res.hierarchy.length) {
       for (const h of res.hierarchy) console.log(`  🔴 [${h.code}] ${h.message}`);
     } else console.log('  ✓ the hierarchy is real, not declared');
@@ -221,4 +269,4 @@ if (require.main === module) {
   process.exit(res.ok ? 0 : 1);
 }
 
-module.exports = { check, requiredAgents, referenceMap, installedAgents, ungovernedPhases, hierarchyIntegrity, PSEUDO };
+module.exports = { check, requiredAgents, referenceMap, installedAgents, ungovernedPhases, misroutedPhases, hierarchyIntegrity, PSEUDO };

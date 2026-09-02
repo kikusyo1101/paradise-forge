@@ -107,7 +107,36 @@ function judge(report, opts = {}) {
   // なお counsel の道(第32条)は創造物を産まないので build/tests は存在し得ない。
   // 道の性質が `document` なら、この要求は課さない — 門は消さず分ける(第36条)。
   const produces = report.produces || (report.meta && report.meta.produces) || 'artifact';
-  if (produces !== 'document') {
+  /**
+   * 図の道 (第47条・第48条) は実装物を産まない。build も security scan も
+   * 存在し得ないので `artifact` の要求を課せば永久に REWORK になる。
+   * だが `document` と同一視して**何も要求しない**のも誤りである —
+   * 図には図の証拠が在る: 静的検査を通ったか、実ブラウザで測ったか。
+   * ゆえに要求を消すのではなく **差し替える**(第36条: 門は消さず分ける)。
+   */
+  if (produces === 'diagram') {
+    // 図の門は「描けたか」ではなく「測ったか」で立つ。
+    if (!report.diagram) {
+      breaches.push('the diagram was never validated — 描いたと言うだけでは図は在らぬ (Art. 47: atlas.js check)');
+    } else {
+      const dg = report.diagram;
+      if (dg.checksPassed == null || dg.checkCount == null) {
+        breaches.push('diagram report carries no check counts — 中身の無い証拠は証拠ではない (Art. 16)');
+      } else if (dg.checksPassed !== dg.checkCount) {
+        defects.push(`diagram static checks ${dg.checksPassed}/${dg.checkCount} — 図が描画器の検査を通っていない`);
+      }
+      // 実ブラウザは静的検査と別物である。9/9 は「図として正しい」しか言わない。
+      if (dg.browser == null) {
+        defects.push('the diagram was never opened in a real browser — 溢れと字の大きさは開くまで分からない (Art. 48e)');
+      } else if (dg.browser === false) {
+        defects.push('the diagram fails in a real browser — 巻物の宣言は長さを免じるが、読めなさは免じない (Art. 48e)');
+      }
+      // 事実を写経していないか。図が engine から生まれたことの証拠。
+      if (dg.derivedFromEngine === false) {
+        breaches.push('the diagram transcribes facts instead of reading them from an engine (Art. 29)');
+      }
+    }
+  } else if (produces !== 'document') {
     // セキュリティは「不明 = 安全でない」。証明されていない安全は BLOCK。
     if (!report.security) {
       breaches.push('security was never assessed — 不明な安全性は証明された安全性ではない (Art. 4)');
