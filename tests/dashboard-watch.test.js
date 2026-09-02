@@ -49,7 +49,7 @@ async function main() {
     assert.ok(DEB >= 50 && DEB <= 100, `デバウンスが ${DEB}ms — 50〜100ms の範囲外`);
   });
 
-  await test('AC-11a: 1 書込で生イベントは 2 発以上、デバウンス後の発火は 1 回', async () => {
+  await test('AC-11a: 生イベントが何発であれ、デバウンス後の発火は 1 回', async () => {
     let fired = 0;
     const d = makeDebouncer(DEB, () => { fired++; });
     const w = fs.watch(target, (ev) => d.onRaw(ev));
@@ -57,8 +57,29 @@ async function main() {
     fs.writeFileSync(target, '{"domains":[{"phases":[]}]}');
     await new Promise(r => setTimeout(r, DEB * 6));
     w.close(); d.stop();
-    assert.ok(d.rawCount() >= 2, `生イベントが ${d.rawCount()} 発 — 実測は 1 書込につき 2 発`);
+    // **発の数は OS が決める** —— Windows は 1 書込で 2 発(同一 ms 内)、Linux は 1 発。
+    // 「2 発以上」を期待値にするのは、この機の実測値を掟にすることである(則3)。
+    // 門が守るべきは OS の癖ではなく **抑制の結果** である
+    assert.ok(d.rawCount() >= 1, `生イベントが ${d.rawCount()} 発 — 監視が届いていない`);
     assert.strictEqual(fired, 1, `デバウンス後の発火が ${fired} 回 — 1 回でなければ抑制できていない`);
+  });
+
+  await test('AC-11a2: 同一 ms に 2 発来ても 1 回に畳まれる(Windows の癖を OS に依らず測る)', () => {
+    // Windows は 1 書込につき **同一 ms 内に 2 発**出す。時刻差による抑制は効かず、
+    // タイマー式のみが効く —— これが実装の理由である。その理由を、OS が実際に
+    // 2 発出すかどうかに依らず**決定的に**測る(則3: 環境を期待値にしない)
+    return new Promise((resolve, reject) => {
+      let fired = 0;
+      const d = makeDebouncer(DEB, () => { fired++; });
+      d.onRaw('change'); d.onRaw('change'); d.onRaw('rename');   // 同一 tick に 3 発
+      assert.strictEqual(d.rawCount(), 3, '生の数え上げが合わない');
+      assert.strictEqual(fired, 0, 'デバウンス前に発火した — 抑制が効いていない');
+      setTimeout(() => {
+        d.stop();
+        try { assert.strictEqual(fired, 1, `3 発が ${fired} 回に化けた — 1 回に畳まれていない`); resolve(); }
+        catch (e) { reject(e); }
+      }, DEB * 6);
+    });
   });
 
   await test('AC-11b: atomic write(tmp → rename)でも 1 回発火する(change を待って沈黙しない)', async () => {
