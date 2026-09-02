@@ -462,5 +462,61 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-09-01T17:17:56.903Z"
+  },
+  {
+    "id": "missing-road-hijack",
+    "label": "道が無ければ願いは最も近い嘘の道へ攫われる",
+    "check": "「図を描け」に道が無く、reform(engine改修)か standard(build/security)へ誤着していた。道が無いことはできないことではなく、代役が黙って務めることを意味する|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T04:02:58.257Z"
+  },
+  {
+    "id": "dispatch-target-drift",
+    "label": "宣言された神官と発令先は黙って食い違う",
+    "check": "PHASE_LEAD に無い相は枢機卿の筆頭へ落ちる。実測5件、うち security は宣言 security-reviewer→発令 code-reviewer で第31条の格上げが一度も効いていなかった|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T04:02:58.300Z"
+  },
+  {
+    "id": "gate-own-debris",
+    "label": "門が己の残骸で落ちるならそれは罠である",
+    "check": "atlas check の visual-check 生成物が次の走行の入力と衝突し二度目から不定に赤くなっていた。ただし掃除してよいのは門自身の作業場だけで、成果物の住処に触れてはならない|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T04:02:58.345Z"
+  },
+  {
+    "id": "motion-must-be-declared",
+    "label": "動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check",
+    "check": "動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T05:08:17.054Z"
+  },
+  {
+    "id": "clickable-is-not-working",
+    "label": "「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check",
+    "check": "「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T05:08:26.660Z"
+  },
+  {
+    "id": "upstream-defaults-from-canon",
+    "label": "借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check",
+    "check": "借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T05:08:26.706Z"
+  },
+  {
+    "id": "two-causes-one-symptom",
+    "label": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
+    "check": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-02T05:08:26.751Z"
   }
 ]
