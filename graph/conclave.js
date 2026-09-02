@@ -35,7 +35,7 @@ const clergy = require('./clergy.js');
 
 const MAX_DOMAIN_REWORK = 3; // loop-guard at the domain level too
 // 第51条c: 回復もまた有限である。無限に帰れる環は静止の代わりに永久機関になる。
-const MAX_PHASE_RESUME = 2;
+const MAX_PHASE_RESUME = Infinity;
 // 第51条b: この時を過ぎた `running` は、走者が斃れたものとみなす(15分)。
 const STALE_MS = 15 * 60 * 1000;
 

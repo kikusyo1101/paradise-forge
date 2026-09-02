@@ -745,7 +745,13 @@ test('conclave: resume は reworks を消費せず台帳で区別される (第5
 test('conclave: 回復は有限で、尽きたら閉塞して人を呼ぶ (第51条c)', () => {
   const run = makeConclave();
   let blocked = null;
-  for (let i = 0; i <= conclave.MAX_PHASE_RESUME + 1; i++) {
+  // 上限そのものを反復の境界に使わない。上限が壊れて Infinity になったとき、
+  // 門は「落ちる」のではなく**永久に回り続けて OOM で死ぬ**(実測: heap out of memory)。
+  // 落ちない門は飾りである(第21条)。ゆえに境界は上限と独立した定数で持つ。
+  const HARD_STOP = 12;
+  assert.ok(conclave.MAX_PHASE_RESUME < HARD_STOP,
+    `MAX_PHASE_RESUME(${conclave.MAX_PHASE_RESUME}) が有限で、かつ十分小さくなければ回復は無限になる`);
+  for (let i = 0; i < HARD_STOP; i++) {
     conclave.markRunning(run, ['discover']);
     const res = conclave.resume(run, { force: true });
     if (!res.ok) { blocked = res; break; }
