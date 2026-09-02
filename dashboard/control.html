@@ -146,6 +146,14 @@ ul.plain li { padding: 4px 0; }
     if (k) for (var i = 0; i < k.length; i++) if (k[i]) n.appendChild(k[i]);
     return n;
   }
+  /**
+   * 数を描く。**null / undefined は「測れず」と名乗る** (第16条 / NFR-06)。
+   * 0 は「数えて 0 だった」、null は「数えられなかった」であり、別の事実である。
+   * 素朴な文字列連結は null を "null" と描いてしまう —— 画面が測れなかったことを
+   * 値のように見せるのは、醜さではなく**嘘に近づく**。
+   */
+  function num(v) { return (v === null || v === undefined) ? '測れず' : String(v); }
+
   function body(name, state, awaiting) {
     var p = document.querySelector('[data-panel="' + name + '"]');
     if (!p) return null;
@@ -216,7 +224,11 @@ ul.plain li { padding: 4px 0; }
       mb.appendChild(el('ul', { class: 'plain' }, kinds.map(function (k) {
         return el('li', { class: 'mono', text: k + ': ' + snap.lessonsByKind[k] });
       })));
-      mb.appendChild(el('p', { class: 'mono', text: 'KG ノード ' + snap.counts.kgNodes + ' / エッジ ' + snap.counts.kgEdges }));
+      // **null は「数えられなかった」であって 0 ではない** (第16条 / NFR-06)。
+      // 文字列連結は null をそのまま "null" と描く —— 画面に「KG ノード null」と
+      // 出るのは醜いだけでなく、**測れなかったことを値のように見せる**。
+      // 同画面の errors 表が engine と理由を名指しするので、ここは「測れず」と名乗る。
+      mb.appendChild(el('p', { class: 'mono', text: 'KG ノード ' + num(snap.counts.kgNodes) + ' / エッジ ' + num(snap.counts.kgEdges) }));
     } else if (mb) { mb.appendChild(el('p', { class: 'note', text: '教訓はまだありません' })); }
 
     var eb = body('errors', (snap.errors && snap.errors.length) ? 'ready' : 'empty');

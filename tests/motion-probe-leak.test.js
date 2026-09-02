@@ -146,27 +146,37 @@ async function main() {
     //   ゆえに **実在するが Chrome ではないファイル** を渡す: findChrome は通し、
     //   spawn が落ち、constructor は profileRoot を作った後に throw する。
     //   子プロセスで走らせるのは、この機の他の門の env を汚さないためである。
+    // 偽 Chrome を渡したときの落ち方は **OS で違う**(則3: 片方の癖を掟にしない):
+    //   Windows — spawn が同期に失敗し constructor が throw する(構築の失敗)
+    //   Linux   — 空ファイルの spawn は成功し、パイプ書込で EPIPE が
+    //             **非同期に**投げられる(unhandled rejection でプロセスが落ちる)
+    // どちらでも契約は一つ: **残骸を残さない**。ゆえに子の生死ではなく残骸を測る。
     const fake = path.join(os.tmpdir(), 'pd-fake-chrome-' + process.pid + (process.platform === 'win32' ? '.exe' : ''));
     fs.writeFileSync(fake, '');
     if (process.platform !== 'win32') fs.chmodSync(fake, 0o755);   // X_OK を通す
     const BEFORE = profileCount();
-    let out = '';
+    let out = '', died = false;
     try {
       out = execFileSync(process.execPath, ['--input-type=module', '-e', `
         import { probeMotion } from ${JSON.stringify(pathToFileURL(PROBE).href)};
         const r = await probeMotion(${JSON.stringify(path.join(ROOT, 'dashboard', 'index.html'))});
         console.log(JSON.stringify({ ok: r.ok, reason: r.reason || null }));
-      `], { cwd: ROOT, encoding: 'utf8', timeout: 120000,
+      `], { cwd: ROOT, encoding: 'utf8', timeout: 120000, stdio: ['ignore', 'pipe', 'ignore'],
             env: { ...process.env, ARCHIFY_CHROME: fake, ARCHIFY_UPDATE_CHECK_DISABLED: '1' } });
-    } finally { try { fs.rmSync(fake, { force: true }); } catch {} }
+    } catch (e) { died = true; out = String(e.stdout || ''); }
+    finally { try { fs.rmSync(fake, { force: true }); } catch {} }
     const AFTER = profileCount();
-    const res = JSON.parse(String(out).trim().split('\n').pop());
-    console.log(`      実測: 起こせない機 BEFORE=${BEFORE} AFTER=${AFTER} 差=${AFTER - BEFORE} / ok=${res.ok}`);
+    console.log(`      実測: 起こせない機 BEFORE=${BEFORE} AFTER=${AFTER} 差=${AFTER - BEFORE} / 子の死=${died}`);
+    // **これが契約である** —— 検器が起きられなかった走行は、残骸を残してはならない
     assert.strictEqual(AFTER - BEFORE, 0,
       `probeMotion が ${AFTER - BEFORE} 個の残骸を残した — 構築の失敗を引き受けていない`);
-    assert.strictEqual(res.ok, false, '起こせない検器が ok:true を返した — 測れないことを緑と混同している');
-    assert.ok(/検器を起こせない/.test(res.reason || ''),
-      `理由が構築の失敗を名指ししていない: ${res.reason} — 手前で諦めているなら漏れ道を踏んでいない`);
+    // 子が生き延びた機(構築が同期に落ちる道)では、諦め方も検める
+    if (!died) {
+      const res = JSON.parse(String(out).trim().split('\n').pop());
+      assert.strictEqual(res.ok, false, '起こせない検器が ok:true を返した — 測れないことを緑と混同している');
+      assert.ok(/検器を起こせない/.test(res.reason || ''),
+        `理由が構築の失敗を名指ししていない: ${res.reason}`);
+    }
   });
 
   const rep = H.report();

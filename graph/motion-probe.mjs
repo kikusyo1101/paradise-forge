@@ -74,6 +74,16 @@ export async function probeMotion(htmlPath, { settleMs = 1200, playMs = 3000 } =
   //   **呼ぶ側が構築の失敗を引き受け、己の残骸を自分で片づける**。
   let browser;
   const profilesBefore = listProfiles();
+  // ■ 非同期に飛んでくる死 (CI の Linux が教えた道)
+  //   偽の実行ファイルは **spawn には成功する**。落ちるのはその後、CDP のパイプに
+  //   書いた瞬間の EPIPE であり、それは try/catch にも finally にも捕まらない
+  //   **unhandled rejection** として飛んでくる —— プロセスごと落ちるので、
+  //   下の finally は一行も走らない。残骸だけが残る。
+  //   ゆえに **プロセスが倒れる瞬間そのもの**に掃除を結ぶ。
+  const sweepOnDeath = () => { try { sweepOrphanProfiles(profilesBefore); } catch { /* 最期の掃除が例外で騒がない */ } };
+  process.once('exit', sweepOnDeath);
+  process.once('uncaughtException', (e) => { sweepOnDeath(); throw e; });
+  process.once('unhandledRejection', (e) => { sweepOnDeath(); throw e; });
   try {
     browser = new ChromeVisualBrowser(chrome);
   } catch (e) {

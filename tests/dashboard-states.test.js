@@ -100,6 +100,26 @@ test('AC-20e / AC-N06b: 空と 0 を区別する — null は ready にならな
   assert.ok(/走行中の環はありません/.test(js), '「無い」ことを言い切る文言が無い');
 });
 
+test('AC-20f(F-7): 深掘り画面も null を数のように描かない — 掟は画面を問わない (第16条)', () => {
+  // ■ F-7 が負債として残った理由は「門の射程外」だった —— この門は index.html と
+  //   paradise.js しか見ておらず、control.html は**壊れても鳴らなかった**(第50条)。
+  //   実際 control.html:219 は snap.counts.kgNodes を素の文字列連結で描き、
+  //   counts=null のとき画面に「KG ノード null」と出ていた。
+  //   同画面の errors 表が理由を名指しするので嘘ではないが、
+  //   **測れなかったことを値のように見せる**のは第16条の精神に反する。
+  const ctl = fs.readFileSync(path.join(DASH, 'control.html'), 'utf8');
+
+  // 素の連結で counts を描いていないこと(これが F-7 の形そのもの)
+  const raw = ctl.match(/\+\s*snap\.counts\.[A-Za-z]+/g) || [];
+  assert.deepStrictEqual(raw, [],
+    `counts を素の文字列連結で描いている ${raw.join(', ')} — null が "null" と出る`);
+
+  // 測れなかったことを名乗る語彙を持っていること
+  assert.ok(/測れず|—/.test(ctl), 'null を名乗る文言が無い');
+  assert.ok(/v === null \|\| v === undefined/.test(ctl),
+    'null と 0 を分ける分岐が無い — 0 は「数えて 0」、null は「数えられなかった」である');
+});
+
 test('AC-06d: census 未取得のとき data-state="empty" + data-awaiting="census"', () => {
   const snap = pulse.snapshot();
   assert.strictEqual(snap.census, null, 'census が同期経路で取られている(120 秒が画面に入る)');
