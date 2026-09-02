@@ -305,8 +305,10 @@ grep -o "SELF_DAG" dashboard/*.js dashboard/*.html | wc -l    # → 0 を期待(
 (現状は同一 = 無視されている証拠。差が出れば実装された証拠)。
 **AC-05c**: `node graph/clergy.js college --json` の JSON が枢機卿数 7 + 執行官 1 を持ち、
 その枢機卿数が `node graph/clergy.js college | grep -c '^枢機卿'` と一致すること(第22条)。
-**AC-05d**: `node graph/conclave.js status --run <run> --json` の `domainsRatified`/`domainsTotal` が、
-人間向け出力の `domains ratified: 6/6` 行の 2 数値と一致すること。
+**AC-05d**【D-13 で修正】: `node graph/conclave.js status --run <conclave.json への path> --json` の
+`domainsRatified`/`domainsTotal` が、人間向け出力の `domains ratified: 6/6` 行の 2 数値と一致すること。
+⚠️ **`--run` は slug ではなく path を取る**(D-13)。`--run tenbin` は ENOENT で例外を投げる。
+実測で通る形: `node graph/conclave.js status --run ../paradise-creations/tenbin/conclave.json`。
 
 ---
 
@@ -567,13 +569,59 @@ tests/paradise.test.js                           ← 門が*検出語として*�
   → 執筆時点では **`reform-claude-md-diet` の 1 件のみ**が「走行中(停止中)」に該当する。
 - 完了した run と、途中で止まった run を**視覚的に区別**する(止まった run を「完了」と並べて隠さない)。
 
-**AC-14a**: 数の一致 — `node graph/pulse.js snapshot --json` の `runs[]` のうち tenbin の
+**AC-14a**【D-13 で注記】: 数の一致 — `node graph/pulse.js snapshot --json` の `runs[]` のうち tenbin の
 `domainsRatified`/`domainsTotal` が `node graph/conclave.js status --run ../paradise-creations/tenbin/conclave.json | grep -oE '[0-9]+/[0-9]+'` の値と一致する。
+⚠️ **`--run` に slug を渡してはならない**(D-13)。倉の住所は `workspace.resolve()` から得て
+`<root>/<slug>/conclave.json` を組み立てること。
 **AC-14b**: 網羅 — 断面の `runs.length` が
 `ls ../paradise-creations/*/conclave.json 2>/dev/null | wc -l` と一致する(実測基準 **5** 件)。**取りこぼしを許さない**(第22条)。
 **AC-14c**: 全 run を舐めても落ちない — `node graph/pulse.js snapshot --json; echo $?` が `0`。
 `run.json` 形式(旧 orchestrator)のファイルが混在していても exit 0 で、`errors[]` にその旨が積まれるだけであること。
-**AC-14d**: 相の数 — 断面の tenbin の `phasesTotal` が `17`(=`gauge score --json` の `phasesTotal`)と一致すること。
+**AC-14d**【R-2 で修正・design 相が再審査の申し送りを受けて是正・実測済み】: 相の数 —
+断面の tenbin の `phasesTotal` が、**独立した 2 つの数え方と一致**すること。
+
+⚠️ **旧文面 `17`(=`gauge score --json` の `phasesTotal`)は二重に壊れていた**(再審査報告 §5 R-2):
+
+1. **コマンドが走らない** — `gauge score` は **run.json のパスを必須引数に取る**。`--json` だけでは
+   `--json` をファイル名と解釈して ENOENT で落ちる。実測:
+
+```
+$ node graph/gauge.js score --json
+🔴 ENOENT: no such file or directory, open 'C:\Users\kikus\Documents\workspace\paradise\--json'
+exit=2
+
+$ node graph/gauge.js  # 用法
+commands: score <run.json> [--json] | record <run.json> --slug <s> | baseline | compare <a> <b> | compare --last N | ledger
+```
+
+2. **固定値 `17` が期待値のまま** — 則3 の免除リスト(§9.1 則3)に `AC-14d` は載っておらず、
+   「参考値」と読み替える根拠を持たなかった。道が伸びれば明日 18 になって赤くなる。
+
+**是正形**(引数を補い、固定値を捨てて 3 値一致に改める。則3):
+
+```bash
+# (1) 源: gauge が run.json から数えた相数
+node graph/gauge.js score ../paradise-creations/tenbin/conclave.json --json \
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).phasesTotal))'
+
+# (2) 独立した第2の数え方: forge が full の道に敷く相数
+node -e 'console.log(require("./graph/forge.js").buildDag("x","full").tasks.length)'
+
+# (3) 断面: pulse.js が runs[] に載せた tenbin の phasesTotal
+```
+
+期待: **上記 3 値が一致**すること。実測(執筆時点。**これは期待値ではない**):
+
+```
+$ node graph/gauge.js score ../paradise-creations/tenbin/conclave.json --json
+{"score":100,"complete":true,"phasesTotal":17,"phasesDone":17,"domainsTotal":6,"domainsRatified":6,
+ "firstPassRate":1,"reworkCount":0,"retryOverhead":0,"loopGuardTrips":0,"durationMs":13520919}
+$ node -e 'console.log(require("./graph/forge.js").buildDag("x","full").tasks.length)'
+17
+```
+
+**則3 の免除リストに `AC-14d` を追加する**(§9.1 則3 参照)— 括弧内の `17` は参考値であり、
+判定は上記 3 値の一致が下す。**固定値 `17` と比較する実装を書いてはならない。**
 **AC-14e**(停止中の run を見落とさない): 断面の
 `runs.filter(r => r.phasesDone < r.phasesTotal).map(r => r.name)` に **`reform-claude-md-diet`** が含まれること。
 かつ その run の `phasesDone/phasesTotal` が、`conclave.json` を直読みして数えた値と一致すること(実測基準 **5/11**)。
@@ -777,10 +825,12 @@ node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'
 下限として **1 件以上**であること。**「実測 N 件」という固定値を書いてはならない** —
 明日 N+1 になって赤くなる。(執筆時点の参考値は 10 だが、これは期待値ではない。§9 検証ログ ④)
 
-> **則3 の他の AC への適用**: AC-01b / AC-14b / AC-14h / AC-17a / AC-18b / AC-21a〜c 等が括弧内に持つ
+> **則3 の他の AC への適用**: AC-01b / **AC-14d** / AC-14b / AC-14h / AC-17a / AC-18b / AC-21a〜c 等が括弧内に持つ
 > 「(実測基準 **N**)」は**期待値ではなく執筆時点の参考値**である。これらの AC の判定機構は
 > いずれも「断面の数」と「その場で走らせた engine の出力」の**一致**であり、N が増減しても成立する。
 > **参考値を期待値と読み替えて assert してはならない。**
+> **`AC-14d` は再審査報告 §5 R-2 の指摘により本リストへ追加した** — 旧文面は固定値 `17` を
+> 免除の根拠なく期待値に据えていた。是正後は 3 値一致で測る(§FR-14 AC-14d を見よ)。
 **AC-22c**: 出所ラベル — `grep -c 'data-source="gauge-ledger"' dashboard/index.html` が `1` 以上。
 
 ---
@@ -923,9 +973,51 @@ census を非同期経路に置く場合は、その 1 箇所が `graph/pulse.js
 
 **AC-N05a**: `node graph/derived.js check; echo "exit=$?"` が `exit=0` を返し、
 `✓ no test asserts on derived content` が出ること。
-**AC-N05b**: 新設した全テストファイルについて
-`grep -c "state.json\|atlas/.*\.html" tests/dashboard-*.test.js` が `0`
-(生成物のパスを直接読むテストが存在しない)。
+**AC-N05b**【R-1 で修正・design 相が再審査の申し送りを受けて是正・実測済み】: 新設した全テストファイルについて
+生成物のパスを直接読むテストが **0 件**であること。
+
+⚠️ **旧文面 `grep -c "state.json\|atlas/.*\.html" tests/dashboard-*.test.js` が `0` は二重に壊れていた**
+(再審査報告 §5 R-1。D-6 + D-12 の合併症):
+
+| 状況 | 旧式の出力 | 旧式の exit | 判定 |
+|---|---|---|---|
+| 対象ファイルが 1 本も無い(現時点) | `No such file or directory` | **2** | D-6。「0 件」と区別できない |
+| 新設テストが 1 本・違反 0 | `0` | 1 | 文面の `0` と一致してしまう |
+| 新設テストが 2 本以上・違反 0 | `…count.test.js:0` `…links.test.js:0` の**内訳** | 1 | D-12。「0」ではない |
+| 新設テストが 2 本以上・**違反 1 件** | 内訳(うち 1 行が `:1`) | **0** | **exit が反転**。違反時に緑 |
+
+実測(本機・現時点):
+
+```
+$ ls tests/dashboard-*.test.js
+ls: cannot access 'tests/dashboard-*.test.js': No such file or directory
+$ grep -c "state.json\|atlas/.*\.html" tests/dashboard-*.test.js ; echo "exit=$?"
+grep: tests/dashboard-*.test.js: No such file or directory
+exit=2
+```
+
+**是正形**(則2 に従い node で書く。glob をシェルに展開させず、対象の実在を先に assert する):
+
+```bash
+node -e 'const fs=require("fs"),p=require("path");const d="tests";
+const fl=fs.existsSync(d)?fs.readdirSync(d).filter(f=>/^dashboard-.*\.test\.js$/.test(f)):[];
+if(fl.length===0){console.log("NG: 対象テストが 0 件");process.exit(1)}
+let n=0;for(const f of fl){const s=fs.readFileSync(p.join(d,f),"utf8");
+n+=(s.match(/state\.json|atlas\/.*\.html/g)||[]).length}
+console.log("files="+fl.length+" hits="+n);process.exit(n===0?0:1)'
+```
+
+期待: `hits=0` かつ **exit 0**。実測(現時点・テスト未着工):
+
+```
+NG: 対象テストが 0 件
+exit=1                     ← 則1。書いた時点で正しく赤である
+```
+
+**この形が旧式の 3 病をすべて塞ぐ**: (1) `fs.existsSync` で対象不在を exit 2 ではなく**明示的な赤**に変える、
+(2) glob をシェルに渡さず node の `readdirSync` で列挙するのでファイル数によって出力形が化けない、
+(3) 件数を合計して `hits===0` で判定するので **exit が反転しない**。
+**`grep -c` に glob を渡して exit code で裁いてはならない。**
 
 ### NFR-06 — 劣化しても嘘をつかない
 > **由来**: R-05 の裏面 + 第18条。サーバが無くても画面は成立するが、**成立の仕方が違うことを隠さない**。
@@ -1570,6 +1662,34 @@ $ grep -c "SELF_DAG" dashboard/*.js dashboard/*.html
 dashboard/paradise.js:2   dashboard/state.js:0   dashboard/control.html:0   dashboard/index.html:2
 ```
 **「合計が 0」を測る AC は `grep -o … | wc -l` か `awk -F: '{s+=$NF} END{print s}'` で書く。**
+
+### D-13(再審査報告 §6-3 で追加)— `conclave.js status --run` は **slug ではなく path** を取る
+
+```
+$ node graph/conclave.js status --run tenbin
+node:fs:440
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+                                        ← ENOENT で例外。slug は解決されない
+
+$ node graph/conclave.js status --run ../paradise-creations/tenbin/conclave.json | tail -1
+domains ratified: 6/6
+exit=0                                  ← conclave.json への path なら通る
+```
+
+**`--run <slug>` と書いた実装は必ず落ちる。** `AC-05d` / `AC-14a` / `AC-14b` を実装するテストは、
+必ず `workspace.resolve()` で得た倉の住所から `<root>/<slug>/conclave.json` を組み立てて渡すこと。
+run の列挙も同様に `ls <root>/*/conclave.json` 相当(node の `readdirSync` + `existsSync`)で行う。
+
+---
+
+### 9.5b design 相が受領し是正した申し送り(再審査報告 §6)
+
+| # | 申し送り | 本書での処置 |
+|---|---|---|
+| **R-1** | `AC-N05b` の glob が対象不在で exit 2、違反 1 件で exit 0 と反転する | **§NFR-05 AC-N05b を全面改稿**。`fs.existsSync` + `readdirSync` の node 形に置換し、exit code ではなく件数で裁く形にした。現時点で正しく赤(`NG: 対象テストが 0 件` / exit=1) |
+| **R-2** | `AC-14d` の `gauge score --json` が ENOENT。固定値 `17` が則3 免除リスト外 | **§FR-14 AC-14d を全面改稿**。`gauge score <run.json> --json` に引数を補い、`forge.buildDag(x,'full').tasks.length` との 3 値一致に改めた。併せて **§FR-22 の則3 免除リストに `AC-14d` を追加** |
+| **D-13** | `conclave.js status --run` は slug ではなく path | **本節 D-13 として明文化**。AC-05d / AC-14a の文面を path 形に修正 |
 
 ### design が決めてよいこと / 決めてはならないこと(審査報告 §6.3 を取り込む)
 
