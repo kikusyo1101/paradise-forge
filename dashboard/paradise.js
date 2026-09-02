@@ -700,6 +700,26 @@ function start() {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { TH, freshnessOf, relTime, localStamp, durationText, resolvePort };
 } else if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
+  // ■ **閾値と経路の解決は一箇所から配る** (F-6 / 第50条)
+  //   control.html は同じ規則を写経していた —— DEFAULT_PORT も POLL_MS も
+  //   base() も別々に書かれ、**片方を直しても他方は古いまま残る**形だった。
+  //   ここで窓を開け、control.html はこれを読む。
+  //   関数ではなく値と純関数だけを渡す(描画は各画面のもの)。
+  window.PARADISE = {
+    TH: TH,
+    base: base,
+    freshnessOf: freshnessOf,
+    relTime: relTime,
+    localStamp: localStamp,
+    durationText: durationText,
+    resolvePort: resolvePort,
+  };
+  // ■ start() は「楽園の門」(index.html) の画面を組み立てる。
+  //   同じ script を読むだけの画面で走らせてはならない —— 存在しないパネルを
+  //   触りに行き、SSE も勝手に張る。**自分の画面かどうかを名指しで確かめる**。
+  var isGate = !!document.querySelector('[data-transport]');
+  if (isGate) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
+  }
 }

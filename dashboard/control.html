@@ -122,21 +122,31 @@ ul.plain li { padding: 4px 0; }
 </main>
 
 <script src="state.js"></script>
+<!-- 閾値と経路の解決は paradise.js が唯一の出所である (F-6 / 第50条)。
+     この画面固有の描画だけを下で書く —— 規則を写経しない。 -->
+<script src="paradise.js"></script>
 <script>
 /* この画面は断面の一覧表示だけを担う。閾値も経路も index.html と同じ規則で解決する。 */
 (function () {
   'use strict';
-  var DEFAULT_PORT = 7317, POLL_MS = 2000;
-  /**
-   * **自分が配信されてきた出自を最優先する。**
-   * サーバは既定ポートが塞がっていれば listen(0) で番号を OS に任せる(FR-10)。
-   * 固定の番号を先に見る実装は、**自動割当が働いた瞬間に必ず凍結する**(実測)。
-   * file:// のときだけ PARADISE_PORT → 既定ポート の順に落ちる。
-   */
-  function base() {
-    if (/^https?:$/.test(location.protocol) && location.origin && location.origin !== 'null') return location.origin;
-    return 'http://127.0.0.1:' + (typeof window.PARADISE_PORT === 'number' ? window.PARADISE_PORT : DEFAULT_PORT);
+  // ■ **閾値も経路も paradise.js から受け取る** (F-6 / 第50条)
+  //   以前はここに DEFAULT_PORT / POLL_MS / base() を写経していた。写経は
+  //   **片方だけ古くなる** —— しかもこの画面は門の射程外だったので、
+  //   古くなっても鳴らなかった。出所を一つにして、その状態を終わらせる。
+  //   file:// で script が読めない等の事態では、**黙って既定値に落ちない** ——
+  //   写経を復活させれば同じ病が戻るので、名指しで止める。
+  var P = window.PARADISE;
+  if (!P) {
+    document.body.setAttribute('data-state', 'error');
+    var w = document.querySelector('[data-panel]') || document.body;
+    var p = document.createElement('p');
+    p.className = 'note';
+    p.textContent = 'paradise.js を読めていません — 閾値と経路の出所が無いので、この画面は推測で描きません(第16条)';
+    w.appendChild(p);
+    return;
   }
+  var POLL_MS = P.TH.POLL_INTERVAL_MS;
+  var base = P.base;
   function el(t, a, k) {
     var n = document.createElement(t);
     if (a) for (var x in a) if (Object.prototype.hasOwnProperty.call(a, x)) {
