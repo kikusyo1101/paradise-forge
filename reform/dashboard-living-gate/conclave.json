@@ -110,9 +110,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "graph/pulse.js"
         },
         {
           "id": "prove",
@@ -123,8 +123,8 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         }
       ],
@@ -311,6 +311,16 @@
       "ts": "2026-09-02T09:34:35.248Z",
       "event": "dispatch",
       "detail": "build"
+    },
+    {
+      "ts": "2026-09-02T11:17:40.493Z",
+      "event": "done",
+      "detail": "build → graph/pulse.js"
+    },
+    {
+      "ts": "2026-09-02T11:17:40.540Z",
+      "event": "dispatch",
+      "detail": "prove"
     }
   ]
 }
