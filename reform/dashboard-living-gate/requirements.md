@@ -3,8 +3,9 @@
 - **道**: reform (楽園自身の改修 — 憲法第23条b)
 - **入力**: `reform/dashboard-living-gate/findings.md` (神官・discover 相)、
   `reform/dashboard-living-gate/findings-pontiff.md` (教主の独立実測)、
-  `reform/dashboard-living-gate/findings-base-red.md` (教主・着工前の土台検査 / 第24条)。
-  **この3つ以外を根拠にしていない。**
+  `reform/dashboard-living-gate/findings-base-red.md` (教主・着工前の土台検査 / 第24条)、
+  `reform/dashboard-living-gate/findings-speed.md` (教主・プロセス内呼出しの実測 / 第38条)。
+  **この4つ以外を根拠にしていない。**
 - **測定機**: Windows 11 / node v24.14.0 / git-bash / `C:/Users/kikus/Documents/workspace/paradise`
 - **執筆日時**: 2026-09-02 (JST)
 - **本書の掟**:
@@ -12,14 +13,39 @@
   2. **受入基準 (AC) の無い要件を書かない。** AC は「機械が実行できるコマンド」と「期待する出力」で書く。
   3. AC は **生成物の中身を前提にしない**(第29条)。`dashboard/state.json` の中身に対する assert は書かず、
      **生成器の性質**(その場で走らせた出力どうしの一致)を測る。
-  4. 各要件に findings.md の由来 R-xx を明記する(追跡可能性)。
+  4. **不定に鳴る門の受入基準は、症状ではなく原因を数える形で書く。**
+     (findings-base-red.md B-5 の一般化。「テストが緑」を AC に置いてはならない場面がある — §2 参照。)
+  5. 各要件に findings.md の由来 R-xx / findings-base-red.md の B-xx / findings-speed.md の S-x を明記する(追跡可能性)。
+
+## 本書が採用する「今の真実」(AC の期待値の基準・すべて実測)
+
+> 出典: findings-speed.md。**これらは固定値としてコードに書く数ではない** — AC で
+> 「その場で数えた値と一致するか」を測るための、執筆時点の実測基準である(第22条)。
+
+| 事実 | 実測値 | 数え方 |
+|---|---|---|
+| engine 数 | **33** | `ls graph/*.js \| wc -l` |
+| 憲法の条数 | **50** | `node graph/codex.js index` |
+| 枢機卿の数 | **7** | `Object.keys(require('./graph/clergy.js').COLLEGE).length` |
+| 創造物 | **7** | 兄弟倉直下の `_` で始まらないディレクトリ(`coin, habit, pomodoro, reform-claude-md-diet, reform-eval-gauge, rps, tenbin`) |
+| 作業場 | **1** | 同 `_` 始まり(`_scratch`) |
+| conclave.json | **5** | `ls ../paradise-creations/*/conclave.json \| wc -l` |
+| KG ノード / エッジ | **99 / 33** | `wc -l < ~/.claude/paradise-kg/nodes.jsonl` |
+| 教訓 | **65** | `lessons.js export --out` の要素数 |
+| 道ごとの相数 | quick **6** / standard **14** / full **17** / reform **11** / counsel **6** / cartography **11** | `forge.buildDag(wish, '<scale>')` |
+
+> **第47条(b)の予言が既に現実になっている**: 枢機卿は **7 人**。
+> `dashboard/state.json` の hierarchy も `index.html` の固定値も、この 7 を知らない。
+> **index.html が「Live Graph Execution」と称して描く 4 タスク DAG は、上記 6 つの道のどれとも一致しない架空物である。**
 
 ---
 
 ## 0. 一行の要約
 
 **現在のダッシュボードは、一度も engine を呼んだことがない。**
-engines を 2 と言い(実 33)、self-tests を 10 と言い(実 210)、creations を 0 と言う(実 8)。
+engines を 2 と言い(実 **33**)、self-tests を 10 と言い(実 **268**)、creations を 0 と言い(実 **7**)、
+枢機卿の 7 人目を知らず(第47条bの予言は既に成就している)、
+「Live Graph Execution」と称して **実在する 6 つの道のどれとも一致しない 4 タスクの架空 DAG** を描いている。
 本改修は「画面に出る全ての数が、その場で走った engine の出力と一致する」ことを唯一の中心に据える。
 
 ---
@@ -57,10 +83,48 @@ engines を 2 と言い(実 33)、self-tests を 10 と言い(実 210)、creatio
 
 | # | 前提 | 由来 | 受入基準 (AC) |
 |---|---|---|---|
-| **PRE-01** | 自己診断の赤 1 件(`atlas: 門は己の残骸で落ちない` / `motion-probe.mjs:62` の `net::ERR_FILE_NOT_FOUND`)を、**本改修の着工前**に解消する。第24条「検めていない土台の上に建てるな」 | 教主 §3 | `node tests/paradise.test.js; echo "exit=$?"` が `exit=0` を出し、出力に `✗` を 1 件も含まないこと。検証コマンド: `node tests/paradise.test.js 2>&1 \| grep -c '^✗'` が `0` を返す |
-| **PRE-02** | PRE-01 の調査中に、headless Chrome の一時プロファイル残留(実測 412 個)が同根であるかを判定し、**判定結果を記録**する。修理そのものは本改修の範囲外(N-7 と同じ理由で別件に切る場合はその旨を PR 本文に書く) | 教主 §4 | `ls "$TEMP" \| grep -c "paradise-test-atlas\|archify-visual"` を PRE-01 の前後で 2 回取り、**両方の数値**が PR 本文に記載されていること。改修後の値が改修前の値を上回らないこと |
+| **PRE-01** | 自己診断が緑で完走すること。第24条「検めていない土台の上に建てるな」 | 教主 §3 | **【教主により達成済み・2026-09-02 実測】** `node tests/paradise.test.js` → `Paradise self-test: 268 passed, 0 failed`。着工の門は開いた |
+| **PRE-02** | **検器の資源漏れを本改修で修理する**(範囲外に切らない) | 教主 findings-base-red.md | **AC-P02a**: `grep -c "child.kill()" graph/motion-probe.mjs` が `0` かつ `grep -c "browser.close()" graph/motion-probe.mjs` が `1` 以上。<br>**AC-P02b**: 検器を1回走らせる前後で `ls "$TEMP" \| grep -c "archify-visual-check-profile"` の**差が 0**。<br>**AC-P02c**: 新設テストが、`close()` を `child.kill()` に戻すと **exit 1** になること(壊して鳴る証明)<br>→ 詳細は **FR-23**(AC-23a〜23g) |
+| **PRE-03** | **現存する残骸を掃除し、掃除前後の数を PR 本文に記録する。** 529 個の既存ノイズに埋もれたまま「漏れ 0」を主張できない | 教主 findings-base-red.md(483→519→529 の実測) | `ls "$TEMP" \| grep -c "archify-visual-check-profile"` を掃除前・掃除後の 2 回取り、**両方の数値**が PR 本文に記載され、掃除後が **10 未満**であること。かつ FR-23 適用後に自己診断を 3 回走らせ、**3 回を通じた増加が 0** であること(症状ではなく原因を数える — §2.0) |
 
-> PRE-01 が緑にならない限り、以下の FR/NFR の実装に着手してはならない。
+> ## PRE-01 / PRE-02 に関する教主の訂正 (第16条・第22条)
+>
+> 本書が起草された時点の前提「自己診断の赤 1 件が固定的に出る」「プロファイル 412 個」は、
+> **その後の実測により両方とも覆った**。正しい事実は次のとおり:
+>
+> **(a) 赤は不定(フレーク)である。** 4 回の走行で `267 passed, 1 failed` → `1 failed` →
+> **赤ゼロ** → `268 passed, 0 failed` と揺れた。
+>
+> **(b) しかし欠陥は消えていない。単調に悪化している。**
+> ```
+> 483 個 → 519 個 → 529 個   (30分間の観測)
+> ```
+>
+> **(c) 検器 1 回の走行で漏れることを差分で実測した。**
+> ```
+> $ node prove-leak.js
+> BEFORE {"profiles":527,"chrome":10}
+> AFTER  {"profiles":529,"chrome":10}
+> LEAK   {"profiles":2}
+> ```
+>
+> **(d) 根因は `graph/motion-probe.mjs:85`** — 描画器が公開している正規の
+> `browser.close()`(SIGKILL エスカレーション + `fs.rmSync(profileRoot)`)を使わず、
+> 自前の `browser.child.kill()` だけを書いている。
+>
+> ゆえに **PRE-01 の AC「自己診断が 0 failed」を受入基準にしてはならない** —
+> 漏れが 529 個まで悪化した状態でも、その AC は**緑を出した**。
+> 症状を見る門は、原因が悪化していても黙る。**数えられるのは漏れの方である**(第22条)。
+>
+> **そして X-6「掃除は別件」も撤回する。** 漏れは進行中の欠陥であり、
+> 本改修が新設する門(G-xx)自身が visual-verify / motion-probe を CI で回す以上、
+> **漏れを抱えたまま門を増やせば、CI が己の残骸で不定に赤くなる**。
+> 直すのは本改修の責務である。
+
+
+> **着工の門**: PRE-01 は達成済み。**PRE-02 が満たされない限り**(= 検器 1 回の前後で漏れ 0 が
+> 実測されない限り)、以下の FR/NFR の実装に着手してはならない。
+> 判定は **症状(0 failed)ではなく原因(漏れの差分)** で行う — §2 の訂正のとおり。
 
 ---
 
@@ -99,32 +163,74 @@ engines を 2 と言い(実 33)、self-tests を 10 と言い(実 210)、creatio
 | R-27 | 🟡 | 昇格 | NFR-04 |
 | R-28 | 🟡 | **統合** | FR-11 (`filename` null 耐性はデバウンス実装と一体) |
 | R-29 | 🟡 | 昇格 | FR-22 |
-| — | — | 新規(教主由来) | FR-04 (`workspace.js` の門の穴), G-03, PRE-01, PRE-02 |
+| — | — | 新規(教主 findings-pontiff §1) | FR-04 (`workspace.js` の門の穴), G-03 |
+| — | — | 新規(教主 findings-base-red B-1〜B-5) | **FR-23** (`motion-probe.mjs` の資源漏れ), **G-09**, PRE-01〜PRE-03 |
+| — | — | 新規(教主 findings-speed S-1〜S-5) | **NFR-07** (`require` 常駐・子プロセス禁止), **G-10**, FR-01 の改訂, FR-14 の改訂(S-3), FR-21 の改訂(6 つの道) |
 
-**由来なしの新規要件は FR-01(集約 engine)と FR-04(教主 §1)と G-01〜G-07 のみ。** それ以外はすべて R-xx に紐づく。
+**由来なしの新規要件は FR-01(集約 engine)のみ。** それ以外はすべて R-xx または教主の 3 文書に紐づく。
+
+## 3.0b 要件の総数(第22条 — 自らについて述べる数も数える)
+
+| 種別 | 数 | 内訳 |
+|---|---|---|
+| 前提条件 PRE | **3** | PRE-01 / PRE-02 / PRE-03 |
+| 機能要件 FR | **23** | FR-01 〜 FR-23 |
+| 非機能要件 NFR | **7** | NFR-01 〜 NFR-07 |
+| 門 G | **10** | G-01 〜 G-10 |
+| 却下 | **2** | R-20(再現せず) / R-22(将来課題 F-1 へ) |
+| 統合 | **4** | R-19→FR-09 / R-23→FR-09 / R-26→FR-13 / R-28→FR-11 |
+| **AC を持たない要件** | **0** | 本書の掟 2 |
 
 ---
 
 ## 3.1 機能要件 (FR)
 
-### FR-01 — 唯一の集約 engine `graph/pulse.js` を新設する
-> **由来**: R-01, R-02, R-15, R-16, R-17 の統合。ダッシュボードが engine を個別に呼ぶのではなく、
-> **一本の機械可読な断面 (snapshot)** を通す。これが無いと「数の一致」を機械で検査できない(第22条)。
+### FR-01 — 唯一の集約 engine `graph/pulse.js` を新設し、engine を `require` で常駐させる
+> **由来**: R-01, R-02, R-15, R-16, R-17 の統合 + **S-1 / S-3**(findings-speed.md)。
+> ダッシュボードが engine を個別に呼ぶのではなく、**一本の機械可読な断面 (snapshot)** を通す。
+> これが無いと「数の一致」を機械で検査できない(第22条)。
+>
+> **discover の「27〜73ms」は子プロセス経由 = node 起動代であって engine の代金ではなかった。**
+> プロセス内から `require()` で呼ぶと実測:
+> ```
+> require 4 engine 込みで全事実が   7.4ms  (初回・require のコスト 4.7ms を含む)
+> 2 回目以降の snapshot 生成        0.53ms
+> conclave.json 5 件の直読み        1.0ms
+> ```
+> → 前提は「毎秒ポーリング可能」ではなく **「毎フレーム再計算可能」** が正しい。
 
 - `node graph/pulse.js snapshot --json` は **速い群の engine のみ**を呼び、単一 JSON を stdout に出す。
-- 断面に必ず含む鍵(最低限): `generatedAt`(ISO), `ageMs`, `counts{articles, engines, creations, workshops, agents, commands, skills, lessons, kgNodes, kgEdges}`, `gates[]`, `runs[]`, `daily{}`, `scale{}`, `source`(各値がどの engine 由来か)。
+- **サーバ(`pulse.js serve`)は engine を `require` で常駐させ、子プロセスを一切産まない**(S-1 / NFR-07)。
+  `execFileSync` / `spawn` / `exec` を snapshot 経路に書いてはならない。
+- 断面に必ず含む鍵(最低限): `generatedAt`(ISO), `ageMs`,
+  `counts{articles, engines, cardinals, creations, workshops, runs, agents, commands, skills, lessons, kgNodes, kgEdges}`,
+  `gates[]`, `runs[]`, `daily{}`, `scale{}`, `source`(各値がどの engine 由来か)。
 - **census.js を呼んではならない**(FR-06)。
 - 例外時も **JSON を返す**(`errors[]` に engine 名と理由を積み、プロセスは exit 0)。片方の engine が落ちても断面全体が消えない。
+- **module の API 形は CLI の引数形と違う**(build 相が踏む罠 — findings-speed.md で実測):
+
+| 誤り | 正 |
+|---|---|
+| `clergy.college()` | `clergy.COLLEGE`(定数)または `clergy.orgChart()` |
+| `forge.plan(wish, {scale})` | `forge.buildDag(wish, 'reform')` — **第2引数は文字列**。オブジェクトを渡すと `SCALES[scale] is not a function` を踏む(実測) |
+| `kg.query('')` | 正しい。全ノード(99 件)を返す |
 
 **AC-01a**: `node graph/pulse.js snapshot --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const o=JSON.parse(s);console.log(o.counts.engines)})"`
-が返す値が、`ls graph/*.js | wc -l` の出力と**一致**する(第22条)。
+が返す値が、`ls graph/*.js | wc -l` の出力と**一致**する(第22条。執筆時点の実測基準 33 だが、AC は**その場で数えた値**と比較する)。
 **AC-01b**: 同じく `o.counts.creations` が
 `ls -d "$(node graph/workspace.js resolve --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).root))")"/*/ 2>/dev/null | grep -vc '/_[^/]*/$'`
 と一致する。同様に `o.counts.workshops` が `_` 始まりのディレクトリ数と一致する
-(**定義**: 創造物 = 兄弟倉直下のディレクトリのうち `_` で始まらないもの / 作業場 = `_` で始まるもの。実測 8 件 = 創造物 7 + 作業場 1)。
+(**定義**: 創造物 = 兄弟倉直下のディレクトリのうち `_` で始まらないもの / 作業場 = `_` で始まるもの。実測 8 件 = **創造物 7 + 作業場 1**)。
 **AC-01c**: `time node graph/pulse.js snapshot --json > /dev/null` の実時間が **1000ms 未満**(NFR-01)。
 **AC-01d**: `node graph/pulse.js snapshot --json | node -e "…JSON.parse…"` が **例外を投げない**(`echo $?` が 0)。
 **AC-01e**: `graph/` 配下の任意の 1 engine を一時的に壊した状態(例: `PULSE_FAULT=clergy node graph/pulse.js snapshot --json`)でも exit 0 で JSON が返り、`errors[0].engine` が `clergy` であること。
+**AC-01f**(枢機卿 7 人 — 第47条b): `o.counts.cardinals` が
+`node -e "console.log(Object.keys(require('./graph/clergy.js').COLLEGE).length)"` と一致する(実測基準 **7**)。
+**AC-01g**(条数): `o.counts.articles` が `node graph/codex.js index` の数える条数と一致する(実測基準 **50**)。
+**AC-01h**(プロセス内であることの証明): `grep -cE "execFileSync|spawnSync|child_process" graph/pulse.js` が `0`、
+かつ `grep -c "require('./" graph/pulse.js` が `1` 以上(engine を module として読んでいる証拠)。
+**AC-01i**(2 回目が速いこと = 常駐の証明): `pulse.js serve` を起動し、連続 2 回 `/snapshot.json` を取得したとき
+**2 回目の応答が 50ms 未満**であること(初回 require のコストが 2 回目に乗らない = 常駐している証明)。
 
 ---
 
@@ -379,23 +485,45 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 
 ---
 
-### FR-14 — 走行中の環 (conclave) をトップに置く
-> **由来**: R-13。`conclave.json` は `{meta,created,domains,history}` で**既に構造化済み**であり、
-> engine を呼ばず **直読みできる**(最速・0 プロセス)。`conclave.js status` でも 33ms。
+### FR-14 — 走行中の環 (conclave) をトップに置く — `conclave.json` の直読みで足りる
+> **由来**: R-13 + **S-3**(findings-speed.md)。`conclave.json` は
+> `{meta, created, domains[], history[]}` で**既に構造化済み**であり、**engine 呼び出しすら不要**。
+> **5 件の全件直読みが 1.0ms**(実測)。`fs.watch` + `JSON.parse` だけで
+> 「いま何相が走っているか」「どのドメインが批准済みか」「直近の出来事は何か」が出る。
+>
+> 実測された 5 run の現状(執筆時点):
+> ```
+> coin                     11/11 phases  6/6 domains  22 events
+> habit                    11/11 phases  6/6 domains  40 events
+> reform-claude-md-diet     5/11 phases  4/6 domains  15 events   ← 途中で止まっている
+> reform-eval-gauge        11/11 phases  6/6 domains  26 events
+> tenbin                   17/17 phases  6/6 domains  27 events
+> ```
+> **`reform-claude-md-diet` が 5/11 相で止まったままであることを、現ダッシュボードは一切映していない。**
 > Zylos:「トップは今何が起きているか = 実行中スパン」。
 
-- トップに「走行中の環」領域を置き、run ごとに **6 ドメインの批准状況**と **相の done / ⚖gate** を出す。
-- 現在の wave は `conclave.js next --run <f>`(既定 JSON)由来とする。`complete` の run は「完了」として区別する。
-- 「走行中」の定義: `domainsRatified < domainsTotal` またはいずれかの相が `status != done`。
-- 数の源は `conclave.json` の直読みを既定とし、engine 呼出しは補助とする(直読みの方が速く完全)。
+- トップに「走行中の環」領域を置き、run ごとに **ドメインの批准状況**と **相の done / ⚖gate** を出す。
+- **数の源は `conclave.json` の直読み**とする(S-3)。`conclave.js` の呼び出しは**補助**であり、必須経路にしない。
+- `history[]`(実測 15〜40 件)から**直近の出来事**を時系列で出す。
+- 「走行中」の定義: `domainsRatified < domainsTotal` **または** いずれかの相が `status != done`。
+  → 執筆時点では **`reform-claude-md-diet` の 1 件のみ**が「走行中(停止中)」に該当する。
+- 完了した run と、途中で止まった run を**視覚的に区別**する(止まった run を「完了」と並べて隠さない)。
 
 **AC-14a**: 数の一致 — `node graph/pulse.js snapshot --json` の `runs[]` のうち tenbin の
 `domainsRatified`/`domainsTotal` が `node graph/conclave.js status --run ../paradise-creations/tenbin/conclave.json | grep -oE '[0-9]+/[0-9]+'` の値と一致する。
 **AC-14b**: 網羅 — 断面の `runs.length` が
-`ls ../paradise-creations/*/conclave.json 2>/dev/null | wc -l` と一致する(実測 5 件)。**取りこぼしを許さない**(第22条)。
+`ls ../paradise-creations/*/conclave.json 2>/dev/null | wc -l` と一致する(実測基準 **5** 件)。**取りこぼしを許さない**(第22条)。
 **AC-14c**: 全 run を舐めても落ちない — `node graph/pulse.js snapshot --json; echo $?` が `0`。
 `run.json` 形式(旧 orchestrator)のファイルが混在していても exit 0 で、`errors[]` にその旨が積まれるだけであること。
 **AC-14d**: 相の数 — 断面の tenbin の `phasesTotal` が `17`(=`gauge score --json` の `phasesTotal`)と一致すること。
+**AC-14e**(停止中の run を見落とさない): 断面の
+`runs.filter(r => r.phasesDone < r.phasesTotal).map(r => r.name)` に **`reform-claude-md-diet`** が含まれること。
+かつ その run の `phasesDone/phasesTotal` が、`conclave.json` を直読みして数えた値と一致すること(実測基準 **5/11**)。
+**AC-14f**(engine 非依存の証明 — S-3): `conclave.js` を一時的に退避した状態でも
+`node graph/pulse.js snapshot --json` の `runs.length` が AC-14b と同じ値を返すこと(直読みで足りている証明)。
+**AC-14g**(直読みが速いこと): conclave 全件の読み取りのみを計測し、**10ms 未満**であること(実測 1.0ms)。
+**AC-14h**(出来事の時系列): 断面の tenbin の `history.length` が
+`node -e "console.log(require('../paradise-creations/tenbin/conclave.json').history.length)"` と一致する(実測基準 **27**)。
 
 ---
 
@@ -530,21 +658,30 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 
 ---
 
-### FR-21 — 道 (scale) の形を可視化する
-> **由来**: R-25。実測: `forge.js plan` は既定 JSON。standard の gates は 5、reform は 7(`specify` と `prove` が増える)。
+### FR-21 — 道 (scale) の形を可視化する — 6 つの道すべて
+> **由来**: R-25 + **findings-speed.md**。実測された道ごとの相数:
+> ```
+> quick 6 / standard 14 / full 17 / reform 11 / counsel 6 / cartography 11
+> ```
+> **`index.html` が「Live Graph Execution」と称して描く 4 タスク DAG は、この 6 つのどれとも一致しない架空物である。**
 > **道の形そのものがダッシュボードに映せる事実**。
 
-- 各 scale の gates 列を画面に出す。現在走行中の run については、その run が乗っている道を強調する。
-- 源は `node graph/forge.js plan "<願い>" --scale <s>` の `meta.gates`(既定 JSON)。ハードコードしない。
+- **6 つの道すべて**の相数と gates 列を画面に出す。現在走行中の run については、その run が乗っている道を強調する。
+- 源は `forge.buildDag(wish, '<scale>')`(**第2引数は文字列** — FR-01 の罠表)。ハードコードしない。
+- 現行の架空 4 タスク DAG は撤廃する(FR-02 AC-02c と重複して守る)。
 
-**AC-21a**: 数の一致(第22条) — 断面の `scale.reform.gates.length` が
-`node graph/forge.js plan "x" --scale reform | node -e "…JSON.parse…meta.gates.length"` と一致し、
-`scale.standard.gates.length` も同様に一致する。
-**AC-21b**: 差の明示 — 断面が `scale.reform.gates` と `scale.standard.gates` の**差分**(`specify`, `prove`)を持ち、
-その要素数が 2 であること。
-**AC-21c**: ハードコード禁止 — `grep -cE "'(discover|specify|design|prove|verify|reflect|verdict)'" dashboard/paradise.js` が `0`。
+**AC-21a**: 数の一致(第22条) — 6 つの道すべてについて、断面の `scale.<name>.phases` が
+`node -e "const f=require('./graph/forge.js');console.log(f.buildDag('x','<name>').tasks.length)"` と一致する(6/6)。
+執筆時点の実測基準: quick **6** / standard **14** / full **17** / reform **11** / counsel **6** / cartography **11**。
+**AC-21b**: 網羅 — 断面の `Object.keys(scale).length` が、forge が知る道の総数と一致すること(実測基準 **6**)。
+架空の道を足しても、実在する道を落としてもならない。
+**AC-21c**: ハードコード禁止 — `grep -cE "'(discover|specify|design|prove|verify|reflect|verdict)'" dashboard/paradise.js` が `0`、
+かつ `grep -cE "\b(6|11|14|17)\b" dashboard/paradise.js` に相数リテラルが現れないことをテストが assert する。
 **AC-21d**: 願いの分類 — `node graph/forge.js scale "ダッシュボードを生きた門にせよ"` が `reform` を返し、
 断面の `scale.classifierAvailable` が `true` であること。
+**AC-21e**(架空 DAG の撲滅): 断面の道の相数集合に一致しない DAG が画面に存在しないこと —
+`node tests/dashboard-no-hardcode.test.js` が、画面が描く任意の DAG のタスク数が
+`Object.values(scale).map(s=>s.phases)` のいずれかと一致することを assert する(**4 は含まれないので現行 DAG は落ちる**)。
 
 ---
 
@@ -561,18 +698,89 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 
 ---
 
+### FR-23 — 検器 `motion-probe.mjs` の資源漏れを止める【engine 修正・第50条の裏面】
+> **由来**: findings-base-red.md B-1〜B-5 / PRE-01・PRE-02。
+> `graph/motion-probe.mjs:84-86` の `finally` が `browser.child.kill()` しか呼ばず、
+> 描画器が**正規の後始末として公開している** `browser.close()` を使っていない。
+> `close()` は (1) SIGTERM → 1500ms 後 **SIGKILL エスカレーション**、(2) `fs.rmSync(this.profileRoot)` を行う
+> (`overlay/vendor/archify/bin/visual-check.mjs:475`)。
+>
+> 結果、headless Chrome が生き残り一時プロファイルが積み上がる。**実測: 483 → 519 → 529 と単調増加。**
+> 検器 1 回の走行で **+2 個**漏れることを差分で実測済み(`prove-leak.js`: BEFORE 527 → AFTER 529)。
+> `atlas.js check` は 6 主題を回すため、門を 1 回通すだけで十数個が積まれる。
+> 残った Chrome が握るファイルが次の走行の `file://` 参照を `net::ERR_FILE_NOT_FOUND` にし、
+> 「atlas: 門は己の残骸で落ちない (第21条)」を**不定に**赤くしていた。
+>
+> **第50条(d)「借り物の作法は借り物の正典に問う」** — 描画器は正しい後始末を公開していたのに、
+> 検器はそれを読まずに自前の半端な kill を書いた。**用意されている作法を読まずに書いた一行が、門を不定に赤くした。**
+>
+> **第50条の双子として位置づける**:
+> - 表: 「門が見ていない機能は壊れても鳴らない」 → G-05(CI がダッシュボードを見ていない)
+> - 裏: 「**門が己の残骸で不定に鳴る**」 → 本要件
+
+- `graph/motion-probe.mjs` の `finally` を `await browser.close()` に改める。自前の `child.kill()` は撤廃する。
+- 本改修が G-05 で visual-verify / motion-probe を CI に載せる以上、**漏れを抱えたまま門を増やせば CI が己の残骸で不定に赤くなる。** 直すのは本改修の責務である(X-6 の撤回)。
+
+> **⚠ この要件の AC は、症状ではなく原因を数える。**
+> 漏れが 529 個まで悪化した状態で自己診断は **0 failed を出した**。
+> ゆえに「`node tests/paradise.test.js` が 0 failed」を**唯一の**受入基準にしてはならない(本書の掟 4)。
+
+**AC-23a**(作法を使っていること — B-1): `grep -c "child.kill()" graph/motion-probe.mjs` が `0`、
+かつ `grep -c "browser.close()" graph/motion-probe.mjs` が `1` 以上。
+**AC-23b**(**本命** — 原因を数える / B-2・B-5): 検器を **1 回**走らせる前後で
+`ls "$TEMP" | grep -c "archify-visual-check-profile"` の**差が 0**。
+```
+BEFORE=$(ls "$TEMP" | grep -c "archify-visual-check-profile")
+node <検器を1回だけ走らせる>
+AFTER=$(ls "$TEMP" | grep -c "archify-visual-check-profile")
+test $((AFTER - BEFORE)) -eq 0
+```
+修正前の同じ手順は **+2** を返す(実測: 527 → 529)。**この差分こそが判定である。**
+**AC-23c**(Chrome を残さない): 同じ前後で
+`powershell -c "(Get-Process chrome -EA 0 | Where-Object {$_.CommandLine -match 'headless'}).Count"` 相当の
+headless プロセス数の**差が 0**。
+**AC-23d**(門が漏れを数える — B-5): 新設テスト `tests/motion-probe-leak.test.js` が
+AC-23b と同じ差分計測を行い、差が 0 でなければ **exit 1** すること。
+**AC-23e**(壊して鳴る — B-4): `browser.close()` を `child.kill()` に戻すと
+`node tests/motion-probe-leak.test.js` が **exit 1** になること。**緑を出すだけの門は、見ていない門と区別できない。**
+**AC-23f**(症状側・補助): `for i in 1 2 3; do node tests/paradise.test.js 2>&1 | grep -cE '^✗'; done` が `0 0 0`。
+※ **これは補助の AC である。** 単独で満たされても FR-23 の充足を意味しない(§2.0)。判定は AC-23b が下す。
+**AC-23g**(atlas 一巡での累積 0): `node graph/atlas.js check --scale quick` を 1 回通した前後で
+プロファイル数の差が **0**(6 主題を回しても十数個積まれないこと)。
+
+---
+
 ## 3.2 非機能要件 (NFR)
 
-### NFR-01 — 同期経路の応答は 1 秒未満
-> **由来**: R-02。engine は 27〜73ms の帯に収まり、最悪でも 73ms。唯一 census.js が 120,072ms で **1,600〜3,600倍**外れる。
+### NFR-01 — 同期経路の応答は 1 秒未満(CLI) / 常駐サーバは 50ms 未満
+> **由来**: R-02 + **S-1 / S-2**(findings-speed.md)。
+> discover の「27〜73ms」は**子プロセス経由 = node 起動代**であり、engine の代金ではなかった。
+> プロセス内実測: 初回 **7.4ms** / 2 回目以降 **0.53ms**。唯一 census.js が 120,072ms で桁違いに外れる。
 
-- ダッシュボードの 1 回の更新(断面の生成)は **1000ms 未満**で完了する。
-- 120 秒級の処理(census / 自己診断)は同期経路に置かない(FR-06)。
+- CLI 経路(`pulse.js snapshot --json`、node 起動代込み)は **1000ms 未満**。
+- 常駐サーバ経路(`serve` の 2 回目以降の `/snapshot.json`)は **50ms 未満**(初回 require のコストは 1 回だけ)。
+- 120 秒級の処理(census / 自己診断)は同期経路に置かない(FR-06 / S-2)。
 
 **AC-N01a**: `for i in 1 2 3; do /usr/bin/time -f %e node graph/pulse.js snapshot --json > /dev/null; done` の
 **3 回すべて**が 1.0 秒未満。
 **AC-N01b**: 上限の機械検査 — `node tests/dashboard-perf.test.js` が断面生成を 3 回計測し、median が 1000ms 未満を assert して exit 0。
 **AC-N01c**: 回帰の防止 — 同テストが `pulse.js` の呼ぶ engine 集合を出力し、その中に `census` / `paradise.test` が**含まれない**ことを assert。
+**AC-N01d**(常駐の効き): `serve` 起動後、`/snapshot.json` を 5 回連続取得し、**2 回目以降 4 回すべてが 50ms 未満**。
+
+### NFR-07 — サーバは engine を `require` で常駐させ、子プロセスを産まない
+> **由来**: **S-1**(findings-speed.md)。子プロセス 27〜73ms に対し、プロセス内は 0.53ms。
+> **子プロセスを産むのは engine の代金ではなく node 起動代を毎回払う設計である。**
+> 前提は「毎秒ポーリング可能」ではなく **「毎フレーム再計算可能」**。
+
+- snapshot 生成経路に `child_process`(`execFileSync` / `spawn` / `exec` / `fork`)を書かない。
+- 例外は census(FR-06 / S-2)のみ。census を非同期で取る場合に限り子プロセスを許すが、
+  その呼び出しは snapshot 経路の**外**に置き、結果はキャッシュする。
+
+**AC-N07a**: `grep -cE "child_process|execFileSync|spawnSync|execSync" graph/pulse.js` が `0`。
+census を非同期経路に置く場合は、その 1 箇所が `graph/pulse.js` **以外**のファイルにあること。
+**AC-N07b**: 実測での証明 — AC-01i / AC-N01d(2 回目以降 50ms 未満)。
+子プロセスを産む実装は node 起動代 27ms 以上を毎回払うため、この閾値を安定して満たせない。
+**AC-N07c**: engine が module として読まれていること — `grep -cE "require\('\./(clergy|forge|workspace|kg)" graph/pulse.js` が `2` 以上。
 
 ### NFR-02 — 外部依存ゼロ・node 標準ライブラリのみ
 > **由来**: R-06, R-09 + 楽園の掟。
@@ -643,8 +851,9 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 | 「生 / 凍結」の表示規則 | **FR-07**(閾値 10,000ms / 60,000ms を数値で定義、境界値 6 通りを AC で全数検査) |
 | 鮮度(最終更新からの経過) | **FR-07**(相対表記必須)+ **NFR-06** |
 | 空 / 読み込み中 / エラー / 接続断 | **FR-20**(5 状態を `data-state` で機械可読にし、`data-awaiting` でスピナーを禁ずる) |
-| 走行中の環 (conclave) | **FR-14**(6 ドメイン批准・17 相・現在 wave。取りこぼし 0 を AC-14b で強制) |
+| 走行中の環 (conclave) | **FR-14**(`conclave.json` 直読み 1.0ms・engine 不要。取りこぼし 0 を AC-14b、停止中 run の可視化を AC-14e で強制) |
 | エージェントの起動実績 (spawn-trace) | **FR-13**(gauge の点数と**同一カード内**に並置。exit 1 をエラー扱いしない) |
+| 道の形 (6 つの scale) | **FR-21**(quick 6 / standard 14 / full 17 / reform 11 / counsel 6 / cartography 11。架空 4 タスク DAG を AC-21e で撲滅) |
 
 ---
 
@@ -722,9 +931,13 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 | `daily-guard due` の exit 1 | exit 1 が「債務なし」。成否と誤読すると赤く光る | **FR-16** |
 | `spawn-trace report` の exit 1 | exit 1 が「起動証跡なし」という**事実**。エラーではない | **FR-13 AC-13c** |
 | atlas 生成器の Google Fonts 3 行 | 生成物 6 枚 × 3 = 18 箇所が外部へ実取得 | **FR-12** |
+| `motion-probe.mjs:84-86` が `browser.close()` を使わず `child.kill()` だけを呼ぶ | 一時プロファイルが **483 → 519 → 529** と単調増加。検器 1 回で **+2**。第21条テストが**不定に**赤くなる(第50条の裏面) | **FR-23** / **G-09** |
+| engine を子プロセスで呼ぶ設計 | node 起動代 27〜73ms を毎回払う。プロセス内なら **0.53ms**(実測 137倍差) | **NFR-07** / **FR-01** |
 
 **engine 修正に共通する AC**:
-**AC-E1**: すべての engine 修正の後、`node tests/paradise.test.js` が **exit 0**(PRE-01 で緑にした状態を壊さない)。
+**AC-E1**: すべての engine 修正の後、`node tests/paradise.test.js` が **exit 0**。
+※ **これは補助の AC である**(§2.0)。この赤は不定であり、漏れが 529 個まで悪化した状態でも緑を出した。
+**engine 修正の充足判定は、各 FR の「原因を数える AC」が下す**(特に FR-23 AC-23b)。
 **AC-E2**: `node graph/wiring.js check --json | node -e "…JSON.parse…ok"` が `true`(新 engine `pulse.js` も含めて結線が切れていない)。
 **AC-E3**: `node graph/pulse.js snapshot --json` の `counts.engines` が `ls graph/*.js | wc -l` と一致する — **pulse.js 自身を数えた新しい値**で一致すること(固定値 33 と比較しない。第22条)。
 
@@ -741,14 +954,16 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 
 | # | 門が守る性質 | 実装 | 受入基準 (AC) |
 |---|---|---|---|
-| **G-01** | **画面の数が嘘をつかない** — 断面の数と実地の数が一致し続ける(第22条) | `tests/dashboard-count.test.js` を `paradise.test.js` から呼ぶ + tribunal.yml に追加 | `node tests/paradise.test.js 2>&1 \| grep -c "count.*一致\|dashboard-count"` が `1` 以上。かつ `graph/pulse.js` の `counts.engines` を故意に +1 して壊すと `node tests/paradise.test.js` が **exit 1** になる(赤が鳴る証明) |
+| **G-01** | **画面の数が嘘をつかない** — 断面の数と実地の数が一致し続ける(第22条) | `tests/dashboard-count.test.js` を `paradise.test.js` から呼ぶ + tribunal.yml に追加 | **AC-G01a**: `node tests/paradise.test.js 2>&1 \| grep -c "count.*一致\|dashboard-count"` が `1` 以上。<br>**AC-G01b**(壊して鳴る): `graph/pulse.js` の `counts.engines` を故意に +1 すると `node tests/paradise.test.js` が **exit 1** になる |
 | **G-02** | **外部依存が再び生えない** | `tests/dashboard-no-deps.test.js` | FR-12 AC-12d の grep を CI で実行し、`fonts.googleapis` を `overlay/vendor/archify/assets/template.html` に 1 行戻すと CI が **exit 1** になること |
 | **G-03** | **住所の直書きが `path.join` 形式でも咎められる**(教主が見つけた穴) | `graph/workspace.js` の検出規則拡張 + 回帰テスト | FR-04 AC-04a/AC-04d(合成の見本で exit 1 → 削除で exit 0)。CI の `workspace.js check` ステップが tribunal.yml に存在すること: `grep -c "workspace.js check" .github/workflows/tribunal.yml` が `1` 以上 |
 | **G-04** | **孤児ページが生まれない**(導線が切れない) | `tests/dashboard-links.test.js` | FR-19 AC-19a/b/c。新しい `dashboard/*.html` を追加してリンクを張らないと CI が **exit 1** |
-| **G-05** | **ダッシュボードが visual-verify と critic を通る**(第50条の直接の是正) | tribunal.yml に `index.html` / `control.html` への `visual-verify` と `critic` を追加 | `grep -cE "visual-verify\|critic.js" .github/workflows/tribunal.yml` が **2 以上**。かつ `grep -c "dashboard/index.html\|dashboard/control.html" .github/workflows/tribunal.yml` が `1` 以上 |
+| **G-05** | **ダッシュボードが visual-verify と critic を通る**(第50条の直接の是正) | tribunal.yml に `index.html` / `control.html` への `visual-verify` と `critic` を追加 | **AC-G05a**: `grep -cE "visual-verify\|critic.js" .github/workflows/tribunal.yml` が **2 以上**。かつ `grep -c "dashboard/index.html\|dashboard/control.html" .github/workflows/tribunal.yml` が `1` 以上。<br>**AC-G05b**(壊して鳴る): `dashboard/index.html` に外部 CDN の `<link>` を 1 行入れると critic が **exit 1** になること。**緑を出すだけの門は、見ていない門と区別できない** |
 | **G-06** | **ハードコード数値が再発しない** | `tests/dashboard-no-hardcode.test.js` | FR-02 AC-02a/b/c。`dashboard/paradise.js` に `v: 2` を 1 行戻すと CI が **exit 1** |
 | **G-07** | **同期経路が遅くならない** | `tests/dashboard-perf.test.js` | NFR-01 AC-N01b/c。`pulse.js` に `census` の呼出を 1 行足すと CI が **exit 1** |
-| **G-08** | **生成物の中身を前提にした検査が混入しない**(第29条) | 既存の `derived.js check` を CI で維持 | NFR-05 AC-N05a/b。`grep -c "derived.js check" .github/workflows/tribunal.yml` が `1` 以上 |
+| **G-08** | **生成物の中身を前提にした検査が混入しない**(第29条) | 既存の `derived.js check` を CI で維持 | **AC-G08a**: NFR-05 AC-N05a/b。`grep -c "derived.js check" .github/workflows/tribunal.yml` が `1` 以上。<br>**AC-G08b**(壊して鳴る): 新設テストのいずれかに `require('../dashboard/state.json')` を 1 行入れると `derived.js check` が **exit 1** になること |
+| **G-09** | **門が己の残骸で不定に鳴らない**(第50条の裏面) — 検器の資源漏れを**数える** | `tests/motion-probe-leak.test.js`(新設)を `paradise.test.js` + tribunal.yml から呼ぶ | FR-23 AC-23b/d/e。**症状(0 failed)ではなく原因(プロファイル数の差分)を裁く。** `browser.close()` を `child.kill()` に戻すと CI が **exit 1** |
+| **G-10** | **engine が子プロセス化して遅くならない**(S-1 の恒久化) | `tests/dashboard-perf.test.js` に統合 | NFR-07 AC-N07a/c。`pulse.js` に `execFileSync` を 1 行足すと CI が **exit 1** |
 
 **門の要件に共通する掟**:
 - **すべての G-xx は「壊してみて赤くなること」を AC に含む。** 緑を出すだけの門は、見ていない門と区別できない(第50条)。
@@ -769,7 +984,7 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 | X-3 | atlas 6 枚の visual-verify の「5 gap + 1 smell」の是正 | discover で未実行(findings D)。本改修は**外部依存の除去**(FR-12)と**CI に載せること**(G-05)までを担い、個々の gap の是正は G-05 が鳴らした後の別件 |
 | X-4 | ダッシュボードの肌(視覚同一性)の決定 | design 相の裁量(N-8)。教主 §5 の候補(`wired [editorial]` 等)は design への申し送りに留める |
 | X-5 | `orchestrator.js` / `synod.js` / `critic.js` / `verdict.js` の計測と改修 | discover で未計測(副作用として run 状態を書き換えるため見送られた) |
-| X-6 | headless Chrome 一時プロファイル 412 個の掃除 | PRE-02 で**測って記録する**に留める。掃除は第21条の別件 |
+| X-6 | ~~headless Chrome 一時プロファイル 412 個の掃除~~ **【教主により撤回 — 本改修の範囲に戻す】** | PRE-02 参照。漏れは進行中の欠陥(483→529、検器1回で+2を実測)であり、根因は `motion-probe.mjs:85` が `browser.close()` を使っていないこと。本改修は G-05 で visual-verify / critic を CI に載せる以上、**漏れを抱えたまま門を増やせば CI が己の残骸で不定に赤くなる**。直すのは本改修の責務である |
 
 ## 7.2 将来課題(次の道へ送るもの)
 
@@ -795,14 +1010,23 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 
 本改修は、次の**すべて**が満たされたときに完了とする。
 
-1. PRE-01 が緑(`node tests/paradise.test.js` が exit 0、`✗` が 0 件)。
-2. FR-01〜FR-22 の全 AC が実出力で満たされている。
-3. NFR-01〜NFR-06 の全 AC が実出力で満たされている。
-4. G-01〜G-08 の門が CI に載っており、**それぞれ「壊すと赤くなる」ことが実証されている**。
+1. **PRE-01〜PRE-03 が満たされている。** ただし判定は **症状ではなく原因**で下す —
+   「`node tests/paradise.test.js` が 0 failed」だけでは足りない(漏れ 529 個の状態でも緑が出た)。
+   **FR-23 AC-23b(検器 1 回の前後でプロファイル数の差 0)が着工と完了の両方の門である。**
+2. FR-01〜**FR-23** の全 AC が実出力で満たされている。
+3. NFR-01〜**NFR-07** の全 AC が実出力で満たされている。
+4. **G-01〜G-10** の門が CI に載っており、**それぞれ「壊すと赤くなる」ことが実証されている**。
 5. `node graph/pulse.js snapshot --json` の `counts.engines` が `ls graph/*.js | wc -l` と一致する(第22条)。
+   同様に `counts.cardinals` が **7**(第47条bの予言)、`counts.creations` が実地の数と一致する。
 6. `dashboard/index.html` から全ページへ 1 ホップで到達でき、孤児 0。
 7. サーバを止めた状態で `file://` から開いても画面が成立し、**`凍結` と正直に名乗る**。
-8. U-1〜U-4 が prove 相の成果物に記録されている(未確認のまま verdict へ進まない)。
+8. サーバが `require` で engine を常駐させており、`/snapshot.json` の 2 回目以降が **50ms 未満**(NFR-07)。
+9. 途中で止まった run(執筆時点では `reform-claude-md-diet` 5/11 相)が画面上で**完了と区別されて**見えている。
+10. U-1〜U-4 が prove 相の成果物に記録されている(未確認のまま verdict へ進まない)。
 
 **この改修の第一の受入基準は、findings.md E-3 が指した一行に尽きる:**
 > **画面に出る全ての数が、その場で走った engine の出力と一致すること。**
+
+**そして本書が加えた第二の掟は、教主の実測が教えた一行である:**
+> **不定に鳴る門の受入基準は、症状ではなく原因を数える形で書け。**
+> 緑を見て「直った」と報告することは、第16条より悪い —— **判定が緑でも欠陥は在りうる。**

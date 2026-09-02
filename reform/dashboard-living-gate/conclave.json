@@ -62,9 +62,9 @@
           ],
           "gate": true,
           "artifact": "requirements.md",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/requirements.md"
         }
       ],
       "reviewClass": "cardinal:discovery",
@@ -261,6 +261,11 @@
       "ts": "2026-09-02T07:25:20.956Z",
       "event": "dispatch",
       "detail": "specify"
+    },
+    {
+      "ts": "2026-09-02T07:37:12.106Z",
+      "event": "done",
+      "detail": "specify → reform/dashboard-living-gate/requirements.md"
     }
   ]
 }
