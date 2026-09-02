@@ -70,15 +70,20 @@ function census(opts = {}) {
     /**
      * **打ち切られた走行の部分出力を、真実として報告してはならない**(第16条)。
      *
-     * 実測: 自己診断は 282 秒かかるのに timeout は 120 秒である。**構造的に必ず
-     * 打ち切られる。** 旧実装は打ち切り時の stdout から `N passed, M failed` を
-     * 拾っており、282 秒のうち 120 秒までに出た **15 件**を「楽園のテストは 15 件」
-     * として報告した。README の 256 と突き合わせて census が第22条違反を叫んだが、
+     * 旧実装は timeout 120 秒で打ち切られた stdout から `N passed, M failed` を
+     * 拾い、その時点までに出た **15 件**を「楽園のテストは 15 件」として報告した。
+     * README の 256 と突き合わせて census が第22条違反を叫んだが、
      * **嘘をついていたのは README ではなく census の数え方だった。**
      *
      * 途中まで数えた数は「数えた結果」ではなく「数え損ね」である。
      * ゆえに打ち切られたら `tests: null` にして**測れなかったと表明する**。
      * 呼び手は null を見て「(not measured)」と出す —— 0 や部分値で埋めない。
+     *
+     * ⚠️ **註釈に所要時間を書くな**(review 神官の指摘 F-2/F-3 を受けた是正)。
+     * かつてここには「自己診断は 282 秒」「census は 120,072ms」と書かれていた。
+     * だが **120,072ms は打ち切り時刻(120,000 + 72)であって所要ではない** ——
+     * 打ち切られた値を実測値として扱う、まさにこの註釈が禁じている過ちだった。
+     * 所要は機械と同時走行の有無で変わる。**数が要るなら測れ。註釈は約束をするな。**
      */
     const TIMEOUT_MS = Number(opts.testTimeoutMs || process.env.CENSUS_TEST_TIMEOUT_MS || 600000);
     try {
@@ -116,6 +121,20 @@ function census(opts = {}) {
     articles,
     tests,
     engines: countFiles('graph', '.js'),
+    /**
+     * ダッシュボードを守る門の本数。
+     * README が「門 N 本」と書くなら、その N はここが数え直す (第22条)。
+     * 門を 1 本足して README を直し忘れれば check が赤くなる —— 散文が腐る前に鳴る。
+     * 数える対象は「ダッシュボードの受入を担う試験ファイル」であり、
+     * tests/dashboard-*.test.js に motion-probe-leak (門が己の残骸で鳴らないこと) を加える。
+     */
+    dashboardGates: (() => {
+      try {
+        return fs.readdirSync(path.join(ROOT, 'tests'))
+          .filter(f => /^dashboard-.+\.test\.js$/.test(f) || f === 'motion-probe-leak.test.js')
+          .length;
+      } catch { return 0; }
+    })(),
     creations: (() => {
       // 第30条: 住所を知るのは workspace.js だけ。旧住所を ROOT 直下に直書きしていた頃は、
       // 実在 8 件に対し catch { return 0 } が 0 を返して黙っていた。
@@ -155,6 +174,8 @@ function claims(c) {
     { file: 'README.md', re: /`hooks (\d+)`/,                    actual: c.vendor.hooks,            label: 'README vendor hooks' },
     { file: 'README.md', re: /`scripts (\d+)`/,                  actual: c.vendor.scripts,          label: 'README vendor scripts' },
     { file: 'README.md', re: /`contexts (\d+)`/,                 actual: c.vendor.contexts,         label: 'README vendor contexts' },
+    // ダッシュボードの門の本数 (第22条)。散文が「門 N 本」と言うなら N を数え直す。
+    { file: 'README.md', re: /ダッシュボードの門 \*\*(\d+) 本\*\*/, actual: c.dashboardGates,       label: 'README ダッシュボード門数' },
   ];
   return list;
 }

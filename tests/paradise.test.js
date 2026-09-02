@@ -623,6 +623,141 @@ test('cross-domain rework also resets DOWNSTREAM phases in later domains', () =>
     .phases.find(p => p.id === 'review').artifactPath, null, 'stale artifact is dropped');
 });
 
+// ── 第51条: 走者の死は環の死ではない ──────────────────────────────
+// 中断した走者が残す `running` の化石は、かつて誰も回収できなかった。
+// `phaseReady` は pending/rework しか選ばないので、環は永遠に stuck になる。
+// 実際に定時ジョブが1本これで死んでいる。以下はその病を裁く門である。
+
+test('conclave: 中断した running が resume で環に戻る (第51条)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  // 走者が斃れた — 発令の刻を古くして中断を模す
+  conclave.allPhases(run).get('discover').dispatchedAt =
+    new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  assert.strictEqual(conclave.next(run).phase, 'stuck', '化石があると環は静止する');
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, ['discover'], 'resume が化石を回収する');
+  const p = conclave.allPhases(run).get('discover');
+  assert.strictEqual(p.status, 'rework',
+    'pending ではなく rework へ戻す — 一度手が付いた相を「未着手」と偽らない');
+  assert.strictEqual(p.artifactPath, null, '成果物を騙らない (done を刻まない)');
+  const step = conclave.next(run);
+  assert.strictEqual(step.phase, 'wave', '環が再び回る');
+  assert.ok(step.dispatch.some(x => x.id === 'discover'), '当該相が再発令される');
+});
+
+test('conclave: 中断→復帰→complete まで環が回りきる (第51条a)', () => {
+  const run = makeConclave();
+  let died = false, last = null;
+  for (let i = 0; i < 200; i++) {
+    const r = conclave.next(run);
+    last = r.phase;
+    if (r.phase === 'complete') break;
+    if (r.phase === 'ratify') { conclave.ratify(run, r.cardinal); continue; }
+    if (r.phase === 'blocked') break;
+    if (r.phase === 'stuck') {   // 走者の死からの復帰はここでしか起きない
+      const res = conclave.resume(run, { force: true });
+      assert.ok(res.resumed.length, 'stuck なら回収できる化石があるはずだ');
+      continue;
+    }
+    if (r.phase === 'wave' && r.dispatch) {
+      conclave.markRunning(run, r.dispatch.map(d => d.id));
+      // 最初の波の途中で走者を殺す — done を刻まずに次の周回へ落ちる
+      if (!died) { died = true; continue; }
+      for (const d of r.dispatch) conclave.markDone(run, d.id, d.id + '.md');
+    }
+  }
+  assert.ok(died, '走者の死を実際に模したことを確かめる');
+  assert.strictEqual(last, 'complete',
+    `中断を経ても環は complete に着かねばならない (最後の相: ${last})`);
+});
+
+test('conclave: 生きている running を resume は既定で殺さない (第51条b/第45条)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);     // たった今発令された = 生きている
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, [], '生きている走者を横から奪えば二重発令になる');
+  assert.strictEqual(conclave.allPhases(run).get('discover').status, 'running');
+  assert.ok(/fresh/.test(res.skipped.find(s => s.id === 'discover').reason));
+  const forced = conclave.resume(run, { force: true });
+  assert.deepStrictEqual(forced.resumed, ['discover'], '人の明示的な意思は時刻に優先する');
+});
+
+test('conclave: 時刻を持たぬ古い run は --force を要求する (第51条b)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  delete conclave.allPhases(run).get('discover').dispatchedAt;  // この機構より古い run
+  const res = conclave.resume(run);
+  assert.deepStrictEqual(res.resumed, [], '判定不能なとき engine は独断で印を剥がさない');
+  assert.ok(/no dispatchedAt/.test(res.skipped.find(s => s.id === 'discover').reason));
+  assert.deepStrictEqual(conclave.resume(run, { force: true }).resumed, ['discover'],
+    '--force があれば古い run も生き返る (後方互換)');
+});
+
+test('conclave: markRunning が発令の刻を記す (第51条b)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  const at = conclave.allPhases(run).get('discover').dispatchedAt;
+  assert.ok(at && !Number.isNaN(Date.parse(at)),
+    '刻が無ければ死者と生者を時刻で分けられない');
+});
+
+test('conclave: resume は reworks を消費せず台帳で区別される (第51条)', () => {
+  const run = makeConclave();
+  const d = run.domains.find(x => x.cardinal === 'discovery');
+  conclave.markRunning(run, ['discover']);
+  conclave.resume(run, { force: true });
+  assert.strictEqual(d.reworks, 0,
+    '走者の死は品質の差し戻しではない — loop-guard を削ってはならない');
+  assert.strictEqual(conclave.allPhases(run).get('discover').resumes, 1, '回復は別に数える');
+  assert.ok(run.history.some(h => h.event === 'resume'),
+    '台帳で domain-rework と区別できる event 名であること');
+});
+
+test('conclave: 回復は有限で、尽きたら閉塞して人を呼ぶ (第51条c)', () => {
+  const run = makeConclave();
+  let blocked = null;
+  for (let i = 0; i <= conclave.MAX_PHASE_RESUME + 1; i++) {
+    conclave.markRunning(run, ['discover']);
+    const res = conclave.resume(run, { force: true });
+    if (!res.ok) { blocked = res; break; }
+  }
+  assert.ok(blocked, `MAX_PHASE_RESUME(${conclave.MAX_PHASE_RESUME}) を超えたら止まらねばならない`);
+  assert.strictEqual(blocked.blocked, 'discovery');
+  assert.strictEqual(run.domains.find(x => x.cardinal === 'discovery').status, 'blocked');
+  assert.strictEqual(conclave.next(run).phase, 'blocked',
+    'stuck(回復可能な静止) と blocked(回復を使い切った閉塞) を混同しない');
+  assert.ok(run.history.some(h => h.event === 'phase-loop-guard'), '人を呼んだ記録が残る');
+});
+
+test('conclave: next --reclaim は opt-in で、既定の next は純粋である (第51条)', () => {
+  const mk = () => {
+    const r = makeConclave();
+    conclave.markRunning(r, ['discover']);
+    conclave.allPhases(r).get('discover').dispatchedAt =
+      new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    return r;
+  };
+  const a = mk();
+  const before = JSON.stringify(a);
+  assert.strictEqual(conclave.next(a).phase, 'stuck');
+  assert.strictEqual(JSON.stringify(a), before,
+    '既定の next は state を一切書かない — 既存の門がこの契約に依存している');
+  const b = mk();
+  assert.strictEqual(conclave.next(b, { reclaim: true }).phase, 'wave',
+    '求められたときだけ自動回収する');
+});
+
+test('conclave: status が running の化石を人に見せる (第51条a)', () => {
+  const run = makeConclave();
+  conclave.markRunning(run, ['discover']);
+  assert.ok(!/中断の疑い/.test(conclave.statusBoard(run)), '生きている走者を化石と呼ばない');
+  conclave.allPhases(run).get('discover').dispatchedAt =
+    new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  assert.ok(/中断の疑い/.test(conclave.statusBoard(run)),
+    '静止を黙って表示すれば、誰も回収しに来ない (沈黙は放棄と同じ)');
+});
+
 test('domain loop-guard blocks a cardinal after MAX_DOMAIN_REWORK', () => {
   const run = makeConclave();
   const d = run.domains.find(x => x.cardinal === 'requirements');

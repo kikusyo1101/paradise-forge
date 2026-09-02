@@ -15,6 +15,8 @@
   個別の門は `graph/` の各 engine (`census` `check-agents` `branch-guard`
   `workspace` `apply-*` `visual-verify` `gauge` `deploy check`) — 一覧と条番号は
   README の engine 表。**数値は census と dashboard が語る。ここに書かない。**
+  ダッシュボードは `node graph/pulse.js serve` → 名乗ったポートを開く
+  (画面・口・門の一覧は README の「ダッシュボード」節)。
 - **創造物**: 兄弟倉 `../paradise-creations` (`workspace.js` だけが住所を知る)。
   掟 (単一HTML・外部依存ゼロ・toISOString禁止・DOMAINマーカー) は
   **critic.js が機械で裁く** — 一覧は `node graph/critic.js checklist`。
