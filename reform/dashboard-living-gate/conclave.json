@@ -123,9 +123,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/prove.md"
         }
       ],
       "reviewClass": "cardinal:quality",
@@ -321,6 +321,11 @@
       "ts": "2026-09-02T11:17:40.540Z",
       "event": "dispatch",
       "detail": "prove"
+    },
+    {
+      "ts": "2026-09-02T11:19:44.118Z",
+      "event": "done",
+      "detail": "prove → reform/dashboard-living-gate/prove.md"
     }
   ]
 }

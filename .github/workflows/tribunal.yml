@@ -177,9 +177,15 @@ jobs:
 
       - name: 🎨 Dashboard surface — visual-verify と critic が画面を見る (G-05 / 第50条)
         # 第50条の直接の是正。dashboard/index.html と dashboard/control.html を門に載せる
+        #
+        # ⚠️ **`|| true` を付けるな**(quality 枢機卿が審査で指摘・教主が是正)。
+        # 付けた瞬間、critic が何を言おうと CI は緑になる —— それは
+        # 「門の形をした飾り」であり、第50条が名指しした『見ていない門』そのものである。
+        # 実測(2026-09-02): `critic.js review dashboard --self` は exit=0 で
+        # 5項目すべて緑。**通る門なのだから、通らせる必要が無い。**
         run: |
           node graph/visual-verify.js check dashboard --json
-          node graph/critic.js review dashboard --self || true
+          node graph/critic.js review dashboard --self
 
       - name: 🧹 Motion probe leak — 門が己の残骸で不定に鳴らないか (G-09 / 第50条の裏面)
         # **症状(0 failed)ではなく原因(プロファイル数の差分)を裁く。**
