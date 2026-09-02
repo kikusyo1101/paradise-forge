@@ -51,7 +51,7 @@
       "cardinal": "requirements",
       "domain": "Requirements (要件)",
       "status": "active",
-      "reworks": 0,
+      "reworks": 1,
       "phases": [
         {
           "id": "specify",
@@ -62,7 +62,7 @@
           ],
           "gate": true,
           "artifact": "requirements.md",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
           "artifactPath": "reform/dashboard-living-gate/requirements.md"
         }
@@ -74,7 +74,7 @@
       "seq": 2,
       "cardinal": "architecture",
       "domain": "Architecture (設計)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -86,7 +86,7 @@
           ],
           "gate": true,
           "artifact": "design.md",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         }
@@ -98,7 +98,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -110,7 +110,7 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         },
@@ -123,7 +123,7 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         }
@@ -135,7 +135,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -148,7 +148,7 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         },
@@ -161,7 +161,7 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         },
@@ -174,7 +174,7 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         },
@@ -189,7 +189,7 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         }
@@ -201,7 +201,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -214,7 +214,7 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         },
@@ -227,7 +227,7 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null
         }
@@ -266,6 +266,11 @@
       "ts": "2026-09-02T07:37:12.106Z",
       "event": "done",
       "detail": "specify → reform/dashboard-living-gate/requirements.md"
+    },
+    {
+      "ts": "2026-09-02T07:53:00.815Z",
+      "event": "domain-rework",
+      "detail": "Requirements (要件) → Requirements (要件): reset specify, design, build, prove, review, security, docs, verify, reflect, verdict (rework 1)"
     }
   ]
 }
