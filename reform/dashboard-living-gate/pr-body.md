@@ -138,8 +138,103 @@ $ node graph/pulse.js snapshot --json | 断面 vs 実地
 ✓ engines:   断面=34 実地=34
 ✓ articles:  断面=50 実地=50
 ✓ cardinals: 断面=7  実地=7
+
+$ node tests/paradise.test.js
+Paradise self-test: 288 passed, 0 failed   ← 監査時 268 → 288
+
+$ node graph/census.js check
+✓ every number the paradise claims about itself is true
 ```
 
 **画面の数と実地の数が一致することを、機械が確かめられる。**
 そして `gauge ledger` は執筆時10 → 現在15 と増えた —
 固定値を書いていたらこの門は落ちていた。「数え方が二つあって一致する」形が生き延びさせた。
+
+---
+
+## この改修が engine に返したもの
+
+ダッシュボードを直す過程で、**楽園自身の欠陥を5つ見つけて直した**。
+
+### 1. 台帳が虚偽の `done` を記せた (X-1)
+
+executor が `ls` 一発で暴いた**教主の過ち**である。
+
+```
+$ ls reform/dashboard-living-gate/security.md
+No such file or directory
+$ 台帳: {"id":"security","status":"done","artifactPath":".../security.md"}
+$ git log --all -- security.md | wc -l
+0                                    ← 一度も存在しなかった
+```
+
+`markDone()` が成果物の実在を検めるようにした。**この門が既存テストの架空成果物名を9件暴いた** —
+`'findings.md'` `'r.md'` `'rv.md'` `'sec.md'` および動的生成の `p + '.md'`。
+門が本物である何よりの証拠である。
+
+> 第27条「subagent の done を信じない」は、**記録する者自身にも向く**。
+> 教主は神官の主張を何度も実物で照合したが、自分が書いた台帳を一度も疑わなかった。
+
+### 2. `census` が総括ではなく先頭を読んでいた
+
+門13本を新設した結果、自己診断の出力に子テストの集計行が8本現れた。
+`String.match` は最初の一致しか返さないので、census は
+`dashboard-count: 15 passed` を「楽園のテスト総数」と信じた。
+
+**嘘をついていたのは README ではなく数え方だった。**
+`summaryOf()` を新設し、位置ではなく `Paradise self-test:` の名乗りで狙う形にした。
+
+### 3. `close()` が正常終了時にも例外を投げていた
+
+```
+Error: visual-check finished
+  at ChromeVisualBrowser.close (visual-check.mjs:476)
+```
+
+`failAll` が待ち手の居ない Promise を reject し、Node がプロセスを落としていた。
+**三つの別々の欠陥に見えたものが一つの根から生えていた** ——
+atlas の不定な赤・自己診断のクラッシュ・`EPERM: rename`。一手で三つ消えた。
+
+### 4. 検器が Chrome の一時プロファイルを漏らしていた
+
+483 → 519 → 529 → 683 と単調に増えていた。`browser.child.kill()` を
+版元が用意した `browser.close()`(SIGKILL エスカレーション + `rmSync`)に改めた。
+**検器1回の前後で差 0** を門が数える。
+
+### 5. `--json` が1バイトも出力を変えない engine が3つ
+
+```
+clergy college   2139 / 2139  →  2139 / 2378  parse=ok
+conclave status  1424 / 1424  →  1424 / 2051  parse=ok
+daily-guard      843  /  843  →   843 /  503  parse=ok
+```
+
+---
+
+## 立てた則(この改修の副産物)
+
+| 則 | 内容 | 出典 |
+|---|---|---|
+| 則1〜4 | AC は走らせて赤を見る / 正規表現の方言をまたぐな / 固定値を期待値にするな / この機に在るコマンドだけ | `findings-gate-syntax.md` |
+| 則A〜C | 不定に鳴る門は症状でなく原因を数える / 入力の決定性を先に証明せよ / 一つの根が複数の赤を生んでいないか疑え(ただし実測で確かめよ) | `findings-flaky-gates.md` |
+| 則D | **壊れたことを先に証明せよ。門を疑うのはその後である** | `prove.md` |
+| 則E | 並行作業中の測定値を単独走行の値と比べるな。**測る前に自分がどこに立っているかを確かめよ** | `verify.md` |
+| 則F | **自分が書いた記録を、他人の主張と同じ厳しさで疑え** | `findings-ledger-lie.md` |
+
+則D は教主自身が三度、自分の壊し方・測り方を誤ったことから生まれた。
+**実装は正しく、教主が間違っていた** —— 第9条は裁く側にも等しく向く。
+
+---
+
+## 残る負債(正直に書く)
+
+| # | 内容 | なぜ今直さないか |
+|---|---|---|
+| X-2 | 断面の `runs[].path` が絶対パスを5件露出 | 127.0.0.1 限定 + 画面は `.path` を描かない(消費者0) |
+| F-5 | `pulse.js:469` の `thresholds` が消費者ゼロ | 死んだ定義。害は無い |
+| F-6 | `control.html` が `paradise.js` の5関数を写経 | `POLL_MS=2000` が3箇所目。門の射程外 |
+| F-7 | `counts=null` のとき画面に文字列 `null` が出る | 同画面の errors 表が理由を名指しするので**醜いが嘘ではない** |
+| — | `orchestrator.js:105` の `markDone` に同じ検査が無い | conclave と別の道。範囲を広げない |
+| — | `critic.js` が reform の三箇所(散文/実装/門)を束ねられない | 同上 |
+| — | DoS 耐性・XSS が**未検査** | 第16条により「安全」ではなく「未検査」と明記した |
+
