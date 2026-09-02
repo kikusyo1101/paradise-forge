@@ -2953,6 +2953,59 @@ test('critic: 門は tests/ の下も見る — 規約通りに置いたテス�
   fs.rmSync(d, { recursive: true, force: true });
 });
 
+test('critic: reform は三箇所を束ねて裁く — 散文だけを見て「門が無い」と言わない (D-2 / 第23条)', () => {
+  // ■ reform の道は散文 reform/<slug>/・実装 graph/・門 tests/ に分かれて住む。
+  //   critic はこれを創造物(一つの倉に全てが揃う)と同じ形だと仮定していたため、
+  //   12 本の門が tests/ に在るのに `tests-exist: no test file found` と裁いた(実測)。
+  //
+  // **この門は現物の走行に依らない。** main へマージされれば差分は消え、
+  // 現物を見る門は「触れた門 0 本」で赤くなる —— 走行の状態を期待値にしては
+  // ならない(則3)。ゆえに reform の形をした作業場を**その場で作って**測る。
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-reform-critic-'));
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
+    fs.mkdirSync(path.join(root, 'graph'));
+    fs.mkdirSync(path.join(root, 'tests'));
+    fs.mkdirSync(path.join(root, 'reform', 'demo'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'graph', 'thing.js'), 'module.exports = 1;\n');
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'findings.md'), '# 調査\n実測した。\n');
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'requirements.md'), '# 要件\n- AC-01: 動く\n');
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'base'], { cwd: root });
+    execFileSync('git', ['checkout', '-qb', 'reform/demo'], { cwd: root });
+
+    // 散文だけの走行 —— **門を一本も書いていない**。critic は赤でなければならない
+    fs.writeFileSync(path.join(root, 'reform', 'demo', 'design.md'), '# 設計\n形を決めた。\n');
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'prose only'], { cwd: root });
+    const dir = path.join(root, 'reform', 'demo');
+    let t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(!t.ok, `門を書いていない走行が緑になった: ${t.note}`);
+    assert.ok(/一本も門を書いていない/.test(t.note), `理由が的を外している: ${t.note}`);
+
+    // 門を tests/ に書いた走行 —— **散文の下に無くても見えねばならない**
+    fs.writeFileSync(path.join(root, 'tests', 'thing.test.js'),
+      'const assert=require("assert");\nassert.ok(1);\nassert.ok(2);\nassert.ok(3);\nconsole.log("passed: 3");\n'
+      + '// padding to clear the 400-byte substance floor '.repeat(12));
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'add gate'], { cwd: root });
+    t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(t.ok, `tests/ の門を見落としている: ${t.note}`);
+    assert.ok(/門 1 本/.test(t.note), `数え方が違う: ${t.note}`);
+
+    // **走行が触れた物だけ数える** —— 他所の門を数えれば常に緑になり門でなくなる。
+    // main に元から在る門は数に入らないこと
+    fs.writeFileSync(path.join(root, 'tests', 'unrelated.test.js'), 'assert.ok(1);\n'.repeat(40));
+    execFileSync('git', ['checkout', '-q', 'main'], { cwd: root });
+    execFileSync('git', ['add', '-A'], { cwd: root });
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=t', 'commit', '-qm', 'unrelated'], { cwd: root });
+    execFileSync('git', ['checkout', '-q', 'reform/demo'], { cwd: root });
+    t = critic.review(dir, {}).results.find(x => x.id === 'tests-exist');
+    assert.ok(/門 1 本/.test(t.note),
+      `この走行が触れていない門まで数えている: ${t.note} — 楽園中の門を数えれば門は門でなくなる`);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)', () => {
   const artifactLesson = [{ id: 'require-discovery', label: '調査フェーズを飛ばすな',
     check: 'findings', artifact: 'findings.md', applies: null, kind: 'artifact' }];
