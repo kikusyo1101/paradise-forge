@@ -127,7 +127,14 @@ ul.plain li { padding: 4px 0; }
 (function () {
   'use strict';
   var DEFAULT_PORT = 7317, POLL_MS = 2000;
+  /**
+   * **自分が配信されてきた出自を最優先する。**
+   * サーバは既定ポートが塞がっていれば listen(0) で番号を OS に任せる(FR-10)。
+   * 固定の番号を先に見る実装は、**自動割当が働いた瞬間に必ず凍結する**(実測)。
+   * file:// のときだけ PARADISE_PORT → 既定ポート の順に落ちる。
+   */
   function base() {
+    if (/^https?:$/.test(location.protocol) && location.origin && location.origin !== 'null') return location.origin;
     return 'http://127.0.0.1:' + (typeof window.PARADISE_PORT === 'number' ? window.PARADISE_PORT : DEFAULT_PORT);
   }
   function el(t, a, k) {

@@ -34,7 +34,6 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const os = require('os');
-const url = require('url');
 
 // --- engine を module として常駐させる (NFR-07 / AC-N07c) ---
 const clergy = require('./clergy.js');
@@ -585,8 +584,14 @@ function serve(opts = {}) {
   }
 
   const server = http.createServer((req, res) => {
-    const parsed = url.parse(req.url || '/');
-    const pathname = decodeURIComponent(parsed.pathname || '/');
+    // url.parse は非推奨。WHATWG URL で解く。基底は自分の待ち受け先である。
+    // ⚠️ ただし WHATWG URL は `..` を**解決してしまう** — `/../../x` が `/x` になる。
+    // それに頼ると「脱出が起きなかった」のではなく「脱出が見えなくなった」だけであり、
+    // 生ソケットで `..` を直に送られたとき何が起きるかを我々が知らないまま緑になる。
+    // ゆえに **生のパス**を自分で切り出し、正規化の前後を自分の目で確かめる(罠7)。
+    const rawPath = String(req.url || '/').split('?')[0].split('#')[0];
+    let pathname;
+    try { pathname = decodeURIComponent(rawPath); } catch { pathname = rawPath; }
     res.setHeader('Access-Control-Allow-Origin', '*');   // file:// の origin は null
 
     if (pathname === '/events') {

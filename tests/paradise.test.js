@@ -2305,6 +2305,55 @@ test('workspace: 直書きの門は註釈で吠えず、コードでは吠える
   fs.rmSync(base, { recursive: true, force: true });
 });
 
+/**
+ * G-03: **形を見る門が意味を見逃した**(第19条の再発)。
+ *
+ * 旧規則 /['"`][^'"`]*creations\// は引用符の直後にスラッシュが続く形しか咎めず、
+ * path.join 経由で組み立てた旧住所を素通りさせた。census.js:75 と
+ * export-state.js:32 の 2 件を抱えたまま門は緑を出し続け、
+ * **実在 8 件に対し 0 件と報告する欠陥**を守っているつもりで見逃していた。
+ * AC-04c が本試験の存在を求めている。
+ */
+test('workspace: hardcodedRefs は path.join(ROOT, \'creations\') 形も咎める (G-03)', () => {
+  const ws = require('../graph/workspace.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-join-'));
+  const g = path.join(base, 'graph');
+  fs.mkdirSync(g, { recursive: true });
+  // 旧規則が素通りさせた当の形。合成の見本で機械判定する (AC-04d)
+  fs.writeFileSync(path.join(g, 'sneaky.js'), "const dir = path.join(ROOT, 'creations');");
+  const found = ws.hardcodedRefs(base);
+  assert.strictEqual(found.length, 1, 'path.join 経由の旧住所を素通りさせた — 門の穴が開いたままである');
+  assert.strictEqual(found[0].file, 'graph/sneaky.js');
+  assert.ok(found[0].line >= 1 && found[0].why, '名指ししない門は、赤くなっても直せない');
+  // path.resolve / 二重引用符 / バッククォートも同じ規則で咎める
+  fs.writeFileSync(path.join(g, 'sneaky.js'), 'const dir = path.resolve(ROOT, "creations");');
+  assert.strictEqual(ws.hardcodedRefs(base).length, 1, 'path.resolve と二重引用符を見逃した');
+  // 註釈は道を説明してよい。走るコードだけを咎める
+  fs.writeFileSync(path.join(g, 'sneaky.js'), "// path.join(ROOT, 'creations') は旧住所である");
+  assert.strictEqual(ws.hardcodedRefs(base).length, 0, '註釈で吠える門は無視される(第21条)');
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+// --- dashboard: 画面の数が嘘をつかない (第22条 / G-01〜G-10) ---
+/**
+ * 新設した門を自己診断から呼ぶ(要件 §6「新設テストはすべて paradise.test.js から
+ * 呼ばれ、単独でも走ること」)。**同一プロセスで require する** —— node 起動代
+ * 27ms × 本数を払わないためである(design.md §6.2)。
+ * ブラウザを起こす門(fallback / motion-probe-leak)は CI と単独走行に委ねる ——
+ * 自己診断 282 秒をこれ以上伸ばさない。
+ */
+console.log('\nDashboard gates (Art.22 / G-01..G-10):');
+for (const name of ['dashboard-count', 'dashboard-no-deps', 'dashboard-links',
+  'dashboard-no-hardcode', 'dashboard-transport', 'dashboard-freshness',
+  'dashboard-states', 'dashboard-run-panel']) {
+  test(`dashboard-count 系: ${name} が緑 (G-01/02/04/06)`, () => {
+    const rep = require(path.join(DIR, name + '.test.js'));
+    assert.strictEqual(rep.fail, 0,
+      `${name} が ${rep.fail} 件落ちた: ${(rep.failures || []).join(' / ')}`);
+    assert.ok(rep.pass >= 1, `${name} が 1 件も検査していない — 空の門は門ではない`);
+  });
+}
+
 // --- seat: 教主の座は機構である (第31条) ---
 console.log('\nPontiff seat (Art.31):');
 

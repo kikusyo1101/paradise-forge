@@ -30,11 +30,31 @@ var TH = {
 };
 
 /* ── 経路の解決 (§2.2)。当てずっぽうに走査しない ── */
+/**
+ * **自分が配信されてきた出自を最優先する。**
+ *
+ * サーバは既定 7317 が塞がっていれば listen(0) で OS に番号を任せる(FR-10)。
+ * 自動割当なら番号は毎回変わる —— ゆえに固定の 7317 を先に見る実装は、
+ * **自動割当が働いた瞬間に必ず凍結する。** 実測: `serve --port 7411` で起こし
+ * 7411 で開いた画面が 7317 に繋ぎに行き、SSE も fetch も落ちて凍結のままだった。
+ *
+ * http(s) で開かれているなら、その origin こそ**サーバが実際に応答している住所**である。
+ * 推測より確かな事実がそこに在る(NFR-06)。file:// のときだけ、
+ * state.js が書いた PARADISE_PORT → 既定 7317 の順に落ちる。
+ */
+function origin() {
+  if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol) && location.origin && location.origin !== 'null') {
+    return location.origin;                        // ← 自分の出自。最も確からしい
+  }
+  return null;
+}
 function resolvePort() {
+  const o = origin();
+  if (o) { const m = o.match(/:(\d+)$/); if (m) return Number(m[1]); }
   if (typeof window !== 'undefined' && typeof window.PARADISE_PORT === 'number') return window.PARADISE_PORT;
   return TH.DEFAULT_PORT;
 }
-function base() { return 'http://127.0.0.1:' + resolvePort(); }
+function base() { return origin() || ('http://127.0.0.1:' + resolvePort()); }
 
 /* ── 鮮度 (FR-07)。graph/pulse.js freshness と同じ閾値・同じ規則 ── */
 function freshnessOf(ageMs, transport) {
@@ -588,6 +608,9 @@ function start() {
   /* ── 第3層: window.PARADISE_STATE。<script src> は CORS を経由しない ── */
   function toFrozen(reason) {
     stopSSE(); stopPoll();
+    // 既に凍結しているなら二度告げない。飛行中のポーリングが 2 本残っていると
+    // 同じ降格が 2 行ログに載り、神は「2 回落ちた」と読む(実測で 2 行出た)
+    if (transport === 'frozen') { schedulePromote(); return; }
     transport = 'frozen';
     logLine('凍結(埋め込み JS)へ降格(理由: ' + reason + ')');
     var st = (typeof window !== 'undefined') ? window.PARADISE_STATE : null;

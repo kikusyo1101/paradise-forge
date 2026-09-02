@@ -40,15 +40,36 @@ function census(opts = {}) {
 
   let tests = null;
   if (opts.runTests !== false) {
+    /**
+     * **打ち切られた走行の部分出力を、真実として報告してはならない**(第16条)。
+     *
+     * 実測: 自己診断は 282 秒かかるのに timeout は 120 秒である。**構造的に必ず
+     * 打ち切られる。** 旧実装は打ち切り時の stdout から `N passed, M failed` を
+     * 拾っており、282 秒のうち 120 秒までに出た **15 件**を「楽園のテストは 15 件」
+     * として報告した。README の 256 と突き合わせて census が第22条違反を叫んだが、
+     * **嘘をついていたのは README ではなく census の数え方だった。**
+     *
+     * 途中まで数えた数は「数えた結果」ではなく「数え損ね」である。
+     * ゆえに打ち切られたら `tests: null` にして**測れなかったと表明する**。
+     * 呼び手は null を見て「(not measured)」と出す —— 0 や部分値で埋めない。
+     */
+    const TIMEOUT_MS = Number(opts.testTimeoutMs || process.env.CENSUS_TEST_TIMEOUT_MS || 600000);
     try {
       const out = execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
-        { encoding: 'utf8', cwd: ROOT, timeout: 120000 });
+        { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
       const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
       if (m) tests = { passed: +m[1], failed: +m[2] };
     } catch (e) {
-      const out = String((e && (e.stdout || e.message)) || '');
-      const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
-      if (m) tests = { passed: +m[1], failed: +m[2] };
+      // 打ち切り (ETIMEDOUT / SIGTERM) は「測れなかった」。部分出力を採らない
+      const killed = !!(e && (e.killed || e.signal || e.code === 'ETIMEDOUT'));
+      if (killed) {
+        tests = null;
+      } else {
+        // 走り切ったが exit != 0(= 赤があった)。その数は事実なので読む
+        const out = String((e && (e.stdout || e.message)) || '');
+        const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
+        if (m) tests = { passed: +m[1], failed: +m[2] };
+      }
     }
   }
 
