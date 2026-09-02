@@ -117,9 +117,18 @@ test('AC-17c: 壊れた行があっても断面は落ちず、解釈できた行
 
 test('AC-18b/18d: lessonsByKind の合計 == counts.lessons、鍵に mechanism / conduct を含む', () => {
   const sum = Object.values(snap.lessonsByKind).reduce((a, b) => a + b, 0);
+  // 合計と総数の一致は**常に**主張する。0 件でも一致していなければ嘘である
   assert.strictEqual(sum, snap.counts.lessons, '教訓の内訳と総数が割れた');
   const keys = Object.keys(snap.lessonsByKind);
-  assert.ok(keys.includes('mechanism') || keys.includes('conduct'), '2 値のいずれも現れない');
+  // 教訓は KG (~/.claude/paradise-kg) に住む。CI の checkout に KG は無い。
+  // 「2 値のいずれかが現れる」は KG が在るときだけ言える (則3)。
+  // 教訓ゼロの世界では、内訳が空であること自体が正しい姿である
+  if (snap.counts.lessons > 0) {
+    assert.ok(keys.includes('mechanism') || keys.includes('conduct'), '2 値のいずれも現れない');
+  } else {
+    assert.deepStrictEqual(snap.lessonsByKind, {},
+      '教訓 0 件なのに内訳が中身を持っている — 数えていない鍵を捏造している');
+  }
 });
 
 test('AC-18c: 一時ファイルの屑を残さない', () => {

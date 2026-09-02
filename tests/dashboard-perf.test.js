@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { ROOT, makeHarness, get } = require('./_pulse-fixture.js');
+const { ROOT, makeHarness, get, siblingPresent } = require('./_pulse-fixture.js');
 
 const H = makeHarness('dashboard-perf');
 const { test } = H;
@@ -81,6 +81,15 @@ async function main() {
   await test('AC-14g: conclave 全件の直読みが 10ms 未満', () => {
     const workspace = require(path.join(ROOT, 'graph', 'workspace.js'));
     const root = workspace.resolve().root;
+    // 倉は別リポジトリ (第30条)。CI の checkout に倉は無い。
+    // 速さの主張は**読むものが在るときだけ**立つ (則3)。
+    // 倉が無いなら listRuns が黙って空を返さないこと(不在と空を分けること)を測る
+    if (!siblingPresent()) {
+      assert.throws(() => pulse.listRuns(root),
+        '不在の倉に対して listRuns が空配列を返した — 不在と空は別物である');
+      console.log('      (兄弟倉 不在 — 不在時の契約を測る)');
+      return;
+    }
     const runs = pulse.listRuns(root);
     const t0 = process.hrtime.bigint();
     for (const r of runs) JSON.parse(fs.readFileSync(r.path, 'utf8'));
