@@ -238,3 +238,63 @@ daily-guard      843  /  843  →   843 /  503  parse=ok
 | — | `critic.js` が reform の三箇所(散文/実装/門)を束ねられない | 同上 |
 | — | DoS 耐性・XSS が**未検査** | 第16条により「安全」ではなく「未検査」と明記した |
 
+
+---
+
+## 最終判定 — 引継ぎ後、単独走行(則E)で測り直した
+
+前任の教主が残した `verdict-report.json` は、兄弟倉 `../paradise-creations` が
+見えない worktree で測られており **errors 3 / runs 0 / atlas 0** と誤っていた。
+`PARADISE_CREATIONS` を与え `atlas.js all` を走らせた上で測り直した実値:
+
+```
+$ node tests/paradise.test.js
+Paradise self-test: 288 passed, 0 failed          (exit 0)
+
+$ node graph/census.js check          ✓ every number the paradise claims about itself is true
+$ node graph/wiring.js check          ✓ engine 34 / 辺 41、孤児0・宙吊り0
+$ node graph/workspace.js check       ✓ 創造物の混入なし・住所の直書きなし
+$ node graph/derived.js check         ✓ 生成物に依存する試験なし
+$ node graph/vendor.js verify         ✓ paradise stands on its own (vendored 130)
+$ node graph/check-agents.js          ✓ the hierarchy is real, not declared
+$ node graph/atlas.js check           ✓ 6主題すべて通過(wiring のみ平面化不能で standard)
+$ node graph/critic.js review graph --self       ✓ the critic found nothing
+$ node graph/critic.js review dashboard --self   ✓ the critic found nothing
+$ node graph/visual-verify.js check dashboard    ✓ all visual checks pass (9項目)
+
+$ node graph/pulse.js snapshot --json
+errors 0 / runs 5 / atlas 6 / creations 7
+停止: reform-claude-md-diet    矛盾: coin, reform-eval-gauge, tenbin
+```
+
+### 環は閉じた
+
+```
+$ node graph/conclave.js status --run reform/dashboard-living-gate/conclave.json
+✓ 枢機卿 tribunal — Tribunal (断罪機関)   [review: god]
+     ✓ ⚖️ reflect @self-critic
+     ✓ ⚖️ verdict @creation-judge
+domains ratified: 6/6
+
+$ node graph/gauge.js score <run> --json
+{"score":70,"complete":true,"phasesTotal":11,"phasesDone":11,
+ "domainsTotal":6,"domainsRatified":6,"firstPassRate":1,
+ "reworkCount":3,"retryOverhead":0,"loopGuardTrips":0}
+
+$ node graph/verdict.js judge reform/dashboard-living-gate/verdict-report.json
+✅  SHIP   (exit 0)
+```
+
+### 負債をもう一件、正直に足す
+
+```
+$ node graph/spawn-trace.js report <run>
+phases: 11   observed: 0   asserted-only: 0   no-trace: 11
+11 phase(s) bypassed the hierarchy — the ladder was declared but not walked
+```
+
+この改修では `spawn-trace.record` を一度も呼んでいない。成果物・門・実測はすべて
+実在するが、**「誰が作ったか」を台帳が証明できない**。第16条により「緑」と偽らず、
+未達として記す。次の走行で塞ぐべき engine 側の宿題である。
+
+**マージは神の御手のみ。**
