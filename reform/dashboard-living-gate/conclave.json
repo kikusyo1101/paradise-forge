@@ -50,7 +50,7 @@
       "seq": 1,
       "cardinal": "requirements",
       "domain": "Requirements (要件)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 1,
       "phases": [
         {
@@ -62,7 +62,7 @@
           ],
           "gate": true,
           "artifact": "requirements.md",
-          "status": "rework",
+          "status": "done",
           "attempts": 1,
           "artifactPath": "reform/dashboard-living-gate/requirements.md"
         }
@@ -86,8 +86,8 @@
           ],
           "gate": true,
           "artifact": "design.md",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         }
       ],
@@ -271,6 +271,21 @@
       "ts": "2026-09-02T07:53:00.815Z",
       "event": "domain-rework",
       "detail": "Requirements (要件) → Requirements (要件): reset specify, design, build, prove, review, security, docs, verify, reflect, verdict (rework 1)"
+    },
+    {
+      "ts": "2026-09-02T08:29:53.908Z",
+      "event": "ratify",
+      "detail": "Requirements (要件) ratified by cardinal:discovery"
+    },
+    {
+      "ts": "2026-09-02T08:30:01.207Z",
+      "event": "done",
+      "detail": "specify → reform/dashboard-living-gate/requirements.md"
+    },
+    {
+      "ts": "2026-09-02T08:30:01.255Z",
+      "event": "dispatch",
+      "detail": "design"
     }
   ]
 }
