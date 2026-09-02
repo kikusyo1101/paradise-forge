@@ -665,18 +665,35 @@ function layered(items, opts = {}) {
     const lanes = Math.max(1, Math.min(3, Math.floor((gapSpan - 26 - 8) / laneStep) + 1));
     const gapD = (lv) => rankD(lv) - (26 + (gapLane[`${key}@${lv}`] % lanes) * laneStep);
     const bStart = slotB(seatOf(dep)), bEnd = slotB(seatOf(t.id));
+    /**
+     * 席がわずかにずれた二点は **5px の折れ** を作り、描画器が
+     * 「読めない曲がり」として正しく鳴いた(実測: 作図の道 chart-measure → verify)。
+     *
+     * 直し方は「後から畳む」ではなく **経路を作る前に席を揃える** である。
+     * 畳んだ後に点を動かせば、終点の真上に来るはずの線がずれ、今度は
+     * endpoint-side-direction で鳴く — 症状を別の症状へ移しただけになる。
+     * ゆえに横へ寄る先(ダミーの席)が起点/終点とほぼ同じ列なら、最初から
+     * その列に合わせる。**目に見えない寄り道は寄り道ではない。**
+     */
+    const MICRO = 8;
+    const snapB = (v) => {
+      for (const tv of [bStart, bEnd]) if (Math.abs(v - tv) < MICRO) return tv;
+      return v;
+    };
     const raw = [];
     let prevB = bStart;
     for (const dm of p) {
       const d2 = gapD(dm.lv);
-      raw.push(xy(prevB, d2), xy(slotB(dm), d2));
-      prevB = slotB(dm);
+      const b2 = snapB(slotB(dm));
+      raw.push(xy(prevB, d2), xy(b2, d2));
+      prevB = b2;
     }
     const dLast = gapD(depth[t.id]);
     raw.push(xy(prevB, dLast), xy(bEnd, dLast));
 
     // 席の x が一致すると長さ0の折れが生まれ、描画器が micro-segment で
     // 鳴く。同じ点と一直線上の点を畳んでから渡す — 経路の意味は変わらない。
+    //
     const via = [];
     for (const pt of raw) {
       const lastP = via[via.length - 1];
@@ -1119,6 +1136,20 @@ function draw(subject, opts = {}) {
 /** 門: 全主題が実際に 9/9 で通るか。図が壊れたまま気付かない、を許さない。 */
 function check(opts = {}) {
   const outdir = opts.outdir || path.join(os.tmpdir(), 'paradise-atlas-check');
+  /**
+   * **前の走行の残骸を残さない。**
+   *
+   * `visual-check` は図の隣に `<subject>.visual-check.*.png|json|html` を撒く。
+   * それらが残ったまま同じ outdir で描き直すと、描画器が「出力が入力を
+   * 置き換えようとしている」(output/input-alias) と鳴く — 図は何も壊れて
+   * いないのに門が落ちる。**門が己の残骸で落ちるなら、それは門ではなく罠である。**
+   * 実測: 同じ outdir を使い回すテストが、二度目の走行から不定に赤くなっていた。
+   *
+   * ただし消してよいのは **門が自分で作る作業場だけ**である。呼び手が
+   * `dashboard/atlas` のような成果物の住処を指してきたとき掃除すれば、
+   * 門が成果物を消す — 直しが新しい破壊になる。ゆえに住処には触れない。
+   */
+  if (outdir !== OUTDIR) fs.rmSync(outdir, { recursive: true, force: true });
   const rows = [];
   for (const subject of Object.keys(SUBJECTS)) {
     try {

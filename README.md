@@ -186,7 +186,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 
 | ツール | 役割 |
 |--------|------|
-| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華。discover/reflect/verdict をゲート化 |
+| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華。discover/reflect/verdict をゲート化。道は6本 (quick/standard/full/reform/counsel/**cartography**) — 産物の種別が道を決める(第49条) |
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定。走行(trajectory)も読む(第38条) |
 | `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条) |

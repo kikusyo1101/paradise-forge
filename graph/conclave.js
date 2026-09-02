@@ -112,8 +112,13 @@ function next(run) {
     const isCounsel = produces === 'document' ||
       (run.meta && run.meta.scale === 'counsel') ||
       (run.domains || []).some(d => d.cardinal === 'counsel');
+    // 作図の道も創造物(実装物)を産まない。産むのは**図**であり、
+    // その完成は「実ブラウザで測り、目で見た」ことで立つ(第47条・第48条)。
+    const isChart = produces === 'diagram';
     return { level: 'conclave', phase: 'complete',
-             message: isCounsel
+             message: isChart
+               ? 'All domains ratified — the map is drawn (図は engine から生まれた。実ブラウザで測り、目で見たことを以て完成とする)。'
+               : isCounsel
                ? 'All domains ratified — counsel delivered (諐問は創造物を産まない。根拠と共に献じよ)。'
                : 'All domains ratified — creation complete.' };
   }

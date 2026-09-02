@@ -18,10 +18,11 @@ CONCLAVE=~/Documents/workspace/paradise/graph/conclave.js
 CONTRACT=~/Documents/workspace/paradise/graph/contract.js
 CRITIC=~/Documents/workspace/paradise/graph/critic.js
 VERDICT=~/Documents/workspace/paradise/graph/verdict.js
+ATLAS=~/Documents/workspace/paradise/graph/atlas.js
 KG=~/Documents/workspace/paradise/graph/kg.js
 ```
 
-## 二つの対象 — 何を作るかで住所が変わる (第23条 / 第30条)
+## 三つの対象 — 何を作るかで住所が変わる (第23条 / 第30条 / 第47条)
 
 `forge.js scale` が答える道が `reform` なら、**願いの対象は楽園自身**である
 (engine・門・憲法・位階)。創造物の道と一本だけ違うのは**成果物の住所**だ。
@@ -30,11 +31,47 @@ KG=~/Documents/workspace/paradise/graph/kg.js
 |-------|------|--------------|
 | quick / standard / full | 創造物 | `DIR=$(node …/workspace.js init <slug>)` — 楽園の**外**(第30条) |
 | **reform** | **楽園自身** | `DIR=reform/<slug>` — 楽園の**中**。engine を直すのだから当然である |
+| **cartography** | **楽園の姿(図)** | `DIR=reform/<slug>` — 図を生む engine は `graph/atlas.js`。図そのものは追跡しない生成物 |
 
 reform を歩くとき、`workspace.js init` を呼んではならない — あれは創造物を
 楽園の外へ隔てる機構であり、楽園自身の改修には当たらない。`reform/<slug>/`
 を自分で作り、findings.md / design.md をそこへ置く。**engine の変更そのものは
 `graph/` へ直接書く**（それが直す対象なのだから）。
+
+### 作図の道 (cartography) — 神が「図にせよ」と命じたとき (第47条・第48条)
+
+11相。**図は engine から生まれる。数も名も写経しない**(第29条)。
+
+```bash
+node $ATLAS subjects                      # 既存の主題を先に見る(重複を描かない)
+node $ATLAS ir <subject> --out /tmp/x.json # 描かずに IR だけ確かめる
+node $ATLAS draw <subject>                 # 描く(描画器の診断が消えるまで直す)
+node $ATLAS check --scale <各道>           # 門: 静的9/9 + 実ブラウザ実測
+```
+
+歩き方の要点 — ここを外すと図は嘘になる:
+
+1. **`chart-survey`**: 描くべき事実がどの engine に住むかを突き止める
+   (位階=`clergy.js`, 道=`forge.js`, 環=`conclave.js`, 結線=`wiring.js`)。
+   **事実を持つ engine が無いなら、まずそれを作るのが先である。**
+2. **`draft`**: 配置が要るなら `atlas.layered()` を使う。新しい配置器を書かない
+   — 写経の複製は片方だけ直った日に図が食い違う。
+3. **`chart-measure`**: 静的 9/9 は「図として正しい」しか言わない。溢れ・字の
+   大きさ・縮小率は**実ブラウザで測るまで分からない**。溢れるなら `SUBJECTS` に
+   `scroll: true` と宣言する。**字が読めないなら宣言では逃げられない**(第48条e)。
+4. **`behold`**: PNG を実際に開いて読む。静的も実測も通った図が意味を裏切る
+   ことがある(「独立」を主張する箱が枠に触れて独立に見えない等)。幾何は正しい
+   ので機械は咎めない。
+5. 交差ゼロが不能なら**最小交差数を厳密に数え**、`standard` を名乗って理由を
+   図の札に書く(第47条c)。黙って格下げすれば緑の買収である。
+
+断罪のレポートは `produces: "diagram"` を名乗り、`diagram` キーを持つ:
+```json
+{ "produces": "diagram",
+  "diagram": { "checksPassed": 9, "checkCount": 9, "browser": true, "derivedFromEngine": true } }
+```
+`browser` は `atlas.js check` が `fits`/`scroll(...)` を返したかの実測であり、
+自己申告ではない。終いは reform と同じく **PR**(下の §5)。
 
 
 ## The great circle
@@ -47,7 +84,7 @@ node $FORGE scale "<wish>"  # 道を先に問う — reform か、創造か。�
 
 # 創造の道: 創造物は楽園の外に住む (第30条)。住所を知るのは workspace.js だけ
 DIR=$(node ~/Documents/workspace/paradise/graph/workspace.js init <slug>)
-# reform の道: 楽園自身を直すのだから、成果物は楽園の中に住む (第23条)
+# reform / cartography の道: 楽園自身(とその姿)を扱うので、成果物は楽園の中に住む (第23条)
 DIR=reform/<slug> && mkdir -p $DIR
 ```
 
@@ -122,16 +159,23 @@ node $CONCLAVE status --run $DIR/conclave.json
 ```
 Commit, then show God the creation.
 
-### 5. reform の道だけの終い — 神の御手へ渡す (第23条)
+### 5. reform / cartography の終い — 神の御手へ渡す (第23条)
 
-楽園自身を直したなら、成果は創造物ではなく**PR**である。門を実走してから出す:
+楽園自身を直したなら、あるいは楽園の姿を図にしたなら、成果は創造物ではなく
+**PR** である。門を実走してから出す:
 ```bash
 node tests/paradise.test.js          # 自己診断
 node graph/workspace.js check        # 第30条
 node graph/apply-seat.js verify      # 第31条
 node graph/census.js check           # 第22条 — 文書の数を実測に合わせる
+node graph/check-agents.js           # 第25条 — 相の主・発令の宛先
+node graph/wiring.js check           # 第48条 — 孤児と宙吊り
 node graph/deploy.js check
 node graph/apply-guards.js verify
+```
+作図の道ならこれに加えて、**全ての道で図を描き実ブラウザで測る**:
+```bash
+for s in quick standard full reform counsel cartography; do node graph/atlas.js check --scale $s; done
 ```
 一つでも赤なら直すか戻す。緑になったら:
 ```bash

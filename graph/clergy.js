@@ -246,11 +246,45 @@ const COLLEGE = {
     agent: 'cardinal',
     domain: 'Counsel (諐問)',
     governs: ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel'],
-    priests: ['market-researcher', 'auditor', 'reporter'],
+    // `assess`(事実を突き合わせて筋を立てる)は forge で requirements-analyst と
+    // 宣言されているのに、この麾下に居なかった。marshalPlan は他家の神官への
+    // 発令を正しく拒み、筆頭へ落としていた — **宣言と発令が静かに食い違って
+    // いた**(第25条)。指揮系統を跨がせるのではなく、麾下に加えて正す。
+    priests: ['market-researcher', 'auditor', 'reporter', 'requirements-analyst'],
     work: 'research',      // 独立した問い(外の世界 / 手元の実測) → 並列が効く
     believers: ['web-scout', 'feature-ranker', 'data-collector'],
     reviewClass: 'executor',           // 諐問の結論は執行官が検める — 断罪ではなく助言の質を
     pdca: 'plan: 問いを立てる → do: 外を調べ手元を測る → check: 反証に耐えたか? → act: 根拠を足すか結論を弱める',
+  },
+  /**
+   * 作図 (Cartography) — 楽園が己の姿を図にする道を統べる枢機卿 (第47条・第48条)。
+   *
+   * この枢機卿が居ない間、作図の相は governs の穴に落ちていた。
+   * `cardinalFor('draft')` は null を返し、**主の居ない相**になる —
+   * 第25条が名指しで禁じた状態である。
+   *
+   * 相名の衝突に注意 (第17条): `survey` と `measure` は counsel 枢機卿が既に
+   * 統べている。同じ名を二人が governs すれば cardinalFor が先勝ちで嘘を返す。
+   * ゆえに作図の道は `chart-survey` `chart-measure` と名を分ける。
+   */
+  'cartography': {
+    agent: 'cardinal',
+    domain: 'Cartography (作図)',
+    governs: ['chart-survey', 'frame', 'draft', 'render', 'chart-measure', 'behold'],
+    // frame(何を語り何を語らぬか)は要件の仕事である。描き手に決めさせれば
+    // 「描けるもの」が主題になる。ゆえに requirements-analyst をこの枢機卿の
+    // 麾下にも置く — **神官は一人の枢機卿の私物ではない**(architect は既に
+    // architecture と construction の二人に仕えている)。
+    priests: ['auditor', 'requirements-analyst', 'architect', 'ux-reviewer'],
+    // 図は一つの絵に収束せねばならない。主題を分けて並列に描けば、
+    // 同じ事実を別の流儀で語る二枚が生まれる — 設計と同じ性質である。
+    work: 'design',
+    believers: ['data-collector', 'interface-designer'],
+    // 図が事実を写経していないかは、事実を持つ engine を知る者にしか裁けない。
+    // ゆえに審査は執行官 — 図は楽園自身を語るので、どの枢機卿も自分の領分に
+    // ついて自分に都合よく描きうる(自らを批准しない)。
+    reviewClass: 'executor',
+    pdca: 'plan: 何を語り何を語らぬか決める → do: engine から IR を組み描く → check: 実ブラウザで測り目で見る → act: 文言を削るか主題を分ける',
   },
 };
 
@@ -309,6 +343,54 @@ const PHASE_LEAD = {
   // 執行官であり counsel の神官ではない — 指揮系統を跨いだ発令はしない。ゆえに
   // 実測に忠実な auditor が反証を担う。「己の結論を疑う」のは測る者の役目に近い。
   counter:    'auditor',
+  /**
+   * 作図の道 — 測る者、決める者、描く者、見る者は別人である (第47条・第48条)。
+   *
+   * ここを書かなければ、作図の6相すべてが筆頭神官 auditor に発令される。
+   * auditor は読み取り専用(Edit を持たない)なので、**描く相が永久に描けない**。
+   * 諐問の道で同じ病が既に一度起きている(6相全てが market-researcher へ発令され、
+   * auditor と reporter は一度も指揮されなかった)。同じ穴に二度落ちない。
+   *
+   * frame(主題を定める)は requirements-analyst — 何を語らないかを決めるのは
+   * 要件の仕事であり、描き手に決めさせれば「描けるもの」が主題になってしまう。
+   */
+  'chart-survey':  'auditor',        // 事実がどの engine に住むかを実測する
+  frame:           'requirements-analyst', // 何を語り何を語らぬかを定める
+  draft:           'architect',      // engine から IR を組む
+  render:          'architect',      // 描画器の診断が消えるまで直す
+  'chart-measure': 'ux-reviewer',    // 実ブラウザで溢れと字の大きさを測る
+  behold:          'ux-reviewer',    // 人の目で意味の破れを見る
+  /**
+   * 既存の道の穴 — 作図の道を作る過程で露見した (第25条)。
+   *
+   * `prove`(門を壊して鳴らす)と `docs`(文書を更新する)は construction/quality
+   * 枢機卿の governs に在るが、PHASE_LEAD に無かったので**筆頭神官**に落ちていた。
+   * 実測: prove は tdd-guide と宣言されているのに architect へ発令され、
+   * docs は doc-updater と宣言されているのに code-reviewer へ発令されていた。
+   * reform の道は毎PRこれを踏んでいた — 試験を書く者に実装者が、
+   * 文書を書く者に審査官が化けていたのである。
+   */
+  prove:  'tdd-guide',      // 門をわざと壊して鳴らすのは試験の神官の仕事
+  docs:   'doc-updater',    // 文書は文書の神官が書く
+  tests:  'tdd-guide',      // 同じ理由。construction の筆頭は architect である
+  /**
+   * 品質枢機卿は4人の神官を擁するが、PHASE_LEAD が無いので全相が筆頭
+   * (code-reviewer)へ落ちていた。**security が最も重い** — 秘密の見逃しは
+   * BLOCK級の違憲であり(第4条)、そのために security-reviewer だけが
+   * opus/xhigh に格上げされている(第31条 MODEL_EXCEPTIONS)。宛先が違えば
+   * **その格上げは一度も効いていなかった**ことになる。
+   */
+  security:    'security-reviewer',
+  'ux-review': 'ux-reviewer',      // 表層を裁く目は、ロジックを裁く目と別人である(第18条)
+  review:      'code-reviewer',    // 筆頭と同じだが、明示して筆頭依存を断つ
+  /**
+   * 諐問の道の残り。`assess` は requirements-analyst と宣言されているが
+   * counsel 枢機卿の麾下に居なかったため、筆頭 auditor へ落ちていた。
+   * `counsel` は executor(執行官)と宣言されている — 執行官は枢機卿の
+   * 麾下ではないので、この相の宛先は forge の宣言を正とし、
+   * PHASE_LEAD では触れない(触れれば指揮系統を跨ぐ)。
+   */
+  assess:  'requirements-analyst',
 };
 
 /**
@@ -336,6 +418,7 @@ const LEXICON = {
     construction: { en: 'Construction', ja: '建造',     forbidden: ['建設'] },
     quality:      { en: 'Quality',      ja: '品質',     forbidden: [] },
     counsel:      { en: 'Counsel',      ja: '諐問',     forbidden: ['諮問', '審問'] },
+    cartography:  { en: 'Cartography',  ja: '作図',     forbidden: ['製図', '図画'] },
     tribunal:     { en: 'Tribunal',     ja: '断罪機関', forbidden: ['裁判所', '法廷'] },
   },
 };

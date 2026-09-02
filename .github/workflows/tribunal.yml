@@ -126,9 +126,9 @@ jobs:
         run: node graph/clergy.js lexicon-check
 
       - name: 🗺 Atlas — 楽園が己の姿を図にできるか (第47条)
-        # 5つの主題 × 5つの道。IR が作れることと描画器が受理することは別である。
+        # 6つの主題 × 6つの道。IR が作れることと描画器が受理することは別である。
         run: |
-          for s in quick standard full reform counsel; do
+          for s in quick standard full reform counsel cartography; do
             echo "── scale: $s ──"
             node graph/atlas.js check --scale "$s"
           done

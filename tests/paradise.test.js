@@ -3109,6 +3109,20 @@ test('atlas: 交差を隠さない — 平面化不能なら standard を名乗�
     '平面的な道が理由なく standard を名乗っている — 格下げは測ってから');
 });
 
+test('atlas: 門は己の残骸で落ちない — 同じ作業場で二度走る (第21条)', () => {
+  // 実測: visual-check が図の隣に撒く PNG/JSON が残ったまま同じ outdir で
+  // 描き直すと、描画器が output/input-alias で鳴いた。図は何も壊れていないのに
+  // 門が落ちる — 二度目から不定に赤くなる門は、門ではなく罠である。
+  const outdir = path.join(os.tmpdir(), 'paradise-test-atlas-twice');
+  fs.rmSync(outdir, { recursive: true, force: true });
+  for (const pass of [1, 2]) {
+    const res = atlas.check({ scale: 'quick', outdir });
+    assert.deepStrictEqual(res.rows.filter(r => !r.ok).map(r => `${r.subject}: ${r.error || r.checks}`), [],
+      `${pass} 回目の走行で門が落ちた — 残骸が次の走行を汚している`);
+  }
+  fs.rmSync(outdir, { recursive: true, force: true });
+});
+
 test('atlas: 自画像は生成物であり追跡されない (第29条)', () => {
   const ign = fs.readFileSync(path.join(DIR, '..', '.gitignore'), 'utf8');
   assert.ok(/dashboard\/atlas\//.test(ign),
@@ -3190,6 +3204,125 @@ test('wiring: 結線の図は engine から生まれ、写経しない (第29条
   }
   assert.strictEqual(ir.components.length, m.engines.length,
     '図の箱の数が実測の engine 数と食い違う');
+});
+
+
+// ══════════════════════════════════════════════════════════════════════
+// CARTOGRAPHY — 作図の道 (第47条 / 第48条 / 第49条)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n作図の道 (第49条):');
+const checkAgents = require(path.join(DIR, '..', 'graph', 'check-agents.js'));
+
+test('cartography: 「図にせよ」は作図の道へ着く — reform に攫われない (第49条)', () => {
+  // 実測された誤着: 「オーケストレーションの相関図」は REFORM_RE に当たり
+  // engine 改修の道(11相)へ送られ、「位階の図を描いて」は standard(14相)へ落ちて
+  // **存在しない実装物に向かって build/security を走らせていた**。
+  const cases = [
+    ['オーケストレーションの相関図、関連図を作成し連携してほしい', 'cartography'],
+    ['位階の図を描いてほしい', 'cartography'],
+    ['creations のデータフローを可視化して', 'cartography'],
+    ['draw a sequence diagram of the dispatch chain', 'cartography'],
+  ];
+  for (const [wish, want] of cases) {
+    assert.strictEqual(forge.chooseScale(wish), want, `「${wish}」が ${want} へ行かない`);
+  }
+});
+
+test('cartography: 「図」の一字に紛れる語を攫わない (第49条)', () => {
+  // 意図/地図/構図…。素朴な一字判定なら「意図を汲んで実装せよ」が作図へ落ちる。
+  // 門が狼少年になれば、正しい道が信用されなくなる(第21条)。
+  assert.notStrictEqual(forge.chooseScale('意図を汲んでタイマーを実装してほしい'), 'cartography');
+  assert.notStrictEqual(forge.chooseScale('地図アプリが欲しい'), 'cartography');
+  // 逆に、既存の道は奪われていない
+  assert.strictEqual(forge.chooseScale('楽園の憲法に条を足せ'), 'reform');
+  assert.strictEqual(forge.chooseScale('バグを直して'), 'quick');
+  assert.strictEqual(forge.chooseScale('エンジンを監査してほしい'), 'counsel');
+});
+
+test('cartography: 道は実装物でなく図を産むと宣言する (第36条)', () => {
+  const dag = forge.buildDag('位階の図', 'cartography');
+  assert.strictEqual(dag.meta.produces, 'diagram',
+    '作図の道が artifact を名乗れば、verdict が「build が語られていない」と永久に REWORK を出す');
+  for (const forbidden of ['build', 'build-ui', 'security']) {
+    assert.ok(!dag.tasks.some(t => t.id === forbidden),
+      `作図の道に ${forbidden} 相がある — 図は実装物ではない`);
+  }
+  // 図の道に固有の門が在ること
+  for (const need of ['chart-measure', 'behold', 'prove']) {
+    assert.ok(dag.tasks.some(t => t.id === need && t.gate),
+      `作図の道に門 ${need} が無い — 測らず見ない図は証明されていない`);
+  }
+});
+
+test('cartography: 図の断罪は測ったかで立ち、壊せば鳴る (第47条 / 第48条e)', () => {
+  const j = (r) => verdict.judge(r).verdict;
+  // 描いたと言うだけ = 証拠なし
+  assert.strictEqual(j({ produces: 'diagram' }), 'BLOCK',
+    '図の証拠が無いレポートが通っている — 断罪の門が素通しなら上の全ての門が無意味になる');
+  // 静的検査だけでは足りない: 実ブラウザを見ていない
+  assert.strictEqual(j({ produces: 'diagram', diagram: { checksPassed: 9, checkCount: 9 } }), 'REWORK',
+    '実ブラウザで測っていない図が通っている (第48条e)');
+  // 実ブラウザで落ちている
+  assert.strictEqual(j({ produces: 'diagram', diagram: { checksPassed: 9, checkCount: 9, browser: false } }), 'REWORK');
+  // 事実を写経した図は違憲
+  assert.strictEqual(j({ produces: 'diagram', spec: { satisfied: true },
+    diagram: { checksPassed: 9, checkCount: 9, browser: true, derivedFromEngine: false } }), 'BLOCK',
+    '事実を写経した図が通っている (第29条)');
+  // 全て揃えば SHIP
+  assert.strictEqual(j({ produces: 'diagram', spec: { satisfied: true },
+    diagram: { checksPassed: 9, checkCount: 9, browser: true, derivedFromEngine: true } }), 'SHIP');
+});
+
+test('cartography: 作図の全相に主が居て、発令が宣言通りに届く (第25条)', () => {
+  const dag = forge.buildDag('probe', 'cartography');
+  for (const t of dag.tasks) {
+    const card = clergy.cardinalFor(t.id);
+    assert.ok(card, `相 ${t.id} に統べる者が居ない — 無主の相は誰も審査しない`);
+    if (card === 'tribunal' || t.agent === 'verification-loop') continue;
+    const plan = clergy.marshalPlan(t.id, { priestCanSpawn: true });
+    assert.strictEqual(plan.priest, t.agent,
+      `相 ${t.id} は ${t.agent} と宣言されているのに ${plan.priest} へ発令される`);
+  }
+});
+
+test('発令の宛先ずれを門が全ての道で捕らえる (第25条)', () => {
+  // 作図の道を作る過程で、既存の道に5件の食い違いが露見した。最も重いのは
+  // security — security-reviewer と宣言されながら code-reviewer へ発令され、
+  // 第31条の格上げ(opus/xhigh)が一度も効いていなかった。
+  const mis = checkAgents.misroutedPhases();
+  assert.deepStrictEqual(mis.map(m => `${m.scale}/${m.phase}: 宣言 ${m.declared} → 発令 ${m.dispatched}`), [],
+    '宣言された神官と発令先が食い違う相がある — 名は在り主も居て、しかし宛先が違う');
+});
+
+test('cartography: 環が最後まで回り、作図の結びに着く (第11条)', () => {
+  // 道が在ることと歩けることは別である。全ドメインを批准まで進めて確かめる。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'carto-'));
+  const dagPath = path.join(tmp, 'f.json'), runPath = path.join(tmp, 'c.json');
+  const art = path.join(tmp, 'a.md');
+  fs.writeFileSync(art, 'x'.repeat(200));
+  fs.writeFileSync(dagPath, JSON.stringify(forge.buildDag('位階の図', 'cartography')));
+  const conclaveMod = require(path.join(DIR, '..', 'graph', 'conclave.js'));
+  let run = conclaveMod.convene(dagPath);
+  let last = null;
+  for (let i = 0; i < 200; i++) {
+    const r = conclaveMod.next(run);
+    last = r.phase;
+    if (r.phase === 'complete') break;
+    if (r.phase === 'ratify') { conclaveMod.ratify(run, r.cardinal); continue; }
+    if (r.phase === 'blocked') break;
+    // `next` は発令書を返すだけで、相を running にするのは呼び手の責務である
+    // (CLI がそうしている)。engine を直に使う側も同じ契約に従う。
+    if (r.phase === 'wave' && r.dispatch) conclaveMod.markRunning(run, r.dispatch.map(d => d.id));
+    const running = [];
+    for (const d of run.domains) for (const p of d.phases) if (p.status === 'running') running.push(p.id);
+    if (!running.length) break;
+    for (const id of running) conclaveMod.markDone(run, id, art);
+  }
+  assert.strictEqual(last, 'complete', `作図の環が complete に着かない (最後の相: ${last})`);
+  const msg = conclaveMod.next(run).message;
+  assert.ok(/図/.test(msg),
+    '作図の道が「creation complete」と言っている — 図は実装物ではない (第36条)');
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 // --- report ---

@@ -438,5 +438,29 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-09-01T13:49:00.294Z"
+  },
+  {
+    "id": "wiring-gate-self-call",
+    "label": "門は自分の名を自分で呼んで緑になる",
+    "check": "engine が冒頭に書く自分の使い方を呼び手に数えれば孤児は永久にゼロ。常に緑の門は門ではない|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-01T17:17:56.817Z"
+  },
+  {
+    "id": "scroll-exempt-scope",
+    "label": "免除は対象を名指ししなければ穴になる",
+    "check": "atlas の scroll:true は溢れだけを免じるはずが、読みやすさの床(6px)まで免じていた。溢れ0pxの図が字5.57pxで落ちているのに緑を出した|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-01T17:17:56.861Z"
+  },
+  {
+    "id": "layout-untouched-branch",
+    "label": "起こらないと決めつけた枝は起こった日に黙って壊れる",
+    "check": "層化配置器は7席超の段を素通りしていた。楽園の道は6席以下なので誰も気づかず、結線の図(15席)で交差56を生んだ|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-01T17:17:56.903Z"
   }
 ]
