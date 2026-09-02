@@ -372,22 +372,54 @@ test('orchestrator computes the first wave as discover only', () => {
 test('orchestrator hands off an upstream artifact to the next phase', () => {
   const run = makeRun('standard');
   orch.markRunning(run, ['discover']);
-  orch.markDone(run, 'discover', 'findings.md');
+  // **実在する成果物を渡す** —— markDone は住所を名乗ったなら実在を検める
+  // (第22条 / 第27条: conclave と同じ厳しさ)。この門が測るのは受け渡しであって
+  // 台帳の緩さではないので、実在する道を使う
+  orch.markDone(run, 'discover', 'tests/paradise.test.js');
   const nw = orch.nextWave(run);
   const specify = nw.wave.find(w => w.id === 'specify');
   assert.ok(specify, 'specify becomes ready');
   assert.strictEqual(specify.context_from[0].from, 'discover');
-  assert.strictEqual(specify.context_from[0].artifact, 'findings.md', 'artifact handed off');
+  assert.strictEqual(specify.context_from[0].artifact, 'tests/paradise.test.js', 'artifact handed off');
 });
 
 test('orchestrator runs independent phases in the same wave (parallel)', () => {
   const run = makeRun('standard');
   // build は design(構造)・ux(振る舞い)・identity(見た目)が揃って初めて始まる
-  for (const id of ['discover', 'specify', 'design', 'ux', 'identity', 'detail']) { orch.markRunning(run, [id]); orch.markDone(run, id, id + '.md'); }
+  for (const id of ['discover', 'specify', 'design', 'ux', 'identity', 'detail']) {
+    orch.markRunning(run, [id]);
+    orch.markDone(run, id, 'tests/paradise.test.js');   // 実在する成果物(上と同じ理由)
+  }
   const nw = orch.nextWave(run);
   const ids = nw.wave.map(w => w.id).sort();
   assert.deepStrictEqual(ids, ['build', 'tests'], 'build & tests run in parallel after detail');
   assert.strictEqual(nw.parallel, 2);
+});
+
+test('orchestrator: 台帳に虚偽の done を記せない — 住所を名乗るなら実在せよ (第22条 / 第27条)', () => {
+  // X-1 を生んだ穴は conclave では塞いだが orchestrator では空いていた。
+  // **道が違っても、台帳が嘘をつく害は同じ**である
+  const run = makeRun('standard');
+  orch.markRunning(run, ['discover']);
+  const ghost = 'reform/no-such-dir/findings.md';
+  assert.throws(
+    () => orch.markDone(run, 'discover', ghost),
+    /成果物が実在しない/,
+    '存在しない成果物で done にできてしまう — 台帳が嘘をつける');
+  assert.notStrictEqual(run.phases.discover.status, 'done',
+    '例外を投げたのに status が done になっている(部分適用)');
+
+  // 実在するなら通る
+  orch.markDone(run, 'discover', 'tests/paradise.test.js');
+  assert.strictEqual(run.phases.discover.status, 'done');
+
+  // **住所でない名は従来どおり通る** —— orchestrator の artifact は
+  // 'tests' 'implementation' のような実体そのものの名も許す(conclave との違い)
+  const run2 = makeRun('standard');
+  orch.markRunning(run2, ['discover']);
+  orch.markDone(run2, 'discover', 'implementation');
+  assert.strictEqual(run2.phases.discover.status, 'done',
+    '住所でない名まで拒んだ — 正しい走行を止めている');
 });
 
 test('REWORK resets the target and its downstream closure', () => {
