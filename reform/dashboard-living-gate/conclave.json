@@ -135,7 +135,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 1,
       "phases": [
         {
@@ -189,9 +189,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/verify.md"
         }
       ],
       "reviewClass": "executor",
@@ -214,9 +214,10 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "rework",
-          "attempts": 0,
-          "artifactPath": null
+          "status": "running",
+          "attempts": 1,
+          "artifactPath": null,
+          "dispatchedAt": "2026-09-02T14:24:15.729Z"
         },
         {
           "id": "verdict",
@@ -386,6 +387,21 @@
       "ts": "2026-09-02T13:57:21.454Z",
       "event": "done",
       "detail": "docs → reform/dashboard-living-gate/docs.md"
+    },
+    {
+      "ts": "2026-09-02T14:24:03.558Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-02T14:24:15.673Z",
+      "event": "done",
+      "detail": "verify → reform/dashboard-living-gate/verify.md"
+    },
+    {
+      "ts": "2026-09-02T14:24:15.730Z",
+      "event": "dispatch",
+      "detail": "reflect"
     }
   ]
 }
