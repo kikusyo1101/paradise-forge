@@ -1,0 +1,126 @@
+{
+  "slug": "conclave-resume",
+  "produces": "code",
+  "wish": "conclave の環が中断で running のまま二度と回らなくなる袋小路を塞ぐ — 再開の道を engine に建てる",
+  "tests": {
+    "passed": 277,
+    "failed": 0,
+    "before": 268,
+    "added": 9,
+    "command": "node tests/paradise.test.js"
+  },
+  "gates": {
+    "workspace": "pass",
+    "apply-seat": "pass",
+    "census": "pass",
+    "check-agents": "pass",
+    "wiring": "pass",
+    "deploy": "pass",
+    "apply-guards": "pass"
+  },
+  "security": {
+    "assessed": true,
+    "issues": 0,
+    "secrets": 0,
+    "note": "resume は run state の JSON のみを触る。外部入力は相ID/真偽/数値。秘密・網・シェル起動を増やさない。apply-guards verify PASS"
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "claim": "resume verb が engine の語彙に存在する",
+      "evidence": "usage 行に resume。typeof c.resume===function, MAX_PHASE_RESUME=2",
+      "ok": true
+    },
+    {
+      "id": "AC-02/03",
+      "claim": "死んだ running が rework へ戻り環が再び回る",
+      "evidence": "門: 中断した running が resume で環に戻る (第51条) ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-04",
+      "claim": "生きている running を既定で殺さない",
+      "evidence": "fresh(0s<900s) で skipped。門 ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-05",
+      "claim": "猶予超過は --force 無しで回収",
+      "evidence": "20分前の dispatchedAt → resumed。門 ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-06",
+      "claim": "markRunning が dispatchedAt を刻む",
+      "evidence": "門: markRunning が発令の刻を記す ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-07",
+      "claim": "resume は reworks を消費しない",
+      "evidence": "reworks=0, resumes=1, history event=resume。門 ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-08",
+      "claim": "相単位 loop-guard が閉塞して人を呼ぶ",
+      "evidence": "3回目で ok=false blocked=discovery, next→blocked。門 ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-09",
+      "claim": "既存の壊れた実物が生き返る",
+      "evidence": "dashboard-living-gate: stuck → resume --force → wave (実物)",
+      "ok": true
+    },
+    {
+      "id": "AC-10",
+      "claim": "中断→復帰→complete の通し門",
+      "evidence": "門: 中断→復帰→complete まで環が回りきる (第51条a) ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-11",
+      "claim": "next --reclaim は opt-in",
+      "evidence": "plain next→stuck(相不変) / reclaim→wave。門 ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-12",
+      "claim": "status が化石を人に見せる",
+      "evidence": "門: status が running の化石を人に見せる ✓",
+      "ok": true
+    },
+    {
+      "id": "AC-13",
+      "claim": "第51条が憲法に刻まれ codex から読める",
+      "evidence": "codex.js article 51 が本文を返す。index に 51 行",
+      "ok": true
+    }
+  ],
+  "gateBreakTest": {
+    "done": true,
+    "sabotages": 3,
+    "note": "3回の破壊で対応する門が赤くなることを確認。1件は門自身の欠陥(OOM)を暴き修正した。prove.md 参照"
+  },
+  "openGaps": [
+    {
+      "id": "critic-reform-road-blind",
+      "note": "critic の tests-exist は creations/<slug> 配下にしか test を探さず、reform の道(テストは tests/paradise.test.js に住む)を知らない。ダミーを置いて緑を買わず、次の願いの種として残す"
+    }
+  ],
+  "trajectory": {
+    "score": 80,
+    "complete": false,
+    "phasesTotal": 11,
+    "phasesDone": 10,
+    "domainsTotal": 6,
+    "domainsRatified": 5,
+    "firstPassRate": 1,
+    "reworkCount": 0,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "durationMs": 6692037
+  },
+  "build": "pass"
+}
