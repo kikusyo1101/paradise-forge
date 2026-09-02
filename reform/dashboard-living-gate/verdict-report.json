@@ -2,26 +2,35 @@
   "creation": "dashboard-living-gate",
   "measuredIn": "worktree C:/Users/kikus/AppData/Local/Temp/pd-verdict (branch reform/dashboard-living-gate), PARADISE_CREATIONS=C:/Users/kikus/Documents/workspace/paradise-creations, 単独走行 (則E)",
   "build": "pass",
-  "types": { "status": "pass", "errors": 0 },
-  "lint": { "status": "pass", "warnings": 0 },
+  "types": {
+    "status": "pass",
+    "errors": 0
+  },
+  "lint": {
+    "status": "pass",
+    "warnings": 0
+  },
   "tests": {
-    "passed": 288,
+    "passed": 290,
     "failed": 0,
-    "total": 288,
+    "total": 290,
     "coverage": 100,
-    "note": "node tests/paradise.test.js → 288 passed, 0 failed / exit=0。coverage は行網羅率ではなく門の通過率(288/288)。11件の門を壊して赤が鳴ることを確認済み。"
+    "note": "node tests/paradise.test.js → 290 passed, 0 failed / exit=0。両世界(倉なし・KGなし / 実環境)で確認。門を壊して鳴ることを第二幕だけで10件確認。"
   },
   "security": {
     "issues": 0,
     "secrets": 0,
-    "note": "git grep で秘密の直書き 0 件。DoS 耐性と XSS は未検査 — 『安全』とは主張せず『未検査』と明記(第16条)。"
+    "note": "git grep で秘密の直書き 0 件。DoS 耐性と XSS は引き継ぎ後に実測し門に据えた(security.md §5)— もはや未検査ではない。"
   },
   "spec": {
     "satisfied": true,
     "unmet": [],
     "note": "神託の6つの不満すべてに実測で回答。FR-01..23 / NFR-01..07 / G-01..10。"
   },
-  "diff": { "files": 67, "commits": 29 },
+  "diff": {
+    "files": 70,
+    "commits": 40
+  },
   "trajectory": {
     "score": 70,
     "reworkCount": 3,
@@ -35,7 +44,7 @@
     "complete": true
   },
   "gates": {
-    "paradise.test.js": "288 passed, 0 failed (exit 0)",
+    "paradise.test.js": "290 passed, 0 failed (exit 0)",
     "census.js check": "exit 0 — every number the paradise claims about itself is true",
     "wiring.js check": "exit 0 — engine 34 / 辺 41、孤児0・宙吊り0",
     "workspace.js check": "exit 0 — 創造物の混入なし・住所の直書きなし",
@@ -45,25 +54,49 @@
     "atlas.js check": "exit 0 — 6主題すべて通過(wiring のみ平面化不能で standard)",
     "critic review graph --self": "exit 0 — the critic found nothing",
     "critic review dashboard --self": "exit 0 — the critic found nothing",
-    "visual-verify check dashboard": "exit 0 — all visual checks pass (9項目)"
+    "visual-verify check dashboard": "exit 0 — all visual checks pass (9項目)",
+    "CI (GitHub Actions)": "検証ゲート SUCCESS / 執行官の裁定 SUCCESS / mergeStateStatus CLEAN"
   },
   "snapshot": {
     "errors": 0,
     "runs": 5,
     "atlas": 6,
-    "counts": { "articles": 51, "engines": 34, "cardinals": 7, "creations": 7, "workshops": 1, "runs": 5, "agents": 30, "commands": 19, "skills": 13, "kgNodes": 101, "kgEdges": 33, "lessons": 67 },
-    "stalled": ["reform-claude-md-diet"],
-    "contradiction": ["coin", "reform-eval-gauge", "tenbin"],
+    "counts": {
+      "articles": 51,
+      "engines": 34,
+      "cardinals": 7,
+      "creations": 7,
+      "workshops": 1,
+      "runs": 5,
+      "agents": 30,
+      "commands": 19,
+      "skills": 13,
+      "kgNodes": 101,
+      "kgEdges": 33,
+      "lessons": 67
+    },
+    "stalled": [
+      "reform-claude-md-diet"
+    ],
+    "contradiction": [
+      "coin",
+      "reform-eval-gauge",
+      "tenbin"
+    ],
     "note": "前回の verdict-report.json は兄弟倉が見えない環境で作られ errors 3 / runs 0 / atlas 0 と誤測していた。これは PARADISE_CREATIONS を与え atlas 生成後に測り直した値である。"
   },
   "debt": [
     "X-2 断面の runs[].path に絶対パス5件(127.0.0.1 限定・画面は描かない)",
     "F-5 pulse.js:469 thresholds の消費者ゼロ",
-    "F-6 control.html が paradise.js の5関数を写経(門の射程外)",
-    "F-7 counts=null で画面に文字列 null",
-    "D-1 orchestrator.js markDone に成果物実在の検査なし",
-    "D-2 critic.js が reform の三箇所を束ねられない",
-    "B-1/B-2 DoS 耐性・XSS 未検査",
     "spawn-trace の起動証跡が11相すべて無い"
+  ],
+  "resolved": [
+    "F-6 control.html の写経 → 出所を1つにし門(AC-02d)を据えた",
+    "F-7 counts=null の文字列 null → 「測れず」+ 門(AC-20f)",
+    "D-1 orchestrator の markDone に実在検査 + 門",
+    "D-2 critic が reform の三箇所を束ねる + 門",
+    "B-1 DoS 耐性を実測し門に据えた",
+    "B-2 XSS を実ブラウザで注入し実測、門に据えた",
+    "CI の赤4件(倉不在/KG不在/OSの癖/借り物の資源漏れ)"
   ]
 }
