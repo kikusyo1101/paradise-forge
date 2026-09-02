@@ -95,8 +95,52 @@ ea72f09 quality(reform): 自己診断 288/288 緑 — README を実数へ   ← 
 | — | `orchestrator.js` の `markDone` に同じ検査なし | 別の道。範囲を広げない |
 | — | `critic.js` が reform の三箇所を束ねられない | 同上 |
 | — | DoS 耐性・XSS が**未検査** | 第16条により「安全」ではなく「未検査」と明記 |
+| — | `spawn-trace` の起動証跡が11相すべて無い | 成果物と門が実在を証明する。台帳が証明するのは「何が在るか」で、この走行では「誰が」を記録し損ねた |
 
-## 判定
+## 走行そのものの実測(第38条) — 引継ぎ後に単独走行で測り直した
+
+```
+$ node graph/gauge.js score reform/dashboard-living-gate/conclave.json --json
+{"score":70,"complete":true,"phasesTotal":11,"phasesDone":11,
+ "domainsTotal":6,"domainsRatified":6,"firstPassRate":1,
+ "reworkCount":3,"retryOverhead":0,"loopGuardTrips":0}
+```
+
+環は 6/6 で閉じ、ループガードは一度も鳴っていない。
+
+### 正直に赤いもの — 起動証跡がゼロである
+
+```
+$ node graph/spawn-trace.js report <run>
+phases: 11   observed: 0   asserted-only: 0   no-trace: 11
+11 phase(s) bypassed the hierarchy — the ladder was declared but not walked
+```
+
+**この改修では `spawn-trace.record` を一度も呼んでいない。**
+位階は宣言されたが、機械の目から見れば歩いた証跡が無い。
+成果物・門・実測はすべて在るが、**「誰が作ったか」は台帳が証明できない。**
+これを「緑」と偽らず、負債として下に記す(第16条)。
+
+## 判定 — 機械が下した(第12条)
+
+```
+$ node graph/verdict.js judge reform/dashboard-living-gate/verdict-report.json
+═══════════ ⚖️  VERDICT ═══════════
+✅  SHIP
+All gates pass, no breach — creation is complete.
+
+Passed:
+  ✓ trajectory 70/100
+  ✓ build passes
+  ✓ types clean
+  ✓ lint clean
+  ✓ 288/288 tests pass
+  ✓ coverage 100% ≥ 80%
+  ✓ no security issues
+  ✓ spec satisfied
+═══════════════════════════════════
+EXIT=0
+```
 
 **SHIP。**
 

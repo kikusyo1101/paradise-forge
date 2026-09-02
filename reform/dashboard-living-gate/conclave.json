@@ -201,7 +201,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -214,9 +214,9 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/dashboard-living-gate/reflect.md",
           "dispatchedAt": "2026-09-02T14:24:15.729Z"
         },
         {
@@ -228,9 +228,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/verdict.md"
         }
       ],
       "reviewClass": "god",
@@ -402,6 +402,21 @@
       "ts": "2026-09-02T14:24:15.730Z",
       "event": "dispatch",
       "detail": "reflect"
+    },
+    {
+      "ts": "2026-09-02T15:50:37.540Z",
+      "event": "done",
+      "detail": "reflect → reform/dashboard-living-gate/reflect.md"
+    },
+    {
+      "ts": "2026-09-02T15:52:21.490Z",
+      "event": "done",
+      "detail": "verdict → reform/dashboard-living-gate/verdict.md"
+    },
+    {
+      "ts": "2026-09-02T15:52:21.534Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ]
 }
