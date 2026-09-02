@@ -452,12 +452,37 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 - 削るのは `preconnect` / `stylesheet(media=print onload)` / `noscript` の 3 行。書体は system monospace に落ちる。
 
 **AC-12a**: 生成器の性質を測る(第29条) — `grep -c "fonts.googleapis\|fonts.gstatic" overlay/vendor/archify/assets/template.html` が `0`。
-**AC-12b**: 再生成後の実地確認 — atlas を作り直した上で
+**AC-12b**: 再生成後の実地確認 — **atlas を作り直した直後に限り**
 `grep -rl "fonts.googleapis\|fonts.gstatic" dashboard/ | wc -l` が `0`。
+> ⚠️ **第29条の注意(discovery 枢機卿の指摘により教主が補正)**: `dashboard/atlas/` は **gitignore された生成物**であり、
+> CI のクリーンな作業樹には**存在しない**。実測: `grep -rl … dashboard/` は手元では 6 件を挙げるが、
+> **git 追跡ファイルのみに限ると 0 件**である。ゆえにこの AC を**そのまま CI の門にしてはならない** —
+> 生成物が無い環境で自動的に緑になり、「守っているように見えて何も見ていない門」になる(第19条・第29条)。
+> **CI で回すのは AC-12a と AC-12e のみ**とし、AC-12b は `node graph/atlas.js all` を先に実行した
+> ローカル/リリース検証でのみ使う。
 **AC-12c**: 白紙化していないこと — `grep -c "@font-face\|local('JetBrains Mono')" overlay/vendor/archify/assets/template.html` が `1` 以上
 (退避が残っている証明)。
-**AC-12d**: 楽園全体で外部 http(s) 参照が `http://www.w3.org`(SVG 名前空間・無害)以外に**存在しない** —
-`grep -rhoE 'https?://[^"'"'"' )]*' dashboard/ | sed 's|.*\(https\?://[^/]*\).*|\1|' | sort -u | grep -v '^http://www.w3.org$' | wc -l` が `0`。
+**AC-12d**: 【**教主により CI 対象から除外**】楽園全体の外部 http(s) 参照の走査
+`grep -rhoE 'https?://[^"'"'"' )]*' dashboard/ | … | wc -l` が `0`。
+AC-12b と同じ理由で**生成物依存**のため、CI ではなくローカル検証にのみ用いる。
+**AC-12e**: 【**教主が新設 — CI の門はこれを使う**】**git が追跡しているファイルだけ**を走査し、
+**実際に取りに行くコード**の中に外部書体参照が存在しないこと:
+```
+git ls-files -z -- 'overlay/**' 'dashboard/*.html' 'dashboard/*.js' \
+  | xargs -0 grep -lE 'https?://(fonts\.googleapis|fonts\.gstatic)' | wc -l    # → 0
+```
+**修正前の実測(この AC が正しく赤を出す証明)**:
+```
+$ git ls-files -z | xargs -0 grep -lE 'https?://(fonts\.googleapis|fonts\.gstatic)'
+overlay/vendor/archify/assets/template.html      ← 真の供給線。これを消せば緑になる
+reform/dashboard-living-gate/findings-pontiff.md ← 欠陥を*記述*した文書。咎めてはならない
+tests/paradise.test.js                           ← 門が*検出語として*持つ文字列。同上
+```
+ゆえに走査対象を `overlay/**` と `dashboard/*.html|*.js` に限る。
+**欠陥を語る散文と、欠陥そのものを取り違えない** — 第28条「conduct の教訓を grep で裁くな」の同型である。
+生成物の有無に左右されず、**供給線そのもの**を測る(第19条「在庫を数える門は供給線を証明しない」)。
+
+
 
 ---
 
