@@ -633,38 +633,26 @@ function layered(items, opts = {}) {
    */
   const dummyDx = Math.max(12, Math.round(SEAT * 0.27));
   /**
-   * **ダミーの席は箱の席より狭くてよい** (第47条c の是正・実測で決めた)。
+   * **席の幅を名ごとに与える道は、呼び手が `widthOf` を渡したときだけ開く。**
    *
-   * かつてダミーは実体と同じ幅の席を占めていた。理由は「席を細くすると辺が
-   * 斜めに逃げ、直交が崩れる」であった —— だがそれは**席の幅**の話であって、
-   * **席の間隔**の話ではない。ダミーは箱を持たないので、隣の席との間に
-   * 箱の幅を確保する必要が無い。必要なのは「縦線が隣の箱を貫かない」だけの
-   * 隙間であり、それは dummyDx(席幅の 27%)で足りる。
+   * ここを既定にしてはならない —— 実測でそれを確かめた。
+   * 一律の席幅をやめた最初の版は、結線の図(段に 27 席)を 3416 → 2265px に縮めた
+   * 代わりに、**reform の道の DAG を壊した**: 図幅が 762 → 582px に詰まり、
+   * `build → security` の辺が建造の枠線に 106px 寄り添って
+   * composition/container-border-run で描画器が正しく鳴いた。
+   * 席が 5 つしかない図に、27 席の図のための詰め方を当てたのが誤りである。
    *
-   * これを直した動機は実測である。engine が 34 になり pulse.js が 13 本を
-   * require したとき、段飛ばしが 2 → 8 本に増え、最大席数が 18 → 27 に膨れた。
-   * 図幅は 2300 → 3416px になり、1440 の画面への縮小で字が 4.33px に潰れた
-   * (床 6px)。**膨れた 9 席のうち 6 席は箱ではなく通り道だった。**
-   * 通り道に箱と同じ幅を与えていたことが、図を読めなくした真因である。
+   * ゆえに**詰めるのは、詰めねば読めない図だけ**にする。
+   * `widthOf` を渡さない呼び手は、1 ピクセルも座標が変わらない(実測で確認済み)。
    *
-   * 幅は dummyDx の 2 倍 + 余白とする — 3 本の車線 (dummyDx × 0.55 ずつずらす)
-   * が席の中に収まる最小幅である。
+   * ダミーの席を細くするのも同じ扱いにする。ダミーは箱を持たないので隣に箱の幅を
+   * 空ける必要が無いが、**その節約が要るのは席が溢れた図だけ**である。
    */
-  const DUMMY_PITCH = Math.max(24, Math.round(dummyDx * 2.2));
-  /**
-   * **席の幅は、その席に座る名の長さで決める** (第47条c の是正・実測で決めた)。
-   *
-   * かつて全ての席が「最長の名に合う幅」を共有していた。結線の図では最長が
-   * `build-identity-catalog` (22 字) であり、`kg` (2 字) も `codex` (5 字) も
-   * 同じ 112px の席を占めていた。**19 席の段では、その無駄が図幅そのものになる。**
-   *
-   * 名ごとに幅を与えると、図幅は名の**総和**で決まる。実測(下の表)。
-   * 描画器は「札が箱より広い」ことを layout/constraint で咎めるので、
-   * 幅は必ず名が入る大きさを下限に取る —— **読めない省略を作らない。**
-   */
-  const seatW = (t) => (t && t.dummy) ? DUMMY_PITCH
-    : (typeof opts.widthOf === 'function' ? Math.max(SEAT_MIN, opts.widthOf(t.id)) : SEAT);
-  const pitchOf = (t) => (t && t.dummy) ? DUMMY_PITCH : seatW(t) + SEAT_GAP;
+  const perName = typeof opts.widthOf === 'function';
+  const DUMMY_PITCH = perName ? Math.max(24, Math.round(dummyDx * 2.2)) : SEAT_PITCH;
+  const seatW = (t) => (t && t.dummy) ? (perName ? DUMMY_PITCH : SEAT)
+    : (perName ? Math.max(SEAT_MIN, opts.widthOf(t.id)) : SEAT);
+  const pitchOf = (t) => (t && t.dummy) ? DUMMY_PITCH : (perName ? seatW(t) + SEAT_GAP : SEAT_PITCH);
   /** 段の中で t の左端までに積まれた間隔の総和 */
   const offsetIn = (layer, t) => {
     let acc = 0;
@@ -675,6 +663,12 @@ function layered(items, opts = {}) {
   const maxSpan = Math.max(...Object.values(byDepth).map(layerSpan));
   const slotB = (t) => {
     const layer = byDepth[lvOf(t)];
+    if (!perName) {
+      // 一律の席幅。**旧来の式をそのまま保つ** — 座標が 1px でも動けば、
+      // 図は同じ事実を語りながら描画器の裁定だけが変わる
+      return PAD_B + Math.round((layer.indexOf(t) + (maxRow - layer.length) / 2) * SEAT_PITCH) + SEAT / 2
+        + (t.dummy ? dummyDx + (skipRank[t.key] % 3) * Math.round(dummyDx * 0.55) : 0);
+    }
     // 段は中央に揃える。狭い席が混ざっても中心は総幅で決まる
     const start = PAD_B + Math.round((maxSpan - layerSpan(layer)) / 2);
     return start + offsetIn(layer, t) + (t.dummy ? DUMMY_PITCH / 2 : seatW(t) / 2)
@@ -763,9 +757,11 @@ function layered(items, opts = {}) {
   for (const e of back) edges.push({ from: e.from, to: e.to, back: true, ...BACK });
 
   const maxLv = Math.max(...depths);
-  // 幅は席の**間隔の総和**で決まる。ダミーが狭い席を占めるので、
-  // 「最大席数 × 席の間隔」では実際より広く見積もる(実測で 3416 と 2532 の差になった)
-  const breadthTotal = PAD_B + maxSpan - SEAT_PITCH + SEAT + 40;
+  // 幅は席の**間隔の総和**で決まる。名ごとの席幅を使うときはダミーが狭い席を占めるので、
+  // 「最大席数 × 席の間隔」では実際より広く見積もる(実測: 結線の図で 3416 と 2265 の差)。
+  // 一律の席幅のときは旧来の式をそのまま保つ — 他の図の座標を 1px も動かさない
+  const breadthTotal = perName ? (PAD_B + maxSpan - SEAT_PITCH + SEAT + 40)
+    : (PAD_B + (maxRow - 1) * SEAT_PITCH + SEAT + 40);
   const depthTotal = PAD_D + maxLv * RANK_PITCH + RANK + 40;
   return {
     posOf, depth, byDepth, depths, edges, isDummy, horizontal, sizeOf: (id) => xy(seatW({ id }), RANK),

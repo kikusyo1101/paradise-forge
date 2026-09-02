@@ -2222,6 +2222,37 @@ test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', ()
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+test('census: 総括は位置ではなく名前で読む — 子テストの集計行に騙されない (第22条 / 第29条)', () => {
+  const census = require('../graph/census.js');
+  // 実測(2026-09-02): ダッシュボードの門13本を新設したところ、自己診断の出力に
+  // 子テストの集計行が8本現れた。旧実装は String.match の**最初の一致**を拾い、
+  // `dashboard-count: 15 passed` を「楽園のテスト総数」と信じた。README の 256 と
+  // 突き合わせて第22条違反を叫んだが、**嘘をついていたのは README ではなく数え方だった**。
+  const withChildren = [
+    'dashboard-count: 15 passed, 0 failed',
+    'dashboard-no-deps: 10 passed, 0 failed',
+    'dashboard-run-panel: 16 passed, 0 failed',
+    '',
+    'Paradise self-test: 288 passed, 0 failed',
+    '',
+  ].join('\n');
+  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0 },
+    '子テストの集計行を総括と取り違えている — 先頭ではなく名乗りで狙え');
+
+  // 赤があっても総括を読む
+  assert.deepStrictEqual(
+    census.summaryOf('child: 3 passed, 0 failed\nParadise self-test: 287 passed, 1 failed\n'),
+    { passed: 287, failed: 1 });
+
+  // 名乗りが無い版でも壊れない — 最後の一致に落ちる
+  assert.deepStrictEqual(census.summaryOf('a: 1 passed, 0 failed\nb: 9 passed, 2 failed\n'),
+    { passed: 9, failed: 2 }, '名乗りが無いときは最後の一致に落ちるべき');
+
+  // 読めなければ null。0 で埋めてはならない(第16条: 判定不能は緑ではない)
+  assert.strictEqual(census.summaryOf('何も無い'), null,
+    '読めなかったときに 0 を返すと「テスト0件で全部通った」と嘘をつく');
+});
+
 // --- workspace: 創造物は楽園の外に住む (第30条) ---
 console.log('\nWorkspace (Art.30):');
 

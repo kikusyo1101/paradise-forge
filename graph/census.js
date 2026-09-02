@@ -33,6 +33,33 @@ const readRoot = f => {
   try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { return ''; }
 };
 
+/**
+ * 自己診断の出力から**総括の一行だけ**を読む。
+ *
+ * ⚠️ **位置で決めるな。名前で決めよ**(第29条の精神)。
+ *
+ * 実測(2026-09-02): ダッシュボードの門13本を新設したところ、自己診断の出力に
+ * 子テストの集計行が現れた —— `dashboard-count: 15 passed, 0 failed` ほか計8本。
+ * 旧実装は `out.match(/([0-9]+) passed, ([0-9]+) failed/)` を使っており、
+ * **String.match は最初の一致しか返さない**。ゆえに census は 1件目の
+ * `15` を「楽園のテスト総数」と信じ、README の 256 と突き合わせて
+ * 第22条違反を叫んだ。**嘘をついていたのは README ではなく数え方だった。**
+ *
+ * 総括は「先頭」でも「末尾」でもなく `Paradise self-test:` と名乗る行である。
+ * 名前で狙えば、子テストが何本増えても、順序が変わっても壊れない。
+ * 名乗りが見つからないときだけ、最後の一致に落ちる(版が変わった場合の保険)。
+ *
+ * @returns {{passed:number, failed:number}|null} 読めなければ null(= 測れなかった)
+ */
+function summaryOf(out) {
+  const named = String(out).match(/Paradise self-test:\s*([0-9]+) passed, ([0-9]+) failed/);
+  if (named) return { passed: +named[1], failed: +named[2] };
+  const all = [...String(out).matchAll(/([0-9]+) passed, ([0-9]+) failed/g)];
+  if (!all.length) return null;
+  const last = all[all.length - 1];
+  return { passed: +last[1], failed: +last[2] };
+}
+
 /** 楽園の真の数を測る。推測は一つも無い — 全て実ファイル/実行結果から。 */
 function census(opts = {}) {
   const constitution = readRoot('CONSTITUTION.md');
@@ -57,8 +84,7 @@ function census(opts = {}) {
     try {
       const out = execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
         { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
-      const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
-      if (m) tests = { passed: +m[1], failed: +m[2] };
+      tests = summaryOf(out);
     } catch (e) {
       // 打ち切り (ETIMEDOUT / SIGTERM) は「測れなかった」。部分出力を採らない
       const killed = !!(e && (e.killed || e.signal || e.code === 'ETIMEDOUT'));
@@ -66,9 +92,7 @@ function census(opts = {}) {
         tests = null;
       } else {
         // 走り切ったが exit != 0(= 赤があった)。その数は事実なので読む
-        const out = String((e && (e.stdout || e.message)) || '');
-        const m = out.match(/([0-9]+) passed, ([0-9]+) failed/);
-        if (m) tests = { passed: +m[1], failed: +m[2] };
+        tests = summaryOf(String((e && (e.stdout || e.message)) || ''));
       }
     }
   }
@@ -291,4 +315,4 @@ if (require.main === module) {
   process.exit(2);
 }
 
-module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };
+module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, summaryOf, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };
