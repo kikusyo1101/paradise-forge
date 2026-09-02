@@ -265,9 +265,35 @@ function resume(run, opts = {}) {
     message: resumed.length ? `resumed: ${resumed.join(', ')} — 環は再び回る` : 'nothing resumed（回収すべき化石は無かった）' };
 }
 
+/**
+ * 相を done として記す。
+ *
+ * ⚠️ **成果物を名乗るなら、その成果物は実在せねばならない**(第22条 / 第27条)。
+ *
+ * 実測(2026-09-02): security 相の神官が反復上限で打ち切られたにもかかわらず、
+ * 教主が `done security --artifact .../security.md` と記録した。**ファイルは
+ * 一度も存在したことがなかった**(`git log --all -- security.md` → 0件)。
+ * executor(執行官)が `ls` で不在を暴くまで誰も気づかなかった。
+ *
+ * 第27条「subagent の done を信じない」は、**記録する者自身にも向く**。
+ * 教主が神官を疑っても、教主が書いた台帳を誰も疑わなければ嘘は残る。
+ * ゆえに engine が拒む —— 人の注意力ではなく機械が守る(第50条)。
+ */
 function markDone(run, id, artifactPath) {
   const p = allPhases(run).get(id);
   if (!p) throw new Error('unknown phase: ' + id);
+  if (artifactPath) {
+    const abs = path.isAbsolute(artifactPath)
+      ? artifactPath
+      : path.join(path.dirname(__dirname), artifactPath);
+    if (!fs.existsSync(abs)) {
+      throw new Error(
+        `成果物が実在しない: ${artifactPath}\n` +
+        `  相 "${id}" を done にはできない —— 名乗った成果物が無い(第22条)。\n` +
+        `  神官が打ち切られたか、書く前に done を記したかである。\n` +
+        `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
+    }
+  }
   p.status = 'done'; if (artifactPath) p.artifactPath = artifactPath;
   run.history.push({ ts: now(), event: 'done', detail: id + (artifactPath ? ' → ' + artifactPath : '') });
 }

@@ -136,7 +136,7 @@
       "cardinal": "quality",
       "domain": "Quality (品質)",
       "status": "active",
-      "reworks": 0,
+      "reworks": 1,
       "phases": [
         {
           "id": "review",
@@ -148,9 +148,9 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/review.md"
         },
         {
           "id": "security",
@@ -161,9 +161,9 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/security.md"
         },
         {
           "id": "docs",
@@ -174,9 +174,9 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null
+          "artifactPath": "reform/dashboard-living-gate/docs.md"
         },
         {
           "id": "verify",
@@ -336,6 +336,56 @@
       "ts": "2026-09-02T13:10:10.265Z",
       "event": "dispatch",
       "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-02T13:42:09.683Z",
+      "event": "done",
+      "detail": "review → reform/dashboard-living-gate/review.md"
+    },
+    {
+      "ts": "2026-09-02T13:42:09.735Z",
+      "event": "done",
+      "detail": "security → reform/dashboard-living-gate/security.md"
+    },
+    {
+      "ts": "2026-09-02T13:42:09.788Z",
+      "event": "done",
+      "detail": "docs → reform/dashboard-living-gate/docs.md"
+    },
+    {
+      "ts": "2026-09-02T13:42:09.841Z",
+      "event": "done",
+      "detail": "verify → reform/dashboard-living-gate/verify.md"
+    },
+    {
+      "ts": "2026-09-02T13:53:59.565Z",
+      "event": "domain-rework",
+      "detail": "Quality (品質) → Quality (品質): reset security, verify, reflect, verdict (rework 1)"
+    },
+    {
+      "ts": "2026-09-02T13:55:17.605Z",
+      "event": "done",
+      "detail": "security → reform/dashboard-living-gate/security.md"
+    },
+    {
+      "ts": "2026-09-02T13:56:01.185Z",
+      "event": "done",
+      "detail": "docs → reform/dashboard-living-gate/NO-SUCH-FILE.md"
+    },
+    {
+      "ts": "2026-09-02T13:56:01.245Z",
+      "event": "done",
+      "detail": "docs → reform/dashboard-living-gate/docs.md"
+    },
+    {
+      "ts": "2026-09-02T13:57:05.947Z",
+      "event": "done",
+      "detail": "docs → reform/dashboard-living-gate/docs.md"
+    },
+    {
+      "ts": "2026-09-02T13:57:21.454Z",
+      "event": "done",
+      "detail": "docs → reform/dashboard-living-gate/docs.md"
     }
   ]
 }

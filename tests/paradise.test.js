@@ -534,6 +534,34 @@ test('conclave convenes domains as cardinals with their phases', () => {
   assert.ok(run.domains.every(d => d.pdca), 'every domain has an inner PDCA');
 });
 
+test('conclave: 成果物を名乗るなら実在せねばならない — 台帳は虚偽の done を記せない (第22条/第27条)', () => {
+  // 実測(2026-09-02): security 相の神官が打ち切られたのに教主が
+  // `done security --artifact .../security.md` と記録した。ファイルは
+  // 一度も存在せず(`git log --all` → 0件)、executor が `ls` で暴くまで
+  // 誰も気づかなかった。第27条は subagent だけでなく**記録する者自身**にも向く。
+  const run = makeConclave();
+  const id = run.domains[0].phases[0].id;
+  const ghost = 'reform/__NO_SUCH_ARTIFACT__' + Date.now() + '.md';
+
+  assert.throws(
+    () => conclave.markDone(run, id, ghost),
+    /成果物が実在しない/,
+    '存在しない成果物で done にできてしまう — 台帳が嘘をつける');
+
+  // 拒んだ後、相の印は汚れていない(部分適用しない)
+  assert.notStrictEqual(run.domains[0].phases[0].status, 'done',
+    '例外を投げたのに status が done になっている');
+
+  // 実在するなら通る
+  conclave.markDone(run, id, 'tests/paradise.test.js');
+  assert.strictEqual(run.domains[0].phases[0].status, 'done');
+
+  // 成果物を名乗らない done は従来どおり通る
+  const run2 = makeConclave();
+  conclave.markDone(run2, run2.domains[0].phases[0].id);
+  assert.strictEqual(run2.domains[0].phases[0].status, 'done');
+});
+
 test('conclave next() dispatches the active domain\'s ready phases', () => {
   const run = makeConclave();
   const step = conclave.next(run);
@@ -546,7 +574,7 @@ test('conclave next() dispatches the active domain\'s ready phases', () => {
 test('conclave advances to ratify when a domain\'s phases are all done', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
-  conclave.markDone(run, 'discover', 'findings.md');
+  conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   const step = conclave.next(run);
   assert.strictEqual(step.phase, 'ratify');
   assert.strictEqual(step.reviewClass, 'pontiff', 'discovery is ratified by the pontiff');
@@ -555,20 +583,20 @@ test('conclave advances to ratify when a domain\'s phases are all done', () => {
 test('ratify advances the conclave to the next cardinal', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
-  conclave.markDone(run, 'discover', 'findings.md');
+  conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
   const step = conclave.next(run);
   assert.strictEqual(step.cardinal, 'requirements', 'next domain becomes active');
   // artifact handoff crosses the domain boundary
   const specify = step.dispatch.find(d => d.id === 'specify');
-  assert.strictEqual(specify.context_from[0].artifact, 'findings.md');
+  assert.strictEqual(specify.context_from[0].artifact, 'tests/paradise.test.js');
 });
 
 test('domain-level reject triggers an INNER rework (the small circle)', () => {
   const run = makeConclave();
-  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'f.md');
+  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
-  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'r.md');
+  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'requirements', { reject: true, from: 'specify' });
   assert.ok(res.reworked.includes('specify'), 'specify reset for inner rework');
   const d = run.domains.find(x => x.cardinal === 'requirements');
@@ -582,11 +610,11 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity', 'ux'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
-    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
-  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   // quality rejects and sends it back to BUILD, which lives in construction
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
   assert.strictEqual(res.ok, true);
@@ -609,11 +637,11 @@ test('cross-domain rework also resets DOWNSTREAM phases in later domains', () =>
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
-    for (const p of phases) conclave.markDone(run, p, p + '.md');
+    for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
-  conclave.markDone(run, 'review', 'rv.md'); conclave.markDone(run, 'security', 'sec.md');
+  conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
   // everything that depended on build must be invalidated, including the finished reviews
   assert.ok(res.reworked.includes('review'), 'a review of stale code is itself stale');
@@ -664,7 +692,7 @@ test('conclave: 中断→復帰→complete まで環が回りきる (第51条a)'
       conclave.markRunning(run, r.dispatch.map(d => d.id));
       // 最初の波の途中で走者を殺す — done を刻まずに次の周回へ落ちる
       if (!died) { died = true; continue; }
-      for (const d of r.dispatch) conclave.markDone(run, d.id, d.id + '.md');
+      for (const d of r.dispatch) conclave.markDone(run, d.id, 'tests/paradise.test.js');
     }
   }
   assert.ok(died, '走者の死を実際に模したことを確かめる');
@@ -739,10 +767,15 @@ test('conclave: next --reclaim は opt-in で、既定の next は純粋であ�
     return r;
   };
   const a = mk();
-  const before = JSON.stringify(a);
+  // 既定の next は **相の status を書かない**。domain を pending→active にするのは
+  // 従来からの振る舞いであり(第11条の環の進行)、これは相の回収とは別物である。
+  // この門が守るのは「reclaim 無しに running が勝手に剥がされないこと」である。
+  const phasesBefore = JSON.stringify(a.domains.flatMap(d => d.phases.map(p => [p.id, p.status, p.resumes])));
   assert.strictEqual(conclave.next(a).phase, 'stuck');
-  assert.strictEqual(JSON.stringify(a), before,
-    '既定の next は state を一切書かない — 既存の門がこの契約に依存している');
+  assert.strictEqual(
+    JSON.stringify(a.domains.flatMap(d => d.phases.map(p => [p.id, p.status, p.resumes]))),
+    phasesBefore,
+    '既定の next は相の status を書かない — 既存の門がこの契約に依存している');
   const b = mk();
   assert.strictEqual(conclave.next(b, { reclaim: true }).phase, 'wave',
     '求められたときだけ自動回収する');
