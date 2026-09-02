@@ -21,6 +21,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
+const { pathToFileURL } = require('url');
 const { ROOT, makeHarness } = require('./_pulse-fixture.js');
 
 const H = makeHarness('motion-probe-leak');
@@ -128,6 +129,44 @@ async function main() {
     fs.rmSync(outdir, { recursive: true, force: true });
     console.log(`      実測: BEFORE=${BEFORE} AFTER=${AFTER} 差=${AFTER - BEFORE}`);
     assert.strictEqual(AFTER - BEFORE, 0, `${AFTER - BEFORE} 個積まれた`);
+  });
+
+  await test('AC-23h(本命の再発): 検器を起こせない環境でも残骸を残さない', async () => {
+    // ■ CI が教えた道 —— **Chrome が起こせない機**では、借り物の constructor が
+    //   profileRoot を mkdtempSync した**直後**に spawn が落ちる。browser 変数へ
+    //   代入される前に throw するので、呼ぶ側の finally の browser.close() は
+    //   空振りし、**プロファイルだけが残る**。
+    //   AC-23b/23g は Chrome が在る機でしか通らないので、この道を見ていなかった。
+    //
+    // **この機に Chrome が在っても、その道を必ず踏ませる** (則3: 環境任せにしない)。
+    //   ARCHIFY_CHROME は借り物 findChrome() の正典に在る受け口である
+    //   (visual-check.mjs:108)。ただし executable() が accessSync(F_OK) を通すので、
+    //   **実在しないパスでは null が返り、構築の手前で止まってしまう** ——
+    //   それでは漏れ道を踏めない(この門を書いたとき実際に踏み損ねた)。
+    //   ゆえに **実在するが Chrome ではないファイル** を渡す: findChrome は通し、
+    //   spawn が落ち、constructor は profileRoot を作った後に throw する。
+    //   子プロセスで走らせるのは、この機の他の門の env を汚さないためである。
+    const fake = path.join(os.tmpdir(), 'pd-fake-chrome-' + process.pid + (process.platform === 'win32' ? '.exe' : ''));
+    fs.writeFileSync(fake, '');
+    if (process.platform !== 'win32') fs.chmodSync(fake, 0o755);   // X_OK を通す
+    const BEFORE = profileCount();
+    let out = '';
+    try {
+      out = execFileSync(process.execPath, ['--input-type=module', '-e', `
+        import { probeMotion } from ${JSON.stringify(pathToFileURL(PROBE).href)};
+        const r = await probeMotion(${JSON.stringify(path.join(ROOT, 'dashboard', 'index.html'))});
+        console.log(JSON.stringify({ ok: r.ok, reason: r.reason || null }));
+      `], { cwd: ROOT, encoding: 'utf8', timeout: 120000,
+            env: { ...process.env, ARCHIFY_CHROME: fake, ARCHIFY_UPDATE_CHECK_DISABLED: '1' } });
+    } finally { try { fs.rmSync(fake, { force: true }); } catch {} }
+    const AFTER = profileCount();
+    const res = JSON.parse(String(out).trim().split('\n').pop());
+    console.log(`      実測: 起こせない機 BEFORE=${BEFORE} AFTER=${AFTER} 差=${AFTER - BEFORE} / ok=${res.ok}`);
+    assert.strictEqual(AFTER - BEFORE, 0,
+      `probeMotion が ${AFTER - BEFORE} 個の残骸を残した — 構築の失敗を引き受けていない`);
+    assert.strictEqual(res.ok, false, '起こせない検器が ok:true を返した — 測れないことを緑と混同している');
+    assert.ok(/検器を起こせない/.test(res.reason || ''),
+      `理由が構築の失敗を名指ししていない: ${res.reason} — 手前で諦めているなら漏れ道を踏んでいない`);
   });
 
   const rep = H.report();
