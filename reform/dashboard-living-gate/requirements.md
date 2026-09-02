@@ -153,7 +153,7 @@ engines を 2 と言い(実 **33**)、self-tests を 10 と言い(実 **268**)�
 | R-17 | 🟠 | 昇格 | FR-18 |
 | R-18 | 🟠 | 昇格 | NFR-03 |
 | R-19 | 🟠 | **統合** | FR-09 (SSE の `retry:` は必須ヘッダ群と一体で検査する) |
-| R-20 | 🟠 | **却下** | §3.4 却下理由 D-1 |
+| R-20 | 🟠 | **却下** | §3.4 **D-1** |
 | R-21 | 🟠 | 昇格 | FR-05 |
 | R-22 | 🟡 | **却下(将来課題)** | §3.4 D-2 / §7 F-1 |
 | R-23 | 🟡 | **統合** | FR-09 (キープアライブ行は SSE 形式要件の一部) |
@@ -246,7 +246,12 @@ engines を 2 と言い(実 **33**)、self-tests を 10 と言い(実 **268**)�
 同テストは `dashboard/index.html` と `dashboard/paradise.js` を走査し、
 `k:'engines'` / `v:<数値>` 形式のメトリクス固定配列、および `SELF_DAG` 相当のタスク定義リテラルの存在数が **0** であることを assert する。
 **AC-02b**: `grep -nE "\bv: *[0-9]+" dashboard/paradise.js | wc -l` が `0`。
-**AC-02c**: `grep -c "SELF_DAG" dashboard/*.js dashboard/*.html` の合計が `0`。
+**AC-02c**【S-9 で修正・実測済み】: `SELF_DAG` 相当のリテラルが **0 件**。
+⚠️ **`grep -c` に複数ファイルを渡すと合計ではなく `ファイル名:件数` の内訳を返す**。「合計が 0」を測るには集計する:
+
+```bash
+grep -o "SELF_DAG" dashboard/*.js dashboard/*.html | wc -l    # → 0 を期待(執筆時点 4 = 正しく赤)
+```
 
 ---
 
@@ -396,8 +401,19 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 上記応答の先頭チャンクを取り `grep -c '^retry: [0-9]\+$'` が `1`。
 **AC-09c**: 逐次配信の実測 — 到着チャンクのタイムスタンプを 3 個以上記録し、
 **最初のチャンクが接続から 1000ms 以内**に届き、かつ 2 個目以降の到着時刻が最初と**異なる**こと(バッファされていない証明)。
-**AC-09d**: 終端規則 — 受信した生ストリームについて `printf '%s' "$raw" | grep -c $'\n\n'` が 1 以上、かつ
-`data:` 行を持つブロックがすべて空行で終端していること(テストで機械判定)。
+**AC-09d**【S-3 で修正・実測済み】: 終端規則 — 受信した生ストリーム `$raw` を**シェルの grep に渡さず node で数える**。
+`grep` は行指向であり、パターン中の改行は空パターンに退化して**全行にマッチする**(則2)。
+
+```bash
+# (1) 終端 "\n\n" の出現数 — 1 以上を期待
+node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log(s.split("\n\n").length-1)' raw.txt
+
+# (2) 全ブロックが空行終端であることの機械判定 — exit 0 を期待
+node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");const ok=/\n\n$/.test(s)&&s.split("\n\n").slice(0,-1).every(b=>/(^|\n)(data|event|id|retry|:)/.test(b));console.log(ok?"OK":"NG");process.exit(ok?0:1)' raw.txt
+```
+
+対照実験で「壊れた SSE に対して赤くなる」ことを実証済み(§9 検証ログ ②)。
+**`grep -c $'\n\n'` を書いてはならない** — 終端が壊れていても常に 1 以上を返し、永久に緑になる。
 **AC-09e**: キープアライブ — 接続を 20 秒保持したとき `: ping` 行が **1 行以上**現れること。
 
 ---
@@ -412,8 +428,21 @@ discover で未実測(findings D)。prove 相で実ブラウザ検証し、繋�
 - `Access-Control-Allow-Origin: *` を返す(file:// の origin は `null`。ローカル専用・無認証なので許容 — B-3)。
 - 待ち受けは `127.0.0.1` のみ。`0.0.0.0` で listen してはならない(N-3)。
 
-**AC-10a**: `grep -nE "require\(['\"](?!http$|https$|fs$|path$|url$|os$|events$|child_process$|crypto$|zlib$)" graph/pulse.js`
-相当の検査を行う `node tests/dashboard-no-deps.test.js` が exit 0(標準モジュール以外の `require` が **0 件**)。
+**AC-10a**【S-1 で修正・実測済み】: 標準モジュール以外の `require` が **0 件**であること。
+判定は `node tests/dashboard-no-deps.test.js` が exit 0 であることを**唯一の門**とする。
+手検査の式は、**否定先読みを使わない**次の 2 形のいずれかを用いる(則2: 方言をまたぐな):
+
+```bash
+# 形A: grep -P (PCRE)。本機の GNU grep 3.0 / ubuntu-latest ともに -P 利用可を実測済み
+grep -cP "require\(['\"](?!node:)(?!http['\"])(?!https['\"])(?!fs['\"])(?!path['\"])(?!url['\"])(?!os['\"])(?!events['\"])(?!child_process['\"])(?!crypto['\"])(?!zlib['\"])" graph/pulse.js
+
+# 形B: -P に依存しないパイプ方式(推奨。ERE のみで足りる)
+grep -o "require('[^']*'" graph/pulse.js \
+  | grep -cvE "^require\('(node:|http'|https'|fs'|path'|url'|os'|events'|child_process'|crypto'|zlib')"
+```
+
+いずれも `0` を期待する。**`grep -E` に `(?!` を書いてはならない** — ERE に否定先読みは無く、
+リテラル扱いとなって **npm 依存を 100% 見逃す**(§9 検証ログ ①)。
 **AC-10b**: `test -f package.json && node -e "const p=require('./package.json');console.log(Object.keys(p.dependencies||{}).length)"` が `0`(または package.json が存在しないこと)。
 **AC-10c**: 告知の実測 — `node graph/pulse.js serve --port 0` の stdout 1 行目が `/port=[0-9]+/` に一致し、
 その番号に `GET /snapshot.json` すると HTTP **200** かつ本文が `JSON.parse` 可能。
@@ -507,6 +536,10 @@ tests/paradise.test.js                           ← 門が*検出語として*�
 断面の `errors[]` に**積まれない**こと(`o.errors.filter(e=>e.engine==='spawn-trace').length === 0`)。
 **AC-13d**: 軌跡指標 5 種すべてが画面に存在 —
 `grep -o 'data-metric="\(firstPassRate\|reworkCount\|retryOverhead\|loopGuardTrips\|durationMs\)"' dashboard/index.html | sort -u | wc -l` が `5`。
+**AC-13e**【S-5 で新設】(矛盾に機械可読な印を付ける): FR-13 本文の「視覚的に**目立たせる**」を測れる形へ翻訳する。
+断面の run のうち `score >= 90 && spawn.noTrace > 0` を満たすもの(執筆時点では **tenbin**: score=100 / noTrace=17)に対応する
+画面要素が `data-contradiction="true"` を持つこと — `grep -c 'data-contradiction="true"' dashboard/index.html` が **1 以上**。
+> **印をどう見せるか**(色・枠・アイコン)は design 相の裁量(N-8)。しかし**印そのものを省いてはならない。**
 
 ---
 
@@ -549,6 +582,12 @@ tests/paradise.test.js                           ← 門が*検出語として*�
 **AC-14g**(直読みが速いこと): conclave 全件の読み取りのみを計測し、**10ms 未満**であること(実測 1.0ms)。
 **AC-14h**(出来事の時系列): 断面の tenbin の `history.length` が
 `node -e "console.log(require('../paradise-creations/tenbin/conclave.json').history.length)"` と一致する(実測基準 **27**)。
+**AC-14i**【S-6 で新設】(停止と完了に機械可読な印を付ける): FR-14 本文の「視覚的に**区別**する」を測れる形へ翻訳する。
+停止中の run を表す要素が `data-run-state="stalled"` を、完了した run が `data-run-state="complete"` を持つこと —
+`grep -o 'data-run-state="[a-z]*"' dashboard/index.html | sort -u | wc -l` が **2 以上**。
+かつ `stalled` の付いた要素数が、断面の `runs.filter(r => r.phasesDone < r.phasesTotal).length` と一致すること
+(執筆時点では **1**: `reform-claude-md-diet` 5/11。ただし**固定値を期待値にしない** — 断面と画面の 2 つの数え方の一致を見る。則3)。
+> 区別の**見た目**は design 相の裁量(N-8)。しかし**印そのものを省いてはならない。**
 
 ---
 
@@ -717,8 +756,31 @@ tests/paradise.test.js                           ← 門が*検出語として*�
 - ダッシュボードは `gauge.js ledger` のみを点数履歴の源とし、**`baseline` を呼ばない**。
 - 履歴の各行に、その時刻が **ledger 記録時刻**であることを明示するラベルを付ける。
 
-**AC-22a**: `grep -c "gauge.js baseline\|gauge baseline" graph/pulse.js dashboard/*.js dashboard/*.html` の合計が `0`。
-**AC-22b**: 件数の一致 — 断面の `ledger.length` が `node graph/gauge.js ledger | grep -cE '^\s+[0-9]{4}-'` と一致する(実測 5 件)。
+**AC-22a**【S-9 で修正・実測済み】: `gauge baseline` の呼出が **0 件**。複数ファイルは `grep -o | wc -l` で集計する
+(`grep -c` は内訳を返す):
+
+```bash
+grep -o "gauge.js baseline\|gauge baseline" graph/pulse.js dashboard/*.js dashboard/*.html | wc -l   # → 0
+```
+※ `graph/pulse.js` が未実装の間は対象不在で **exit 2** になる(D-6)。**先に `test -f graph/pulse.js` を assert すること。**
+**AC-22b**【S-4 で修正・実測済み】: 件数の一致 — **固定値を期待値にしない**(則3 / 第29条の一般形)。
+`ledger` は**追記型**であり、run を採点し直すたびに増える。ゆえに測るのは**数え方が二つあって一致すること**である:
+
+```bash
+# 源(gauge が自己申告する件数)
+node -e 'console.log(require("./graph/gauge.js").readLedger().length)'
+# 表示(CLI が描いた日付行の数)
+node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'
+```
+
+期待: **上記 2 値が一致**し、かつ**断面の `ledger.length` もこれに一致する**(3 値一致)。
+下限として **1 件以上**であること。**「実測 N 件」という固定値を書いてはならない** —
+明日 N+1 になって赤くなる。(執筆時点の参考値は 10 だが、これは期待値ではない。§9 検証ログ ④)
+
+> **則3 の他の AC への適用**: AC-01b / AC-14b / AC-14h / AC-17a / AC-18b / AC-21a〜c 等が括弧内に持つ
+> 「(実測基準 **N**)」は**期待値ではなく執筆時点の参考値**である。これらの AC の判定機構は
+> いずれも「断面の数」と「その場で走らせた engine の出力」の**一致**であり、N が増減しても成立する。
+> **参考値を期待値と読み替えて assert してはならない。**
 **AC-22c**: 出所ラベル — `grep -c 'data-source="gauge-ledger"' dashboard/index.html` が `1` 以上。
 
 ---
@@ -786,8 +848,18 @@ AC-23b と同じ差分計測を行い、差が 0 でなければ **exit 1** す�
 - 常駐サーバ経路(`serve` の 2 回目以降の `/snapshot.json`)は **50ms 未満**(初回 require のコストは 1 回だけ)。
 - 120 秒級の処理(census / 自己診断)は同期経路に置かない(FR-06 / S-2)。
 
-**AC-N01a**: `for i in 1 2 3; do /usr/bin/time -f %e node graph/pulse.js snapshot --json > /dev/null; done` の
-**3 回すべて**が 1.0 秒未満。
+**AC-N01a**【S-2 で修正・実測済み】: CLI 経路の実測 — `/usr/bin/time` は**本機に存在しない**(則4)。
+計測は node の `process.hrtime.bigint()` で行い、**3 回すべて**が 1000ms 未満であること:
+
+```bash
+node -e 'const{execFileSync}=require("child_process");
+for(let i=0;i<3;i++){const t0=process.hrtime.bigint();
+execFileSync(process.execPath,["graph/pulse.js","snapshot","--json"],{stdio:"ignore"});
+const ms=Number(process.hrtime.bigint()-t0)/1e6;
+console.log(ms.toFixed(1)+"ms");if(ms>=1000)process.exit(1);}'
+```
+
+期待: 3 行すべて `< 1000ms` かつ exit 0。**`/usr/bin/time -f %e` を書いてはならない**(§9 検証ログ ③)。
 **AC-N01b**: 上限の機械検査 — `node tests/dashboard-perf.test.js` が断面生成を 3 回計測し、median が 1000ms 未満を assert して exit 0。
 **AC-N01c**: 回帰の防止 — 同テストが `pulse.js` の呼ぶ engine 集合を出力し、その中に `census` / `paradise.test` が**含まれない**ことを assert。
 **AC-N01d**(常駐の効き): `serve` 起動後、`/snapshot.json` を 5 回連続取得し、**2 回目以降 4 回すべてが 50ms 未満**。
@@ -884,10 +956,10 @@ census を非同期経路に置く場合は、その 1 箇所が `graph/pulse.js
 
 ## 3.4 却下した要求とその理由
 
-| R-xx | 却下理由 |
-|---|---|
-| **R-20** — `spawn-trace.js report` が `run.json` 形式でクラッシュする欠陥の修理 | **教主が第27条に基づき実物照合し棄却済み**。`spawn-trace.js:86` は `for (const p of list \|\| [])` で既にガードされており、実在する run.json 6 件(creations 5 + 本 reform 1)すべてで `TypeError` の発生は **0 件**。再現しない欠陥を要件にしてはならない。ただし「全 run を舐めても落ちない」という**性質**は FR-14 AC-14c で恒久的に守る |
-| **R-22** — `id:` と `Last-Event-ID` による差分再送 | **将来課題へ送る**(§7 F-1)。断面全体が数十 KB 規模であり、`127.0.0.1` 上での全量再送の実コストは実測ベースで無視できる。一方 `Last-Event-ID` は「サーバ側に版の履歴を持つ」設計を要求し、N-2(永続ストアを作らない)と衝突する。**便益が費用に見合わない**ため本改修では採らない。EventSource の自動再接続(MDN: 既定で restart)だけで可用性は足りる(FR-09) |
+| ラベル | R-xx | 却下理由 |
+|---|---|---|
+| **D-1** | **R-20** — `spawn-trace.js report` が `run.json` 形式でクラッシュする欠陥の修理 | **教主が第27条に基づき実物照合し棄却済み**。`spawn-trace.js:86` は `for (const p of list \|\| [])` で既にガードされており、実在する run.json 6 件(creations 5 + 本 reform 1)すべてで `TypeError` の発生は **0 件**。再現しない欠陥を要件にしてはならない。ただし「全 run を舐めても落ちない」という**性質**は FR-14 AC-14c で恒久的に守る |
+| **D-2** | **R-22** — `id:` と `Last-Event-ID` による差分再送 | **将来課題へ送る**(§7 F-1)。断面全体が数十 KB 規模であり、`127.0.0.1` 上での全量再送の実コストは実測ベースで無視できる。一方 `Last-Event-ID` は「サーバ側に版の履歴を持つ」設計を要求し、N-2(永続ストアを作らない)と衝突する。**便益が費用に見合わない**ため本改修では採らない。EventSource の自動再接続(MDN: 既定で restart)だけで可用性は足りる(FR-09) |
 
 > **統合したもの**(却下ではない): R-19→FR-09 / R-23→FR-09 / R-26→FR-13 / R-28→FR-11。
 > いずれも単独の要件にすると AC が親要件と重複するため、親の AC に条項として畳み込んだ。
@@ -983,7 +1055,7 @@ census を非同期経路に置く場合は、その 1 箇所が `graph/pulse.js
 | **G-02** | **外部依存が再び生えない** | `tests/dashboard-no-deps.test.js` | FR-12 AC-12d の grep を CI で実行し、`fonts.googleapis` を `overlay/vendor/archify/assets/template.html` に 1 行戻すと CI が **exit 1** になること |
 | **G-03** | **住所の直書きが `path.join` 形式でも咎められる**(教主が見つけた穴) | `graph/workspace.js` の検出規則拡張 + 回帰テスト | FR-04 AC-04a/AC-04d(合成の見本で exit 1 → 削除で exit 0)。CI の `workspace.js check` ステップが tribunal.yml に存在すること: `grep -c "workspace.js check" .github/workflows/tribunal.yml` が `1` 以上 |
 | **G-04** | **孤児ページが生まれない**(導線が切れない) | `tests/dashboard-links.test.js` | FR-19 AC-19a/b/c。新しい `dashboard/*.html` を追加してリンクを張らないと CI が **exit 1** |
-| **G-05** | **ダッシュボードが visual-verify と critic を通る**(第50条の直接の是正) | tribunal.yml に `index.html` / `control.html` への `visual-verify` と `critic` を追加 | **AC-G05a**: `grep -cE "visual-verify\|critic.js" .github/workflows/tribunal.yml` が **2 以上**。かつ `grep -c "dashboard/index.html\|dashboard/control.html" .github/workflows/tribunal.yml` が `1` 以上。<br>**AC-G05b**(壊して鳴る): `dashboard/index.html` に外部 CDN の `<link>` を 1 行入れると critic が **exit 1** になること。**緑を出すだけの門は、見ていない門と区別できない** |
+| **G-05** | **ダッシュボードが visual-verify と critic を通る**(第50条の直接の是正) | tribunal.yml に `index.html` / `control.html` への `visual-verify` と `critic` を追加 | **AC-G05a**【S-8 で修正・実測済み】: `grep -cE "visual-verify|critic\.js" .github/workflows/tribunal.yml` が **2 以上**。かつ `grep -c "dashboard/index.html\|dashboard/control.html" .github/workflows/tribunal.yml` が `1` 以上。<br>⚠️ **ERE(`-E`)で `\|` を書いてはならない** — `\|` はリテラルのパイプ文字になり、交替にならない。実測: `-cE` に `\|` を書くと → **0(誤: リテラル `visual-verify|critic.js` を探している)** / `-cE` に素の `|` を書くと → **1(正)** / `-E` を外し BRE の `\|` にすると → **1(正)**。**方言をまたぐな**(則2 / §9 検証ログ ⑤)。<br>**AC-G05b**(壊して鳴る): `dashboard/index.html` に外部 CDN の `<link>` を 1 行入れると critic が **exit 1** になること。**緑を出すだけの門は、見ていない門と区別できない** |
 | **G-06** | **ハードコード数値が再発しない** | `tests/dashboard-no-hardcode.test.js` | FR-02 AC-02a/b/c。`dashboard/paradise.js` に `v: 2` を 1 行戻すと CI が **exit 1** |
 | **G-07** | **同期経路が遅くならない** | `tests/dashboard-perf.test.js` | NFR-01 AC-N01b/c。`pulse.js` に `census` の呼出を 1 行足すと CI が **exit 1** |
 | **G-08** | **生成物の中身を前提にした検査が混入しない**(第29条) | 既存の `derived.js check` を CI で維持 | **AC-G08a**: NFR-05 AC-N05a/b。`grep -c "derived.js check" .github/workflows/tribunal.yml` が `1` 以上。<br>**AC-G08b**(壊して鳴る): 新設テストのいずれかに `require('../dashboard/state.json')` を 1 行入れると `derived.js check` が **exit 1** になること |
@@ -1055,3 +1127,468 @@ census を非同期経路に置く場合は、その 1 箇所が `graph/pulse.js
 **そして本書が加えた第二の掟は、教主の実測が教えた一行である:**
 > **不定に鳴る門の受入基準は、症状ではなく原因を数える形で書け。**
 > 緑を見て「直った」と報告することは、第16条より悪い —— **判定が緑でも欠陥は在りうる。**
+
+---
+
+# 9. AC の書き方の掟 と 実行可能性検証ログ
+
+> **本章は discovery 枢機卿による reject(`ratify-requirements.md`)を受けて specify 相が追加した。**
+> 判定の理由はただ一つ、**AC の一部が「機械が実行できるコマンド」になっていなかった**ことである。
+> 本章はその全件修正と、**修正後に実際に走らせた実出力**を残す。
+> **主張は証拠ではない。コマンドと出力が証拠である。**
+
+## 9.1 AC の書き方の掟(教主が 5 件の実測から立てた則 — `findings-gate-syntax.md`)
+
+門の欠陥には**三つの形**がある。三つ目が最も危険である:
+
+| 形 | 内容 | 出典 |
+|---|---|---|
+| 表 | 門が**見ていない**機能は、壊れても鳴らない | 第50条 |
+| 裏 | 門が**己の残骸**で不定に鳴る | findings-base-red.md |
+| **三** | **門の書き方が誤っていて、壊れていても鳴らない** | findings-gate-syntax.md |
+
+前二者は「鳴らない/誤って鳴る」が観測できる。三つ目は**正常に走り、正常に緑を返す**。誰も疑わない。
+
+### 則1 — AC は書いた時点で必ず一度走らせ、**赤を見る**
+
+修正前に緑を返す AC は、**書いた本人が一度も走らせていない証拠**である。
+「壊すと赤くなる」を門に課すなら、**まず今、赤であることを見なければならない**。
+※ 非回帰 AC(改修が既存の性質を壊さないことを守るもの。AC-E1 / AC-N02c / AC-N05a 等)は、
+この時点で緑なのが正常である。**新機能の AC にのみ掛かる戒めである。**
+
+### 則2 — 正規表現の**方言をまたぐな**
+
+| 使うもの | 本機(git-bash / GNU grep 3.0)での挙動 |
+|---|---|
+| `grep -E` (ERE) | `(?!` `(?=` は**リテラル**。`\|` も**リテラルのパイプ文字**。`\b` `\d` は GNU 拡張で `\b` のみ可 |
+| `grep` (BRE) | `\|` が交替、`\+` が 1 回以上。`(` `)` `{` `}` はエスケープが要る |
+| `grep -P` (PCRE) | 本機で**利用可を実測済み**(GNU grep 3.0)。ubuntu-latest でも可 |
+| `grep` に改行 | **不可**。行指向なので空パターンに退化し、**全行にマッチする** |
+| `grep -c` に複数ファイル | 合計ではなく **`ファイル名:件数` の内訳**を返す。集計には `grep -o … \| wc -l` |
+
+**迷ったら `node -e` で書く。** node の正規表現は方言が一つしかなく、`split` で数えれば改行も扱える。
+楽園は node の上に立っているのだから、**門も node で書くのが最も方言事故が少ない。**
+
+### 則3 — **固定値を期待値にしない**(第29条の一般形)
+
+`10` と書けば明日 `11` になって赤くなる。書くべきは**不変量**である:
+
+- ✗ `ledger の行数が 10`
+- ✓ `ledger の行数と gauge が自己申告する件数が一致する`
+- ✓ `snapshot の counts.engines と ls graph/*.js | wc -l が一致する`
+
+**数え方が二つあって一致することを見る。** 片方を固定値にした瞬間、
+それは第29条が禁じた「生成物の中身への依存」と同じ病になる。
+
+### 則4 — **この機に在るコマンドしか使わない**
+
+`/usr/bin/time` は**無い**。`stat -c` の GNU 依存、`timeout`、`realpath` も疑え。
+**計測は node の `process.hrtime.bigint()` で書く** — 楽園が既に依存しているものだけで足りる(第20条)。
+
+> 本機の可用性を実測した(§9.4 走査 L):
+> `sort` `comm` `awk` `sed` `printf` `node` `git` `wc` `head` `tail` `xargs` `netstat` = **すべて在る**
+> `/usr/bin/time` = **無い**
+
+---
+
+## 9.2 修正した AC の一覧(9 件)
+
+| # | AC | 病 | 直した形 | 検証ログ |
+|---|---|---|---|---|
+| **S-1** | AC-10a | `grep -E` に PCRE 否定先読み → npm 依存を 100% 見逃す | `grep -P` または `-P` 非依存のパイプ方式。判定は `tests/dashboard-no-deps.test.js` が唯一の門 | ① |
+| **S-2** | AC-N01a | `/usr/bin/time` が本機に不在 | `process.hrtime.bigint()` による node 内計測 | ③ |
+| **S-3** | AC-09d | `grep -c $'\n\n'` が空パターンに退化 → SSE 終端が壊れても永久に緑 | `node -e` で `split("\n\n")` して数える + 全ブロック終端の機械判定 | ② |
+| **S-4** | AC-22b | 期待値「実測 5 件」が陳腐化(実測 10)。かつ固定値自体が則3 違反 | 「源(`readLedger().length`)= 表示(CLI 日付行)= 断面(`ledger.length`)」の **3 値一致**。固定値を捨てた | ④ |
+| **S-5** | AC-13e(新設) | FR-13「視覚的に目立たせる」に対応 AC が無かった | `data-contradiction="true"` の存在を測る | ⑥ |
+| **S-6** | AC-14i(新設) | FR-14「視覚的に区別する」に対応 AC が無かった | `data-run-state="stalled"/"complete"` の 2 値存在 + 断面との件数一致 | ⑥ |
+| **S-7** | §3.0 写像表 | `D-1` / `D-2` の参照先が §3.4 に未定義(宙に浮いた参照) | §3.4 の表にラベル列を追加 | — |
+| **S-8** | AC-G05a | **ERE で `\|` はリテラルのパイプ** → 第50条の是正を担う門が永久に緑(**specify が自力で発見**) | `-cE` で素の `\|` を使う交替に改めた | ⑤ |
+| **S-9** | AC-02c / AC-22a | `grep -c` に複数ファイルを渡すと**合計にならない**(内訳を返す) | `grep -o … \| wc -l` で集計 | ⑦ |
+
+**S-1〜S-4 は審査官の指摘。S-8・S-9 は本走査で specify が自力で発見した。**
+
+---
+
+## 9.3 修正後の AC を実際に走らせた実出力
+
+> 環境: Windows 11 / git-bash / **GNU grep 3.0** / node v24.14.0
+> 作業ディレクトリ: `C:/Users/kikus/Documents/workspace/paradise`
+> 合成の見本は `$LOCALAPPDATA/Temp/pd-fix/` に置き、**楽園の作業樹には一切残していない**。
+
+### ① AC-10a — 対照実験(壊れた見本で赤 / 健全な見本で緑)
+
+合成の見本:
+```
+$ cat "$LOCALAPPDATA/Temp/pd-fix/bad.js"       # 壊れた見本
+const x = require('lodash');
+const h = require('http');
+const f = require('node:fs');
+
+$ cat "$LOCALAPPDATA/Temp/pd-fix/good.js"      # 健全な見本
+const h = require('http');
+const f = require('node:fs');
+const p = require('path');
+```
+
+**形A(`grep -P`)**:
+```
+$ grep --version | head -1
+grep (GNU grep) 3.0                            ← -P 利用可を実測
+
+$ grep -nP "require\(['\"](?!node:)(?!http['\"])(?!https['\"])(?!fs['\"])(?!path['\"])…" bad.js
+1:const x = require('lodash');
+exit=0                                          ← 検出した ✅
+
+$ grep -nP "…" good.js
+exit=1                                          ← 誤検出なし ✅
+
+$ grep -cP "…" bad.js  →  1
+$ grep -cP "…" good.js →  0
+```
+
+**形B(`-P` 非依存のパイプ方式)**:
+```
+$ grep -o "require('[^']*'" bad.js | grep -vE "^require\('(node:|http'|https'|fs'|path'|url'|os'|events'|child_process'|crypto'|zlib')"
+require('lodash'
+exit=0                                          ← 検出した ✅
+件数 = 1
+
+$ grep -o "require('[^']*'" good.js | grep -vE "…"
+exit=1                                          ← 違反 0 件 ✅
+件数 = 0
+```
+
+**旧式(審査官が不合格とした式)の再現**:
+```
+$ grep -nE "require\(['\"](?!http$|https$|fs$|path$)" bad.js
+exit=1                                          ← lodash を見逃した ❌
+```
+**壊れた見本に対して新式は赤、旧式は緑。修正が効いていることの実証である。**
+
+### ② AC-09d — 対照実験(正常 / 全壊 / 半壊 の 3 通り)
+
+```
+$ printf 'data: x\n\ndata: y\n\n' > sse-ok.txt         # 正常
+$ printf 'data: x\ndata: y\n'     > sse-broken.txt     # 全壊(空行なし)
+$ printf 'data: x\n\ndata: y\n'   > sse-halfbroken.txt # 半壊(末尾の終端欠落)
+```
+
+**修正後の式(node)**:
+```
+                 (1)終端数   (2)全ブロック終端判定   exit
+sse-ok             2          OK                    0    ✅
+sse-broken         0          NG                    1    ✅ 壊れたら赤くなる
+sse-halfbroken     1          NG                    1    ✅ 半壊も捕らえる
+```
+教主が命じた実測条件「`printf 'data: x\n\ndata: y\n\n'` に対して正しく **2** を返すこと」— **満たした。**
+
+**旧式(審査官が不合格とした式)の再現**:
+```
+$ grep -c $'\n\n' sse-ok.txt      → 4    ← 全行数。期待は 2 ❌
+$ grep -c $'\n\n' sse-broken.txt  → 2    ← 壊れていても 0 にならない = 永久に緑 ❌
+```
+
+### ③ AC-N01a — `/usr/bin/time` 不在の再確認と、node 内計測の実証
+
+```
+$ ls -la /usr/bin/time
+ls: cannot access '/usr/bin/time': No such file or directory     ← 不在を再確認
+
+$ node -e 'const{execFileSync}=require("child_process");
+for(let i=0;i<3;i++){const t0=process.hrtime.bigint();
+execFileSync(process.execPath,["-e","1"],{stdio:"ignore"});
+const ms=Number(process.hrtime.bigint()-t0)/1e6;
+console.log(ms.toFixed(1)+"ms");if(ms>=1000)process.exit(1);}'
+26.7ms
+23.1ms
+22.4ms
+exit=0                                          ← 3 回すべて秒数が取れ、1000ms 未満 ✅
+```
+※ `graph/pulse.js` は FR-01 が新設を命じる未実装物であるため、
+本検証は同形の `node -e "1"` を対象に**計測機構そのもの**が働くことを実証した。
+`pulse.js` 実装後は `["graph/pulse.js","snapshot","--json"]` に差し替えるだけでよい。
+
+**参考: bash 側の代替も動くことを確認した**
+```
+$ S=$(date +%s%N); node -e "1" >/dev/null; E=$(date +%s%N); echo $(( (E-S)/1000000 ))
+47                                              ← ミリ秒が取れる ✅
+```
+
+### ④ AC-22b — 固定値を捨て、3 値一致に改めた
+
+```
+$ node -e 'console.log(require("./graph/gauge.js").ledgerPath())'
+C:\Users\kikus\Documents\workspace\paradise-creations\gauge-ledger.jsonl
+
+$ node -e 'console.log(require("./graph/gauge.js").readLedger().length)'
+10                                              ← 源(gauge の自己申告)
+
+$ node graph/gauge.js ledger | grep -cE '^[[:space:]]+[0-9]{4}-'
+10                                              ← 表示(CLI が描いた日付行)
+
+判定: MATCH (10 == 10) exit=0                    ← 2 つの数え方が一致 ✅
+下限: 10 >= 1 OK
+```
+**旧記述の「(実測 5 件)」は誤り**であった(conclave.json の 5 件との取り違え)。
+**新記述は数値を期待値にしていない。** ledger は追記型であり、明日 11 になっても
+「源 = 表示 = 断面」の一致は保たれる。**則3 に従った形である。**
+
+### ⑤ AC-G05a — ERE の `\|` はリテラル(**specify が自力で発見した 5 件目**)
+
+```
+$ printf 'visual-verify here\ncritic.js here\nboth visual-verify critic.js\n' > ci.txt
+
+$ grep -cE 'visual-verify\|critic.js' ci.txt
+0                                               ← ❌ 誤り。リテラル「visual-verify|critic.js」を探している
+  exit=1
+
+$ grep -cE 'visual-verify|critic.js' ci.txt
+3                                               ← ✅ 正しい(ERE の素の | が交替)
+  exit=0
+
+$ grep -c 'visual-verify\|critic.js' ci.txt
+3                                               ← ✅ 正しい(BRE なら \| が交替)
+  exit=0
+```
+
+**実ファイルに対する修正後の AC**:
+```
+$ grep -cE 'visual-verify|critic\.js' .github/workflows/tribunal.yml
+1                                               ← 期待 2 以上 → 現状 1 = 正しく赤 ✅
+
+$ grep -c 'dashboard/index.html\|dashboard/control.html' .github/workflows/tribunal.yml
+0                                               ← 期待 1 以上 → 現状 0 = 正しく赤 ✅
+```
+**第50条の直接の是正を担う G-05 の門が、それ自身の書き方で永久に緑だった。**
+
+### ⑥ AC-13e / AC-14i — 新設 AC が現時点で赤であることの確認(則1)
+
+```
+$ grep -c 'data-contradiction="true"' dashboard/index.html
+0    exit=1                                     ← 期待 1 以上 → 正しく赤 ✅
+
+$ grep -o 'data-run-state="[a-z]*"' dashboard/index.html | sort -u | wc -l
+0                                               ← 期待 2 以上 → 正しく赤 ✅
+```
+**新設した 2 件は、書いた時点で赤である。** 則1 を満たしている。
+
+### ⑦ AC-02c / AC-22a — `grep -c` の複数ファイル問題
+
+```
+$ grep -c "SELF_DAG" dashboard/*.js dashboard/*.html
+dashboard/paradise.js:2
+dashboard/state.js:0
+dashboard/control.html:0
+dashboard/index.html:2                          ← ❌ 合計ではなく内訳。「が 0」の判定に使えない
+  exit=0
+
+$ grep -o "SELF_DAG" dashboard/*.js dashboard/*.html | wc -l
+4                                               ← ✅ 集計形。期待 0 → 現状 4 = 正しく赤
+
+$ grep -c "SELF_DAG" … | awk -F: '{s+=$NF} END{print s}'
+4                                               ← ✅ awk 集計でも同じ
+```
+
+---
+
+## 9.4 全 AC のコマンド走査(病巣が他に無いかを自分で洗った結果)
+
+`requirements.md` 中の全 AC からコマンドを抜き出し、**実際に走らせた**。
+
+### 走査 1 — `grep -E` に PCRE 構文(`(?!` `(?=` `\d` `\b`)
+
+```
+$ grep -n '(?!\|(?=' requirements.md
+415: AC-10a                                     ← S-1 で修正済み。他に 0 件
+
+$ grep -nE 'grep [^`]*-[a-zA-Z]*E[^`]*(\(\?!|\(\?=|\\d|\\b)' requirements.md
+248: AC-02b  grep -nE "\bv: *[0-9]+"
+415: AC-10a  (修正済み)
+704: AC-21c  grep -cE "\b(6|11|14|17)\b"
+```
+**`\b` の可否を対照実験で確認した — GNU grep の ERE では `\b` は使える:**
+```
+$ printf 'const v: 3;\nconst vx: 9;\nphases 11 here\n' > b.js
+$ grep -nE '\bv: *[0-9]+' b.js
+1:const v: 3;                                   ← ✅ vx: 9 にマッチしない = \b が効いている
+$ grep -cE '\b(6|11|14|17)\b' b.js
+1                                               ← ✅ 効いている
+```
+**判定: AC-02b / AC-21c は健全。GNU 拡張 `\b` は本機・ubuntu-latest 双方で利用可。**
+`\d` の使用箇所は **0 件**(`[0-9]` で書かれている)。
+
+### 走査 2 — `grep` に改行を含むパターン
+
+```
+$ grep -n "grep .*\\\\n" requirements.md
+399: AC-09d  grep -c $'\n\n'                    ← S-3 で修正済み。他に 0 件
+```
+
+### 走査 3 — この機に存在しないコマンド
+
+```
+--- /usr/bin/time ---   789: AC-N01a            ← S-2 で修正済み。他に 0 件
+--- timeout ---         310, 355, 954           ← すべて散文(実測値の記述)。AC のコマンドではない ✅
+--- stat -c ---         0 件 ✅
+--- date -d ---         0 件 ✅
+--- sha256sum/md5sum -- 0 件 ✅
+--- realpath ---        0 件 ✅
+--- curl ---            0 件 ✅
+--- seq / bc ---        0 件 ✅
+--- netstat ---         421: AC-10e             ← 在ることを実測(下記)
+--- xargs ---           472, 476: AC-12e        ← 在ることを実測(下記)
+```
+
+**可用性の実測(走査 L)**:
+```
+$ command -v netstat  →  /c/WINDOWS/system32/netstat     ✅
+$ command -v xargs    →  /usr/bin/xargs                  ✅
+$ ls /usr/bin/time    →  No such file or directory       ❌ ← S-2 の根拠
+sort /usr/bin/sort   comm /usr/bin/comm   awk /usr/bin/awk   sed /usr/bin/sed
+node "/c/Program Files/nodejs/node"   git /mingw64/bin/git
+wc /usr/bin/wc   head /usr/bin/head   tail /usr/bin/tail    すべて ✅
+```
+
+**AC-12e(教主が新設した式)を実際に走らせた** — 動作する:
+```
+$ git ls-files -z -- 'overlay/**' 'dashboard/*.html' 'dashboard/*.js' \
+  | xargs -0 grep -lE 'https?://(fonts\.googleapis|fonts\.gstatic)' | wc -l
+1                                               ← 期待 0 → 現状 1 = 正しく赤 ✅
+```
+
+### 走査 4 — `grep -c` が対象不在で **exit 2** を返す件(**D-6**)
+
+```
+$ grep -c "child_process" graph/pulse.js
+grep: graph/pulse.js: No such file or directory
+exit=2                                          ← 「0 件」ではない ❌
+
+$ grep -cE "execFileSync|spawnSync|child_process" graph/census.js
+2    exit=0                                     ← 実在ファイルには正しく機能する ✅
+```
+
+**同種の危険を持つ AC(pulse.js を対象とし「0」を期待するもの)**:
+`AC-06a` / `AC-22a` / `AC-N07a` / `AC-N01c` / `AC-18a` / `AC-N06b` 等。
+`tests/dashboard-*.test.js` を対象とする **AC-N05b** も同じ:
+```
+$ ls tests/dashboard-*.test.js
+ls: cannot access 'tests/dashboard-*.test.js': No such file or directory
+$ grep -c "state.json\|atlas/.*\.html" tests/dashboard-*.test.js
+grep: tests/dashboard-*.test.js: No such file or directory
+exit=2
+```
+
+> **⚠️ build 相への必須の申し送り(D-6)**:
+> これらの AC を実装するテストは、**必ず先に対象ファイルの存在を assert してから件数を測ること。**
+> ```js
+> if (!fs.existsSync(target)) throw new Error(`${target} が無い。0件ではなく未実装である`);
+> ```
+> **「0 件」と「ファイル無し」を取り違えた瞬間、門は未実装を合格と読む。**
+
+### 走査 5 — 非 ASCII をパターンに使う AC
+
+対照実験で**機能することを確認した**(0 が返るのは対象に無いからであって、grep の欠陥ではない):
+```
+$ printf '✗ failed one\n✓ passed\n✗ failed two\n' > mark.txt
+$ grep -cE '^✗' mark.txt  →  2   exit=0        ✅ AC-23f は健全
+
+$ printf '同時接続 6 上限\nother\n' > ja.txt
+$ grep -c '同時接続' ja.txt  →  1   exit=0     ✅ AC-N03c は健全
+```
+絵文字(4 バイト)をパターンに使う AC は **0 件**であった。
+
+### 走査 6 — その他の構文の実行確認(すべて通った)
+
+```
+$ grep -c '^retry: [0-9]\+$' r.txt              →  1    ✅ BRE の \+ は効く(AC-09b)
+$ grep -cE "require\('\./(clergy|forge|workspace|kg)" req.js  →  2   ✅ (AC-N07c)
+$ ls -d "$(node graph/workspace.js resolve --json | node -e "…")"/*/ 2>/dev/null | grep -vc '/_[^/]*/$'
+                                                →  7    ✅ (AC-01b。プロセス置換もサブシェルも動く)
+$ node graph/lessons.js list | grep -c '^'      →  65   ✅ 空行 0 件を確認済み(AC-18b)
+$ node tests/paradise.test.js 2>&1 | grep -cE '^✗'  →  0  ← 268 passed, 0 failed と整合 ✅
+```
+
+### 走査 7 — 既存 AC が「正しく赤」であることの再確認(則1)
+
+```
+$ grep -nE "\bv: *[0-9]+" dashboard/paradise.js | wc -l      →  9   期待 0 = 正しく赤 ✅
+$ grep -o "SELF_DAG" dashboard/*.js dashboard/*.html | wc -l →  4   期待 0 = 正しく赤 ✅
+$ grep -rn "path.join(ROOT, *'creations')" graph/ | wc -l    →  2   期待 0 = 正しく赤 ✅
+$ grep -c "child.kill()" graph/motion-probe.mjs              →  1   期待 0 = 正しく赤 ✅
+$ grep -c "browser.close()" graph/motion-probe.mjs           →  0   期待 1以上 = 正しく赤 ✅
+$ grep -cE "'(discover|specify|design|prove|verify|reflect|verdict)'" dashboard/paradise.js → 1  正しく赤 ✅
+$ grep -cE "\b(6|11|14|17)\b" dashboard/paradise.js          →  3   期待 0 = 正しく赤 ✅
+$ grep -c 'data-source="gauge-ledger"' dashboard/index.html  →  0   期待 1以上 = 正しく赤 ✅
+$ node graph/clergy.js college | grep -c '^枢機卿'           →  7   基準値と一致 ✅
+$ ls graph/*.js | wc -l                                      →  33  基準値と一致 ✅
+```
+
+### 走査の総括
+
+| 病 | 走査した箇所 | 見つかった欠陥 | 処置 |
+|---|---|---|---|
+| `grep -E` に PCRE 否定先読み | `(?!` `(?=` の全出現 | **1 件**(AC-10a) | S-1 |
+| `grep -E` の `\|` がリテラル | `-E` + `\|` の全出現 | **1 件**(AC-G05a) | S-8 |
+| `grep` に改行パターン | `grep .*\n` の全出現 | **1 件**(AC-09d) | S-3 |
+| 不在コマンド | time/timeout/stat/date/sha256sum/realpath/curl/seq/bc/netstat/xargs | **1 件**(AC-N01a) | S-2 |
+| `grep -c` の複数ファイル | `grep -c` の全 38 出現 | **2 件**(AC-02c / AC-22a) | S-9 |
+| `grep -c` の exit 2 | pulse.js / tests/dashboard-* を対象とする全 AC | 記述の欠陥ではないが**実装時の罠** | D-6 として明記 |
+| 固定値の期待値 | 「(実測 N 件)」の全出現 | **1 件**(AC-22b) | S-4 |
+| `\b` `\+` `sort -u` `awk` 等 | 対照実験で全数確認 | **0 件**(すべて本機で機能する) | — |
+
+**修正 9 件。走査後に残る構文不成立の AC は 0 件である。**
+
+---
+
+## 9.5 design 相への申し送り(審査報告 D-6〜D-10 の取り込み)
+
+> 審査報告 `ratify-requirements.md` §6.2「実装時に踏む罠」を、**本要件書の一部として取り込む**。
+> D-1〜D-5(設計上の制約)は §3.1 の各 FR 本文に既に織り込まれている。
+> 以下 D-6〜D-10 は**実装が必ず踏む罠**であり、design / build が知らねばならない。
+
+| # | 罠 | 実測された根拠 | 本書での処置 |
+|---|---|---|---|
+| **D-6** | **`grep -c` は対象ファイルが無いとき exit 2 を返す。**「0 件」と「ファイル無し」を取り違えるな | `grep -c … graph/pulse.js` → `No such file or directory` / **exit=2**。実在ファイル `graph/census.js` には `2` / exit=0 を正しく返す | AC-22a に明記。§9.4 走査 4 に該当 AC 一覧。**テストは `fs.existsSync` を先に assert すること** |
+| **D-7** | **`dashboard/atlas/` は CI に存在しない。**生成物を走査する検査は CI で**自動的に緑**になる | `git ls-files dashboard/atlas/ \| wc -l` → **0**(手元 6 件 vs 追跡 0 件)。`git check-ignore` → `.gitignore:15` | 教主が AC-12b/12d を CI から外し、git 追跡ファイルのみを走る **AC-12e** を CI の門に据えた(本書 §FR-12。**変更していない**) |
+| **D-8** | **本機に `/usr/bin/time` は無い。**性能計測は node 内計測で行う | `ls /usr/bin/time` → No such file or directory。組み込み `time` は `-f` 非対応 | **S-2** で AC-N01a を `process.hrtime.bigint()` に改めた。§9.1 則4 |
+| **D-9** | **git-bash の `grep -E` は PCRE を解さないが `grep -P` は使える。**否定先読みが要るときは `-P` を明示する | `-E` で lodash 見逃し(exit=1)/ `-P` で検出(exit=0)。`grep --version` → GNU grep 3.0 | **S-1** で AC-10a を修正。§9.1 則2 の表 |
+| **D-10** | **`grep` に改行を含むパターンを渡すと空パターンに退化し全行マッチする。**複数行の検査は node 側で行う | `grep -c $'\n\n'` → 入力の**全行数**(4)を返した。壊れた SSE にも 2 を返した | **S-3** で AC-09d を `node -e` の `split` に改めた。§9.1 則2 |
+
+### D-11(本走査で specify が追加)— ERE の `\|` はリテラルのパイプ文字
+
+```
+$ grep -cE 'visual-verify\|critic.js' ci.txt  → 0   ❌
+$ grep -cE 'visual-verify|critic.js'  ci.txt  → 3   ✅
+$ grep -c  'visual-verify\|critic.js' ci.txt  → 3   ✅(BRE なら \| が交替)
+```
+**BRE の癖のまま `-E` を付けると、交替がリテラルに化ける。** 最も見つけにくい形である。
+
+### D-12(本走査で specify が追加)— `grep -c` に複数ファイルは合計を返さない
+
+```
+$ grep -c "SELF_DAG" dashboard/*.js dashboard/*.html
+dashboard/paradise.js:2   dashboard/state.js:0   dashboard/control.html:0   dashboard/index.html:2
+```
+**「合計が 0」を測る AC は `grep -o … | wc -l` か `awk -F: '{s+=$NF} END{print s}'` で書く。**
+
+### design が決めてよいこと / 決めてはならないこと(審査報告 §6.3 を取り込む)
+
+- **決めてよい**(N-8 のとおり): 肌・配色・書体・レイアウトの美学。
+- **決めてはならない**: **矛盾(D-4: tenbin 100点 かつ 17/17 赤)と停止(D-3: reform-claude-md-diet 5/11)を
+  機械が名指しできる印**の有無。これは **AC-13e が `data-contradiction`、AC-14i が `data-run-state`** として
+  specify が定めた。design はその印を**どう見せるか**だけを決める。**印そのものを省いてはならない。**
+
+---
+
+## 9.6 本章の検証
+
+```
+$ ls "$LOCALAPPDATA/Temp/pd-fix/"          # 合成の見本の置き場(楽園の外)
+bad.js  good.js  sse-ok.txt  sse-broken.txt  sse-halfbroken.txt  b.js  r.txt  ci.txt  req.js  mark.txt  ja.txt
+
+$ git status --porcelain reform/dashboard-living-gate/
+ M reform/dashboard-living-gate/requirements.md    ← 作業屑なし
+```
+
+**本章に書かれたコマンドと出力は、すべて実際に走らせたものである。**
+走らせていない主張は 1 行も含まない。
