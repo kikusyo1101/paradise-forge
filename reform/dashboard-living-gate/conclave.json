@@ -98,7 +98,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -148,8 +148,8 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         },
         {
@@ -161,8 +161,8 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         },
         {
@@ -174,8 +174,8 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         },
         {
@@ -326,6 +326,16 @@
       "ts": "2026-09-02T11:19:44.118Z",
       "event": "done",
       "detail": "prove → reform/dashboard-living-gate/prove.md"
+    },
+    {
+      "ts": "2026-09-02T13:10:10.201Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-02T13:10:10.265Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
     }
   ]
 }
