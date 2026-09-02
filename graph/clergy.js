@@ -565,9 +565,22 @@ function main() {
     console.log(JSON.stringify(modelFor(arg, process.argv[4]), null, 2)); return;
   }
   if (cmd === 'college') {
-    for (const [name, c] of Object.entries(COLLEGE))
-      console.log(`枢機卿 ${name}: ${c.domain}\n  governs: ${c.governs.join(', ')}\n  priests: ${c.priests.join(', ')}\n  reviewed-by: ${c.reviewClass}\n  PDCA: ${c.pdca}\n`);
-    console.log(`執行官 tribunal: ${TRIBUNAL.domain}\n  governs: ${TRIBUNAL.governs.join(', ')}\n  officers: ${TRIBUNAL.officers.join(', ')}`);
+    // FR-05: --json 指定時は人間向けテキストを 1 行も混ぜない (先頭の飾り罫も出さない)。
+    // 混ざれば JSON.parse が落ちる。**人間向け描画と同じ源から作る** —
+    // JSON 用に別の集計を書けば、両者が食い違う日が必ず来る。
+    const data = {
+      cardinals: Object.entries(COLLEGE).map(([name, c]) => ({
+        name, domain: c.domain, governs: c.governs, priests: c.priests,
+        reviewClass: c.reviewClass, pdca: c.pdca,
+      })),
+      tribunal: { name: 'tribunal', domain: TRIBUNAL.domain, governs: TRIBUNAL.governs, officers: TRIBUNAL.officers },
+      cardinalCount: Object.keys(COLLEGE).length,
+      tribunalCount: 1,
+    };
+    if (process.argv.includes('--json')) { process.stdout.write(JSON.stringify(data) + '\n'); return; }
+    for (const c of data.cardinals)
+      console.log(`枢機卿 ${c.name}: ${c.domain}\n  governs: ${c.governs.join(', ')}\n  priests: ${c.priests.join(', ')}\n  reviewed-by: ${c.reviewClass}\n  PDCA: ${c.pdca}\n`);
+    console.log(`執行官 tribunal: ${data.tribunal.domain}\n  governs: ${data.tribunal.governs.join(', ')}\n  officers: ${data.tribunal.officers.join(', ')}`);
     return;
   }
   if (cmd === 'lexicon') {

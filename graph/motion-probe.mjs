@@ -82,7 +82,15 @@ export async function probeMotion(htmlPath, { settleMs = 1200, playMs = 3000 } =
 
     return { ok: failures.length === 0, failures, before, after, beatAdvanced };
   } finally {
-    try { browser.child.kill(); } catch { /* 検器の後始末が本体の裁定を汚さない */ }
+    // 第50条(d): 借り物の作法は借り物の正典に問う。
+    // 描画器は正しい後始末を close() として公開していた
+    // (overlay/vendor/archify/bin/visual-check.mjs): (1) SIGTERM → 1500ms 後
+    // **SIGKILL エスカレーション**、(2) **fs.rmSync(this.profileRoot)**。
+    // 自前の半端な kill だけを呼んでいた頃は SIGTERM を無視した Chrome が生き残り、
+    // 一時プロファイルが 483 → 519 → 529 と単調増加した (検器 1 回で +2)。
+    // 残った Chrome が握るファイルが次の走行の file:// を ERR_FILE_NOT_FOUND にし、
+    // 第21条テストを**不定に**赤くしていた。await は後始末が終わるまで待つ意である。
+    try { await browser.close(); } catch { /* 検器の後始末が本体の裁定を汚さない */ }
   }
 }
 

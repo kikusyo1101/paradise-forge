@@ -290,8 +290,29 @@ function main() {
     need(); const run = load(rp); const res = ratify(run, pos[0], { reject: f.reject, from: f.from }); save(rp, run);
     console.log(JSON.stringify(res, null, 2)); console.log('\n' + statusBoard(run));
   } else if (cmd === 'status') {
-    need(); console.log(statusBoard(load(rp)));
-  } else { console.error('commands: convene <dag> --run f | next --run f | done <id> --run f --artifact p | ratify <cardinal> --run f [--reject --from id] | status --run f'); process.exit(2); }
+    need();
+    const run = load(rp);
+    // FR-05: --json 指定時は人間向けテキストを 1 行も混ぜない。
+    // **statusBoard と同じ run から作る** — 別の集計を書けば両者が食い違う。
+    if (f.json) {
+      const dr = run.domains.filter(d => d.status === 'ratified').length;
+      const phases = [...allPhases(run).values()];   // allPhases は Map を返す — 実測で確かめた
+      process.stdout.write(JSON.stringify({
+        domainsRatified: dr,
+        domainsTotal: run.domains.length,
+        phasesDone: phases.filter(p => p.status === 'done').length,
+        phasesTotal: phases.length,
+        domains: run.domains.map(d => ({
+          cardinal: d.cardinal, domain: d.domain, status: d.status, reworks: d.reworks || 0,
+          reviewClass: d.reviewClass,
+          phases: (d.phases || []).map(p => ({ id: p.id, agent: p.agent, status: p.status, gate: !!p.gate })),
+        })),
+        historyLength: (run.history || []).length,
+      }) + '\n');
+      return;
+    }
+    console.log(statusBoard(run));
+  } else { console.error('commands: convene <dag> --run f | next --run f | done <id> --run f --artifact p | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
 module.exports = { convene, next, markRunning, markDone, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK };

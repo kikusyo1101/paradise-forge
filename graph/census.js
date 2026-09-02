@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
 
 const ROOT = path.join(__dirname, '..');
 
@@ -71,10 +72,18 @@ function census(opts = {}) {
     tests,
     engines: countFiles('graph', '.js'),
     creations: (() => {
+      // 第30条: 住所を知るのは workspace.js だけ。旧住所を ROOT 直下に直書きしていた頃は、
+      // 実在 8 件に対し catch { return 0 } が 0 を返して黙っていた。
+      // **解決に失敗したら 0 を返して黙るのではなく、null を返して明示的に告げる。**
       try {
-        return fs.readdirSync(path.join(ROOT, 'creations'), { withFileTypes: true })
-          .filter(e => e.isDirectory()).length;
-      } catch { return 0; }
+        const r = workspace.resolve();
+        if (!r || !r.root || !r.exists) return null;
+        return fs.readdirSync(r.root, { withFileTypes: true })
+          .filter(e => e.isDirectory())
+          .filter(e => !e.name.startsWith('.'))    // .git / .github は創造物ではない
+          .filter(e => !e.name.startsWith('_'))    // _ 始まりは作業場
+          .length;
+      } catch { return null; }
     })(),
     overlayAgents: countFiles(path.join('overlay', 'agents'), '.md'),
     overlayCommands: countFiles(path.join('overlay', 'commands'), '.md'),
@@ -218,20 +227,30 @@ function fix(opts = {}) {
 
 if (require.main === module) {
   const cmd = process.argv[2] || 'show';
+  // FR-06: 自己診断を回さないモード。内部 API は既に opts.runTests !== false の
+  // 分岐を持つので、CLI フラグをそこへ繋ぐだけでよい。**既定挙動は変えない。**
+  const noTests = process.argv.includes('--no-tests');
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log('commands: show [--no-tests] | check [--no-tests] | fix');
+    console.log('  --no-tests   自己診断 (tests/paradise.test.js) を回さない。');
+    console.log('               既定では回す — 実測 120,072ms かかり、同期経路では待てない。');
+    process.exit(0);
+  }
   if (cmd === 'show') {
-    const c = census();
+    const c = census({ runTests: !noTests });
     console.log('═══════ 🔢 PARADISE CENSUS ═══════');
     console.log('  constitution articles :', c.articles);
-    console.log('  self-test             :', c.tests ? `${c.tests.passed} passed, ${c.tests.failed} failed` : '(not run)');
+    console.log('  self-test             :', c.tests ? `${c.tests.passed} passed, ${c.tests.failed} failed`
+      : (noTests ? '(skipped: --no-tests)' : '(not run)'));
     console.log('  engines (graph/*.js)  :', c.engines);
-    console.log('  creations             :', c.creations);
+    console.log('  creations             :', c.creations === null ? '(unresolved — workspace.resolve() が住所を返さない)' : c.creations);
     console.log('  overlay agents/cmds   :', c.overlayAgents, '/', c.overlayCommands);
     console.log('  vendored files        :', c.vendorFiles, JSON.stringify(c.vendor));
     console.log('══════════════════════════════════');
     process.exit(0);
   }
   if (cmd === 'check') {
-    const res = check();
+    const res = check({ runTests: !noTests });
     console.log('═══════ 🔢 CENSUS CHECK ═══════');
     if (res.ok) console.log('  ✓ every number the paradise claims about itself is true');
     for (const f of res.findings) {

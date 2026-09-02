@@ -31,14 +31,9 @@
       } catch (_) {}
     })();
   </script>
-  <!-- Async font load: a blackholed network must not block first paint.
-       The body font stack falls back to system monospace until it lands. -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </noscript>
+  <!-- 外部書体は取りに行かない (楽園の掟: 外部依存ゼロ / FR-12)。
+       同ファイル内に local('JetBrains Mono') の @font-face 退避が既に在り、
+       在れば使い、無ければ system monospace に落ちる。取りに行く 3 行だけを削った。 -->
   <style>
     /* ==========================================================
        THEME VARIABLES — switch by toggling [data-theme] on <html>

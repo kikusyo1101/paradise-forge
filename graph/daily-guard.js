@@ -263,6 +263,20 @@ function main() {
   if (cmd === 'status') {
     const r = isDue();
     const l = r.ledger;
+    // FR-05: --json 指定時は人間向けテキストを 1 行も混ぜない。**同じ isDue() から作る。**
+    if (process.argv.includes('--json')) {
+      const data = {
+        jst: r.now.stamp, targetHour: TARGET_HOUR,
+        newestOpen: r.owedDay, lastDate: l.lastDate || null, lastStamp: l.lastStamp || null,
+        due: !!r.due, catchUp: !!r.catchUp, reason: r.reason,
+        ledgerPath: LEDGER,
+        recent: (l.history || []).slice(-5).reverse().map(h => ({ at: h.at, note: h.note || null })),
+      };
+      // lease は在るときだけ鍵を出す。無い欄を捏造しない (推測を出さない — FR-16)
+      if (l.lease) data.lease = { holder: l.lease.holder, day: l.lease.day, expires: l.lease.expires };
+      process.stdout.write(JSON.stringify(data) + '\n');
+      return;
+    }
     console.log('PARADISE DAILY QUOTA');
     console.log('═'.repeat(52));
     console.log(`  now (JST)   : ${r.now.stamp}`);

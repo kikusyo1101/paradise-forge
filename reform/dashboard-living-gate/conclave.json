@@ -110,8 +110,8 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "rework",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null
         },
         {
@@ -306,6 +306,11 @@
       "ts": "2026-09-02T09:34:22.430Z",
       "event": "done",
       "detail": "design → reform/dashboard-living-gate/design.md"
+    },
+    {
+      "ts": "2026-09-02T09:34:35.248Z",
+      "event": "dispatch",
+      "detail": "build"
     }
   ]
 }
