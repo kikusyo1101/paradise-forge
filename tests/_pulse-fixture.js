@@ -61,4 +61,44 @@ function get(port, pathname, opts = {}) {
   });
 }
 
-module.exports = { ROOT, server, stop, makeHarness, get };
+/**
+ * 兄弟倉 (../paradise-creations) が実在するか。
+ *
+ * **なぜ要るか (第30条 / 則3)** —— 倉は別リポジトリである。CI の checkout は
+ * paradise だけを取り、隣に倉は無い。倉の中身を数える門が「倉は必ず在る」と
+ * 仮定すると、それは**固定の環境を期待値にした門**であり、環境が変われば
+ * 実装が正しくても赤くなる。
+ *
+ * 断面はこのとき例外を投げず `counts.creations=null` + `errors[]` に理由を積む
+ * (第16条: 測れなかったものを 0 と偽らない)。門はその**二つの世界のどちらでも**
+ * 正しさを主張できなければならない。
+ */
+function siblingPresent() {
+  const fs = require('fs');
+  try { return fs.statSync(require(path.join(ROOT, 'graph', 'workspace.js')).resolve().root).isDirectory(); }
+  catch { return false; }
+}
+
+/**
+ * 倉に依らない run ファイルを一つ作る。倉が無い環境で「run オブジェクトを
+ * 要求する engine」の振る舞いを測るために使う。呼び手が cleanup() を呼ぶ。
+ */
+function synthRunFile() {
+  const fs = require('fs');
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-synth-run-'));
+  const file = path.join(dir, 'conclave.json');
+  fs.writeFileSync(file, JSON.stringify({
+    meta: { slug: 'synth', scale: 'reform' },
+    created: 0,
+    domains: [{
+      cardinal: 'discovery', domain: 'Discovery', status: 'ratified', reworks: 0,
+      reviewClass: 'pontiff',
+      phases: [{ id: 'discover', gate: true, artifact: 'findings.md', status: 'done', attempts: 1 }]
+    }],
+    history: []
+  }, null, 2));
+  return { file, cleanup: () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} } };
+}
+
+module.exports = { ROOT, server, stop, makeHarness, get, siblingPresent, synthRunFile };

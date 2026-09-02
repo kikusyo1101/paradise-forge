@@ -13,7 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
-const { ROOT, makeHarness } = require('./_pulse-fixture.js');
+const { ROOT, makeHarness, siblingPresent } = require('./_pulse-fixture.js');
 
 const pulse = require(path.join(ROOT, 'graph', 'pulse.js'));
 const workspace = require(path.join(ROOT, 'graph', 'workspace.js'));
@@ -27,6 +27,9 @@ const { test } = H;
 
 console.log('G-01 数の一致 (第22条):');
 const snap = pulse.snapshot();
+// 倉は別リポジトリ。CI には隣に居ない。門は両方の世界で立たねばならない (則3)
+const SIBLING = siblingPresent();
+if (!SIBLING) console.log('  (兄弟倉 不在 — 不在時の契約を測る)');
 
 test('AC-01d/AC-14c: 断面は例外を投げず、errors[] は fatal を持たない', () => {
   assert.ok(snap && typeof snap === 'object', '断面が返らない');
@@ -40,6 +43,15 @@ test('AC-01a/AC-E3: counts.engines == その場で数えた graph/*.js (pulse.js
 });
 
 test('AC-01b: counts.creations / workshops == 倉を数え直した数、和は visible と等しい', () => {
+  if (!SIBLING) {
+    // 倉が隣に無い世界 (CI の checkout)。断面は 0 で埋めず null を返し、
+    // errors に理由を名指しせねばならない —— これが第16条の本番である
+    assert.strictEqual(snap.counts.creations, null, '倉が無いのに creations を数字で答えた(0 で埋めた)');
+    assert.strictEqual(snap.counts.workshops, null, '倉が無いのに workshops を数字で答えた');
+    assert.ok(snap.errors.some(e => e.key === 'counts.creations' && /ENOENT/.test(e.reason)),
+      '測れなかった理由を errors に積んでいない');
+    return;
+  }
   const root = workspace.resolve().root;
   const vis = fs.readdirSync(root, { withFileTypes: true })
     .filter(e => e.isDirectory()).filter(e => !e.name.startsWith('.'));
@@ -51,6 +63,13 @@ test('AC-01b: counts.creations / workshops == 倉を数え直した数、和は 
 });
 
 test('G-01(D-5): ドット始まりを数えると両辺が割れる(数え方が 1 本であることの証明)', () => {
+  if (!SIBLING) {
+    // 数え方の証明は倉を要する。倉が無いなら「数えられなかった」ことを証明する
+    assert.strictEqual(snap.counts.creations, null, '倉不在でも数字を答えている');
+    assert.throws(() => pulse.visibleDirs(workspace.resolve().root),
+      '不在の倉に対して visibleDirs が黙って空配列を返した — 不在と空は別物である');
+    return;
+  }
   const root = workspace.resolve().root;
   const withDots = fs.readdirSync(root, { withFileTypes: true }).filter(e => e.isDirectory()).length;
   const visible = pulse.visibleDirs(root).length;
@@ -122,8 +141,12 @@ test('AC-21a/21b: 6 つの道すべての相数が forge.buildDag と一致す�
 
 test('AC-22b: ledger.length == readLedger().length(3 値一致の 2 辺)', () => {
   assert.ok(Array.isArray(snap.ledger), 'ledger が配列でない — null は読めなかった印である');
+  // 一致は常に主張する。**下限は倉が在るときだけ** —— 台帳 gauge-ledger.jsonl は
+  // 倉の中に住む (第30条)。倉が無い CI で「1 件以上」を求めるのは、
+  // 固定の環境を期待値にした門である (則3)
   assert.strictEqual(snap.ledger.length, gauge.readLedger().length);
-  assert.ok(snap.ledger.length >= 1, '下限 1 件を割った');
+  if (SIBLING) assert.ok(snap.ledger.length >= 1, '下限 1 件を割った');
+  else assert.strictEqual(snap.ledger.length, 0, '倉が無いのに台帳が中身を持っている');
 });
 
 test('AC-01e: PULSE_FAULT で 1 engine を壊しても断面全体は返り、errors に名が載る', () => {
