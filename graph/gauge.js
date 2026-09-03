@@ -113,18 +113,27 @@ function score(run) {
    */
   const tt = (run && run.tierTrace) || {};
   const marked = phases.filter(p => tt[p.id]);
+  /**
+   * 序列の式を掛けるか (reflect C-3)。
+   *
+   * ⚠️ 旧実装は `trace.hasEpoch(run)` を読んだ —— **印を消せば式が全部飛ぶ。**
+   * 「印なし = legacy = 罰しない」は、印を消しただけの走行にも同じ恩赦を与えた。
+   * `epochStatus` は 'legacy'(機構が無かった時代)と 'stripped'(紀元以後なのに印が無い)を
+   * 分ける。**stripped には式を掛ける** —— 恩赦は移行のためであって回避のためではない。
+   */
+  const underEra = (r) => trace.epochStatus(r) !== 'legacy';
   const declaredIs = (n) => marked.filter(p => tt[p.id].declared === n && tt[p.id].state !== 'unobservable').length;
   const tier1 = declaredIs(1), tier2 = declaredIs(2);
   const tier3 = marked.filter(p => trace.isTier3State(tt[p.id].state)).length;
-  const unobservable = trace.hasEpoch(run)
+  const unobservable = underEra(run)
     ? marked.filter(p => tt[p.id].state === 'unobservable').length
     // 印を持たない run は全相が観測不能である。**tier1 とは別の鍵で数える**(AC-H1)。
     : phases.length;
-  const noTier = trace.hasEpoch(run)
+  const noTier = underEra(run)
     ? phases.filter(p => p.status === 'done' && (!tt[p.id] || tt[p.id].declared == null) && (!tt[p.id] || tt[p.id].state !== 'unobservable')).length
     : 0;
   // 序列1/2 を名乗りながら証跡の無い相 (門を素通りした legacy 台帳では立たない)
-  const tier12Unproven = trace.hasEpoch(run)
+  const tier12Unproven = underEra(run)
     ? marked.filter(p => [1, 2].includes(tt[p.id].declared) && ['no-trace', 'asserted-only'].includes(tt[p.id].state)).length
     : 0;
   const tier3Ratio = phases.length ? +(tier3 / phases.length).toFixed(3) : 0;
@@ -139,7 +148,7 @@ function score(run) {
      * 比較の基準線そのものが動き、以後どの reform も改善を証明できなくなる。
      * **そして序列3は罰しない** — 神託の訂正が明示的に許した例外を秤が罰してはならない。
      */
-    - (trace.hasEpoch(run) ? WEIGHTS.tierBreach * (noTier + tier12Unproven) : 0);
+    - (underEra(run) ? WEIGHTS.tierBreach * (noTier + tier12Unproven) : 0);
   const composite = Math.max(0, Math.min(100, raw));
 
   return {

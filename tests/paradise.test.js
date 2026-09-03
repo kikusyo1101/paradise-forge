@@ -3815,8 +3815,23 @@ function epochRun(scale) {
   fs.rmSync(f, { force: true });
   return run;
 }
-/** 紀元の印を持たない legacy を模す。 */
-function legacyRun(scale) { const r = epochRun(scale); delete r.epoch; return r; }
+/**
+ * 紀元の印を持たない legacy を模す。
+ *
+ * ⚠️ **`created` も紀元導入より前へ戻す** (reflect C-3)。
+ * 印を消すだけでは legacy にならない —— それは「紀元以後に convene されたのに
+ * 印が無い走行」であり、機構が赤にすべき**門の回避**である。旧い fixture は
+ * `epoch` だけを消して `created` を今のままにしていたので、**この試験自身が
+ * reflect の名指しした抜け穴の形をしていた。**
+ */
+function legacyRun(scale) {
+  const r = epochRun(scale);
+  delete r.epoch;
+  r.created = '2026-08-01T00:00:00.000Z';   // 紀元 (TIER_EPOCH_AT) より前
+  return r;
+}
+/** 印を消しただけの走行 —— 「紀元以後なのに印が無い」= 門の回避 (reflect C-3)。 */
+function strippedRun(scale) { const r = epochRun(scale); delete r.epoch; return r; }
 
 test('第52条: 教主の職務は一文の文字列ではなく三段の序列である', () => {
   const p = clergyT.RANKS.pontiff;
@@ -4927,6 +4942,401 @@ test('M-3: --scale を明示したら admit は**その道の名簿**を裁く',
   // 未知の道名で裁定を騙らない(選定へ黙って落ちない)
   assert.strictEqual(F2.admit(wish, 'nonexistent').scale, forgeT.chooseScale(wish),
     '未知の道名でどこかの名簿を騙って裁いた');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// rework2 相 — tribunal の reflect (敵対的自己批評) が名指しした
+//               BLOCK 2件 + HIGH 2件 を engine で塞いだことの回帰。
+//
+// **すべて「注入したら赤・修復後に緑」の形で撃つ。**
+// 特に C-1 は artifact 不在の**実経路**、C-2 は CI の段を**実際に失敗させて**撃つ。
+// ══════════════════════════════════════════════════════════════════════
+console.log('\nrework2 (reflect の差し戻しを塞ぐ):');
+
+test('C-1 [BLOCK]: 成果物を測れなかったら緑を出さない — artifact 不在の実経路で撃つ', () => {
+  // **reflect の再現そのものである。** 清潔な git 作業場で、artifact が存在しない相を
+  // 序列3で裁く。旧実装(`catch {}`)の実測:
+  //   bytes=0  measurable=true  unmeasured=[]  => judge ok=true verdict=green state=tier3
+  //   出力は `序列3: 教主の手 (files=1/2 churn=1/50 bytes=0/4096)` ——
+  //   「成果物は 0 バイトだった」と読めるが、実際は「成果物を測れなかった」である。
+  // B-1 で断罪した構造が、同じ関数の隣の行に一字一句同じ形で残っていた。
+  const sand = gitSandbox('c1-bytes-');
+  try {
+    const run = epochRun('quick');
+    const p = [].concat(...run.domains.map(d => d.phases)).find(x => !x.gate);
+    conclaveT.markRunning(run, [p.id]);
+
+    // ── A) artifact が指定されているのに存在しない = 測定不能 ────────────
+    const ghost = path.join(sand, 'never-written.md');
+    assert.ok(!fs.existsSync(ghost), '前提が壊れた — この成果物は存在してはならない');
+    const mA = spawnTrace.measure(run, p.id, { cwd: sand, artifact: ghost });
+    assert.strictEqual(mA.measurable, false,
+      `artifact 不在で measurable:true — bytes 経路に B-1 と同じ fail-open が残っている (${JSON.stringify(mA)})`);
+    assert.strictEqual(mA.bytesState, 'unmeasured', `bytes の状態が unmeasured でない: ${mA.bytesState}`);
+    assert.ok(mA.unmeasured.join(' ').includes('成果物の大きさを測れない'),
+      `測れなかった理由が積まれていない: ${JSON.stringify(mA.unmeasured)}`);
+    assert.ok(mA.unmeasured.join(' ').includes('ENOENT'), '不在の理由 (ENOENT) を言っていない');
+
+    const jA = spawnTrace.judge(run, p.id, { tier: 3, cwd: sand, artifact: ghost });
+    assert.strictEqual(jA.ok, false, '測れなかった成果物で緑 — 第52条の門が fail-open している');
+    assert.strictEqual(jA.state, 'inconclusive', `測定不能に固有の状態が無い: ${jA.state}`);
+    assert.ok(!/序列3: 教主の手/.test(jA.lines.join(' ')), '測れなかったのに「閾値内」の文言を出している');
+    // **`bytes=0/4096` という嘘の行を出さない**
+    assert.ok(!/bytes=0\//.test(jA.lines.join(' ')), '測れなかった 0 を実測値として印字している');
+
+    // ── B) artifact をそもそも持たない相 = 測定不能ではない ────────────
+    // **不在と「持たない」を区別せよ**(教主の指示)。統治行為のように成果物を
+    // 登録しない相まで赤にすれば、門は使い物にならない。
+    const mB = spawnTrace.measure(run, p.id, { cwd: sand });
+    assert.strictEqual(mB.measurable, true,
+      `成果物を持たない相を測定不能にした — 偽陽性である (${JSON.stringify(mB.unmeasured)})`);
+    assert.strictEqual(mB.bytesState, 'none', `artifact 未指定の状態が none でない: ${mB.bytesState}`);
+    assert.strictEqual(mB.bytes, 0);
+    assert.strictEqual(spawnTrace.judge(run, p.id, { tier: 3, cwd: sand }).ok, true,
+      '成果物を持たない相まで赤にした — 門を強めるのではなく壊している');
+
+    // ── C) 実在する 0 バイトの成果物 = 測れた。緑 ──────────────────────
+    // **A と C が同じ答えを返してはならない** —— それが C-1 の核心である。
+    const empty = path.join(sand, 'empty.md');
+    fs.writeFileSync(empty, '');
+    const mC = spawnTrace.measure(run, p.id, { cwd: sand, artifact: empty });
+    assert.strictEqual(mC.measurable, true, '実在する 0 バイトを測れないと言う');
+    assert.strictEqual(mC.bytesState, 'file', `実在ファイルの状態が file でない: ${mC.bytesState}`);
+    assert.strictEqual(mC.bytes, 0);
+    assert.notStrictEqual(mA.bytesState, mC.bytesState,
+      '「測れなかった 0」と「測って 0」が同じ状態 — 同じ値で二つのことを表現している (第16条)');
+
+    // ── D) 環も止まる。台帳は書き換わらない (第22条) ────────────────
+    // markDone は成果物の実在を先に検めるので、**実在するが読めない**形で撃つ。
+    // ディレクトリ成果物の中に読めない要素を作る代わりに、
+    // measured を直に渡して環が judge の赤を尊重することを確かめる。
+    const j2 = spawnTrace.judge(run, p.id, { tier: 3, cwd: sand,
+      measured: { files: 1, churn: 1, bytes: 0, measurable: false, bytesState: 'unmeasured',
+                  unmeasured: ['成果物の大きさを測れない: x.md — 成果物が存在しない (ENOENT)'] } });
+    assert.strictEqual(j2.ok, false, 'measurable:false を明示して渡しても緑');
+    assert.strictEqual(j2.state, 'inconclusive');
+
+    // ── E) **修復後は緑**。実在する小さな成果物なら通る ────────────────
+    // 清潔な作業場で撃つ —— 上の A〜D で作った試験用のファイルが churn/files に
+    // 混ざれば、この段は序列3の**量**で落ちる(それは C-1 とは別の門である)。
+    const sand2 = gitSandbox('c1-fixed-');
+    try {
+      const run2 = epochRun('quick');
+      const q = [].concat(...run2.domains.map(d => d.phases)).find(x => !x.gate);
+      conclaveT.markRunning(run2, [q.id]);
+      const good = path.join(sand2, 'note.md');
+      fs.writeFileSync(good, '# 単純な手仕事\n\n一行直した。\n');
+      const m = spawnTrace.measure(run2, q.id, { cwd: sand2, artifact: good });
+      assert.strictEqual(m.measurable, true, `実在の成果物を測れないと言う: ${JSON.stringify(m.unmeasured)}`);
+      assert.strictEqual(m.bytesState, 'file');
+      assert.ok(m.bytes > 0, '実在ファイルの大きさが 0');
+      const v = conclaveT.markDone(run2, q.id, good, { tier: 3, cwd: sand2 });
+      assert.strictEqual(v.state, spawnTrace.TIER3_STATE,
+        '実在する小さな成果物まで拒んだ — 神が許した例外を塞ぐのは門を弱めるより悪い');
+      assert.ok(/bytes=\d+\//.test(v.lines.join(' ')), '実測した大きさを印字していない');
+      assert.strictEqual(q.status, 'done');
+    } finally { fs.rmSync(sand2, { recursive: true, force: true }); }
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('C-1 [BLOCK]: dirBytes は読めない中身とサブディレクトリを 0 に潰さない', () => {
+  // 同型の第二の穴 (reflect が #2 として名指し)。旧実装は二重の `catch {}` に加え
+  // **サブディレクトリを 0 バイトとして数えた** —— 中身がいくら在っても 0 である。
+  // 数え落としは「閾値内」の側へ倒れる = fail-open。
+  const sand = gitSandbox('c1-dir-');
+  try {
+    const run = epochRun('quick');
+    const p = [].concat(...run.domains.map(d => d.phases)).find(x => !x.gate);
+    conclaveT.markRunning(run, [p.id]);
+
+    // 閾値を超える中身を**サブディレクトリの中だけ**に置く。
+    const art = path.join(sand, 'artifact');
+    fs.mkdirSync(path.join(art, 'deep'), { recursive: true });
+    fs.writeFileSync(path.join(art, 'deep', 'big.txt'), 'x'.repeat(spawnTrace.TIERS.t3.bytes + 1000));
+
+    const m = spawnTrace.measure(run, p.id, { cwd: sand, artifact: art });
+    assert.strictEqual(m.measurable, true, `ディレクトリ成果物を測れないと言う: ${JSON.stringify(m.unmeasured)}`);
+    assert.strictEqual(m.bytesState, 'dir');
+    assert.ok(m.bytes > spawnTrace.TIERS.t3.bytes,
+      `サブディレクトリの中身を 0 として数えている (bytes=${m.bytes}) — 数え落としは fail-open の向きである`);
+    // **超過が実際に赤になる**(数えるだけで裁かないなら門ではない)
+    const j = spawnTrace.judge(run, p.id, { tier: 3, cwd: sand, artifact: art });
+    assert.strictEqual(j.ok, false, 'サブディレクトリに閾値超の中身が在るのに緑');
+    assert.strictEqual(j.state, 'tier3-breach');
+    assert.ok(/bytes=/.test(j.lines.join(' ')), '超えた量を名指ししていない');
+
+    // **修復後は緑**: 閾値内のディレクトリは通る = 偽陽性を出さない
+    fs.rmSync(path.join(art, 'deep'), { recursive: true, force: true });
+    fs.writeFileSync(path.join(art, 'small.md'), '# 小\n');
+    const j2 = spawnTrace.judge(run, p.id, { tier: 3, cwd: sand, artifact: art });
+    assert.strictEqual(j2.ok, true, `閾値内のディレクトリまで赤にした: ${j2.lines.join(' ')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('C-2 [BLOCK]: critic は教訓 0 件/読めない帳で「何も見つからなかった」と述べない', () => {
+  // 実測(reflect): `--lessons` に何を渡しても緑だった。
+  //   正常 73件 => 緑 / 壊れJSON 0件 => 緑 / 不在 0件 => 緑 / 空配列 0件 => 緑
+  // **`--lessons` を渡したという事実自体が無視されていた。**
+  // しかも CI は実際に 0 件で撃っていた(derived.js 自身が「CIにKGは無い」と宣言)。
+  const criticM = require(path.join(DIR, '..', 'graph', 'critic.js'));
+  const CR = path.join(DIR, '..', 'graph', 'critic.js');
+  const graphDir = path.join(DIR, '..', 'graph');
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'c2-lessons-'));
+  const cli = (args) => {
+    try { return { code: 0, out: execFileSync(process.execPath, [CR, ...args], { encoding: 'utf8' }) }; }
+    catch (e) { return { code: e.status, out: String(e.stdout || '') + String(e.stderr || '') }; }
+  };
+  try {
+    // ── 故障注入: 三通りの「撃てない教訓帳」 ────────────────────────
+    const broken = path.join(sand, 'broken.json');   fs.writeFileSync(broken, '{ not json');
+    const emptyA = path.join(sand, 'empty.json');    fs.writeFileSync(emptyA, '[]');
+    const absent = path.join(sand, 'nope.json');
+    const notArr = path.join(sand, 'obj.json');      fs.writeFileSync(notArr, '{"a":1}');
+
+    for (const [what, f] of [['壊れた JSON', broken], ['空配列', emptyA], ['不在のパス', absent], ['配列でない', notArr]]) {
+      const rev = criticM.review(graphDir, { self: true, lessons: f });
+      assert.strictEqual(rev.clean, false, `${what} を clean で通した — 断罪の門が教訓 0 件で緑を出す`);
+      assert.strictEqual(rev.inconclusive, true, `${what} が inconclusive でない`);
+      assert.ok(rev.lessonVerdict && rev.lessonVerdict.kind === 'inconclusive',
+        `${what} の裁定が測定不能でない`);
+      const txt = criticM.render(rev);
+      assert.ok(/INCONCLUSIVE/.test(txt), `${what}: 出力が測定不能と述べていない`);
+      assert.ok(!/found nothing/.test(txt), `${what}: 「何も見つからなかった」と述べている — 第37条違反`);
+      // **器も赤を返す**(CI が読むのは exit code である)
+      const r = cli(['review', graphDir, '--self', '--lessons', f]);
+      assert.strictEqual(r.code, 1, `${what} で exit ${r.code} — CI がこれを緑と読む`);
+    }
+
+    // ── 「N 件で裁いた」を必ず印字する。0 と 72 が同じ画面に見えてはならない ──
+    const real = path.join(graphDir, 'lessons.json');
+    const revOk = criticM.review(graphDir, { self: true, lessons: real });
+    const txtOk = criticM.render(revOk);
+    assert.ok(/lessons: \d+ 件で裁いた/.test(txtOk), `裁いた教訓の件数を印字していない:\n${txtOk.split('\n').slice(0, 4).join('\n')}`);
+    assert.ok(revOk.lessonSource.count > 0, '版管理下の教訓帳が空になっている — CI の断罪が盲になる');
+
+    // ── **修復後は緑**: 実在の教訓帳なら従来通り通る = 偽陽性を出さない ──
+    assert.strictEqual(revOk.clean, true, `健全な教訓帳で赤 — 門を強めるのではなく壊している: ${JSON.stringify(revOk.gaps.map(g => g.id))}`);
+    assert.strictEqual(cli(['review', graphDir, '--self', '--lessons', real]).code, 0,
+      '器が健全な教訓帳を通さない');
+    // --lessons を渡さない従来の呼び方は影響を受けない(教訓の門は立てていない)
+    const noL = criticM.review(graphDir, { self: true });
+    assert.strictEqual(noL.inconclusive, false, '--lessons 未指定を測定不能にした — 呼んでいない門で赤にしている');
+    assert.ok(/教訓の門は立てていない/.test(criticM.render(noL)), '教訓を撃っていないことを名乗っていない');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('C-2 [BLOCK]: lessons export は空の KG で既存の教訓帳を消さない', () => {
+  // **CI の段を実際に失敗させて撃つ。** CI は `lessons.js export --out graph/lessons.json`
+  // を撃つが CI に KG は無い。旧実装は 0 件を書いて**版管理下の 72 件を消し**、
+  // その帳を critic へ渡していた。証拠を消す道具が、証拠を読む門の直前に立っていた。
+  const LE = path.join(DIR, '..', 'graph', 'lessons.js');
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'c2-export-'));
+  try {
+    const out = path.join(sand, 'lessons.json');
+    const before = fs.readFileSync(path.join(DIR, '..', 'graph', 'lessons.json'), 'utf8');
+    fs.writeFileSync(out, before);
+    const n = JSON.parse(before).length;
+    assert.ok(n > 0, '前提が壊れた — 版管理下の教訓帳が空である');
+
+    // 空の KG を与える(CI と同じ形)
+    const emptyKg = path.join(sand, 'kg');
+    fs.mkdirSync(emptyKg, { recursive: true });
+    const env = { ...process.env, PARADISE_KG: emptyKg };
+    let code = 0, err = '';
+    try { execFileSync(process.execPath, [LE, 'export', '--out', out], { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { code = e.status; err = String(e.stderr || ''); }
+
+    assert.strictEqual(code, 1, `空の KG で exit ${code} — CI が 0 件の上書きを緑で通す`);
+    assert.ok(/教訓 0 件/.test(err), `なぜ拒んだかを言っていない: ${err.slice(0, 200)}`);
+    assert.strictEqual(fs.readFileSync(out, 'utf8'), before,
+      '**教訓帳が書き換わった** — 拒んだのに副作用が残っている (第22条)');
+    assert.strictEqual(JSON.parse(fs.readFileSync(out, 'utf8')).length, n);
+
+    // **修復後は緑**: 意思を示せば空にできる(--allow-empty)
+    const code2 = (() => {
+      try { execFileSync(process.execPath, [LE, 'export', '--out', out, '--allow-empty'], { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] }); return 0; }
+      catch (e) { return e.status; }
+    })();
+    assert.strictEqual(code2, 0, '--allow-empty でも拒んだ — 事故を防ぐのであって意思を禁じるのではない');
+    assert.strictEqual(JSON.parse(fs.readFileSync(out, 'utf8')).length, 0);
+    // 書き先がそもそも空/不在なら黙って通る(初回の export を壊さない)
+    const fresh = path.join(sand, 'fresh.json');
+    const code3 = (() => {
+      try { execFileSync(process.execPath, [LE, 'export', '--out', fresh], { encoding: 'utf8', env, stdio: ['ignore', 'pipe', 'pipe'] }); return 0; }
+      catch (e) { return e.status; }
+    })();
+    assert.strictEqual(code3, 0, '初回の export まで拒んだ — 消すものが無いのに事故と呼んでいる');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('C-2 [BLOCK]: CI の断罪段は `|| true` で自らを無効化していない', () => {
+  // 教主自身の戒め(:181)が 81 行下で破られていた。
+  // **門がそう書かれていることではなく、CI がそれを緑に潰さないことを撃つ。**
+  const yml = fs.readFileSync(path.join(DIR, '..', '.github', 'workflows', 'tribunal.yml'), 'utf8');
+  const lines = yml.split(/\r?\n/);
+  const offenders = lines
+    .map((l, i) => ({ n: i + 1, l }))
+    .filter(({ l }) => /\|\|\s*true/.test(l) && !/^\s*#/.test(l));
+  assert.deepStrictEqual(offenders.map(o => o.n), [],
+    `CI の段が `+'`|| true`'+` で自らを無効化している:\n` +
+    offenders.map(o => `  :${o.n}  ${o.l.trim()}`).join('\n'));
+
+  // 断罪の段は critic を **exit code ごと**読んでいる。
+  // 検めるのは**実行される行だけ** — コメントは機構ではない(第33条)。
+  const stepBody = yml.slice(yml.indexOf('執行官を召喚'), yml.indexOf('裁定を下す'))
+    .split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+  assert.ok(/node graph\/critic\.js review graph --self --lessons graph\/lessons\.json[^\n]*$/m.test(stepBody) &&
+            !/critic\.js review graph[^\n]*\|\|/.test(stepBody),
+    'critic の段が exit code を捨てている');
+  // 0件で撃たないことを CI が自分で検める(第37条: 不在は通過ではない)
+  assert.ok(/test -s graph\/lessons\.json/.test(stepBody),
+    'CI が教訓帳の非空を検めていない — 0 件で撃って緑になる');
+  assert.ok(!/lessons\.js export/.test(stepBody),
+    'CI が export で教訓帳を上書きしている — KG の無い CI では 0 件になる');
+});
+
+test('C-3 [HIGH]: epoch を消すだけでは第52条の門を回避できない', () => {
+  // 実測(reflect): `created` を紀元導入後にし、全相 done・tierTrace 空・epoch 無しの
+  // 合成 run に対し `tierAudit.ok = true`(全相 unobservable)。
+  // 「昨日 convene され、11相すべてを done にし、序列を一度も宣言しなかった走行」を
+  // 機構が**合格として通した**。`hasEpoch()` は `run.created` を読んでいなかった。
+  assert.ok(spawnTrace.TIER_EPOCH_AT, '紀元の導入時刻が engine の中に無い');
+  assert.ok(!Number.isNaN(Date.parse(spawnTrace.TIER_EPOCH_AT)), '紀元の導入時刻が刻として読めない');
+
+  // ── 故障注入: 印を消しただけの走行 ───────────────────────────────
+  const bad = strippedRun('quick');
+  assert.ok(Date.parse(bad.created) >= Date.parse(spawnTrace.TIER_EPOCH_AT), '前提が壊れた — この run は紀元以後でない');
+  for (const d of bad.domains) { d.status = 'ratified'; for (const p of d.phases) { p.status = 'done'; p.attempts = 1; } }
+  bad.tierTrace = {};
+
+  assert.strictEqual(spawnTrace.epochStatus(bad), 'stripped',
+    '印を消した走行を legacy と読んでいる — 恩赦は移行のためであって回避のためではない');
+  const a = spawnTrace.tierAudit(bad);
+  assert.strictEqual(a.ok, false,
+    '**epoch を消すだけで第52条の門を丸ごと回避できる** — 監査が区別していない');
+  assert.strictEqual(a.epochStatus, 'stripped');
+  assert.ok(a.rows.every(r => r.state === 'no-epoch-after-era'), '全相を名指ししていない');
+  assert.strictEqual(a.counts.unobservable, 0,
+    '門の回避を unobservable(機構が無かった時代)と数えている — 別の問いである (第36条)');
+  const why = (a.rows[0].lines || []).join(' ');
+  assert.ok(/紀元/.test(why) && new RegExp(spawnTrace.TIER_EPOCH_AT).test(why),
+    `なぜ赤なのか(convene 時刻と紀元の比較)を言っていない: ${why}`);
+
+  // judge も同じ答えを下す(環と器が割れない)
+  const jd = spawnTrace.judge(bad, bad.domains[0].phases[0].id, { tier: 3 });
+  assert.strictEqual(jd.ok, false, 'judge が印なしの走行を黄で通した');
+  assert.strictEqual(jd.state, 'no-epoch-after-era');
+
+  // 器 (CLI) も exit 1
+  const f = path.join(os.tmpdir(), 'c3-' + Math.random().toString(36).slice(2) + '.json');
+  fs.writeFileSync(f, JSON.stringify(bad));
+  let code = 0;
+  try { execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'spawn-trace.js'), 'tier', f], { encoding: 'utf8' }); }
+  catch (e) { code = e.status; }
+  fs.rmSync(f, { force: true });
+  assert.strictEqual(code, 1, `器が印なしの走行を exit ${code} で通した — 環と器が割れている`);
+
+  // 秤も罰する。**恩赦を回避に流用させない**
+  assert.ok(gaugeT.score(bad).score < 100, '印を消した走行が満点 — 秤が恩赦を回避に与えている');
+
+  // ── **修復後は緑**: 真の legacy(紀元より前に convene)は今まで通り黄で通る ──
+  const old = legacyRun('quick');
+  for (const d of old.domains) { d.status = 'ratified'; for (const p of d.phases) { p.status = 'done'; p.attempts = 1; } }
+  old.tierTrace = {};
+  assert.strictEqual(spawnTrace.epochStatus(old), 'legacy');
+  const ao = spawnTrace.tierAudit(old);
+  assert.strictEqual(ao.ok, true, '真の legacy を赤にした — 機構の欠陥を走行者の罪として記録している (第16条)');
+  assert.strictEqual(ao.counts.unobservable, ao.rows.length);
+  assert.strictEqual(gaugeT.score(old).score, 100, 'legacy の点が動いた — 台帳の連続性が壊れた');
+
+  // 実在する 8 走行はすべて紀元より前である(遡って有罪にしていないことの実証)
+  for (const rel of [['reform', 'pontiff-office'], ['reform', 'conclave-resume'], ['reform', 'dashboard-living-gate']]) {
+    const rp = path.join(DIR, '..', ...rel, 'conclave.json');
+    if (!fs.existsSync(rp)) continue;
+    const r = JSON.parse(fs.readFileSync(rp, 'utf8'));
+    assert.strictEqual(spawnTrace.epochStatus(r), 'legacy',
+      `実在の走行 ${rel.join('/')} を有罪にした (created=${r.created}) — 移行が既存走行を壊している`);
+    assert.strictEqual(spawnTrace.tierAudit(r).ok, true);
+  }
+});
+
+test('C-5 [HIGH]: status --json が dispatchedAt と滞留を運ぶ — 機械が沈黙を名指しできる', () => {
+  // 実測(reflect): `--json` の相の鍵は `id,agent,status,gate` のみで、
+  // **`dispatchedAt` も stale 判定も運んでいなかった。**
+  // 第51条が建てた警告(conclave.js:427 / STALE_MS=15分)は人間向けテキストにしか
+  // 載らず、機械は読めなかった。**新しい engine は建てない。配線である。**
+  const CL = path.join(DIR, '..', 'graph', 'conclave.js');
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'c5-silence-'));
+  try {
+    const run = epochRun('standard');
+    const ids = [].concat(...run.domains.map(d => d.phases)).map(p => p.id);
+    conclaveT.markRunning(run, [ids[0]]);
+    const rp = path.join(sand, 'run.json');
+    const write = () => fs.writeFileSync(rp, JSON.stringify(run, null, 2));
+    const readJson = () => JSON.parse(execFileSync(process.execPath, [CL, 'status', '--run', rp, '--json'], { encoding: 'utf8' }));
+
+    // ── 1) 鍵が在る(reflect が「捨てている」と名指しした鍵そのもの) ──
+    write();
+    const j = readJson();
+    for (const k of ['staleMs', 'silentMs', 'stalePhases', 'silentPhases', 'noDispatchPhases', 'at']) {
+      assert.ok(k in j, `--json が ${k} を運んでいない — 機械が読めない警告は機械が鳴らせない`);
+    }
+    const ph = j.domains[0].phases.find(p => p.id === ids[0]);
+    assert.ok('dispatchedAt' in ph, '--json が dispatchedAt を運んでいない (reflect C-5 の本体)');
+    assert.ok(ph.dispatchedAt, '発令の刻が null — markRunning が刻んでいない');
+    for (const k of ['silence', 'ageMs', 'stale', 'silent']) assert.ok(k in ph, `相が ${k} を運んでいない`);
+    // **既存の鍵は一つも消していない**(dashboard がこの形に依る)
+    for (const k of ['domainsRatified', 'domainsTotal', 'phasesDone', 'phasesTotal', 'domains', 'historyLength']) {
+      assert.ok(k in j, `既存の鍵 ${k} が消えた — dashboard が割れる`);
+    }
+
+    // ── 2) 偽陽性を出さない。今発令したばかりの相は静かではない ──
+    assert.deepStrictEqual(j.stalePhases, [], '発令直後の相を stale と呼んだ — 偽陽性である');
+    assert.deepStrictEqual(j.silentPhases, [], '発令直後の相を silent と呼んだ');
+    assert.strictEqual(ph.silence, 'ok');
+
+    // ── 3) 閾値は実測に基づく。**正常な相の最長(103.1分)を越えない** ──
+    // 実在8走行の dispatch→done 66件: p50=9.9 p75=32.0 p95=68.0 max=103.1 分。
+    // 15分(STALE_MS)を沈黙の境にすれば 40.9% が鳴る = 騒音である。
+    assert.strictEqual(conclaveT.STALE_MS, 15 * 60 * 1000, '第51条の回収閾値が動いた');
+    assert.ok(conclaveT.SILENT_MS > conclaveT.STALE_MS,
+      '沈黙の境が回収の境と同じ — 別の問いには別の器である (第36条)');
+    assert.ok(conclaveT.SILENT_MS >= 104 * 60 * 1000,
+      `沈黙の境 (${conclaveT.SILENT_MS / 60000}分) が実測の最長 103.1分 を下回る — 正常な相が鳴る`);
+
+    // ── 4) 故障注入: 発令の刻を古くすれば機械が名指しする ──
+    const target = [].concat(...run.domains.map(d => d.phases)).find(p => p.id === ids[0]);
+    target.dispatchedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();   // 30分前
+    write();
+    const j30 = readJson();
+    assert.deepStrictEqual(j30.stalePhases, [ids[0]], '30分の滞留を機械が名指ししない');
+    assert.deepStrictEqual(j30.silentPhases, [], '30分で沈黙と呼んだ — 実測では 40% の相がここに居る');
+    assert.ok(/中断の疑い/.test(conclaveT.statusBoard(run)), '人の画面が 30分の滞留を言わない');
+
+    target.dispatchedAt = new Date(Date.now() - 180 * 60 * 1000).toISOString();  // 3時間前
+    write();
+    const j180 = readJson();
+    assert.deepStrictEqual(j180.silentPhases, [ids[0]], '3時間の沈黙を機械が名指ししない');
+    assert.deepStrictEqual(j180.stalePhases, [ids[0]], 'silent は stale でもある(120 > 15)');
+    const board = conclaveT.statusBoard(run);
+    assert.ok(/長い沈黙/.test(board), `人の画面と機械の口が食い違う:\n${board}`);
+
+    // 発令の刻が無い running も名指しする(判定不能を黙らせない)
+    target.dispatchedAt = null;
+    write();
+    assert.deepStrictEqual(readJson().noDispatchPhases, [ids[0]], '発令の刻なき running を機械が名指ししない');
+
+    // ── 5) **修復後は緑**: 相が done になれば鳴り止む ──
+    target.status = 'done'; target.dispatchedAt = new Date(Date.now() - 999 * 60 * 1000).toISOString();
+    write();
+    const jd = readJson();
+    assert.deepStrictEqual(jd.silentPhases, [], 'done の相を沈黙と呼び続けている — 鳴りやまない門は無視される');
+    assert.deepStrictEqual(jd.noDispatchPhases, []);
+    // **判定は一箇所に住む** — 人の画面と機械の口が同じ関数を読む
+    const src = fs.readFileSync(CL, 'utf8');
+    assert.strictEqual((src.match(/function phaseSilence/g) || []).length, 1, '滞留の判定が二箇所に住んでいる');
+    assert.ok(/const sil = phaseSilence\(p\)/.test(src), 'statusBoard が phaseSilence を読んでいない');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
 });
 
 // --- report ---

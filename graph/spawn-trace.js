@@ -70,6 +70,36 @@ const TIERS = Object.freeze({
 const TIER_EPOCH = 'v1';
 
 /**
+ * 紀元が導入された**時刻** (reflect C-3)。
+ *
+ * ⚠️ **これが無ければ `epoch` を削除するだけで第52条の門を丸ごと回避できる。**
+ * 実測(reflect の合成 run): `created` を紀元導入後にし、全相 done・`tierTrace` 空・
+ * `epoch` 無し → `tierAudit.ok = true`(全相 `unobservable`)。
+ * 「昨日 convene され、11相すべてを done にし、序列を一度も宣言しなかった走行」を
+ * 機構が**合格として通した**。`hasEpoch()` は `run.epoch.tier` の有無しか見ず、
+ * `run.created` を一度も読んでいなかった。
+ *
+ * ── この値の根拠 ────────────────────────────────────────────────
+ * 紀元を刻んだコミット `8aad635`(「第52条の機構: 序列の閾値・判定表・紀元の印・門」)の
+ * コミット時刻である:
+ *   $ git log --format='%H %cI' -1 8aad635
+ *   8aad635474a3a59b6660a56d109b7d612c267838 2026-09-03T13:54:49+09:00
+ * **これ以降に convene された run は、必ず `epoch` を持って生まれる** ——
+ * `conclave.convene()` が自分の手で刻むからである。持たないなら、
+ * (a) 印を消したか (b) 旧い engine で作ったかであり、**どちらも「対象外」ではない。**
+ *
+ * ── なぜ engine の中に置くか (第41条) ──────────────────────────
+ * git のコミット時刻は **engine の外**にある。history を書き換えれば動くし、
+ * shallow clone では読めない。数は一箇所に住まねばならない ——
+ * `TIER_EPOCH` の隣がその一箇所である。
+ *
+ * ── 移行の安全 ────────────────────────────────────────────────
+ * これ**以前**に convene された走行(実測: 楽園と兄弟倉に 8 走行、全て 2026-09-03T02:30Z
+ * 以前)は今まで通り `unobservable`(🟡)である。遡って有罪にしない(第16条)。
+ */
+const TIER_EPOCH_AT = '2026-09-03T04:54:49.000Z';   // = 2026-09-03T13:54:49+09:00
+
+/**
  * 序列3が通ったことを表す `state` の値 (M-4)。
  *
  * ⚠️ **これは機械の鍵であって散文の名ではない。**
@@ -162,6 +192,42 @@ function hasEpoch(run) {
   return !!(run && run.epoch && run.epoch.tier);
 }
 
+/**
+ * 紀元に対するその run の立場を**三値**で返す (reflect C-3)。
+ *
+ *   'present' … 印が在る。序列の門が立つ
+ *   'legacy'  … 印が無く、`created` が紀元導入より前。**機構が無かった時代** → 🟡
+ *   'stripped'… 印が無いのに `created` が紀元導入より後。
+ *               **機構は在ったのに印が無い** = 印を消したか旧 engine で作った → 🔴
+ *
+ * ⚠️ `hasEpoch()` の二値では 'legacy' と 'stripped' を区別できない。
+ * 区別しなければ **`epoch` を消すだけで第52条の門を丸ごと回避できる**
+ * (reflect が合成 run で実証)。比較は決定的で、閾値を要さない。
+ *
+ * `created` が読めない run は 'legacy' として扱う —— 遡って有罪にしない(第16条)。
+ * **これは fail-open ではない**: `created` は `convene()` が必ず刻む鍵であり、
+ * 消せば `epoch` を消したのと同じく diff に現れる。そして印を消した上に
+ * `created` まで消した run は、次段の `no-tier`(done なのに tierTrace が無い)で赤になる。
+ */
+function epochStatus(run) {
+  if (hasEpoch(run)) return 'present';
+  const created = run && run.created;
+  const t = created ? Date.parse(created) : NaN;
+  if (Number.isNaN(t)) return 'legacy';
+  return t >= Date.parse(TIER_EPOCH_AT) ? 'stripped' : 'legacy';
+}
+
+/** 印の無い run を裁くときに人へ渡す行。**なぜ赤なのか**を engine が語る。 */
+function strippedEpochLines(run) {
+  return [
+    `紀元以後に convene されたのに序列の印が無い — 門を回避した走行である (第52条)`,
+    `  convene: ${run && run.created}   紀元導入: ${TIER_EPOCH_AT}`,
+    `  convene() は自分の手で epoch を刻む —— 無いのは消したか、旧い engine で作ったかである`,
+    `  この走行の序列は**一度も検証されていない**。unobservable(機構が無かった時代)ではない`,
+    `  正しい道: 新しい engine で convene し直すか、各相の序列を宣言して done を刻み直せ`,
+  ];
+}
+
 /** run の中から相を引く (conclave 形式 / orchestrator 形式の両方)。 */
 function findPhase(run, id) {
   if (Array.isArray(run.domains)) {
@@ -236,8 +302,8 @@ const MAX_UNTRACKED_READ = 1024 * 1024;
  * ゆえに現在の相に帰属させる。**限界は正直に書く**: 前の相の残骸が加算されうるが、
  * それは**過大評価の方向にしか働かない**(赤は出るが緑は出ない)= fail-safe。
  *
- * ── 測定不能 (第16条 / review B-1) ────────────────────────────────
- * **`measurable` は「三つの git 問い合わせが全て撃てた」ことだけを意味する。**
+ * ── 測定不能 (第16条 / review B-1 / reflect C-1) ────────────────────
+ * **`measurable` は「撃つべき問いが全て撃てた」ことだけを意味する。**
  * 旧実装は `!!t0 || commitsMeasurable || diff != null` と書いた —— `t0` は
  * `markRunning` が必ず刻むので、**git が完全に死んでいても真になった**。
  * 「測れたか」を名乗る鍵が測れなかった事実を隠していた。しかも `judge()` は
@@ -245,6 +311,10 @@ const MAX_UNTRACKED_READ = 1024 * 1024;
  *   - 一つでも撃てなければ `measurable:false`、`unmeasured[]` に理由を積む
  *   - `judge()` はこの鍵を**必ず読み**、偽なら緑を出さない (state:'inconclusive')
  * **「測って 0」と「測れなくて 0」を同じ 0 で表現しない。**
+ *
+ * ⚠️ 撃つ問いは**四つ**である —— git の三問 + 成果物の大きさ。
+ * B-1 の修復は前三者にしか及ばず、四つ目(`bytes`)は `catch {}` のまま残った
+ * (reflect C-1)。**コメントが「三つ」と書いていたこと自体が第33条の一形態である。**
  */
 function measure(run, phaseId, opts = {}) {
   const cwd = opts.cwd || ROOT;
@@ -313,20 +383,49 @@ function measure(run, phaseId, opts = {}) {
     }
   }
 
-  // 成果物のバイト数 (T3-c)
+  /**
+   * 成果物のバイト数 (T3-c)。
+   *
+   * ⚠️ **ここは B-1 と同一の fail-open が残っていた箇所である** (reflect C-1)。
+   * 旧実装は `catch {}` で statSync の失敗を握り潰し、**「成果物が在って 0 バイト」と
+   * 「成果物が指定されているのに読めない」を同じ `bytes=0` で表していた。**
+   * 実測(clean な git 作業場・artifact 不在):
+   *   `bytes=0 measurable=true unmeasured=[] => judge ok=true verdict=green`
+   * `files`/`churn` を直した同じ関数の隣の行に、直した病がそのまま残っていた。
+   *
+   * ── 三つの状態を分ける(第16条: 同じ値で二つのことを表現しない) ──
+   *   `none`       … そもそも成果物を持たない相。**測るものが無いのは測定不能ではない**
+   *   `file`/`dir` … 測れた。`bytes` は実測値である
+   *   `unmeasured` … 指定されているのに読めない → `unmeasured[]` に積み measurable:false
+   */
   let bytes = 0;
+  let bytesState = 'none';
   const p = findPhase(run, phaseId);
   const art = opts.artifact || (p && p.artifactPath);
   if (art) {
     const abs = path.isAbsolute(art) ? art : path.join(cwd, art);
     try {
       const st = fs.statSync(abs);
-      bytes = st.isDirectory() ? dirBytes(abs) : st.size;
-    } catch {}
+      if (st.isDirectory()) {
+        const d = dirBytes(abs);
+        if (!d.ok) {
+          bytesState = 'unmeasured';
+          unmeasured.push(`成果物の大きさを測れない: ${art} — ${d.reason}`);
+        } else { bytes = d.bytes; bytesState = 'dir'; }
+      } else { bytes = st.size; bytesState = 'file'; }
+    } catch (e) {
+      bytesState = 'unmeasured';
+      const why = e && e.code === 'ENOENT' ? '成果物が存在しない (ENOENT)'
+        : e && e.code === 'EACCES' ? '読む権限が無い (EACCES)'
+        : `statSync が失敗: ${String((e && e.message) || e).slice(0, 120)}`;
+      unmeasured.push(`成果物の大きさを測れない: ${art} — ${why}`);
+    }
   }
 
   return {
     files: files.size, churn, bytes,
+    // **`bytes` が何を意味しているかを機械へ渡す。** 0 の意味は三通りある。
+    bytesState, artifact: art || null,
     t0: t0 || null, t1,
     // **全ての問いが撃てたときだけ真。** 一つでも欠ければ 0 は実測値ではない。
     measurable: unmeasured.length === 0,
@@ -335,10 +434,39 @@ function measure(run, phaseId, opts = {}) {
   };
 }
 
-function dirBytes(dir) {
+/**
+ * ディレクトリの総バイト数。**失敗を 0 に潰さない** (reflect C-1 / 第16条)。
+ *
+ * 旧実装は二重の `catch {}` で readdir/stat の失敗を握り潰し、さらに
+ * **サブディレクトリを 0 バイトとして数えた** —— 中身がいくら在っても 0 である。
+ * 数え落としは「閾値内」の側へ倒れる = fail-open。ゆえに:
+ *   - 読めない要素が一つでも在れば `{ok:false, reason}` を返し、呼び手が測定不能にする
+ *   - サブディレクトリは**再帰して数える**(深さ上限つき・シンボリックリンクは辿らない)
+ * 深さ上限に達したら「数え切れなかった」であり、0 ではない。
+ */
+const DIR_BYTES_MAX_DEPTH = 8;
+function dirBytes(dir, depth = 0) {
+  if (depth > DIR_BYTES_MAX_DEPTH) {
+    return { ok: false, reason: `入れ子が深すぎて数え切れない (depth > ${DIR_BYTES_MAX_DEPTH}): ${dir}` };
+  }
+  let ents;
+  try { ents = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch (e) { return { ok: false, reason: `readdir が失敗: ${String((e && e.message) || e).slice(0, 120)}` }; }
   let total = 0;
-  try { for (const f of fs.readdirSync(dir)) { try { const st = fs.statSync(path.join(dir, f)); total += st.isDirectory() ? 0 : st.size; } catch {} } } catch {}
-  return total;
+  for (const ent of ents) {
+    const full = path.join(dir, ent.name);
+    // シンボリックリンクは辿らない — 輪になれば数えは終わらない
+    if (ent.isSymbolicLink()) continue;
+    if (ent.isDirectory()) {
+      const sub = dirBytes(full, depth + 1);
+      if (!sub.ok) return sub;
+      total += sub.bytes;
+      continue;
+    }
+    try { total += fs.statSync(full).size; }
+    catch (e) { return { ok: false, reason: `stat が失敗: ${ent.name} (${String((e && e.message) || e).slice(0, 80)})` }; }
+  }
+  return { ok: true, bytes: total };
 }
 
 /**
@@ -370,7 +498,16 @@ function judge(run, phaseId, opts = {}) {
   const gate = !!(phase && phase.gate);
 
   // 1. 紀元の印
-  if (!hasEpoch(run)) {
+  //    **三値で読む** (reflect C-3)。印が無いことには二つの意味がある:
+  //      legacy   … 機構が無かった時代 → 🟡 (走行者に罪は無い)
+  //      stripped … 機構は在ったのに印が無い → 🔴 (門を回避した走行である)
+  //    二値のままなら `epoch` を消すだけで以下の全段が飛ぶ。
+  const est = epochStatus(run);
+  if (est === 'stripped') {
+    return { ok: false, verdict: 'red', state: 'no-epoch-after-era', phase: phaseId,
+      lines: strippedEpochLines(run) };
+  }
+  if (est === 'legacy') {
     return { ok: true, verdict: 'yellow', state: 'unobservable', phase: phaseId,
       lines: [`unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)`] };
   }
@@ -525,9 +662,17 @@ function tierAudit(run, opts = {}) {
 
   const tt = run.tierTrace || {};
   const rows = [];
+  // 紀元に対する立場は run 単位で一度だけ決まる (reflect C-3)。
+  const est = epochStatus(run);
   for (const p of phases) {
     const rec = tt[p.id];
-    if (!hasEpoch(run)) { rows.push({ phase: p.id, declared: null, state: 'unobservable', ok: true, verdict: 'yellow' }); continue; }
+    if (est === 'stripped') {
+      // **印を消して門を回避した走行。** 全相を赤にする —— 門は「対象外」ではない。
+      rows.push({ phase: p.id, declared: null, state: 'no-epoch-after-era', ok: false, verdict: 'red',
+        lines: strippedEpochLines(run) });
+      continue;
+    }
+    if (est === 'legacy') { rows.push({ phase: p.id, declared: null, state: 'unobservable', ok: true, verdict: 'yellow' }); continue; }
     if (!rec) {
       // 未着手の相は裁かない。done を刻んだのに宣言が無い相だけが赤である。
       if (p.status !== 'done') { rows.push({ phase: p.id, declared: null, state: 'pending', ok: true, verdict: 'skip' }); continue; }
@@ -540,7 +685,7 @@ function tierAudit(run, opts = {}) {
     // `inconclusive` は赤である。**機構は在ったのに測れなかった**のだから、
     // 序列3の主張は検証されていない(第16条 / review B-1)。
     const red = ['no-tier', 'asserted-only', 'no-trace', 'gate-tier3', 'tier3-observed',
-                 'tier3-breach', 'inconclusive'].includes(rec.state);
+                 'tier3-breach', 'inconclusive', 'no-epoch-after-era'].includes(rec.state);
     rows.push({
       phase: p.id, declared: rec.declared, state: rec.state, measured: rec.measured || null,
       ok: !red, verdict: red ? 'red' : (yellow ? 'yellow' : 'green'),
@@ -553,7 +698,7 @@ function tierAudit(run, opts = {}) {
     '序列3': rows.filter(r => isTier3State(r.state)).length,
     unobservable: rows.filter(r => r.verdict === 'yellow').length,
   };
-  return { ok: rows.every(r => r.ok), rows, counts, epoch: hasEpoch(run) };
+  return { ok: rows.every(r => r.ok), rows, counts, epoch: hasEpoch(run), epochStatus: est };
 }
 
 /** リポジトリ配下 + 兄弟倉に実在する全 conclave.json。住所は workspace だけが知る(第30条)。 */
@@ -619,7 +764,15 @@ if (require.main === module) {
       let run; try { run = loadRun(rp); } catch (e) { console.log(`  ⚠️  ${rp}: 読めない (${e.message.slice(0, 80)})`); continue; }
       const a = tierAudit(run);
       const rel = path.relative(ROOT, rp).split(path.sep).join('/');
-      if (!a.epoch) {
+      // **印が無いことの二つの意味を分ける** (reflect C-3)。
+      // stripped(紀元以後なのに印が無い)は legacy ではなく赤である。
+      if (a.epochStatus === 'stripped') {
+        red += a.rows.length;
+        console.log(`  🔴 ${rel}  紀元以後に convene されたのに印が無い (created ${run.created} ≥ ${TIER_EPOCH_AT})`);
+        console.log(`       ${a.rows.length} 相すべてが未検証 — epoch を消して門を回避した走行である`);
+        continue;
+      }
+      if (a.epochStatus === 'legacy') {
         yellowRuns++; yellowPhases += a.rows.length;
         console.log(`  🟡 ${rel}  legacy (印なし・${a.rows.length} 相が unobservable)`);
         continue;
@@ -697,5 +850,5 @@ if (require.main === module) {
   process.exit(2);
 }
 
-module.exports = { record, verify, report, TIERS, TIER_EPOCH, TIER3_STATE, TIER3_STATE_LEGACY, isTier3State,
-  hasEpoch, measure, judge, tierAudit, findRuns, findPhase, dispatchTime };
+module.exports = { record, verify, report, TIERS, TIER_EPOCH, TIER_EPOCH_AT, TIER3_STATE, TIER3_STATE_LEGACY, isTier3State,
+  hasEpoch, epochStatus, measure, judge, tierAudit, findRuns, findPhase, dispatchTime };

@@ -22,7 +22,39 @@ const kg = require('./kg.js');
 
 const DEFAULT_OUT = path.join(__dirname, 'lessons.json');
 
-function exportLessons(outPath) {
+/**
+ * 教訓帳を書き出す。
+ *
+ * ⚠️ **空の KG で既存の教訓帳を上書きしない** (reflect C-2)。
+ * 実測: CI は `lessons.js export --out graph/lessons.json || true` を撃つ。
+ * CI に KG は無いので export は **0 件**を書き、**版管理下の 72 件を消す**。
+ * その 0 件の帳を critic へ渡すので、critic は教訓を一つも撃たずに緑を出していた。
+ * 「証拠を消す道具」が「証拠を読む門」の直前に立っていた形である。
+ *
+ * ゆえに: 出力が 0 件で、かつ書き先が既に非空なら **書かずに exit 1**。
+ * 本当に空にしたい者は `--allow-empty` で意思を示せ —— 事故では起きない。
+ */
+function exportLessons(outPath, opts = {}) {
+  const lessons = collectLessons();
+  if (!lessons.length && !opts.allowEmpty) {
+    let existing = null;
+    try { existing = JSON.parse(fs.readFileSync(outPath, 'utf8')); } catch { existing = null; }
+    if (Array.isArray(existing) && existing.length) {
+      const e = new Error(
+        `教訓 0 件を書き出そうとした — 書き先には既に ${existing.length} 件が在る: ${outPath}\n` +
+        `  この機に KG が無い(PARADISE_KG が空/未設定)のが原因である。\n` +
+        `  上書きすれば版管理下の教訓帳が消え、critic は教訓 0 件で「何も見つからなかった」と述べる。\n` +
+        `  意図して空にするなら --allow-empty を渡せ。`);
+      e.code = 'EMPTY_EXPORT';
+      e.existing = existing.length;
+      throw e;
+    }
+  }
+  fs.writeFileSync(outPath, JSON.stringify(lessons, null, 2));
+  return lessons;
+}
+
+function collectLessons() {
   // kg.query returns nodes whose blob matches; we want type === 'lesson'
   const all = kg.query('');            // '' matches everything
   const lessons = all
@@ -62,16 +94,24 @@ function exportLessons(outPath) {
       // 未宣言は 'mechanism' 扱い。既存の教訓の裁き方を変えないため（後方互換）。
       return { id: n.id, label, check, applies, kind: kind || 'mechanism', ts: n.ts };
     });
-  fs.writeFileSync(outPath, JSON.stringify(lessons, null, 2));
   return lessons;
 }
 
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   if (cmd === 'export') {
-    let out = DEFAULT_OUT;
-    for (let i = 0; i < rest.length; i++) if (rest[i] === '--out') out = rest[++i];
-    const l = exportLessons(out);
+    let out = DEFAULT_OUT, allowEmpty = false;
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '--out') out = rest[++i];
+      else if (rest[i] === '--allow-empty') allowEmpty = true;
+    }
+    let l;
+    try { l = exportLessons(out, { allowEmpty }); }
+    catch (e) {
+      // **黙って空を書かない。** 教訓帳が消えれば断罪の門が盲になる (reflect C-2)。
+      console.error(e.message);
+      process.exit(1);
+    }
     console.error(`exported ${l.length} lesson(s) -> ${out}`);
     console.log(JSON.stringify(l, null, 2));
   } else if (cmd === 'list') {
@@ -84,4 +124,4 @@ function main() {
   }
 }
 if (require.main === module) main();
-module.exports = { exportLessons };
+module.exports = { exportLessons, collectLessons };

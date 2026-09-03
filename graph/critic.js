@@ -419,8 +419,43 @@ function collect(dir, opts = {}) {
   // 同じ blob を両方に使うと、掟が説明文を罰するか、教訓が意図を見落とすかの
   // どちらかになる。**問いが違えば見る面も違う。**
   const codeExec = stripComments(codeBlob);
+  /**
+   * 教訓帳の読み込み。**「渡した」という事実を捨てない** (reflect C-2 / 第37条)。
+   *
+   * ⚠️ 旧実装は一行だった: `try { lessons = JSON.parse(...) } catch {}`
+   * 実測(reflect):
+   *   正常 (graph/lessons.json) => 撃たれた lesson 73 件 / 緑=true / exit=0
+   *   壊れた JSON               => 撃たれた lesson  0 件 / 緑=true / exit=0
+   *   存在しないパス             => 撃たれた lesson  0 件 / 緑=true / exit=0
+   *   空配列 []                 => 撃たれた lesson  0 件 / 緑=true / exit=0
+   * **`--lessons` を渡したという事実自体が無視され、0 件と 73 件が同じ画面になった。**
+   * しかも CI は実際に 0 件で撃っている(`derived.js` 自身が「CIにKGは無いため
+   * 空になる」と宣言している)。第37条(不在は通過ではない)が断罪の一つ手前で破れていた。
+   *
+   * ゆえに三値で持つ:
+   *   { asked:false }                      … --lessons を渡していない。教訓の門は立たない
+   *   { asked:true, ok:true,  count:N }    … 読めた。N 件で裁いた(N=0 も事実として報告する)
+   *   { asked:true, ok:false, reason }     … 渡されたのに読めなかった = **測定不能**
+   *
+   * `derived.js` の教訓が禁じたのは「lessons.json が N 件であることを前提にする検査」
+   * である。本件はその逆 ——「**空だったことを報告しない**」であり、禁止に触れない。
+   */
   let lessons = [];
-  if (opts.lessons) { try { lessons = JSON.parse(fs.readFileSync(opts.lessons, 'utf8')); } catch {} }
+  const lessonSource = { asked: !!opts.lessons, ok: true, count: 0, path: opts.lessons || null, reason: null };
+  if (opts.lessons) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(opts.lessons, 'utf8'));
+      if (!Array.isArray(parsed)) {
+        lessonSource.ok = false;
+        lessonSource.reason = `教訓帳が配列でない (${typeof parsed})`;
+      } else { lessons = parsed; lessonSource.count = parsed.length; }
+    } catch (e) {
+      lessonSource.ok = false;
+      lessonSource.reason = e && e.code === 'ENOENT'
+        ? `教訓帳が存在しない (ENOENT): ${opts.lessons}`
+        : `教訓帳を読めない: ${String((e && e.message) || e).slice(0, 140)}`;
+    }
+  }
 
   // ■ reform は三箇所に住む (D-2 / 第23条)。散文だけを見て裁かない。
   //   束ねるのは **この走行が触れた** graph/ tests/ のみ —— 楽園中の門を
@@ -444,7 +479,7 @@ function collect(dir, opts = {}) {
     requirements: readIf(dir, 'requirements.md'),
     prd: readIf(dir, 'prd.md'),
     design: readIf(dir, 'design.md'),
-    lessons,
+    lessons, lessonSource,
   };
 }
 
@@ -563,21 +598,59 @@ function review(dir, opts = {}) {
   });
   const gaps = results.filter(r => !r.ok && r.severity === 'gap' && !r.soft);
   const smells = results.filter(r => !r.ok && r.severity === 'smell' && !r.soft);
-  return { dir, results, gaps, smells, clean: gaps.length === 0, self: isSelf };
+
+  /**
+   * 教訓帳の状態を裁定へ持ち上げる (reflect C-2 / 第37条 / 第16条)。
+   *
+   * `atlas.js` と `spawn-trace.js` が既に持つ**第4の状態**を、三つ目の engine へ。
+   *   `--lessons` を渡されて読めなかった → **inconclusive**。緑ではない
+   *   `--lessons` を渡されて 0 件だった   → **inconclusive**。「教訓が無い」は
+   *                                        「教訓に反していない」ではない
+   * **教訓を一つも撃たずに「the critic found nothing」と述べてはならない。**
+   * それは検査していないことと問題ゼロを同じ文で表す形であり、第37条が名指しした病である。
+   */
+  const ls = ctx.lessonSource || { asked: false, ok: true, count: 0 };
+  let lessonVerdict = null;
+  if (ls.asked && !ls.ok) {
+    lessonVerdict = { kind: 'inconclusive', reason: ls.reason,
+      note: `教訓帳を渡されたが読めなかった — 0 件で裁いたのであって、教訓に反していないのではない` };
+  } else if (ls.asked && ls.count === 0) {
+    lessonVerdict = { kind: 'inconclusive', reason: `教訓帳が空である (0 件): ${ls.path}`,
+      note: `教訓を一つも撃たずに裁定を名乗れない — 不在は通過ではない (第37条)` };
+  }
+
+  return { dir, results, gaps, smells,
+    lessonSource: ls, lessonVerdict,
+    // **測定不能は clean ではない。** 呼び手(CLI / conclave)がこれを exit code へ訳す。
+    clean: gaps.length === 0 && !lessonVerdict,
+    inconclusive: !!lessonVerdict,
+    self: isSelf };
 }
 
 function render(rev) {
   const lines = [];
   lines.push('═══════ 🔍 ADVERSARIAL SELF-CRITIQUE ═══════');
   lines.push(`target: ${rev.dir}`);
+  // **N 件で裁いたかを必ず印字する。** 0 と 72 が同じ画面に見えてはならない (reflect C-2)。
+  const ls = rev.lessonSource || { asked: false };
+  if (!ls.asked) lines.push('lessons: (--lessons 未指定 — 教訓の門は立っていない)');
+  else if (!ls.ok) lines.push(`lessons: 🔴 読めなかった — ${ls.reason}`);
+  else lines.push(`lessons: ${ls.count} 件で裁いた  ← ${ls.path}`);
   for (const r of rev.results) {
     const glyph = r.ok ? '✓' : (r.severity === 'gap' ? '🔴' : '🟠');
     lines.push(`  ${glyph} [${r.severity}] ${r.id}: ${r.note}`);
   }
   lines.push('───────────────────────────────────────────');
   if (rev.gaps.length) lines.push(`VERDICT: ${rev.gaps.length} GAP(S) — the creation is incomplete. REWORK.`);
+  else if (rev.lessonVerdict) {
+    // 測定不能を「何も見つからなかった」と同じ文にしない (第37条)。
+    lines.push(`VERDICT: INCONCLUSIVE — ${rev.lessonVerdict.reason}`);
+    lines.push(`  ${rev.lessonVerdict.note}`);
+    lines.push(`  教訓帳を用意して撃ち直せ: node graph/lessons.js export --out graph/lessons.json`);
+    lines.push(`  (KG の無い機で撃つなら --lessons を渡すな —— 撃たない門は「緑の門」ではない)`);
+  }
   else if (rev.smells.length) lines.push(`VERDICT: no hard gaps, but ${rev.smells.length} smell(s) worth a look.`);
-  else lines.push('VERDICT: the critic found nothing. Proceed to judgment.');
+  else lines.push(`VERDICT: the critic found nothing (${ls.asked ? ls.count + ' 件の教訓で裁いた' : '教訓の門は立てていない'}). Proceed to judgment.`);
   lines.push('═══════════════════════════════════════════');
   return lines.join('\n');
 }

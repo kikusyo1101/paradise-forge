@@ -47,6 +47,57 @@ const MAX_PHASE_RESUME = 2;
 // 第51条b: この時を過ぎた `running` は、走者が斃れたものとみなす(15分)。
 const STALE_MS = 15 * 60 * 1000;
 
+/**
+ * 「沈黙している」と機械が名指しできる境 (reflect C-5)。
+ *
+ * ⚠️ **`STALE_MS` と別の数である。理由を書く。**
+ * `STALE_MS`(15分)は第51条が **`resume` の回収判定**のために置いた数である ——
+ * 「この running は剥がして良いか」を問う。`resume --force` で覆せるし、
+ * 偽陽性の代償は「生きている走者を剥がしうる」だが `--force` の壁がある。
+ *
+ * 沈黙の名指しは**別の問い**である ——「神に見せるべきか」。偽陽性の代償は騒音であり、
+ * 騒音は門を無視させる(第21条の教訓)。ゆえに閾値も別でなければならない(第36条)。
+ *
+ * ── 実測から導いた (第38条: 測らなかった走行は語れない) ─────────────
+ * 実在8走行の `dispatch` → `done` 所要時間 **66 件**を全て測った:
+ *   p25=1.8分  p50=9.9分  p75=32.0分  p90=54.5分  p95=68.0分  max=103.1分
+ *   15分以上: 27/66 = **40.9%**   60分以上: 7件   90分以上: 1件   120分以上: **0件**
+ *
+ * **15分をそのまま沈黙の境にすれば、正常に走っている相の 4 割が鳴る。**
+ * reflect が「census は12分・atlas は12分・subagent は1時間超」と警告した通りで、
+ * 実測はそれより悪い。騒音になる。
+ *
+ * `SILENT_MS = 120分` は **p100(103.1分)を超える最小の切りの良い数**である。
+ * 実測した 66 件の正常な相は**一件も**この境を越えない = **偽陽性ゼロ**。
+ * 越えたなら「これまでのどの相よりも長く黙っている」であり、名指しに値する。
+ *
+ * **これは「閾値を緩めて門を通した」のではない。** 緩めたのではなく、
+ * 元々**存在しなかった**門(`--json` は `dispatchedAt` すら運んでいなかった)を、
+ * 実測した分布の上に建てた。境を下げるのは沈黙の長さを実測してからである(C-5b)。
+ */
+const SILENT_MS = 120 * 60 * 1000;
+
+/**
+ * 相の滞留を三値で読む (reflect C-5)。**判定は一箇所に住む** ——
+ * `statusBoard`(人が読む)と `status --json`(機械が読む)が別々に数えれば必ず食い違う。
+ *
+ *   { state:'ok' }                        … running でない、または若い
+ *   { state:'no-dispatch' }               … running なのに発令の刻が無い(判定不能)
+ *   { state:'stale',  ageMs }             … STALE_MS 超 — resume の回収対象 (第51条)
+ *   { state:'silent', ageMs }             … SILENT_MS 超 — 実測のどの相よりも長い沈黙
+ * `silent` は必ず `stale` でもある(120 > 15)。両方の鍵を立てる。
+ */
+function phaseSilence(p, at = Date.now()) {
+  if (!p || p.status !== 'running') return { state: 'ok', running: false, stale: false, silent: false, ageMs: null };
+  const t = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
+  if (Number.isNaN(t)) return { state: 'no-dispatch', running: true, stale: false, silent: false, ageMs: null };
+  const ageMs = at - t;
+  return {
+    state: ageMs >= SILENT_MS ? 'silent' : (ageMs >= STALE_MS ? 'stale' : 'ok'),
+    running: true, stale: ageMs >= STALE_MS, silent: ageMs >= SILENT_MS, ageMs,
+  };
+}
+
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function save(p, o) { fs.writeFileSync(p, JSON.stringify(o, null, 2)); }
 function now() { return new Date().toISOString(); }
@@ -418,15 +469,13 @@ function statusBoard(run) {
     lines.push(`${dg[d.status] || '?'} 枢機卿 ${d.cardinal} — ${d.domain}${rw}   [review: ${d.reviewClass}]`);
     for (const p of d.phases) {
       // 第51条a: 静止は失敗より悪い。中断の疑いがある running を人に見せ、沈黙を破る。
+      // **判定は `phaseSilence` ただ一つが下す** (reflect C-5)。
+      // `--json` も同じ関数を読む —— 人の画面と機械の口が違う判定を書けば必ず食い違う。
       let note = '';
-      if (p.status === 'running') {
-        const at = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
-        if (Number.isNaN(at)) note = '  ⚠ (running・発令の刻なし — resume --force で回収せよ)';
-        else {
-          const age = Date.now() - at;
-          if (age >= STALE_MS) note = `  ⚠ (running ${Math.round(age / 60000)}分 — 中断の疑い。resume で回収せよ)`;
-        }
-      }
+      const sil = phaseSilence(p);
+      if (sil.state === 'no-dispatch') note = '  ⚠ (running・発令の刻なし — resume --force で回収せよ)';
+      else if (sil.state === 'silent') note = `  🔴 (running ${Math.round(sil.ageMs / 60000)}分 — 実測のどの相より長い沈黙 [>${Math.round(SILENT_MS / 60000)}分]。神へ知らせよ)`;
+      else if (sil.state === 'stale') note = `  ⚠ (running ${Math.round(sil.ageMs / 60000)}分 — 中断の疑い。resume で回収せよ)`;
       const rs = p.resumes ? ` (resume ${p.resumes})` : '';
       lines.push(`     ${pg[p.status] || '?'} ${p.gate ? '⚖️' : '  '} ${p.id} @${p.agent}${rs}${note}`);
     }
@@ -487,6 +536,28 @@ function main() {
     if (f.json) {
       const dr = run.domains.filter(d => d.status === 'ratified').length;
       const phases = [...allPhases(run).values()];   // allPhases は Map を返す — 実測で確かめた
+      /**
+       * 滞留を機械の口へ載せる (reflect C-5)。
+       *
+       * ⚠️ 実測(reflect): `--json` の相の鍵は `id,agent,status,gate` のみで、
+       * **`dispatchedAt` も stale 判定も運んでいなかった。** 第51条が建てた警告は
+       * `statusBoard` の**人間向けテキストにしか**載らず、機械は読めなかった。
+       * 「鳴らない番人は、番人が居ないことより見つかりにくい」の実例である。
+       *
+       * **新しい engine は建てない。** 判定は `phaseSilence` ただ一つ ——
+       * `statusBoard` が読むのと同じ関数である(別集計を書けば必ず食い違う)。
+       */
+      const at = Date.now();
+      const sil = new Map(phases.map(p => [p.id, phaseSilence(p, at)]));
+      const jsonPhase = (p) => {
+        const s = sil.get(p.id);
+        return {
+          id: p.id, agent: p.agent, status: p.status, gate: !!p.gate,
+          dispatchedAt: p.dispatchedAt || null,
+          // 滞留の三値と経過時間。**閾値も機械へ渡す** — 読み手が別の数を持たないため(第41条)
+          silence: s.state, ageMs: s.ageMs, stale: s.stale, silent: s.silent,
+        };
+      };
       process.stdout.write(JSON.stringify({
         domainsRatified: dr,
         domainsTotal: run.domains.length,
@@ -495,9 +566,15 @@ function main() {
         domains: run.domains.map(d => ({
           cardinal: d.cardinal, domain: d.domain, status: d.status, reworks: d.reworks || 0,
           reviewClass: d.reviewClass,
-          phases: (d.phases || []).map(p => ({ id: p.id, agent: p.agent, status: p.status, gate: !!p.gate })),
+          phases: (d.phases || []).map(jsonPhase),
         })),
         historyLength: (run.history || []).length,
+        // ── 沈黙の門 (第51条 / reflect C-5) ──
+        // 機械が**名指し**できる形にする。数えるだけでは resume を撃てない。
+        staleMs: STALE_MS, silentMs: SILENT_MS, at: new Date(at).toISOString(),
+        stalePhases: phases.filter(p => sil.get(p.id).stale).map(p => p.id),
+        silentPhases: phases.filter(p => sil.get(p.id).silent).map(p => p.id),
+        noDispatchPhases: phases.filter(p => sil.get(p.id).state === 'no-dispatch').map(p => p.id),
       }) + '\n');
       return;
     }
@@ -505,4 +582,4 @@ function main() {
   } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
-module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS };
+module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, phaseSilence, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, SILENT_MS };
