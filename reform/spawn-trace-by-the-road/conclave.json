@@ -104,7 +104,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -116,9 +116,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "graph/trace-harvest.js",
           "dispatchedAt": "2026-09-02T23:37:30.089Z",
           "resumes": 0
         },
@@ -131,9 +131,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/spawn-trace-by-the-road/prove.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -145,7 +145,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -158,10 +158,10 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-03T01:16:38.949Z",
           "resumes": 0
         },
         {
@@ -173,10 +173,10 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-03T01:16:38.949Z",
           "resumes": 0
         },
         {
@@ -188,10 +188,10 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-03T01:16:38.949Z",
           "resumes": 0
         },
         {
@@ -313,6 +313,26 @@
       "ts": "2026-09-02T23:37:30.089Z",
       "event": "dispatch",
       "detail": "build"
+    },
+    {
+      "ts": "2026-09-03T01:15:35.684Z",
+      "event": "done",
+      "detail": "build → graph/trace-harvest.js"
+    },
+    {
+      "ts": "2026-09-03T01:15:35.729Z",
+      "event": "done",
+      "detail": "prove → reform/spawn-trace-by-the-road/prove.md"
+    },
+    {
+      "ts": "2026-09-03T01:15:52.728Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-03T01:16:38.949Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
     }
   ],
   "spawnTrace": {
@@ -359,6 +379,56 @@
         "at": "2026-09-02T23:38:02.605Z",
         "kind": "observed"
       }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "(教主自身)",
+        "toolUseId": null,
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-03T01:15:47.769Z",
+        "kind": "waived",
+        "reason": "破壊試験は教主が自ら4度行った。神官へ委譲していないので観測ではない — 正直に棄権として記す(第5条)",
+        "by": "pontiff"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-8bb0c51f",
+        "parentToolUseId": "deleg_41253b63",
+        "source": null,
+        "agentId": null,
+        "childLog": null,
+        "delegationId": null,
+        "state": null,
+        "reason": null,
+        "by": null,
+        "rank": "priest",
+        "at": "2026-09-03T01:16:38.994Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-95d9086c",
+        "parentToolUseId": "deleg_41253b63",
+        "source": null,
+        "agentId": null,
+        "childLog": null,
+        "delegationId": null,
+        "state": null,
+        "reason": null,
+        "by": null,
+        "rank": "priest",
+        "at": "2026-09-03T01:16:39.038Z",
+        "kind": "observed"
+      }
     ]
-  }
+  },
+  "traceWaivers": 1
 }
