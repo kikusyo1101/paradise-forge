@@ -69,6 +69,27 @@ const TIERS = Object.freeze({
  */
 const TIER_EPOCH = 'v1';
 
+/**
+ * 序列3が通ったことを表す `state` の値 (M-4)。
+ *
+ * ⚠️ **これは機械の鍵であって散文の名ではない。**
+ * `judge().state` の値域は他の8つが ASCII kebab-case である
+ * (`unobservable` `no-tier` `asserted-only` `no-trace` `gate-tier3`
+ *  `tier3-observed` `tier3-breach` `inconclusive` `observed`)。
+ * ここだけ日本語リテラル `'序列3'` を置けば、値域の内側で語が食い違う。
+ * この値は `conclave.json` の `tierTrace[id].state` へ**永続化され**、
+ * `report` / `tierAudit` / `gauge` の**5箇所で文字列比較される** ——
+ * 誰かが訳した瞬間に3つの集計が黙って 0 になる形をしていた。
+ *
+ * **散文は「序列3」と呼び続ける。** 変えるのは機械の鍵だけである。
+ * 出力の文言(`序列3: 教主の手 …`)は一字も変えない。
+ */
+const TIER3_STATE = 'tier3';
+/** 旧い台帳が持つ日本語リテラル。**読むときだけ受ける**(書くのは常に ASCII)。 */
+const TIER3_STATE_LEGACY = '序列3';
+/** その state は「序列3が通った」を意味するか。新旧どちらの綴りでも真。 */
+const isTier3State = (s) => s === TIER3_STATE || s === TIER3_STATE_LEGACY;
+
 /** 序列3の実測から除くもの。統治を仕事と数えれば、宣言する行為自体が違反になる。 */
 const MEASURE_EXCLUDE = [
   /(^|[\\/])conclave\.json$/,        // 環の台帳。done を刻む行為そのものが差分を生む
@@ -166,11 +187,39 @@ function dispatchTime(run, id) {
   return null;
 }
 
+/**
+ * git を撃つ。**成否と出力を分けて返す** (第16条 / review B-1)。
+ *
+ * ⚠️ 旧実装は `catch { return null }` で **ENOENT・非git ディレクトリ・壊れた index・
+ * 権限拒否・日付書式エラーを全て `null` に潰していた**。`measure()` はそれを握り潰し、
+ * 「測れなかった」を **「変更ゼロ」** として返し、`judge()` の段6が 0 を実測値と信じて
+ * 緑を出した —— **序列3の門が git の失敗一つで無条件に fail-open していた。**
+ *
+ * `null` は「出力が無い」と「撃てなかった」の両方を意味しうる。
+ * **同じ値で二つのことを表現するのが根本原因である。** ゆえに器を分ける:
+ *   { ok: true,  out: '<stdout>' }        撃てた(出力が空でも撃てた)
+ *   { ok: false, reason: '<なぜ>' }       撃てなかった = **測定不能**
+ */
 function gitOut(args, cwd) {
   try {
-    return execFileSync('git', args, { cwd: cwd || ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  } catch { return null; }
+    return { ok: true, out: execFileSync('git', args, { cwd: cwd || ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) };
+  } catch (e) {
+    const why = e && e.code === 'ENOENT' ? 'git が見つからない (ENOENT)'
+      : e && e.status != null ? `git ${args[0]} が exit ${e.status} で失敗 (非gitディレクトリ・壊れた index・権限拒否のいずれか)`
+      : `git ${args[0]} を撃てない: ${String((e && e.message) || e).slice(0, 120)}`;
+    return { ok: false, reason: why };
+  }
 }
+
+/** 未追跡ファイルを行数へ換算するときの読み込み上限 (S-4)。
+ *
+ * `readFileSync` + `split` は**行数と同じ長さの配列**を作る。上限が無いと
+ * 8000万行のログ1本で V8 のヒープが尽き、**catch できない SIGABRT (exit 134)** で
+ * `conclave done` が丸ごと死ぬ(実測: security-report S-4)。
+ * `t3.bytes` の閾値は 4096 である —— **1 MiB を超えるファイルを正確に数える意味は無い。**
+ * 上限を超えたものは 64 バイト/行で**下から見積もる**。過大評価の方向にしか働かない
+ * (赤は出るが緑は出ない) = fail-safe。 */
+const MAX_UNTRACKED_READ = 1024 * 1024;
 
 /**
  * `dispatch` から `done` までの窓で、リポジトリに加えられた変更を測る。
@@ -186,6 +235,16 @@ function gitOut(args, cwd) {
  * 捨てれば序列3の門は手仕事をほぼ全て見逃す —— 門の目的そのものを失う。
  * ゆえに現在の相に帰属させる。**限界は正直に書く**: 前の相の残骸が加算されうるが、
  * それは**過大評価の方向にしか働かない**(赤は出るが緑は出ない)= fail-safe。
+ *
+ * ── 測定不能 (第16条 / review B-1) ────────────────────────────────
+ * **`measurable` は「三つの git 問い合わせが全て撃てた」ことだけを意味する。**
+ * 旧実装は `!!t0 || commitsMeasurable || diff != null` と書いた —— `t0` は
+ * `markRunning` が必ず刻むので、**git が完全に死んでいても真になった**。
+ * 「測れたか」を名乗る鍵が測れなかった事実を隠していた。しかも `judge()` は
+ * その鍵を一度も読まなかった。ゆえに:
+ *   - 一つでも撃てなければ `measurable:false`、`unmeasured[]` に理由を積む
+ *   - `judge()` はこの鍵を**必ず読み**、偽なら緑を出さない (state:'inconclusive')
+ * **「測って 0」と「測れなくて 0」を同じ 0 で表現しない。**
  */
 function measure(run, phaseId, opts = {}) {
   const cwd = opts.cwd || ROOT;
@@ -193,14 +252,17 @@ function measure(run, phaseId, opts = {}) {
   const t1 = opts.t1 || now();
   const files = new Set();
   let churn = 0;
-  let commitsMeasurable = false;
+  const unmeasured = [];
 
-  if (t0) {
-    const raw = gitOut(['log', '--no-merges', `--since=${t0}`, `--until=${t1}`,
-                        '--numstat', '--format=C|%h'], cwd);
-    if (raw != null) {
-      commitsMeasurable = true;
-      for (const line of raw.split(/\r?\n/)) {
+  // 1. コミット済み。t0 が無ければ窓が切れない = 測定不能である(この doc の宣言通り)。
+  if (!t0) {
+    unmeasured.push('窓の始端 (dispatchedAt / history の dispatch) が無い — 窓を切れない');
+  } else {
+    const r = gitOut(['log', '--no-merges', `--since=${t0}`, `--until=${t1}`,
+                      '--numstat', '--format=C|%h'], cwd);
+    if (!r.ok) unmeasured.push(`コミット済みの差分を測れない: ${r.reason}`);
+    else {
+      for (const line of r.out.split(/\r?\n/)) {
         if (!line || line.startsWith('C|')) continue;
         const m = line.split('\t');
         if (m.length < 3) continue;
@@ -212,10 +274,11 @@ function measure(run, phaseId, opts = {}) {
     }
   }
 
-  // 未コミット: 追跡下の差分 + 未追跡ファイル
+  // 2. 未コミット: 追跡下の差分
   const diff = gitOut(['diff', '--numstat', 'HEAD'], cwd);
-  if (diff != null) {
-    for (const line of diff.split(/\r?\n/)) {
+  if (!diff.ok) unmeasured.push(`未コミットの差分を測れない: ${diff.reason}`);
+  else {
+    for (const line of diff.out.split(/\r?\n/)) {
       if (!line) continue;
       const m = line.split('\t');
       if (m.length < 3) continue;
@@ -225,9 +288,12 @@ function measure(run, phaseId, opts = {}) {
       churn += (Number(m[0]) || 0) + (Number(m[1]) || 0);
     }
   }
+
+  // 3. 未追跡ファイル
   const untracked = gitOut(['status', '--porcelain', '--untracked-files=all'], cwd);
-  if (untracked != null) {
-    for (const line of untracked.split(/\r?\n/)) {
+  if (!untracked.ok) unmeasured.push(`未追跡ファイルを測れない: ${untracked.reason}`);
+  else {
+    for (const line of untracked.out.split(/\r?\n/)) {
       if (!line.startsWith('?? ')) continue;
       const f = line.slice(3).trim();
       if (!f || excluded(f)) continue;
@@ -236,7 +302,12 @@ function measure(run, phaseId, opts = {}) {
       try {
         const abs = path.isAbsolute(f) ? f : path.join(cwd, f);
         const st = fs.statSync(abs);
-        if (st.isFile()) n = fs.readFileSync(abs, 'utf8').split(/\r?\n/).length;
+        // **読む前に大きさで足切りする** (S-4)。ヒープ枯渇は catch できない。
+        if (st.isFile()) {
+          n = st.size > MAX_UNTRACKED_READ
+            ? Math.ceil(st.size / 64)                              // 下からの見積り = fail-safe
+            : fs.readFileSync(abs, 'utf8').split(/\r?\n/).length;
+        }
       } catch {}
       churn += n;
     }
@@ -257,7 +328,9 @@ function measure(run, phaseId, opts = {}) {
   return {
     files: files.size, churn, bytes,
     t0: t0 || null, t1,
-    measurable: !!t0 || commitsMeasurable || diff != null,
+    // **全ての問いが撃てたときだけ真。** 一つでも欠ければ 0 は実測値ではない。
+    measurable: unmeasured.length === 0,
+    unmeasured,
     fileList: [...files].slice(0, 20),
   };
 }
@@ -283,6 +356,13 @@ function dirBytes(dir) {
  *   4. 序列3 かつ observed → 赤(申告矛盾)
  *   5. 序列1/2 → 証跡の三値で裁く
  *   6. 序列3 → 実測して閾値と突合
+ *      6a. **測れなかったなら `inconclusive` で赤** (第16条 / review B-1)
+ *
+ * ── `unobservable` と `inconclusive` を分ける理由 (第36条: 別の問いには別の器) ──
+ *   `unobservable` … **機構が無かった時代**の走行。走行者に罪は無い → 🟡
+ *   `inconclusive`  … **機構は在るのに測れなかった**。序列3の主張が検証されていない → 🔴
+ * `atlas.js` が `kind:'inconclusive'` で同じ問いに既に答えている。同じ原則をここへ。
+ * **測れなかったなら緑を出さない。判定不能は緑ではない。**
  */
 function judge(run, phaseId, opts = {}) {
   const phase = findPhase(run, phaseId);
@@ -355,13 +435,38 @@ function judge(run, phaseId, opts = {}) {
 
   // 6. 序列3 — 実測して閾値と突合する
   const m = opts.measured || measure(run, phaseId, opts);
+
+  /**
+   * 6a. **測れなかったなら緑を出さない** (第16条 / review B-1)。
+   *
+   * `measure()` の `measurable` を **judge が実際に読む**。旧実装はこの鍵を
+   * 一度も読まず、git の失敗で得た files=0 / churn=0 を実測値と信じて緑を出した。
+   * 「測って 0」と「測れなくて 0」は別の事実である。
+   *
+   * `opts.measured` を呼び手が直に渡した場合、`measurable` が無ければ
+   * 「測った数を渡した」と解する(既存の判定表の試験がこの形で撃つ)。
+   * **無いことを false と読むと、判定表そのものを撃てなくなる。**
+   * だが `measurable:false` を明示して渡されたなら、当然赤である。
+   */
+  if (m && m.measurable === false) {
+    const why = (m.unmeasured || []).length ? m.unmeasured : ['理由が記録されていない'];
+    return { ok: false, verdict: 'red', state: 'inconclusive', phase: phaseId, measured: m,
+      lines: [
+        `序列3を実測できなかった — 測れなかったものを「閾値内」と報告しない (第16条)`,
+        ...why.map(w => `  ${w}`),
+        `  この相が序列3の枠に収まっていたことは**検証されていない**。緑は出せない`,
+        `  git が撃てる作業場で done を刻み直すか、序列1(委譲)として為せ`,
+        `  委ねるべき agent: ${agent}`,
+      ] };
+  }
+
   const over = [];
   if (m.files > TIERS.t3.files) over.push(`files=${m.files} > ${TIERS.t3.files}`);
   if (m.churn > TIERS.t3.churn) over.push(`churn=${m.churn} > ${TIERS.t3.churn}`);
   if (m.bytes > TIERS.t3.bytes) over.push(`bytes=${m.bytes} > ${TIERS.t3.bytes}`);
 
   if (!over.length) {
-    return { ok: true, verdict: 'green', state: '序列3', phase: phaseId, measured: m,
+    return { ok: true, verdict: 'green', state: TIER3_STATE, phase: phaseId, measured: m,
       lines: [`序列3: 教主の手 (files=${m.files}/${TIERS.t3.files} churn=${m.churn}/${TIERS.t3.churn} bytes=${m.bytes}/${TIERS.t3.bytes})`] };
   }
 
@@ -402,7 +507,7 @@ function report(run) {
     assertedOnly: rows.filter(r => r.state === 'asserted-only').length,
     noTrace: rows.filter(r => r.state === 'no-trace').length,
     // ── 序列の二値を足す (第52条 / AC-A12) ──
-    tier3: phases.filter(id => stateOf(id) === '序列3').length,
+    tier3: phases.filter(id => isTier3State(stateOf(id))).length,
     unobservable: phases.filter(id => stateOf(id) === 'unobservable').length,
     rows, bypassed,
   };
@@ -432,7 +537,10 @@ function tierAudit(run, opts = {}) {
     }
     // 刻まれた判定を読む。**再判定しない** — done の時点の実測が事実である。
     const yellow = rec.state === 'unobservable';
-    const red = ['no-tier', 'asserted-only', 'no-trace', 'gate-tier3', 'tier3-observed', 'tier3-breach'].includes(rec.state);
+    // `inconclusive` は赤である。**機構は在ったのに測れなかった**のだから、
+    // 序列3の主張は検証されていない(第16条 / review B-1)。
+    const red = ['no-tier', 'asserted-only', 'no-trace', 'gate-tier3', 'tier3-observed',
+                 'tier3-breach', 'inconclusive'].includes(rec.state);
     rows.push({
       phase: p.id, declared: rec.declared, state: rec.state, measured: rec.measured || null,
       ok: !red, verdict: red ? 'red' : (yellow ? 'yellow' : 'green'),
@@ -442,7 +550,7 @@ function tierAudit(run, opts = {}) {
   const counts = {
     '序列1': rows.filter(r => r.declared === 1 && r.verdict === 'green').length,
     '序列2': rows.filter(r => r.declared === 2 && r.verdict === 'green').length,
-    '序列3': rows.filter(r => r.state === '序列3').length,
+    '序列3': rows.filter(r => isTier3State(r.state)).length,
     unobservable: rows.filter(r => r.verdict === 'yellow').length,
   };
   return { ok: rows.every(r => r.ok), rows, counts, epoch: hasEpoch(run) };
@@ -589,4 +697,5 @@ if (require.main === module) {
   process.exit(2);
 }
 
-module.exports = { record, verify, report, TIERS, TIER_EPOCH, hasEpoch, measure, judge, tierAudit, findRuns, findPhase, dispatchTime };
+module.exports = { record, verify, report, TIERS, TIER_EPOCH, TIER3_STATE, TIER3_STATE_LEGACY, isTier3State,
+  hasEpoch, measure, judge, tierAudit, findRuns, findPhase, dispatchTime };

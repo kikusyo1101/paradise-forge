@@ -115,7 +115,7 @@ function score(run) {
   const marked = phases.filter(p => tt[p.id]);
   const declaredIs = (n) => marked.filter(p => tt[p.id].declared === n && tt[p.id].state !== 'unobservable').length;
   const tier1 = declaredIs(1), tier2 = declaredIs(2);
-  const tier3 = marked.filter(p => tt[p.id].state === '序列3').length;
+  const tier3 = marked.filter(p => trace.isTier3State(tt[p.id].state)).length;
   const unobservable = trace.hasEpoch(run)
     ? marked.filter(p => tt[p.id].state === 'unobservable').length
     // 印を持たない run は全相が観測不能である。**tier1 とは別の鍵で数える**(AC-H1)。

@@ -53,24 +53,86 @@ function existingNames() {
 }
 
 /**
+ * 素の鍵参照で存在を検めない (S-2)。
+ *
+ * `!obj[key]` は `constructor` / `toString` / `valueOf` / `__proto__` などの
+ * `Object.prototype` の鍵に対して**常に真値を返す**ので、存在検査を素通りする。
+ * 実測(security-report S-2): `--cardinal constructor` / `--domain constructor` が
+ * 検証を通り、前者は writeCollege で生の Error、後者は `--write` で
+ * `domains.json` を**恒久的に汚した**(`domains.js check` が以後ずっと赤)。
+ * `--rank constructor` は検証通過後に生の TypeError で落ちた —— 第34条の「罠」である。
+ *
+ * **自前の判定を書かない。`hasOwnProperty` を借りる。**
+ */
+const owns = (obj, key) =>
+  !!obj && typeof key === 'string' && Object.prototype.hasOwnProperty.call(obj, key);
+
+/**
+ * 自由入力の綴りの規則 (S-1 / S-2)。
+ *
+ * `--name` だけが `/^[a-z][a-z0-9-]*$/` で守られていた。だが
+ * `--cardinal` / `--domain` / `--rank` は**台帳の鍵として引かれ、
+ * `writeCollege` では無エスケープで `new RegExp` へ差し込まれる**。
+ * 綴りの規則が無いことは、正規表現メタ文字が engine の内部へ届くことを意味する。
+ * **`--name` と同じ厳しさを全ての鍵入力へ課す。**
+ */
+const KEY_RE = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * frontmatter へ差し込む自由文の規則 (S-1)。
+ *
+ * ⚠️ **これが破れると engine が書いた `tools:` / `model:` が本文へ押し出される。**
+ * 実測(security-report S-1): `--description $'ok\ntools: …, Task\nmodel: fable\n---\nBODY'`
+ * を渡すと、配備側の実パーサ(`apply-models.js` の `/^---\r?\n([\s\S]*?)\r?\n---/`)が
+ * **攻撃者の書いた `model: fable` と `tools: … Task` を有効な値として読んだ**。
+ * 鍛造器が自ら掲げた「方針から生成された値が方針に反することはない」保証が破れていた。
+ *
+ * **1行へ畳んで黙って通さない。** 畳めば攻撃は消えるが、渡した者は
+ * 自分の書いた文字列が書き換わったことを知らない。**鍛造の時点で名指しして鳴らす**
+ * (第34条: 次に何をすべきかを言う)。ゆえに改行・`---`・制御文字を拒む。
+ */
+function frontmatterSafe(field, value) {
+  const errors = [];
+  if (typeof value !== 'string') return errors;
+  if (/[\r\n]/.test(value)) {
+    errors.push(`--${field} に改行が含まれる — frontmatter の行を増やせば engine が書いた tools:/model: が本文へ押し出される (S-1)`);
+  }
+  if (/---/.test(value)) {
+    errors.push(`--${field} に "---" が含まれる — frontmatter の終端を偽装できる (S-1)`);
+  }
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) {
+    errors.push(`--${field} に制御文字が含まれる`);
+  }
+  return errors;
+}
+
+/**
  * 鍛造要求を検める。**4つの欠けを、鍛造の時点で名指しする** (fail fast)。
  * どれも `deploy` の前に判る欠けである。
  */
 function validate(req) {
   const errors = [];
   if (!req.name) errors.push('--name が無い — 名の無い役者は鍛造できない');
-  else if (!/^[a-z][a-z0-9-]*$/.test(req.name)) errors.push(`名は小文字と連字符のみ: "${req.name}"`);
+  else if (!KEY_RE.test(req.name)) errors.push(`名は小文字と連字符のみ: "${req.name}"`);
+
+  // 0. 自由入力の無害化 (S-1)。**台帳を引く前に綴りを裁く。**
+  errors.push(...frontmatterSafe('description', req.description));
+  for (const [field, v] of [['domain', req.domain], ['cardinal', req.cardinal], ['rank', req.rank]]) {
+    if (typeof v === 'string' && v && !KEY_RE.test(v)) {
+      errors.push(`--${field} の綴りが規則に反する: "${v}" — 鍵は小文字と連字符のみ (S-2)`);
+    }
+  }
 
   // 1. 分野宣言
   const led = domains.load();
   if (!req.domain) errors.push('--domain が無い — 担える分野を宣言されない役者は道に載せられない (第52条)');
-  else if (!led.domains[req.domain]) {
+  else if (!owns(led.domains, req.domain)) {
     errors.push(`分野 "${req.domain}" が台帳に無い — 既知: ${Object.keys(led.domains).join(', ')}`);
   }
 
   // 2. 位階が apply-models の方針に反しないか
   const rank = req.rank || 'priest';
-  if (!clergy.RANKS[rank]) errors.push(`位階 "${rank}" は clergy.RANKS に無い — 既知: ${Object.keys(clergy.RANKS).join(', ')}`);
+  if (!owns(clergy.RANKS, rank)) errors.push(`位階 "${rank}" は clergy.RANKS に無い — 既知: ${Object.keys(clergy.RANKS).join(', ')}`);
   else if (req.model) {
     const want = clergy.modelFor(req.name, rank);
     if (req.model !== want.model) {
@@ -83,7 +145,7 @@ function validate(req) {
 
   // 3. 所属枢機卿
   if (!req.cardinal) errors.push('--cardinal が無い — 無主の役者は誰の麾下でもない (第25条)');
-  else if (!clergy.COLLEGE[req.cardinal]) {
+  else if (!owns(clergy.COLLEGE, req.cardinal)) {
     errors.push(`枢機卿 "${req.cardinal}" が COLLEGE に無い — 既知: ${Object.keys(clergy.COLLEGE).join(', ')}`);
   }
 
@@ -114,6 +176,20 @@ function renderAgent(req, rank) {
   const led = domains.load();
   const dom = led.domains[req.domain];
   const col = clergy.COLLEGE[req.cardinal];
+  /**
+   * ⚠️ **二重の守り** (S-1)。`validate()` が既に注入を拒むが、`renderAgent` は
+   * export されており `plan()` 以外からも呼ばれうる。**frontmatter を書く器が
+   * 自分で自分の不変条件を守る** —— 呼び手の作法に依存する守りは守りではない。
+   * ここで throw するのは、黙って畳んで別の定義を産むより安全だからである。
+   */
+  for (const [f, v] of [['name', req.name], ['domain', req.domain], ['cardinal', req.cardinal]]) {
+    if (typeof v !== 'string' || !KEY_RE.test(v)) throw new Error(`renderAgent: --${f} の綴りが規則に反する: ${JSON.stringify(v)}`);
+  }
+  if (!owns(led.domains, req.domain)) throw new Error(`renderAgent: 分野 "${req.domain}" が台帳に無い`);
+  if (!owns(clergy.COLLEGE, req.cardinal)) throw new Error(`renderAgent: 枢機卿 "${req.cardinal}" が COLLEGE に無い`);
+  if (!owns(clergy.RANKS, rank)) throw new Error(`renderAgent: 位階 "${rank}" が clergy.RANKS に無い`);
+  const dErr = frontmatterSafe('description', req.description);
+  if (dErr.length) throw new Error('renderAgent: ' + dErr.join(' / '));
   // 信徒を擁する枢機卿の神官は、信徒を発令する。権能は編成から導く。
   const spawns = (req.believers && req.believers.length) || (col && (col.believers || []).length);
   const tools = spawns
@@ -224,6 +300,18 @@ function writeOverlayOwn(name) {
  */
 function writeCollege(cardinal, name) {
   const before = fs.readFileSync(CLERGY_JS, 'utf8');
+  /**
+   * **正規表現へ入れる前に守る** (S-2)。`validate()` が綴りを裁くようになったが、
+   * この器は `forge()` 以外からも呼ばれうる。`cardinal` に正規表現メタ文字が
+   * 混じれば `new RegExp` が壊れるか、`[\s\S]*?` と組み合わさって
+   * **意図しない別の `priests: [` に一致しうる** —— clergy.js の任意書き換えである。
+   */
+  if (!KEY_RE.test(cardinal) || !KEY_RE.test(name)) {
+    throw new Error(`writeCollege: 綴りが規則に反する (cardinal=${JSON.stringify(cardinal)} name=${JSON.stringify(name)})`);
+  }
+  if (!owns(clergy.COLLEGE, cardinal)) {
+    throw new Error(`writeCollege: 枢機卿 "${cardinal}" は COLLEGE の実在の鍵ではない`);
+  }
   // priests 配列を丸ごと捕らえる — 先頭ではなく**末尾**に加えるため中身が要る。
   const key = new RegExp(`(['"]?${cardinal}['"]?\\s*:\\s*\\{[\\s\\S]*?priests:\\s*\\[)([^\\]]*)(\\])`);
   const m = before.match(key);
@@ -260,15 +348,55 @@ function writeDomains(name, domain) {
   fs.writeFileSync(DOMAINS_JSON, out);
 }
 
+/**
+ * 鍛造を実行する。
+ *
+ * ── **全か無か** (S-3) ───────────────────────────────────────────
+ * 旧実装は `p.steps` を順に実行するだけで、途中で落ちれば
+ * **先に書いた `.md` と `overlay.json` が残った**。実測(security-report S-3):
+ * `writeCollege` が落ちた後も `overlay/agents/protopwn.md` が実在し、
+ * `overlay.json` の `own.agents` に載っていた ——
+ * **次に誰かが `deploy.js --write` を打てば、位階にも分野にも属さない
+ * この孤児が開発者の実機 `~/.claude/agents/` へ配備される。**
+ *
+ * ゆえに **書く前に全ファイルの原本を退避し、一つでも落ちたら一括で戻す。**
+ * `writeCollege` の自己巻き戻しはそのまま残す(二重に戻しても同じ内容である)。
+ */
 function forge(req) {
   const p = plan(req);
   if (!p.ok) return p;
   if (!req.write) return { ...p, dry: true };
-  for (const s of p.steps) {
-    if (s.kind === 'agent-md') writeAgentMd(s);
-    else if (s.kind === 'overlay-own') writeOverlayOwn(req.name);
-    else if (s.kind === 'clergy-college') writeCollege(req.cardinal, req.name);
-    else if (s.kind === 'domains') writeDomains(req.name, req.domain);
+
+  // 触りうる全てのファイルの原本を退避する。存在しなかったものは null で覚える。
+  const targets = [
+    path.join(AGENTS_DIR, req.name + '.md'),
+    OVERLAY_JSON, CLERGY_JS, DOMAINS_JSON,
+  ];
+  const snapshot = new Map();
+  for (const f of targets) {
+    try { snapshot.set(f, fs.readFileSync(f)); } catch { snapshot.set(f, null); }
+  }
+  const rollback = () => {
+    for (const [f, buf] of snapshot) {
+      try {
+        if (buf === null) fs.rmSync(f, { force: true });   // 元は無かった = 消す
+        else fs.writeFileSync(f, buf);
+      } catch {}
+    }
+  };
+
+  try {
+    for (const s of p.steps) {
+      if (s.kind === 'agent-md') writeAgentMd(s);
+      else if (s.kind === 'overlay-own') writeOverlayOwn(req.name);
+      else if (s.kind === 'clergy-college') writeCollege(req.cardinal, req.name);
+      else if (s.kind === 'domains') writeDomains(req.name, req.domain);
+    }
+  } catch (e) {
+    rollback();
+    // require キャッシュも戻す —— 巻き戻したのに古い読み込みが残れば同じ罠である
+    for (const f of [CLERGY_JS, DOMAINS_JSON]) { try { delete require.cache[require.resolve(f)]; } catch {} }
+    throw new Error(`鍛造が途中で落ちたので**全て巻き戻した** — 半端な役者を残さない (S-3): ${e.message}`);
   }
   return { ...p, dry: false, written: true };
 }
@@ -292,7 +420,34 @@ function verify(name, opts = {}) {
   const led = domains.load();
   rows.push({ name: '分野宣言', ok: Array.isArray(led.agents[name]) && led.agents[name].length > 0,
     note: (led.agents[name] || []).join(', ') || '宣言なし' });
-  const gates = opts.only ? GATES.filter(g => opts.only.includes(g.name)) : GATES;
+
+  /**
+   * `--only` の綴り違いを**緑にしない** (S-5 / 第37条: 不在は通過ではない)。
+   *
+   * 旧実装は `GATES.filter(g => opts.only.includes(g.name))` で絞るだけだった。
+   * 実測(security-report S-5): `--only 'nonexistent-gate'` は
+   * **7門のうち0門を撃って「一つも壊していない」と述べ exit 0 を返した。**
+   * `--only` の値は綴りを間違えやすい日本語(`実在` `配備の一致` `分野の適合` …)である。
+   * **撃たなかった門を通ったと呼べば、それは第16条の engine 自身による違反である。**
+   */
+  let gates = GATES;
+  if (opts.only) {
+    const known = new Set(GATES.map(g => g.name));
+    const unknown = opts.only.filter(n => !known.has(n));
+    if (unknown.length) {
+      return { ok: false, unknownOnly: unknown, rows: [{
+        name: '--only の綴り', ok: false,
+        note: `そんな門は無い: ${unknown.join(', ')} — 既知: ${[...known].join(', ')} (第37条: 不在は通過ではない)`,
+      }] };
+    }
+    gates = GATES.filter(g => opts.only.includes(g.name));
+    if (!gates.length) {
+      return { ok: false, unknownOnly: [], rows: [{
+        name: '--only', ok: false, note: '一つの門も選ばれていない — 0門を撃って緑は出さない (第16条)',
+      }] };
+    }
+  }
+
   for (const g of gates) {
     let ok = false, note = '';
     try {
@@ -339,7 +494,14 @@ function main() {
       for (const [c, col] of Object.entries(clergy.COLLEGE)) if ((col.priests || []).includes(req.name)) { req.cardinal = c; break; }
       if (!req.cardinal) req.cardinal = 'construction';
     }
-    const r = forge(req);
+    let r;
+    try {
+      r = forge(req);
+    } catch (e) {
+      // S-3: 巻き戻し済み。**半端な状態は残っていない**ことを名指しして伝える。
+      console.error(`🔴 ${e.message}`);
+      process.exit(1);
+    }
     if (!r.ok) {
       console.error(`🔴 鍛造できない — ${r.errors.length} 件の欠け (第52条: 後の門が鳴るのではなく、鍛造の時点で鳴る)`);
       for (const e of r.errors) console.error(`   - ${e}`);
@@ -383,4 +545,5 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { validate, plan, forge, verify, renderAgent, existingNames, GATES };
+module.exports = { validate, plan, forge, verify, renderAgent, existingNames, GATES,
+  frontmatterSafe, KEY_RE, owns, writeCollege };

@@ -398,11 +398,24 @@ function buildDag(wish, scale) {
  * 落ちた先の10名は全員実在するので `check-agents` は緑を出す。
  * **「音楽を作れ」は standard へ落ち、実在する architect が build 相を担う。**
  * 楽園には「その仕事をやれる役者が居ない」ことを表現する型が無かった。
+ *
+ * ── `scale` を受ける理由 (M-3) ────────────────────────────────────
+ * 旧実装は引数を取らず、中で `chooseScale(wish)` を呼び直して**その道の名簿だけ**を
+ * 裁いた。だが CLI は `admit()` を先に通してから `--scale` を適用する ——
+ * すなわち **`--scale full` を渡すと、full にだけ載る5名
+ * (tdd-guide / code-reviewer / ux-reviewer / security-reviewer / doc-updater) の
+ * 分野適合が一度も検められないまま道に載った。** 逆向きの偽陽性も在った。
+ * `forge.js` のコメントは「分野の適合だけを裁く」と述べていたが、
+ * **裁いていた名簿は `--scale` で選んだ道のものではなかった。**
+ * ゆえに **実際に走る道の名簿を裁く。** `chooseScale` は一行も変えない。
  */
-function admit(wish) {
+function admit(wish, wantScale) {
   const domains = require('./domains.js');
   const { PSEUDO } = require('./check-agents.js');
-  const scale = chooseScale(wish);
+  const chosen = chooseScale(wish);
+  // 明示された道が実在すればそれを裁く。実在しなければ選定へ委ねる
+  // (未知の道名は CLI 側が `unknown scale` で拒む — ここで裁定を騙らない)。
+  const scale = (wantScale && Object.prototype.hasOwnProperty.call(SCALES, wantScale)) ? wantScale : chosen;
   const led = domains.load();
   const dom = domains.classify(wish, led);
   if (!dom) return { ok: false, code: 'unknown-domain', scale };
@@ -479,8 +492,13 @@ function main() {
      *
      * `--scale` を明示した呼び方は道の選定を人が引き受けたということなので、
      * 分野の適合だけを裁く。
+     *
+     * ⚠️ **裁く名簿は「実際に走る道」のものでなければならない** (M-3)。
+     * 未知の道名を先に拒むのは、`admit` が選定へ黙って落ちた名簿で裁定を
+     * 騙らないためである —— 綴り違いは exit 2 で鳴らす(第37条)。
      */
-    const a = admit(wish);
+    if (flags.scale && !SCALES[flags.scale]) { console.error(`unknown scale: ${flags.scale}`); process.exit(2); }
+    const a = admit(wish, flags.scale);
     if (!a.ok) { console.log(explainAdmit(a, wish)); process.exit(1); }
     const scale = flags.scale || a.scale;
     if (!SCALES[scale]) { console.error(`unknown scale: ${scale}`); process.exit(2); }
