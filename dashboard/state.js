@@ -1,5 +1,5 @@
 window.PARADISE_STATE = {
-  "generated": "2026-09-02T09:44:06.391Z",
+  "generated": "2026-09-03T07:22:06.291Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@ window.PARADISE_STATE = {
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 99,
+    "nodeCount": 106,
     "edgeCount": 33,
     "nodes": [
       {
@@ -722,6 +722,48 @@ window.PARADISE_STATE = {
         "type": "lesson",
         "label": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
         "degree": 0
+      },
+      {
+        "id": "runner-death-not-ring-death",
+        "type": "lesson",
+        "label": "走者の死は環の死ではない",
+        "degree": 0
+      },
+      {
+        "id": "gate-must-not-depend-on-what-it-guards",
+        "type": "lesson",
+        "label": "上限を検める門が上限に依存してはならない",
+        "degree": 0
+      },
+      {
+        "id": "env-is-not-canon",
+        "type": "lesson",
+        "label": "この機の環境を期待値にするな — 門は環境を跨いで立つ",
+        "degree": 0
+      },
+      {
+        "id": "death-can-arrive-async",
+        "type": "lesson",
+        "label": "後始末は同期の失敗だけでなく非同期の死にも結べ",
+        "degree": 0
+      },
+      {
+        "id": "borrowed-ctor-leaks",
+        "type": "lesson",
+        "label": "借り物の constructor が資源を掴んでから失敗する道を疑え",
+        "degree": 0
+      },
+      {
+        "id": "reform-lives-in-three-places",
+        "type": "lesson",
+        "label": "reform を創造物と同じ形と仮定するな",
+        "degree": 0
+      },
+      {
+        "id": "gate-out-of-range-rots",
+        "type": "lesson",
+        "label": "門の射程外の写経は、古くなっても鳴らない",
+        "degree": 0
       }
     ],
     "edges": [
@@ -898,7 +940,7 @@ window.PARADISE_STATE = {
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 65
+      "lesson": 72
     }
   },
   "lessons": [
@@ -1226,6 +1268,41 @@ window.PARADISE_STATE = {
       "id": "two-causes-one-symptom",
       "label": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check",
       "check": "直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check|applies:paradise-internal"
+    },
+    {
+      "id": "runner-death-not-ring-death",
+      "label": "走者の死は環の死ではない",
+      "check": "resume|applies:paradise-internal"
+    },
+    {
+      "id": "gate-must-not-depend-on-what-it-guards",
+      "label": "上限を検める門が上限に依存してはならない",
+      "check": "HARD_STOP|applies:paradise-internal"
+    },
+    {
+      "id": "env-is-not-canon",
+      "label": "この機の環境を期待値にするな — 門は環境を跨いで立つ",
+      "check": "この機の環境を期待値にするな。倉が隣に在ること・KG が在ること・fs.watch が 2 発出すことは、どれも「この機ではそうだった」に過ぎない。CI で赤が出た四件のうち三件がこれで、実装は毎回正しかった。門は不在の側でも「不在の契約」を測れ — 測らずに飛ばすのではなく、不在時に何を返すべきかを測る|check|applies:paradise-internal"
+    },
+    {
+      "id": "death-can-arrive-async",
+      "label": "後始末は同期の失敗だけでなく非同期の死にも結べ",
+      "check": "try/catch/finally は同期の失敗しか捕らえない。借り物の Chrome 起動は Windows では spawn が同期に落ち、Linux では spawn に成功してパイプ書込の EPIPE が unhandled rejection として飛ぶ — 後者ではプロセスごと落ちて finally が一行も走らない。資源を掴む道は process.once('exit'/'uncaughtException'/'unhandledRejection') にも掃除を結べ。捕らえた例外は握り潰さず再送すること|check|applies:paradise-internal"
+    },
+    {
+      "id": "borrowed-ctor-leaks",
+      "label": "借り物の constructor が資源を掴んでから失敗する道を疑え",
+      "check": "ChromeVisualBrowser は profileRoot を mkdtempSync してから Chrome を spawn する。spawn が失敗すると変数へ代入される前に throw するので、呼ぶ側の finally { browser.close() } は空振りし資源だけが残る。第20条により借り物は直さない — 呼ぶ側が構築の失敗を引き受け、己が生んだ分だけを掃く(他の走行の作業場は巻き込まない)|check|applies:paradise-internal"
+    },
+    {
+      "id": "reform-lives-in-three-places",
+      "label": "reform を創造物と同じ形と仮定するな",
+      "check": "reform は散文 reform/<slug>/・実装 graph/・門 tests/ の三箇所に住む(第23条)。創造物は一つの倉に全てが揃うので dir を一つ見れば足りるが、同じ仮定を reform に当てると散文だけを見て『テストが無い』と裁く。束ねる相手は走行が触れた物に限れ — 楽園中の tests/ を数えれば、どの reform も常に緑になり門が門でなくなる|check|applies:paradise-internal"
+    },
+    {
+      "id": "gate-out-of-range-rots",
+      "label": "門の射程外の写経は、古くなっても鳴らない",
+      "check": "control.html は DEFAULT_PORT / POLL_MS / base() を paradise.js から写経していた。写経は片方だけ古くなるが、この画面を開く門が無かったので壊れても鳴らなかった。負債を直すときはコードだけでなく『鳴らない状態』そのものを直せ — 出所を一つにし、その画面を門の射程に入れる|check|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -1285,7 +1362,35 @@ window.PARADISE_STATE = {
         "role": "governs the whole; the session itself",
         "model": "fable",
         "effort": "xhigh",
-        "why": "一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す"
+        "why": "一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す",
+        "tiers": [
+          {
+            "n": 1,
+            "ja": "委譲",
+            "what": "担える役者に為させる",
+            "when": "既定"
+          },
+          {
+            "n": 2,
+            "ja": "編成",
+            "what": "オーケストレーションを組む",
+            "when": "複雑かつ長大なとき"
+          },
+          {
+            "n": 3,
+            "ja": "教主の手",
+            "what": "教主が自ら行う",
+            "when": "単純かつ文脈の小さいときに限る。例外"
+          }
+        ],
+        "duties": {
+          "manage": "神と作業者の間に立ち、進行を管理する",
+          "dispatch": "発令書を書き、指示を出す",
+          "reconcile": "結果を実物とコマンド出力で確認する",
+          "orchestrate": "必要なら新しいオーケストレーションを組む",
+          "ordain": "Agent 定義を鍛造し、サブエージェントを使う",
+          "commune": "神と会話する"
+        }
       },
       "cardinal": {
         "level": 2,

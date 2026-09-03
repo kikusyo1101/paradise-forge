@@ -140,7 +140,8 @@ node ~/Documents/workspace/paradise/tests/paradise.test.js   # 318/318 pass
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
 orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・
-clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework）・synod（計画サイクル）。
+clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework・中断からの再開）・synod（計画サイクル）・
+domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）。
 
 ---
 
@@ -312,6 +313,7 @@ node tests/motion-probe-leak.test.js      # 門が己の残骸で不定に鳴ら
 教主(Pontiff) が実装しPRを出す
       ↓
 機械ゲート (CI: verify job)        ← self-test・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
+      ↓                              序列の監査・分野の適合も同 job（第52条）
       ↓
 執行官 (CI: tribunal job)          ← critic の敵対的自己批評 → verdict.js の裁定を PR に掲示
       ↓                              どの枢機卿にも従属しない（憲法第9・11条）
