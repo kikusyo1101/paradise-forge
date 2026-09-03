@@ -228,6 +228,17 @@ jobs:
             console.log('spawn trace gate fires correctly on all three states');
           "
 
+      - name: 👁 Tier audit — 序列の門が実在の走行を見る (第42条 / 第52条)
+        # 走査対象は実在する conclave.json（合成した run ではない）。
+        # 合成 run しか見ない門は健全な系しか見ない — 故障注入の段(上)と対になる。
+        # 既存の走行は紀元の印を持たないので黄に落ち、CI は落ちない。
+        # 落ちるのは紀元以後の違反だけである。
+        run: node graph/spawn-trace.js audit
+
+      - name: 🎭 Domains — 役者は担える分野を宣言しているか (第52条)
+        # 実在(check-agents)と適合(domains)は別の問いである。
+        run: node graph/domains.js check
+
   tribunal:
     name: ⚖️ 執行官の裁定 (independent judgment)
     runs-on: ubuntu-latest
