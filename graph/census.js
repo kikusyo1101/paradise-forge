@@ -160,12 +160,114 @@ function census(opts = {}) {
  * 文書中の「数の主張」。それぞれ実測値を返す resolver を持つ。
  * 主張を増やすときは、必ず実測できる形にすること — 数えられない主張は書かない。
  */
+/**
+ * 一つの主張が**幾つの数を語っているか**を、正規表現の捕捉群の数で数える。
+ * 実行せずに数えるため、空文字に必ず当たる `re|` を撃つ古典手を使う。
+ */
+function groupCount(re) {
+  return new RegExp(re.source + '|').exec('').length - 1;
+}
+
+/** 主張の期待値を配列へ正規化する。scalar は「数を一つ語る主張」。 */
+function expectedOf(cl) {
+  return Array.isArray(cl.actual) ? cl.actual : [cl.actual];
+}
+
+/** 主張が測れたか (期待値のどれか一つでも測れなければ、その主張は裁かない)。 */
+function measurable(cl) {
+  const e = expectedOf(cl);
+  return e.length > 0 && e.every(v => v != null);
+}
+
+/** 文書からその主張が語る数を**全て**読む。読めなければ null。 */
+function readClaim(text, re) {
+  const m = String(text).match(re);
+  return m ? m.slice(1).map(Number) : null;
+}
+
+/**
+ * 主張 1 件を文書に突き合わせて裁く。findings 一件 or null を返す。
+ *
+ * kind:'malformed' は **主張そのものの欠陥** である ——
+ * 散文が語る数のうち捕捉群になっていないものが在れば、fix() はそれを
+ * 取り残す。それが「336/335」という新たな嘘の出所だった。
+ * ゆえに「語る数 ≠ 捕捉群の数」を、腐った値と同格の赤として鳴らす。
+ */
+function evaluateClaim(text, cl) {
+  const expected = expectedOf(cl);
+  const n = groupCount(cl.re);
+  // finding は表示用に actual を文字列化する。**書き換えの原本は claim 側に残す** ——
+  // finding の actual を applyClaim に渡すと '339/339' が「数一つ」に見え、
+  // 捕捉群 2 個と食い違って書き換えが拒まれる (実測した回帰)。
+  const base = { ...cl, claim: cl };
+  if (n !== expected.length) {
+    return { ...base, kind: 'malformed', claimed: `捕捉群 ${n} 個`, actual: `語る数 ${expected.length} 個`,
+      note: '主張する数は一つ残らず捕捉群にせよ — 捕捉しない数は fix が取り残し、嘘になる (第22条)' };
+  }
+  const got = readClaim(text, cl.re);
+  if (!got) return { ...base, kind: 'missing', claimed: null, actual: expected.join('/') };
+  if (got.some((v, i) => v !== expected[i])) {
+    return { ...base, kind: 'stale', claimed: got.join('/'), actual: expected.join('/') };
+  }
+  return null;
+}
+
+/**
+ * 主張が語る数を**全て**実測値へ書き換えた文書を返す (原文は変えない)。
+ *
+ * 旧実装は `m[0].replace(String(m[1]), String(f.actual))` ——
+ * 捕捉群 1 つしか置換できず、しかも「値が一致する別の場所」を誤爆し得た。
+ * ここでは `d` フラグ (hasIndices) で各群の**位置**を得て、後ろから切り貼りする。
+ * 位置で切るので、同じ数字が並んでも取り違えない。
+ *
+ * 書き換えた後、**その主張の正規表現で読み直して検算する**。
+ * 一致しなければ投げる —— 「直したのに赤のまま」「fix が別の嘘を作る」を
+ * 機構的に不可能にするのは、この検算である。
+ */
+function applyClaim(text, cl) {
+  const expected = expectedOf(cl);
+  const n = groupCount(cl.re);
+  if (n !== expected.length) {
+    throw new Error(`claim ${cl.label}: 捕捉群 ${n} 個に対し語る数 ${expected.length} 個 — 捕捉しない数は fix が嘘にする`);
+  }
+  const rd = new RegExp(cl.re.source, cl.re.flags.includes('d') ? cl.re.flags : cl.re.flags + 'd');
+  const m = rd.exec(String(text));
+  if (!m) throw new Error(`claim ${cl.label}: ${cl.file} に主張が見つからない`);
+  let out = String(text);
+  // 後ろの群から書き換える — 前を先に変えると後ろの位置がずれる
+  for (let i = expected.length; i >= 1; i--) {
+    const span = m.indices[i];
+    if (!span) throw new Error(`claim ${cl.label}: 捕捉群 ${i} が当たらなかった`);
+    out = out.slice(0, span[0]) + String(expected[i - 1]) + out.slice(span[1]);
+  }
+  // 検算 — 書いた文書を、その主張の目で読み直す
+  const back = readClaim(out, cl.re);
+  if (!back || back.some((v, i) => v !== expected[i])) {
+    throw new Error(`claim ${cl.label}: 書き換え後も主張が実測と一致しない ` +
+      `(読み直し ${back ? back.join('/') : 'なし'} ≠ 実測 ${expected.join('/')}) — fix は嘘を書かない`);
+  }
+  return out;
+}
+
 function claims(c) {
   const list = [
     // CLAUDE.md の数値 claim は第39条で撤去された — CLAUDE.md は数値台帳ではない。
     // 数は census が数え、dashboard が神に見せる。CLAUDE.md への数値の再侵入は
     // dietChecks() が裁く (方針転換に門を追従させる — 第36条)。
-    { file: 'README.md', re: /paradise\.test\.js\s+#\s*(\d+)\/\d+ pass/, actual: c.tests && c.tests.passed, label: 'README テスト数' },
+    /**
+     * README の「N/M pass」は **数を二つ語っている**。
+     * 旧実装は分母を `\d+` と捨てており、fix() が分子だけ書き換えて
+     * `336/335` という新たな嘘を残した。語る数は残らず捕捉する。
+     * 分母 = 走った総数 = passed + failed (緑なら分子と等しい)。
+     *
+     * **語る数の個数 (arity) は、測れたかどうかで変わってはならない。**
+     * 測れなければ null を並べる —— measurable() が偽になって裁かれず、
+     * それでも「この主張は数を二つ語る」という形は保たれる。
+     * (arity が測定の成否で揺れると、捕捉群との突合門が測定モードで嘘の赤を出す)
+     */
+    { file: 'README.md', re: /paradise\.test\.js\s+#\s*(\d+)\/(\d+) pass/,
+      actual: [c.tests ? c.tests.passed : null, c.tests ? c.tests.passed + c.tests.failed : null],
+      label: 'README テスト数' },
     { file: 'README.md', re: /取り込んだもの（(\d+)ファイル/,     actual: c.vendorFiles,             label: 'README vendor 総ファイル数' },
     { file: 'README.md', re: /`agents (\d+)`/,                   actual: c.vendor.agents,           label: 'README vendor agents' },
     { file: 'README.md', re: /`commands (\d+)`/,                 actual: c.vendor.commands,         label: 'README vendor commands' },
@@ -184,12 +286,9 @@ function check(opts = {}) {
   const c = census(opts);
   const findings = [];
   for (const cl of claims(c)) {
-    if (cl.actual == null) continue;               // 測れなかった主張は裁かない
-    const text = readRoot(cl.file);
-    const m = text.match(cl.re);
-    if (!m) { findings.push({ ...cl, kind: 'missing', claimed: null }); continue; }
-    const claimed = Number(m[1]);
-    if (claimed !== cl.actual) findings.push({ ...cl, kind: 'stale', claimed });
+    if (!measurable(cl)) continue;                 // 測れなかった主張は裁かない
+    const f = evaluateClaim(readRoot(cl.file), cl);
+    if (f) findings.push(f);
   }
   findings.push(...dietChecks());
   return { ok: findings.length === 0, census: c, findings };
@@ -274,21 +373,47 @@ function harnessDietChecks() {
   return findings;
 }
 
+/**
+ * 文書中の腐った数を実測へ書き換える。
+ *
+ * **fix は嘘を書かない** —— 三重の機構でそれを担保する:
+ *  1. 主張が語る数を**残らず**捕捉群にすることを強いる (malformed は書き換えず赤で残す)
+ *  2. applyClaim が全群を位置で書き換え、書いた直後に**同じ正規表現で読み直して検算**する
+ *  3. 書き終えた後、全主張を**もう一度 evaluateClaim で裁き直す** (opts は流用せず
+ *     測り直しは避ける — 実測値は既に手中に在る)。残った stale/malformed は
+ *     `unresolved` として返し、CLI は exit 1 で落ちる。
+ * ゆえに「fix したのに check が赤のまま」「fix が別の嘘を作る」は機構的に起きない。
+ */
 function fix(opts = {}) {
   const res = check(opts);
-  const edited = new Set();
+  const c = res.census;
+  const byFile = new Map();
+  const readOf = f => {
+    if (!byFile.has(f)) byFile.set(f, readRoot(f));
+    return byFile.get(f);
+  };
+  const fixed = [], failed = [];
   for (const f of res.findings) {
-    if (f.kind !== 'stale') continue;
-    const p = path.join(ROOT, f.file);
-    const text = fs.readFileSync(p, 'utf8');
-    const m = text.match(f.re);
-    if (!m) continue;
-    // 捕捉群だけを置換する — 周りの散文には触れない
-    const replaced = m[0].replace(String(m[1]), String(f.actual));
-    fs.writeFileSync(p, text.replace(m[0], replaced));
-    edited.add(f.file);
+    if (f.kind !== 'stale') continue;              // malformed / diet / missing は fix の領分ではない
+    const cl = f.claim || f;                       // 書き換えは常に原本の claim で行う (実測値は配列のまま)
+    try {
+      byFile.set(f.file, applyClaim(readOf(f.file), cl));
+      fixed.push(f);
+    } catch (e) {
+      failed.push({ ...f, error: e.message });
+    }
   }
-  return { edited: [...edited], fixed: res.findings.filter(f => f.kind === 'stale') };
+  for (const [file, text] of byFile) {
+    if (text !== readRoot(file)) fs.writeFileSync(path.join(ROOT, file), text);
+  }
+  // 書き終えた文書を、全主張の目で裁き直す — 直したつもりを実測で潰す
+  const unresolved = [];
+  for (const cl of claims(c)) {
+    if (!measurable(cl)) continue;
+    const v = evaluateClaim(readRoot(cl.file), cl);
+    if (v) unresolved.push(v);
+  }
+  return { edited: [...byFile.keys()].filter(f => fixed.some(x => x.file === f)), fixed, failed, unresolved };
 }
 
 if (require.main === module) {
@@ -321,19 +446,28 @@ if (require.main === module) {
     if (res.ok) console.log('  ✓ every number the paradise claims about itself is true');
     for (const f of res.findings) {
       if (f.kind === 'missing') console.log(`  ⚠️  ${f.label}: claim not found in ${f.file} (実測 ${f.actual})`);
+      else if (f.kind === 'malformed') console.log(`  🔴 ${f.label}: 主張の形が壊れている — ${f.claimed} / ${f.actual}  (${f.file})\n       ${f.note}`);
       else console.log(`  🔴 ${f.label}: doc says ${f.claimed}, reality is ${f.actual}  (${f.file})`);
     }
     console.log('═══════════════════════════════');
     process.exit(res.ok ? 0 : 1);
   }
   if (cmd === 'fix') {
-    const r = fix();
+    const r = fix({ runTests: !noTests });
     for (const f of r.fixed) console.log(`  ✏️  ${f.label}: ${f.claimed} → ${f.actual}`);
+    for (const f of r.failed) console.log(`  🔴 ${f.label}: 書き換えできなかった — ${f.error}`);
     console.log(r.edited.length ? `updated: ${r.edited.join(', ')}` : 'nothing to fix');
+    // 直したつもりを許さない — 書いた後に裁き直して残った赤は、そのまま落とす
+    if (r.unresolved.length || r.failed.length) {
+      for (const f of r.unresolved) console.log(`  🔴 未解決 ${f.label}: doc says ${f.claimed}, reality is ${f.actual}  (${f.file})`);
+      console.log('  ✗ fix は文書を真実にできなかった — 上の主張を直せ (第22条)');
+      process.exit(1);
+    }
+    console.log('  ✓ 書き換えた数は、その主張の目で読み直して実測と一致する');
     process.exit(0);
   }
   console.error('usage: census.js [show|check|fix]');
   process.exit(2);
 }
 
-module.exports = { census, check, fix, claims, dietChecks, harnessDietChecks, summaryOf, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };
+module.exports = { census, check, fix, claims, groupCount, expectedOf, measurable, readClaim, evaluateClaim, applyClaim, dietChecks, harnessDietChecks, summaryOf, CLAUDE_MD_BUDGET, GLOBAL_CLAUDE_MD_BUDGET, ALWAYS_ON_RULES_BUDGET };

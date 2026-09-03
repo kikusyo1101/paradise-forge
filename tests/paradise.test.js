@@ -1932,6 +1932,100 @@ test('census: every number the paradise currently claims is true (Art.22)', () =
     `stale self-claims: ${stale.map(f => `${f.label} says ${f.claimed} but is ${f.actual}`).join('; ')}`);
 });
 
+/**
+ * 第22条の裏面 —— **数を真実にする道具が、新たな嘘を書けてはならぬ。**
+ *
+ * 実測した事故 (2026-09-04, CI verify 赤): テストを 335→336 に足した後
+ * `node graph/census.js fix` を撃つと、README にこう書いた:
+ *     node …/paradise.test.js   # 336/335 pass
+ * 分子だけ 336 になり、分母 335 が取り残された。**336/335 は嘘である。**
+ * 出所は engine の二箇所:
+ *   - claims() の申し立てが分母を `\d+` と捨て、捕捉していなかった
+ *   - fix() が `m[0].replace(String(m[1]), …)` で捕捉群を **1 つしか** 置換できなかった
+ *
+ * ゆえに以下を門で固定する (第21条 — 壊して鳴らす。両側を測る):
+ *   A: 数を複数語る申し立て (N/M) を fix した後、その申し立ての目で読み直して緑になる
+ *   B: fix が嘘を書いた状態 (336/335) を、門が赤で名指しに捕らえる
+ */
+test('census: 数を複数語る申し立ては、fix の後に読み直して緑になる (第22条 / 第21条 A面)', () => {
+  const census = require('../graph/census.js');
+  const claim = { file: 'PROBE.md', label: 'probe N/M',
+    re: /paradise\.test\.js\s+#\s*(\d+)\/(\d+) pass/, actual: [337, 337] };
+  // 語る数と捕捉群の数が揃っていることが前提 — 揃わぬ申し立ては malformed で落ちる
+  assert.strictEqual(census.groupCount(claim.re), 2, '分母も捕捉群でなければ fix は取り残す');
+
+  const before = 'node ~/x/tests/paradise.test.js   # 335/335 pass\n';
+  const stale = census.evaluateClaim(before, claim);
+  assert.ok(stale && stale.kind === 'stale', '腐った N/M は stale として捕らえられる');
+  assert.strictEqual(stale.claimed, '335/335', '門は語られた数を両方読む');
+
+  const after = census.applyClaim(before, claim);
+  assert.ok(/# 337\/337 pass/.test(after), `両方の数が実測へ進む — got: ${after.trim()}`);
+  assert.ok(!/335/.test(after), `取り残された古い数が在ってはならぬ — got: ${after.trim()}`);
+  // 書いた文書を、その申し立ての目で読み直す = check が緑
+  assert.strictEqual(census.evaluateClaim(after, claim), null,
+    'fix した後の文書は、その申し立ての正規表現で読み直して実測と一致する');
+});
+
+test('census: fix が書いた嘘 (336/335) を門が赤で捕らえる (第22条 / 第21条 B面)', () => {
+  const census = require('../graph/census.js');
+  const claim = { file: 'PROBE.md', label: 'probe N/M',
+    re: /paradise\.test\.js\s+#\s*(\d+)\/(\d+) pass/, actual: [336, 336] };
+
+  // (1) 事故そのものを再現した文書 — 分子だけ直り分母が取り残された状態
+  const lie = 'node ~/x/tests/paradise.test.js   # 336/335 pass\n';
+  const f = census.evaluateClaim(lie, claim);
+  assert.ok(f, '336/335 は嘘である — 門は必ず鳴らねばならぬ');
+  assert.strictEqual(f.kind, 'stale');
+  assert.strictEqual(f.claimed, '336/335', '門は嘘を名指しで示す');
+  assert.strictEqual(f.actual, '336/336');
+
+  // (2) 旧 fix() の算法を再現すると、まさにこの嘘を書くことを実証する
+  const m = 'node ~/x/tests/paradise.test.js   # 335/335 pass\n'
+    .match(/paradise\.test\.js\s+#\s*(\d+)\/\d+ pass/);
+  const oldWay = m[0].replace(String(m[1]), '336');
+  assert.ok(/336\/335/.test(oldWay),
+    '旧算法は捕捉群を1つしか置換できず 336/335 を書いた — この回帰が二度と通らぬよう固定する');
+
+  // (3) 新 fix() は同じ入力から嘘を書けない
+  const fixed = census.applyClaim('node ~/x/tests/paradise.test.js   # 335/335 pass\n', claim);
+  assert.ok(/# 336\/336 pass/.test(fixed), `新算法は両方を直す — got: ${fixed.trim()}`);
+  assert.strictEqual(census.evaluateClaim(fixed, claim), null, '直した後は緑');
+
+  // (4) 数を捨てる申し立て (分母が捕捉群でない) は malformed として赤 —
+  //     嘘を書ける形の申し立ては、書かれる前に落とす
+  const underCapturing = { ...claim, re: /paradise\.test\.js\s+#\s*(\d+)\/\d+ pass/ };
+  const bad = census.evaluateClaim('node x/tests/paradise.test.js   # 336/335 pass\n', underCapturing);
+  assert.ok(bad && bad.kind === 'malformed',
+    '語る数を全て捕捉しない申し立ては malformed — fix に触らせない');
+  assert.throws(() => census.applyClaim('# 336/335 pass\n', underCapturing), /捕捉/,
+    'applyClaim は嘘を書ける申し立てを拒む');
+});
+
+test('census: 全ての申し立ては語る数を残らず捕捉している (嘘を書ける形を許さない)', () => {
+  const census = require('../graph/census.js');
+  const c = census.census({ runTests: false });
+  for (const cl of census.claims(c)) {
+    const groups = census.groupCount(cl.re);
+    const wants = census.expectedOf(cl).length;
+    assert.strictEqual(groups, wants,
+      `claim「${cl.label}」の捕捉群 ${groups} 個 ≠ 語る数 ${wants} 個 — fix が取り残して嘘になる`);
+  }
+  // fix() が書いた後に裁き直す機構を持つこと — 「直したつもり」を engine で潰す
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'census.js'), 'utf8');
+  assert.ok(/unresolved/.test(src) && /applyClaim/.test(src),
+    'fix() は書き換え後に読み直して検算する — 検算なき fix は嘘を書ける');
+  // finding は表示用に actual を '339/339' と文字列化する。書き換えはその文字列ではなく
+  // **原本の claim** で行われねばならない (文字列を渡すと arity 1 に見えて書き換えが拒まれた実測回帰)
+  const probe = census.evaluateClaim('node x/tests/paradise.test.js   # 1/1 pass\n',
+    { file: 'PROBE.md', label: 'p', re: /paradise\.test\.js\s+#\s*(\d+)\/(\d+) pass/, actual: [7, 8] });
+  assert.ok(probe && probe.claim, 'finding は原本の claim を携える');
+  assert.strictEqual(census.expectedOf(probe.claim).length, 2, '原本の実測値は配列のまま保たれる');
+  const viaFinding = census.applyClaim('node x/tests/paradise.test.js   # 1/1 pass\n', probe.claim);
+  assert.ok(/# 7\/8 pass/.test(viaFinding),
+    `finding 経由でも原本 claim で書き換えられる — got: ${viaFinding.trim()}`);
+});
+
 // ══════════════════════════════════════════════════════════════════════
 // 第23条 — 楽園は己の法で己を改める / 無主の相を許さない
 // ══════════════════════════════════════════════════════════════════════
