@@ -60,7 +60,33 @@ const RANKS = {
   god:       { level: 0, title: 'God 神',        role: 'issues the wish, receives only answers' },
   pontiff:   { level: 1, title: 'Pontiff 教主',   role: 'governs the whole; the session itself',
                model: 'fable', effort: 'xhigh',
-               why: '一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す' },
+               why: '一度の座で終わらぬ仕事を持つ。計画の全体を保ち、全ての結果を照合し、最終の決を下す',
+               /**
+                * 教主の権能は三段の序列である (第52条)。
+                *
+                * かつてここは `role` の一文だけだった。ゆえに「教主が何をしてよいか」は
+                * 散文の解釈に委ねられ、実測すると非merge 113件すべてが教主の名義であった。
+                * 神託の訂正が定めた三段を **配列** で持つ —— **順序そのものが法だからである。**
+                * 序列は下るほど例外であり、序列3は最後の手段である。
+                * 閾値は写経しない。数は `graph/spawn-trace.js tiers` が語る (第41条)。
+                */
+               tiers: [
+                 { n: 1, ja: '委譲',     what: '担える役者に為させる',           when: '既定' },
+                 { n: 2, ja: '編成',     what: 'オーケストレーションを組む',     when: '複雑かつ長大なとき' },
+                 { n: 3, ja: '教主の手', what: '教主が自ら行う',                 when: '単純かつ文脈の小さいときに限る。例外' },
+               ],
+               /**
+                * 神託が数えた教主の役割。順序が法であるのは `tiers` だけなので、
+                * ここは鍵で引ける object にする。
+                */
+               duties: {
+                 manage:      '神と作業者の間に立ち、進行を管理する',
+                 dispatch:    '発令書を書き、指示を出す',
+                 reconcile:   '結果を実物とコマンド出力で確認する',
+                 orchestrate: '必要なら新しいオーケストレーションを組む',
+                 ordain:      'Agent 定義を鍛造し、サブエージェントを使う',
+                 commune:     '神と会話する',
+               } },
   cardinal:  { level: 2, title: 'Cardinal 枢機卿', role: 'domain supervisor; owns a sub-DAG + inner PDCA',
                model: 'claude-opus-5', effort: 'xhigh',
                why: '批准と差戻しが品質を決める。量は少なく賭金は高い — 上げても総額はほぼ動かない' },

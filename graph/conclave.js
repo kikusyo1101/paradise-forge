@@ -32,6 +32,14 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('./graph-engine.js');
 const clergy = require('./clergy.js');
+/**
+ * 序列の門はここから来る (第52条)。
+ *
+ * かつて conclave は spawn-trace を一度も require していなかった。ゆえに
+ * 「誰が働いたか」を環が問わず、教主が己の手で書いた成果物も同じく done になった。
+ * **閾値も判定表も spawn-trace ただ一箇所に住む** — 二つ書けば必ず食い違う。
+ */
+const trace = require('./spawn-trace.js');
 
 const MAX_DOMAIN_REWORK = 3; // loop-guard at the domain level too
 // 第51条c: 回復もまた有限である。無限に帰れる環は静止の代わりに永久機関になる。
@@ -74,6 +82,20 @@ function convene(dagPath) {
 
   return {
     meta: dag.meta || {}, created: now(),
+    /**
+     * 紀元(epoch)の印 — 序列を宣言する経路が機構に在った時代の走行である証 (第52条)。
+     *
+     * **`meta` の中ではなく run の最上位に置く。** `meta` は forge が作る DAG から
+     * 丸ごと転記される(上の `meta: dag.meta || {}`)ので、そこに置けば **古い DAG を
+     * 読み直して convene し直した run が印を持たない**という抜け穴が開く。
+     * 印は「この run を作った engine が新しかったか」の証であり、
+     * **DAG の性質ではなく run の出自**である。ゆえに convene が自分の手で刻む。
+     *
+     * 印を手で消せば legacy を騙れる。だが `conclave.json` は版管理下に在り、
+     * `epoch` の削除は diff に現れる —— **機構は騙りを防げないが、
+     * 騙りを見えなくすることはできない。**
+     */
+    epoch: { tier: trace.TIER_EPOCH, at: now() },
     domains,
     history: [{ ts: now(), event: 'convene', detail: `${domains.length} domains, ${dag.tasks.length} phases` }],
   };
@@ -184,6 +206,15 @@ function next(run, opts = {}) {
           },
           // 神官がさらに細分する場合の割当（信徒は実体を持つ）
           marshal: believers.length ? clergy.marshalPlan(id, { priestCanSpawn: true }) : null,
+          /**
+           * その相について既定で妥当な序列の**助言**である。強制ではない (第52条 / 第34条)。
+           * 発令の時点で「この相は序列3を名乗れない」と分かっていれば、教主は
+           * 最後に拒まれるのではなく最初に知る。**次に何をすべきかを言わない門は罠である。**
+           */
+          tier_hint: {
+            default: 1,
+            ...(ph.gate ? { forbidden: [3], why: '門相は序列3を名乗れない (第9条)' } : {}),
+          },
         };
       }),
       // 並列度は天井(20)ではなく実用値(4)に従う。
@@ -278,8 +309,21 @@ function resume(run, opts = {}) {
  * 第27条「subagent の done を信じない」は、**記録する者自身にも向く**。
  * 教主が神官を疑っても、教主が書いた台帳を誰も疑わなければ嘘は残る。
  * ゆえに engine が拒む —— 人の注意力ではなく機械が守る(第50条)。
+ *
+ * ── 序列の門 (第52条) ────────────────────────────────────────────
+ * `opts.tier` で教主がその相をどの序列で処理したかを申告する。判定は
+ * `spawn-trace.judge()` **ただ一つ**が下す(環と器が別の判定を書けば必ず食い違う)。
+ *
+ * **門は throw する。** 戻り値で可否を返す形にすれば、`markDone` を直に呼ぶ
+ * 既存8本の試験がすべて意味を変える。throw なら CLI が `save` に到達せず、
+ * **run ファイルは書き換わらない**(既存の実在検査が既にこの形である)。
+ *
+ * **そして門は「紀元の印を持つ run」にしか立たない。** 印を持たない run
+ * (legacy・手書きの合成 run)では `tier` 未申告でも従来通り通り、
+ * `tierTrace[id].state = 'unobservable'` が刻まれる —— 黄は緑ではないが、
+ * 機構の欠陥を走行者の罪として記録しない(第16条)。
  */
-function markDone(run, id, artifactPath) {
+function markDone(run, id, artifactPath, opts = {}) {
   const p = allPhases(run).get(id);
   if (!p) throw new Error('unknown phase: ' + id);
   if (artifactPath) {
@@ -294,8 +338,27 @@ function markDone(run, id, artifactPath) {
         `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
     }
   }
+
+  // 序列の判定。**成果物の実在を検めた後**に立つ — 名乗った物が無いのは
+  // 序列以前の問題であり、先に鳴るべき門である。
+  const v = trace.judge(run, id, { tier: opts.tier, artifact: artifactPath, cwd: opts.cwd });
+  if (!v.ok) {
+    const e = new Error(v.lines.join('\n') + `\n  (判定: ${v.state} / 相 ${id})`);
+    e.tierVerdict = v;
+    throw e;
+  }
+  run.tierTrace = run.tierTrace || {};
+  run.tierTrace[id] = {
+    declared: opts.tier == null ? null : Number(opts.tier),
+    state: v.state,
+    ...(v.measured ? { measured: { files: v.measured.files, churn: v.measured.churn, bytes: v.measured.bytes } } : {}),
+    lines: v.lines,
+    at: (opts.now || now)(),
+  };
+
   p.status = 'done'; if (artifactPath) p.artifactPath = artifactPath;
   run.history.push({ ts: now(), event: 'done', detail: id + (artifactPath ? ' → ' + artifactPath : '') });
+  return v;
 }
 
 /**
@@ -390,7 +453,21 @@ function main() {
     if (step.phase === 'wave') markRunning(run, step.dispatch.map(d => d.id));
     save(rp, run); console.log(JSON.stringify(step, null, 2));
   } else if (cmd === 'done') {
-    need(); const run = load(rp); markDone(run, pos[0], f.artifact); save(rp, run); console.log(statusBoard(run));
+    need(); const run = load(rp);
+    /**
+     * 序列の門が throw したら **save に到達しない** — run ファイルは書き換わらない。
+     * これが「拒んだのに台帳だけ進む」を構造的に禁じる形である(第22条)。
+     */
+    try {
+      const v = markDone(run, pos[0], f.artifact, { tier: f.tier });
+      save(rp, run);
+      if (v && v.state === 'unobservable') console.log(v.lines.join('\n'));
+      else if (v && v.lines && v.lines.length) console.log(v.lines.join('\n'));
+      console.log(statusBoard(run));
+    } catch (e) {
+      console.error(e.message);
+      process.exit(1);
+    }
   } else if (cmd === 'resume') {
     // 第51条: 中断した走者の残骸を環へ戻す。
     need(); const run = load(rp);
@@ -425,7 +502,7 @@ function main() {
       return;
     }
     console.log(statusBoard(run));
-  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
 module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS };
