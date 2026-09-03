@@ -195,6 +195,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
 | `graph/atlas.js` | **楽園の自画像**。位階・道・環・結線を JSON IR に写し、取り込んだ `archify` に描かせる。6主題 (hierarchy/conclave/dispatch/dag/run/wiring)。交差ゼロが不能なら測って standard を名乗る(第47条) |
 | `graph/wiring.js` | **機構の結線**。engine が engine を require する内の辺と、門・命令・神官・掟・試験・器物・散文・機構が名を呼ぶ外の辺を実測する。孤児(呼ぶ者の居ない engine)と宙吊り(存在しない engine への参照)を裁く(第44条・第48条) |
+| `graph/trace-harvest.js` | **起動証跡の採取器**。`~/.claude` の JSONL と Hermes `state.db:async_delegations` の二系統を走査し、成果物パスの決定的一致だけを `run.spawnTrace` へ刻む(`scan`=読むだけ / `apply`=刻む)。時刻窓・役割名の示唆は自動で刻まず人に問う。ログを読むのはこの engine **だけ**である(第27条・第50条) |
 | `graph/pulse.js` | **楽園の断面 (snapshot)**。数・門の合否・走行・台帳・記憶を 1 個の JSON に写す唯一の engine。画面はここしか見ない — 突合点が 1 つだから門が 1 式で書ける(第22条・第16条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
@@ -269,6 +270,11 @@ node graph/pulse.js freshness --age-ms 90000 --transport sse     # → frozen
 ### どの門が守っているか
 
 ダッシュボードの門 **13 本**（この数は `census.js` が `tests/` を数え直す — 第22条）。
+
+起動証跡を守る spawn-trace の門 **21 本**（この数は `census.js` が `tests/paradise.test.js` を
+数え直す — 第22条）。証跡は四値+legacy で裁かれる: `observed` / `asserted-only` /
+`waived`(棄権 — 通したが観測していない) / `no-trace` / `legacy`(新門以前の走行 — 判定していない)。
+ログを読むのは `graph/trace-harvest.js` **だけ**であり、`markDone` は `run.spawnTrace` しか見ない。
 
 ```bash
 node tests/dashboard-count.test.js        # 画面の数 == その場で数えた数（固定値を期待値にしない）

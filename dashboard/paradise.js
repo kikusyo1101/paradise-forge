@@ -316,6 +316,8 @@ function scoreCard(snap, r) {
       el('h4', { text: '起動実績' }),
       el('p', { class: 'mono', text: '観測      ' + r.spawn.observed + ' / ' + r.spawn.total }),
       el('p', { class: 'mono', text: '宣言のみ  ' + r.spawn.assertedOnly + ' / ' + r.spawn.total }),
+      el('p', { class: 'mono', text: '棄権      ' + (r.spawn.waived || 0) + ' / ' + r.spawn.total }),
+      el('p', { class: 'note', text: '判定せず  ' + (r.spawn.legacy || 0) + ' / ' + r.spawn.total }),
       el('p', { class: 'mono bad', text: '証跡なし  ' + r.spawn.noTrace + ' / ' + r.spawn.total }),
     ]);
   }
@@ -325,6 +327,11 @@ function scoreCard(snap, r) {
     'data-spawn-observed': r.spawn ? String(r.spawn.observed) : '',
     'data-spawn-asserted': r.spawn ? String(r.spawn.assertedOnly) : '',
     'data-spawn-notrace': r.spawn ? String(r.spawn.noTrace) : '',
+    // ★ 追加属性は data-spawn-notrace より **後ろ** に置く。
+    //   門 dashboard-run-panel.test.js が data-score から data-spawn-notrace までを
+    //   400 文字窓の正規表現で測っている — 手前に足せば窓を越えて門が鳴る。
+    'data-spawn-waived': r.spawn ? String(r.spawn.waived || 0) : '',
+    'data-spawn-legacy': r.spawn ? String(r.spawn.legacy || 0) : '',
   }, [left, right]);
   kids.push(pair);
 

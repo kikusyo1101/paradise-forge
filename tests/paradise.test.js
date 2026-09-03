@@ -556,6 +556,18 @@ function makeConclave() {
   return conclave.convene(tmp);
 }
 
+/**
+ * 証跡を刻む補助。**この関数は「証跡の門」を試す門では使わない**(それをすれば
+ * 穴の手前しか見なくなる — 第50条)。使うのは ratify / rework / resume のように
+ * **別の性質**を測る門であり、そこでは証跡は前提条件に過ぎない。
+ * 実運用では採取器が `apply` で同じ形を刻む。
+ */
+function traced(run, ids) {
+  const trace = require('../graph/spawn-trace.js');
+  for (const id of [].concat(ids)) trace.record(run, id, { agent: 'priest', toolUseId: 'toolu_gate_' + id });
+  return run;
+}
+
 console.log('Conclave (recursive orchestration):');
 
 test('conclave convenes domains as cardinals with their phases', () => {
@@ -584,12 +596,14 @@ test('conclave: 成果物を名乗るなら実在せねばならない — 台�
   assert.notStrictEqual(run.domains[0].phases[0].status, 'done',
     '例外を投げたのに status が done になっている');
 
-  // 実在するなら通る
+  // 実在するなら通る(証跡の門は別の門が測る — ここでは前提として満たす)
+  traced(run, id);
   conclave.markDone(run, id, 'tests/paradise.test.js');
   assert.strictEqual(run.domains[0].phases[0].status, 'done');
 
   // 成果物を名乗らない done は従来どおり通る
   const run2 = makeConclave();
+  traced(run2, run2.domains[0].phases[0].id);
   conclave.markDone(run2, run2.domains[0].phases[0].id);
   assert.strictEqual(run2.domains[0].phases[0].status, 'done');
 });
@@ -606,6 +620,7 @@ test('conclave next() dispatches the active domain\'s ready phases', () => {
 test('conclave advances to ratify when a domain\'s phases are all done', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
+  traced(run, 'discover');
   conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   const step = conclave.next(run);
   assert.strictEqual(step.phase, 'ratify');
@@ -615,6 +630,7 @@ test('conclave advances to ratify when a domain\'s phases are all done', () => {
 test('ratify advances the conclave to the next cardinal', () => {
   const run = makeConclave();
   conclave.markRunning(run, ['discover']);
+  traced(run, 'discover');
   conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
   const step = conclave.next(run);
@@ -626,9 +642,11 @@ test('ratify advances the conclave to the next cardinal', () => {
 
 test('domain-level reject triggers an INNER rework (the small circle)', () => {
   const run = makeConclave();
-  conclave.markRunning(run, ['discover']); conclave.markDone(run, 'discover', 'tests/paradise.test.js');
+  conclave.markRunning(run, ['discover']); traced(run, 'discover');
+  conclave.markDone(run, 'discover', 'tests/paradise.test.js');
   conclave.ratify(run, 'discovery');
-  conclave.markRunning(run, ['specify']); conclave.markDone(run, 'specify', 'tests/paradise.test.js');
+  conclave.markRunning(run, ['specify']); traced(run, 'specify');
+  conclave.markDone(run, 'specify', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'requirements', { reject: true, from: 'specify' });
   assert.ok(res.reworked.includes('specify'), 'specify reset for inner rework');
   const d = run.domains.find(x => x.cardinal === 'requirements');
@@ -642,10 +660,12 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity', 'ux'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
+    traced(run, phases);
     for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
+  traced(run, ['review', 'security']);
   conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   // quality rejects and sends it back to BUILD, which lives in construction
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
@@ -669,10 +689,12 @@ test('cross-domain rework also resets DOWNSTREAM phases in later domains', () =>
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
                                 [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
+    traced(run, phases);
     for (const p of phases) conclave.markDone(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);
   }
   conclave.markRunning(run, ['review', 'security']);
+  traced(run, ['review', 'security']);
   conclave.markDone(run, 'review', 'tests/paradise.test.js'); conclave.markDone(run, 'security', 'tests/paradise.test.js');
   const res = conclave.ratify(run, 'quality', { reject: true, from: 'build' });
   // everything that depended on build must be invalidated, including the finished reviews
@@ -724,6 +746,7 @@ test('conclave: 中断→復帰→complete まで環が回りきる (第51条a)'
       conclave.markRunning(run, r.dispatch.map(d => d.id));
       // 最初の波の途中で走者を殺す — done を刻まずに次の周回へ落ちる
       if (!died) { died = true; continue; }
+      traced(run, r.dispatch.map(d => d.id));
       for (const d of r.dispatch) conclave.markDone(run, d.id, 'tests/paradise.test.js');
     }
   }
@@ -3702,6 +3725,7 @@ test('cartography: 環が最後まで回り、作図の結びに着く (第11条
     const running = [];
     for (const d of run.domains) for (const p of d.phases) if (p.status === 'running') running.push(p.id);
     if (!running.length) break;
+    traced(run, running);
     for (const id of running) conclaveMod.markDone(run, id, art);
   }
   assert.strictEqual(last, 'complete', `作図の環が complete に着かない (最後の相: ${last})`);
@@ -3709,6 +3733,275 @@ test('cartography: 環が最後まで回り、作図の結びに着く (第11条
   assert.ok(/図/.test(msg),
     '作図の道が「creation complete」と言っている — 図は実装物ではない (第36条)');
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 第27条 / 第50条 — 証跡の強制。**門が見ない機能は壊れても鳴らない**
+//
+// 実測が確定させた事実: `record` 本体を壊せば既存の 5 本は鳴る。しかし
+// 「**誰も record を呼ばない**」という欠陥は、5 本すべてが門自身の手で
+// record を呼ぶ設計であるため絶対に鳴らなかった。以下はその盲点を閉じる門である。
+// ゆえに 門A / 門B は **`record` を一度も呼ばない**。
+// ══════════════════════════════════════════════════════════════════════
+
+console.log('\nSpawn trace enforcement (第27条 / 第50条):');
+
+const GRAPH_DIR = path.join(DIR, '..', 'graph');
+const HARVEST = path.join(GRAPH_DIR, 'trace-harvest.js');
+const CONTRACT_CLI = path.join(GRAPH_DIR, 'contract.js');
+const REFORM_DAG = path.join(DIR, '..', 'reform', 'spawn-trace-by-the-road', 'forge.dag.json');
+
+/** 子プロセスで engine を起動し、stdout と exit code を必ず取る(非零でも捨てない)。 */
+function runCli(args, input) {
+  try {
+    const out = execFileSync(process.execPath, args,
+      { input: input == null ? '' : input, encoding: 'utf8', cwd: path.join(DIR, '..') });
+    return { out, code: 0 };
+  } catch (e) {
+    return { out: String((e && e.stdout) || ''), code: e && e.status != null ? e.status : -1 };
+  }
+}
+
+test('spawn trace: 証跡ゼロの走行は complete へ到達できない (第27条/第50条)', () => {
+  // ★ この門は証跡を一つも刻まない。刻めば穴の手前しか見なくなる(AC-8.2)。
+  const c = require('../graph/conclave.js');
+  const run = c.convene(REFORM_DAG);
+  assert.strictEqual(run.traceSchema, 1, 'convene が版の印を刻んでいない');
+  const first = c.next(run);
+  assert.strictEqual(first.phase, 'wave', '最初の一手が波でない');
+  c.markRunning(run, first.dispatch.map(d => d.id));
+  assert.throws(() => c.markDone(run, first.dispatch[0].id), /no-trace/,
+    '証跡ゼロで done が通った — 環は証跡なしで回りきる');
+  assert.notStrictEqual(run.domains[0].phases[0].status, 'done',
+    '拒んだのに相が done になっている(部分適用)');
+  // 門は例外文が「出口」を示すことも測る(第15条)。拒むだけの門は静止を生む。
+  try { c.markDone(run, first.dispatch[0].id); }
+  catch (e) {
+    assert.ok(/--no-trace-reason/.test(e.message), '例外文が棄権の口を示していない');
+  }
+});
+
+test('spawn trace: contract の CLI は run 無しで証跡を照合したと名乗らない (第37条)', () => {
+  // ★ 実 CLI を子プロセスで起動する。module を直に呼べば「CLI に口が無い」欠陥を跨ぐ。
+  const payload = JSON.stringify({ phase: 'discover', status: 'done', artifact: 'CONSTITUTION.md' });
+  // (1) run 無し → traceChecked:false を自ら名乗る
+  const a = runCli([CONTRACT_CLI, 'check'], payload);
+  const ja = JSON.parse(a.out);
+  assert.strictEqual(ja.traceChecked, false, 'run 無しの check が照合したと名乗っている');
+  assert.strictEqual(ja.accepted, true, '成果物だけの照合は従来どおり通る(後方互換)');
+  // (2) run 付き・証跡ゼロ → accepted:false / exit 1
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-cli-'));
+  const runPath = path.join(tmp, 'run.json');
+  try {
+    const conv = runCli([path.join(GRAPH_DIR, 'conclave.js'), 'convene', REFORM_DAG, '--run', runPath]);
+    assert.strictEqual(conv.code, 0, 'convene が落ちた: ' + conv.out);
+    const b = runCli([CONTRACT_CLI, 'check', '--run', runPath], payload);
+    const jb = JSON.parse(b.out);
+    assert.strictEqual(jb.accepted, false, '証跡ゼロの相を CLI が受理した');
+    assert.strictEqual(jb.verified, 'file-but-unspawned', '欠陥の名が結果に出ていない');
+    assert.strictEqual(jb.traceChecked, true, '照合したのに名乗っていない');
+    assert.strictEqual(b.code, 1, 'CLI の exit code が 1 でない');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: 採取器は二系統を必ず名乗る — 片方が使えなくても要素を消さない (M1/第44条)', () => {
+  const r = runCli([HARVEST, 'scan', '--json']);
+  const j = JSON.parse(r.out);            // stdout は JSON 単体(警告は stderr へ流す)
+  assert.strictEqual(j.sources.length, 2, '走査した系統が 2 つ名乗られていない');
+  assert.deepStrictEqual(j.sources.map(s => s.id).sort(),
+    ['claude-jsonl', 'hermes-async-delegations']);
+  for (const s of j.sources) {
+    assert.strictEqual(typeof s.scanned, 'number', `${s.id} が scanned を数えていない`);
+    assert.strictEqual(typeof s.found, 'number', `${s.id} が found を数えていない`);
+  }
+  for (const k of ['entries', 'matches', 'suggestions', 'unmatched']) {
+    assert.ok(Array.isArray(j[k]), `${k} は常に配列である(run 無しでもキーが在る)`);
+  }
+});
+
+test('spawn trace: 採取器が拾った鎖は子ログの実在まで確かめてある (M1/第5条)', () => {
+  const r = runCli([HARVEST, 'scan', '--source', 'claude-jsonl', '--json']);
+  const j = JSON.parse(r.out);
+  const src = j.sources.find(s => s.id === 'claude-jsonl');
+  // 本機の実測は 7 件。機体が変われば数は動くので「拾えたなら実在する」を測る。
+  for (const e of j.entries) {
+    assert.strictEqual(e.source, 'claude-jsonl');
+    assert.ok(e.childLog && fs.existsSync(e.childLog),
+      `childLog が実在しない項を拾っている: ${e.childLog} — 鎖の成立を確かめていない`);
+    assert.ok(e.agentId, '子を名指しできない項が entries に居る');
+  }
+  assert.strictEqual(src.found, j.entries.length, 'found と entries の数が割れている');
+});
+
+test('spawn trace: 拾えなかったときに黙って壊れない — harvest-blind は 0 でも 1 でもない (第50条d)', () => {
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'harvest-empty-'));
+  try {
+    const r = runCli([HARVEST, 'scan', '--root', empty, '--db', path.join(empty, 'nope.db'), '--json']);
+    assert.strictEqual(r.code, 3, 'exit が 3 でない — 「壊れている」と「本当に無い」が区別できない');
+    const j = JSON.parse(r.out);
+    assert.strictEqual(j.state, 'harvest-blind');
+    assert.ok(/走査できたが1件も拾えなかった/.test(j.reason), '理由の文言が契約と違う');
+    assert.strictEqual(j.sources.length, 2, '拾えなくても系統は 2 つ名乗る');
+  } finally { fs.rmSync(empty, { recursive: true, force: true }); }
+});
+
+test('spawn trace: 判定器はログを読まない — 境界は grep が守る (M2/AC-2.3)', () => {
+  const src = fs.readFileSync(path.join(GRAPH_DIR, 'conclave.js'), 'utf8');
+  const hits = src.split('\n').filter(l => /\.claude|state\.db|subagents|trace-harvest/.test(l));
+  assert.deepStrictEqual(hits, [],
+    'markDone を持つ engine がログの名を知っている — 採取と判定の境界が溶けている');
+});
+
+test('spawn trace: observed が在れば門は仕事を止めない (M2/AC-2.2)', () => {
+  const c = require('../graph/conclave.js');
+  const trace = require('../graph/spawn-trace.js');
+  const run = { domains: [{ cardinal: 'x', domain: 'd', reviewClass: 'r', status: 'active', reworks: 0,
+    phases: [{ id: 'discover', status: 'running', deps: [] }] }], history: [], traceSchema: 1 };
+  trace.record(run, 'discover', { agent: 'market-researcher', toolUseId: 'toolu_01ABC' });
+  c.markDone(run, 'discover');
+  assert.strictEqual(run.domains[0].phases[0].status, 'done', '観測済みの相が門に止められた');
+});
+
+test('spawn trace: 理由付き棄権は通り waived として台帳に残る (M3/AC-3.1)', () => {
+  const c = require('../graph/conclave.js');
+  const run = { domains: [{ cardinal: 'x', domain: 'd', reviewClass: 'r', status: 'active', reworks: 0,
+    phases: [{ id: 'discover', status: 'running', deps: [] }] }], history: [], traceSchema: 1 };
+  c.markDone(run, 'discover', null,
+    { noTraceReason: 'Hermes async_delegations deleg_aecff7bf で発令済み' });
+  const e = run.spawnTrace.discover[0];
+  assert.strictEqual(e.kind, 'waived', '棄権が waived として刻まれていない');
+  assert.ok(e.reason, '理由なき棄権が通った — 後から数えられない棄権は棄権ではない');
+  assert.strictEqual(run.traceWaivers, 1, '棄権が数えられていない');
+  assert.strictEqual(run.domains[0].phases[0].status, 'done');
+});
+
+test('spawn trace: 無意味に短い理由は棄権として受け付けない (M3/AC-3.2)', () => {
+  const c = require('../graph/conclave.js');
+  const mk = () => ({ domains: [{ cardinal: 'x', domain: 'd', reviewClass: 'r', status: 'active', reworks: 0,
+    phases: [{ id: 'discover', status: 'running', deps: [] }] }], history: [], traceSchema: 1 });
+  for (const bad of ['', 'n/a', 'ok', '理由なし']) {
+    const run = mk();
+    assert.throws(() => c.markDone(run, 'discover', null, { noTraceReason: bad }),
+      /短すぎる/, `"${bad}" が棄権として通った — 全相に貼れば穴は元通り開く`);
+    assert.notStrictEqual(run.domains[0].phases[0].status, 'done');
+  }
+  assert.strictEqual(c.MIN_WAIVER_REASON, 20, '最小長は機械が数えられる値であること');
+});
+
+test('spawn trace: 棄権が上限を超えたら domain が blocked になる (M3/AC-3.3/第51条c)', () => {
+  const c = require('../graph/conclave.js');
+  assert.strictEqual(c.MAX_TRACE_WAIVER, 3, '棄権の上限が過半を許す値になっている');
+  const ph = ['a', 'b', 'c', 'd'].map(id => ({ id, status: 'running', deps: [] }));
+  const run = { domains: [{ cardinal: 'x', domain: 'd', reviewClass: 'r', status: 'active', reworks: 0, phases: ph }],
+    history: [], traceSchema: 1 };
+  const R = 'engine が知らぬ経路で発令したため証跡を辿れない';
+  let blockedAt = null;
+  for (const p of ph) {
+    try { c.markDone(run, p.id, null, { noTraceReason: R }); }
+    catch { blockedAt = p.id; break; }
+  }
+  assert.strictEqual(blockedAt, 'd', `4 本目で止まらねばならない (止まった相: ${blockedAt})`);
+  assert.strictEqual(run.domains[0].status, 'blocked', 'domain が blocked になっていない');
+  assert.ok(run.history.some(h => h.event === 'trace-waiver-guard'),
+    '例外で巻き戻して台帳に残していない — 記録されない濫用は数えられない(第22条)');
+});
+
+test('spawn trace: report は四値を別々に数え、ok と clean を分ける (M4/AC-4.1)', () => {
+  const t = require('../graph/spawn-trace.js');
+  const run = { traceSchema: 1, domains: [{ phases: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }] }] };
+  t.record(run, 'a', { agent: 'x', toolUseId: 'toolu_1' });
+  t.record(run, 'b', { agent: 'y' });
+  t.record(run, 'c', { kind: 'waived', reason: 'engine が知らぬ経路で発令したため証跡を辿れない' });
+  const r = t.report(run);
+  assert.deepStrictEqual(
+    { observed: r.observed, assertedOnly: r.assertedOnly, waived: r.waived, noTrace: r.noTrace, ok: r.ok, clean: r.clean },
+    { observed: 1, assertedOnly: 1, waived: 1, noTrace: 1, ok: false, clean: false });
+  assert.deepStrictEqual(r.waivedPhases, ['c'], '棄権した相を名指しできない');
+});
+
+test('spawn trace: 棄権のみの走行は ok:true だが clean:false であり、沈黙で通らない (M4/AC-4.2)', () => {
+  const t = require('../graph/spawn-trace.js');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-waive-'));
+  const p = path.join(tmp, 'run.json');
+  try {
+    const run = { traceSchema: 1, domains: [{ phases: [{ id: 'a' }, { id: 'c' }] }] };
+    t.record(run, 'a', { agent: 'x', toolUseId: 'toolu_1' });
+    t.record(run, 'c', { kind: 'waived', reason: 'engine が知らぬ経路で発令したため証跡を辿れない' });
+    const r = t.report(run);
+    assert.strictEqual(r.ok, true, '棄権は進行を止めない');
+    assert.strictEqual(r.clean, false, '棄権を観測と同じ色で塗っている — 次の改善対象が不可視になる');
+    assert.strictEqual(r.waived, 1);
+    fs.writeFileSync(p, JSON.stringify(run));
+    const cli = runCli([path.join(GRAPH_DIR, 'spawn-trace.js'), 'report', p]);
+    assert.strictEqual(cli.code, 0, '棄権は exit を変えない');
+    assert.ok(/棄権/.test(cli.out), 'CLI が棄権の語を出していない(第44条)');
+    assert.ok(/\bc\b/.test(cli.out), '棄権した相を名指ししていない');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: parentToolUseId を必須にしていない — 実測 0 件の値で門を建てない (M5/AC-5.1,5.2)', () => {
+  const src = fs.readFileSync(path.join(GRAPH_DIR, 'spawn-trace.js'), 'utf8');
+  assert.strictEqual((src.match(/唯一確実/g) || []).length, 0,
+    'engine のコメントが実測に反する断定を残している(第16条)');
+  const t = require('../graph/spawn-trace.js');
+  // (a) 実測の鎖 — parentToolUseId は null。それでも observed を名乗れる
+  const child = path.join(os.tmpdir(), 'agent-probe-' + Date.now() + '.jsonl');
+  fs.writeFileSync(child, '{}\n');
+  try {
+    const run = { traceSchema: 1, domains: [{ phases: [{ id: 'a' }, { id: 'b' }, { id: 'z' }] }] };
+    t.record(run, 'a', { agent: 'market-researcher', toolUseId: 'toolu_01XEb8JkVzcjkgCmdRdTM5pP',
+      agentId: 'a47ff19939f65c691', childLog: child, source: 'claude-jsonl', parentToolUseId: null });
+    assert.strictEqual(t.verify(run, 'a').state, 'observed', '実測の鎖が observed を名乗れない');
+    // (b) Hermes の発令台帳だけでも立つ
+    t.record(run, 'b', { delegationId: 'deleg_96437b01', state: 'completed', source: 'hermes-async-delegations' });
+    assert.strictEqual(t.verify(run, 'b').state, 'observed', '発令台帳の鎖が observed を名乗れない');
+    // (c) 名乗った childLog が無ければ観測とは呼ばない — 名乗らなければ検めない、名乗ったら検める
+    t.record(run, 'z', { toolUseId: 'toolu_x', agentId: 'ghost', childLog: child + '.missing' });
+    assert.strictEqual(t.verify(run, 'z').state, 'asserted-only',
+      '実在しない子ログを名乗った証跡を observed と呼んでいる — 嘘の緑(第5条)');
+  } finally { fs.rmSync(child, { force: true }); }
+});
+
+test('spawn trace: legacy run は壊れず、緑とも赤とも名乗らない (M7/AC-7.1,7.2)', () => {
+  const c = require('../graph/conclave.js');
+  const t = require('../graph/spawn-trace.js');
+  const legacyPath = path.join(DIR, '..', 'reform', 'dashboard-living-gate', 'conclave.json');
+  const run = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+  assert.strictEqual(run.traceSchema, undefined, '前提が崩れた — この run は legacy ではない');
+  // (1) 壊れない: 新門は legacy を検めないので done が通る(第51条a 静止は失敗より悪い)
+  const first = [...c.allPhases(run).values()][0];
+  c.markDone(run, first.id);
+  assert.strictEqual(first.status, 'done', 'legacy run が新門で静止した');
+  // (2) 判定していないものを赤と呼ばない
+  const r = t.report(run);
+  assert.strictEqual(r.noTrace, 0, '測っていないものを「証跡なし」と断じている(第16条の裏面)');
+  assert.ok(r.legacy > 0, 'legacy を第五の数として名乗っていない');
+  assert.strictEqual(r.clean, false, 'legacy を緑と呼んでいる');
+  const cli = runCli([path.join(GRAPH_DIR, 'spawn-trace.js'), 'report', legacyPath]);
+  assert.ok(/判定していない/.test(cli.out), 'CLI が「判定していない」と述べていない');
+});
+
+test('spawn trace: 新しく建てた run は必ず版の印を持つ (M7/AC-7.3)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'st-schema-'));
+  const p = path.join(tmp, 'run.json');
+  try {
+    const r = runCli([path.join(GRAPH_DIR, 'conclave.js'), 'convene', REFORM_DAG, '--run', p]);
+    assert.strictEqual(r.code, 0, 'convene が落ちた: ' + r.out);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).traceSchema, 1,
+      'convene が版の印を刻んでいない — 新旧を区別できなければ移行は事故になる');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('spawn trace: 楽園は自分の証跡の門を数えて語る (M9/AC-9.1/第22条)', () => {
+  const census = require('../graph/census.js');
+  const c = census.census({ runTests: false });
+  assert.ok(c.spawnTraceGates >= 7,
+    `spawn-trace の門が数えられていない (${c.spawnTraceGates} 本) — 数えられない主張は書かない`);
+  const claim = census.claims(c).find(x => x.label === 'README spawn-trace 門数');
+  assert.ok(claim, 'README の主張と実測を突き合わせる規則が無い');
+  const m = fs.readFileSync(path.join(DIR, '..', 'README.md'), 'utf8').match(claim.re);
+  assert.ok(m, 'README が spawn-trace の門数を主張していない');
+  assert.strictEqual(Number(m[1]), c.spawnTraceGates, '散文の数が実測とずれている(第22条)');
 });
 
 // --- report ---

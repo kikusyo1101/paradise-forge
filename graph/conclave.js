@@ -8,7 +8,7 @@
  *     └ each domain is a CARDINAL, who drives an inner SEE (the domain's own
  *       PDCA ring over its phases).
  *         └ each phase is worked by a PRIEST (large subagent), who may marshal
- *           BELIEVERS (small subagents) for fine work.
+ *           BELIEVERS (small delegate agents) for fine work.
  *   The TRIBUNAL (executor) is invoked at the judgment gate, independent of all.
  *
  * Two nested rings, both real:
@@ -38,6 +38,10 @@ const MAX_DOMAIN_REWORK = 3; // loop-guard at the domain level too
 const MAX_PHASE_RESUME = 2;
 // 第51条b: この時を過ぎた `running` は、走者が斃れたものとみなす(15分)。
 const STALE_MS = 15 * 60 * 1000;
+// 第51条c と同型 — 棄権もまた有限である。11相中3相まで。過半を棄権できる値にしない。
+const MAX_TRACE_WAIVER = 3;
+// 棄権の理由は機械が中身を裁けない(第16条)。ゆえに **長さ** を裁く。20文字 = 全角一文。
+const MIN_WAIVER_REASON = 20;
 
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function save(p, o) { fs.writeFileSync(p, JSON.stringify(o, null, 2)); }
@@ -74,6 +78,9 @@ function convene(dagPath) {
 
   return {
     meta: dag.meta || {}, created: now(),
+    // 証跡体系の版の印(M7)。これを持たない run = legacy であり、
+    // 新門は legacy を検めない —— 既存走行を静止させないため(第51条a)。
+    traceSchema: 1,
     domains,
     history: [{ ts: now(), event: 'convene', detail: `${domains.length} domains, ${dag.tasks.length} phases` }],
   };
@@ -279,7 +286,32 @@ function resume(run, opts = {}) {
  * 教主が神官を疑っても、教主が書いた台帳を誰も疑わなければ嘘は残る。
  * ゆえに engine が拒む —— 人の注意力ではなく機械が守る(第50条)。
  */
-function markDone(run, id, artifactPath) {
+function traceGateMessage(id) {
+  // 第15条: 拒むだけで出口を示さない門は静止を生む。次に打つ手を名指しする。
+  //
+  // ⚠️ ここに採取器の **ファイル名を書かない**。この engine が採取器の名を一語でも
+  // 持てば「判定器はログを読まない」という境界が grep で測れなくなる(AC-2.3 は
+  // この行を含めて 0 件を要求する)。名ではなく **打つべき口** を示す。
+  return `相 "${id}" を done にできない — 起動の証跡が no-trace である(第27条)。\n` +
+    '  この相が本当に発令されたことを機械が辿れない。次のいずれかを打て:\n' +
+    '    1) 採取器(graph/ の採取 engine — README の engine 表が名を持つ)に拾わせる:\n' +
+    '         <採取器> scan --run <run.json> --json\n' +
+    `         <採取器> apply <run.json> --phase ${id}\n` +
+    '    2) 証跡が engine の知らぬ経路にあるなら、理由を添えて棄権せよ(20文字以上):\n' +
+    `         node graph/conclave.js done ${id} --run <run.json> \\\n` +
+    '           --no-trace-reason "<なぜ辿れないのかを一文で>"\n' +
+    `       棄権は最大 ${MAX_TRACE_WAIVER} 回まで。超えれば domain は blocked になる。`;
+}
+
+/**
+ * @param {object} opts - { noTraceReason?: string, by?: string }
+ *
+ * ── 証跡の門(M2)────────────────────────────────────────────────
+ * **この関数はログを一切読まない。** 読むのは `run.spawnTrace` だけである。
+ * ログ走査は採取器に閉じ込めてある —— 判定器に I/O を持ち込めば試験容易性が落ち、
+ * `markDone` は純粋でなくなる。この境界は grep が機械で守る(AC-2.3)。
+ */
+function markDone(run, id, artifactPath, opts = {}) {
   const p = allPhases(run).get(id);
   if (!p) throw new Error('unknown phase: ' + id);
   if (artifactPath) {
@@ -294,6 +326,38 @@ function markDone(run, id, artifactPath) {
         `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
     }
   }
+
+  // 版の印を持たない run = legacy。新門の導入以前に建てられた走行を静止させない(M7)。
+  if (run.traceSchema !== undefined) {
+    const trace = require('./spawn-trace.js');
+    if (opts.noTraceReason !== undefined && opts.noTraceReason !== null && opts.noTraceReason !== false) {
+      const reason = String(opts.noTraceReason).trim();
+      if (reason.length < MIN_WAIVER_REASON) {
+        throw new Error(
+          `棄権の理由が短すぎる(最小 ${MIN_WAIVER_REASON} 文字、いま ${reason.length} 文字)。\n` +
+          `  相 "${id}" の証跡を辿れない理由を一文で述べよ。\n` +
+          '  これは中身の審査ではなく長さの審査である —— "n/a" を全相に貼れば穴は元通り開く。');
+      }
+      run.traceWaivers = (run.traceWaivers || 0) + 1;
+      if (run.traceWaivers > MAX_TRACE_WAIVER) {
+        // ★ throw の前に台帳へ書く。例外で巻き戻せば棄権の濫用が記録に残らない(第22条)。
+        const owner = run.domains && run.domains.find(d => d.phases.some(x => x.id === id));
+        if (owner) owner.status = 'blocked';
+        run.history = run.history || [];
+        run.history.push({ ts: now(), event: 'trace-waiver-guard',
+          detail: `${id}: 棄権 ${run.traceWaivers} 件が上限 ${MAX_TRACE_WAIVER} を超えた` });
+        throw new Error(
+          `棄権が上限 ${MAX_TRACE_WAIVER} を超えた(いま ${run.traceWaivers} 件)。\n` +
+          `  domain ${(owner && owner.domain) || '?'} を blocked にした。人へ escalate せよ。\n` +
+          '  棄権が既定になれば門は死ぬ —— 有限であることが門を門たらしめる(第51条c)。');
+      }
+      trace.record(run, id, { kind: 'waived', reason, by: opts.by || 'human' });
+    } else {
+      const v = trace.verify(run, id);
+      if (!(v.state === 'observed' || v.state === 'waived')) throw new Error(traceGateMessage(id));
+    }
+  }
+
   p.status = 'done'; if (artifactPath) p.artifactPath = artifactPath;
   run.history.push({ ts: now(), event: 'done', detail: id + (artifactPath ? ' → ' + artifactPath : '') });
 }
@@ -390,7 +454,16 @@ function main() {
     if (step.phase === 'wave') markRunning(run, step.dispatch.map(d => d.id));
     save(rp, run); console.log(JSON.stringify(step, null, 2));
   } else if (cmd === 'done') {
-    need(); const run = load(rp); markDone(run, pos[0], f.artifact); save(rp, run); console.log(statusBoard(run));
+    // --no-trace-reason は既存の parse で足りる(値が -- 始まりでなければ次の語を取る)。
+    // 新しい解析器を書けば、解釈が 2 箇所に分かれて必ず食い違う。
+    need(); const run = load(rp);
+    try { markDone(run, pos[0], f.artifact, { noTraceReason: f['no-trace-reason'] }); }
+    catch (e) {
+      // ★ 棄権上限の guard は throw の前に blocked と history を書く。
+      //   ここで save しなければ、その記録が例外と共に消える(第22条)。
+      save(rp, run); console.error(e.message); process.exit(1);
+    }
+    save(rp, run); console.log(statusBoard(run));
   } else if (cmd === 'resume') {
     // 第51条: 中断した走者の残骸を環へ戻す。
     need(); const run = load(rp);
@@ -425,7 +498,8 @@ function main() {
       return;
     }
     console.log(statusBoard(run));
-  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--no-trace-reason "理由"] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
-module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS };
+module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard,
+  MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, MAX_TRACE_WAIVER, MIN_WAIVER_REASON };

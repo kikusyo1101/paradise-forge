@@ -135,6 +135,17 @@ function census(opts = {}) {
           .length;
       } catch { return 0; }
     })(),
+    /**
+     * 起動証跡(spawn-trace)を試す門の本数。
+     * 棄権数・legacy 数を誰も数えなければ「棄権が既定になり門が死ぬ」が静かに起きる。
+     * 静かに起きたことは第44条により先例として読まれる —— ゆえに数える(第22条)。
+     */
+    spawnTraceGates: (() => {
+      try {
+        const t = fs.readFileSync(path.join(ROOT, 'tests', 'paradise.test.js'), 'utf8');
+        return (t.match(/^test\('spawn trace: /gm) || []).length;
+      } catch { return 0; }
+    })(),
     creations: (() => {
       // 第30条: 住所を知るのは workspace.js だけ。旧住所を ROOT 直下に直書きしていた頃は、
       // 実在 8 件に対し catch { return 0 } が 0 を返して黙っていた。
@@ -176,6 +187,8 @@ function claims(c) {
     { file: 'README.md', re: /`contexts (\d+)`/,                 actual: c.vendor.contexts,         label: 'README vendor contexts' },
     // ダッシュボードの門の本数 (第22条)。散文が「門 N 本」と言うなら N を数え直す。
     { file: 'README.md', re: /ダッシュボードの門 \*\*(\d+) 本\*\*/, actual: c.dashboardGates,       label: 'README ダッシュボード門数' },
+    // 起動証跡の門の本数 (第22条)。門を足して README を直し忘れれば check が赤くなる。
+    { file: 'README.md', re: /spawn-trace の門 \*\*(\d+) 本\*\*/,  actual: c.spawnTraceGates,      label: 'README spawn-trace 門数' },
   ];
   return list;
 }

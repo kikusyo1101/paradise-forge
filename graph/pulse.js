@@ -238,6 +238,9 @@ function readSpawn(run, runName, errors) {
   return {
     total: rep.total, observed: rep.observed,
     assertedOnly: rep.assertedOnly, noTrace: rep.noTrace, ok: !!rep.ok,
+    // 四値+legacy を画面まで運ぶ。棄権と「判定していない」を運ばなければ、
+    // 次の改善対象(棄権の多さ)が画面から消える(M4 の理由そのもの)。
+    waived: rep.waived || 0, legacy: rep.legacy || 0, clean: !!rep.clean,
   };
 }
 

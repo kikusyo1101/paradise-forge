@@ -46,7 +46,21 @@ function validate(result) {
  * non-trivial file (or be an explicit non-file handle the caller marks external).
  * Fail-closed: if we cannot verify, we do NOT accept the claim.
  */
+/**
+ * `traceChecked` は **どの経路を通っても必ず在る**(M6)。
+ * 拒否の経路(契約不正・成果物不在)で欠ければ、呼び手は「照合したのか否か」を
+ * 結果から読めない。欠落を「false」と読む呼び手と「未対応」と読む呼び手に割れる。
+ */
+function withTraceChecked(rec, opts) {
+  if (rec && rec.traceChecked === undefined) rec.traceChecked = !!(opts && opts.run);
+  return rec;
+}
+
 function reconcile(result, opts = {}) {
+  return withTraceChecked(reconcileInner(result, opts), opts);
+}
+
+function reconcileInner(result, opts = {}) {
   const v = validate(result);
   if (!v.ok) return { accepted: false, reason: 'contract invalid: ' + v.errors.join('; ') };
   if (result.status !== 'done') return { accepted: false, reason: `status is ${result.status}, not done` };
@@ -74,13 +88,21 @@ function reconcile(result, opts = {}) {
     const trace = require('./spawn-trace.js');
     const t = trace.verify(opts.run, result.phase);
     if (!t.ok) {
-      return { accepted: false, verified: 'file-but-unspawned', size,
+      return { accepted: false, verified: 'file-but-unspawned', size, traceChecked: true,
         reason: `artifact exists but the phase was never dispatched — ${t.reason}` };
     }
-    return { accepted: true, verified: 'file+spawn', size,
-      reason: `artifact verified (${size}b) and dispatch observed: ${t.reason}` };
+    // 語を細分する。棄権と legacy を「観測した(file+spawn)」と同じ語で呼べば、
+    // 通した理由が結果から消える(第16条)。
+    const verified = t.state === 'waived' ? 'file+waived'
+      : t.state === 'legacy' ? 'file+trace-unjudged' : 'file+spawn';
+    return { accepted: true, verified, size, traceChecked: true,
+      reason: `artifact verified (${size}b) and dispatch ${t.state}: ${t.reason}` };
   }
-  return { accepted: true, reason: `artifact verified (${size}b): ${art}`, verified: 'file', size };
+  // ── 素通りしたことを結果自身に名乗らせる (M6 / 第37条) ──────────────
+  // run を渡さない呼び出しは従来どおり成果物だけで裁く。だが「照合しなかった」を
+  // 沈黙で表してはならない。渡し忘れが緑を生む設計は、緑の意味そのものを壊す。
+  return { accepted: true, reason: `artifact verified (${size}b): ${art}`,
+    verified: 'file', size, traceChecked: false };
 }
 
 function dirSize(dir) {
@@ -102,11 +124,11 @@ function reconcileWave(results, opts = {}) {
  */
 function checkPayload(raw, opts = {}) {
   if (raw == null || String(raw).trim() === '') {
-    return { accepted: false, reason: 'empty payload: no result to reconcile' };
+    return withTraceChecked({ accepted: false, reason: 'empty payload: no result to reconcile' }, opts);
   }
   let result;
   try { result = JSON.parse(raw); }
-  catch (e) { return { accepted: false, reason: 'malformed result JSON: ' + e.message }; }
+  catch (e) { return withTraceChecked({ accepted: false, reason: 'malformed result JSON: ' + e.message }, opts); }
   return reconcile(result, opts);
 }
 
@@ -123,14 +145,30 @@ function main() {
   }
   if (cmd === 'check') {
     // read a JSON result from stdin, validate + reconcile (fail-closed on garbage)
+    //
+    // ── 素通りの口を開ける (M6) ──────────────────────────────────
+    // かつてこの CLI には `opts` を渡す口が無く、**構造的に 100% 素通り**していた。
+    // 既存の `file-but-unspawned` 分岐は呼び手ゼロで一度も実行されていなかった。
+    const i = process.argv.indexOf('--run');
+    const runPath = i > -1 ? process.argv[i + 1] : null;
+    const opts = {};
+    if (runPath) {
+      try { opts.run = JSON.parse(fs.readFileSync(runPath, 'utf8')); }
+      catch (e) {
+        // 「読めなかった」を「渡されなかった」と同じ扱いにしない(第44条)
+        console.log(JSON.stringify({ accepted: false, traceChecked: false,
+          reason: '--run を読めなかった: ' + e.message }, null, 2));
+        process.exit(1);
+      }
+    }
     let d = ''; process.stdin.on('data', c => d += c); process.stdin.on('end', () => {
-      const rec = checkPayload(d);
+      const rec = checkPayload(d, opts);
       console.log(JSON.stringify(rec, null, 2));
       process.exit(rec.accepted ? 0 : 1);
     });
     return;
   }
-  console.error('commands: schema | check (result JSON on stdin)');
+  console.error('commands: schema | check [--run <run.json>] (result JSON on stdin)');
   process.exit(2);
 }
 if (require.main === module) main();
