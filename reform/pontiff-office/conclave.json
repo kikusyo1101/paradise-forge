@@ -104,7 +104,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -116,9 +116,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/pontiff-office/build-report.md",
           "dispatchedAt": "2026-09-03T04:08:37.037Z",
           "resumes": 0
         },
@@ -131,9 +131,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/pontiff-office/prove.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -145,7 +145,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -158,10 +158,10 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/pontiff-office/review.md",
+          "dispatchedAt": "2026-09-03T08:51:02.571Z",
           "resumes": 0
         },
         {
@@ -173,10 +173,10 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/pontiff-office/security-report.md",
+          "dispatchedAt": "2026-09-03T08:51:02.571Z",
           "resumes": 0
         },
         {
@@ -188,10 +188,10 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/pontiff-office/docs-report.md",
+          "dispatchedAt": "2026-09-03T08:51:02.571Z",
           "resumes": 0
         },
         {
@@ -205,10 +205,10 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/pontiff-office/verification-report.md",
+          "dispatchedAt": "2026-09-03T08:51:10.404Z",
           "resumes": 0
         }
       ],
@@ -219,7 +219,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -232,10 +232,10 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/pontiff-office/critique.md",
+          "dispatchedAt": "2026-09-03T09:45:47.238Z",
           "resumes": 0
         },
         {
@@ -247,10 +247,10 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-03T12:29:40.875Z",
           "resumes": 0
         }
       ],
@@ -313,6 +313,129 @@
       "ts": "2026-09-03T04:08:37.037Z",
       "event": "dispatch",
       "detail": "build"
+    },
+    {
+      "ts": "2026-09-03T05:11:20.819Z",
+      "event": "done",
+      "detail": "build → reform/pontiff-office/build-report.md"
+    },
+    {
+      "ts": "2026-09-03T07:10:51.489Z",
+      "event": "done",
+      "detail": "prove → reform/pontiff-office/prove.md"
+    },
+    {
+      "ts": "2026-09-03T08:51:02.522Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-03T08:51:02.571Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-03T08:51:09.867Z",
+      "event": "done",
+      "detail": "review → reform/pontiff-office/review.md"
+    },
+    {
+      "ts": "2026-09-03T08:51:10.046Z",
+      "event": "done",
+      "detail": "security → reform/pontiff-office/security-report.md"
+    },
+    {
+      "ts": "2026-09-03T08:51:10.211Z",
+      "event": "done",
+      "detail": "docs → reform/pontiff-office/docs-report.md"
+    },
+    {
+      "ts": "2026-09-03T08:51:10.404Z",
+      "event": "dispatch",
+      "detail": "verify"
+    },
+    {
+      "ts": "2026-09-03T09:45:43.103Z",
+      "event": "done",
+      "detail": "verify → reform/pontiff-office/verification-report.md"
+    },
+    {
+      "ts": "2026-09-03T09:45:47.186Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-03T09:45:47.238Z",
+      "event": "dispatch",
+      "detail": "reflect"
+    },
+    {
+      "ts": "2026-09-03T12:29:40.826Z",
+      "event": "done",
+      "detail": "reflect → reform/pontiff-office/critique.md"
+    },
+    {
+      "ts": "2026-09-03T12:29:40.875Z",
+      "event": "dispatch",
+      "detail": "verdict"
     }
-  ]
+  ],
+  "tierTrace": {
+    "build": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T05:11:20.819Z"
+    },
+    "prove": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T07:10:51.488Z"
+    },
+    "review": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T08:51:09.866Z"
+    },
+    "security": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T08:51:10.046Z"
+    },
+    "docs": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T08:51:10.211Z"
+    },
+    "verify": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T09:45:43.103Z"
+    },
+    "reflect": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-03T12:29:40.826Z"
+    }
+  }
 }
