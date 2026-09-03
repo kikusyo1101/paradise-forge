@@ -386,6 +386,58 @@ function buildDag(wish, scale) {
   };
 }
 
+/**
+ * 道に入れてよい願いか (第52条 / 第49条の一般化)。
+ *
+ * ⚠️ **`chooseScale` は一行も変えない。判定はここに足す。**
+ * `tests/paradise.test.js` は `chooseScale(...)` を **11箇所**で直に呼び、
+ * 返り値が**文字列**であることを assert している。返り値を object に変えれば
+ * その11本が一斉に嘘になる —— 直す口実に既存の門を壊してはならない。
+ *
+ * 実測が名指しした穴: 15の願いのうち 14件が既定の `standard` へ黙って落ちた。
+ * 落ちた先の10名は全員実在するので `check-agents` は緑を出す。
+ * **「音楽を作れ」は standard へ落ち、実在する architect が build 相を担う。**
+ * 楽園には「その仕事をやれる役者が居ない」ことを表現する型が無かった。
+ */
+function admit(wish) {
+  const domains = require('./domains.js');
+  const { PSEUDO } = require('./check-agents.js');
+  const scale = chooseScale(wish);
+  const led = domains.load();
+  const dom = domains.classify(wish, led);
+  if (!dom) return { ok: false, code: 'unknown-domain', scale };
+  const agents = new Set(SCALES[scale](wish).map(t => t.agent).filter(Boolean));
+  const unfit = [...agents].filter(a => !PSEUDO.has(a) && !domains.serves(a, dom.id, led));
+  if (unfit.length) return { ok: false, code: 'no-actor', scale, domain: dom, unfit };
+  return { ok: true, scale, domain: dom };
+}
+
+/**
+ * 門が鳴ったとき、次に何をすべきかを言う (第34条)。
+ * **この行がそのまま結線でもある** — `wiring.js` の NAME_RES が
+ * `graph/ordain.js` の綴りを拾うので、第34条を満たす一行が第48条をも満たす。
+ */
+function forgeCallLine(domain) {
+  return `node graph/ordain.js forge --name <役者名> --domain ${domain} --cardinal <枢機卿> --rank priest --write`;
+}
+
+/** 拒否の理由を人へ。stdout に出す(教主が読む面である)。 */
+function explainAdmit(r, wish) {
+  const out = [];
+  if (r.code === 'unknown-domain') {
+    out.push(`分野を判定できない — 「${wish}」を写す語彙が台帳に無い`);
+    out.push('  既定の道へ黙って落とさない。判定不能は緑ではない (第16条)');
+    out.push('  node graph/domains.js list        # 台帳の語彙を見る');
+    out.push(`  ${forgeCallLine('<分野>')}`);
+  } else if (r.code === 'no-actor') {
+    out.push(`担い手が居ない — 分野: ${r.domain.ja} (${r.domain.id})`);
+    out.push(`  道 ${r.scale} が名指しする役者のうち、この分野を担うと宣言していない者: ${r.unfit.join(', ')}`);
+    out.push('  実在するだけでは足りない。適合を宣言していない者に仕事は渡せない (第52条)');
+    out.push(`  ${forgeCallLine(r.domain.id)}`);
+  }
+  return out.join('\n');
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
@@ -400,7 +452,10 @@ function main() {
 
   if (cmd === 'scale') {
     if (!wish) { console.error('usage: forge.js scale "<wish>"'); process.exit(2); }
-    console.log(chooseScale(wish));
+    const a = admit(wish);
+    if (!a.ok) { console.log(explainAdmit(a, wish)); process.exit(1); }
+    // 担える願いの出力は **従来と一字も変えない** (AC-C4 の回帰)。
+    console.log(a.scale);
     return;
   }
   if (cmd === 'phases') {
@@ -417,7 +472,17 @@ function main() {
   }
   if (cmd === 'plan') {
     if (!wish) { console.error('usage: forge.js plan "<wish>" [--scale ...] [--out file]'); process.exit(2); }
-    const scale = flags.scale || chooseScale(wish);
+    /**
+     * **判定を `mkdirSync` より前に置く** (AC-C3)。さもなくば拒んだのに
+     * ディレクトリだけ残り、後の相がそれを正当な計画として読む(第44条:
+     * 死んだ道具を教主が先例と読む)。担えない道の痕跡を一つも残さない。
+     *
+     * `--scale` を明示した呼び方は道の選定を人が引き受けたということなので、
+     * 分野の適合だけを裁く。
+     */
+    const a = admit(wish);
+    if (!a.ok) { console.log(explainAdmit(a, wish)); process.exit(1); }
+    const scale = flags.scale || a.scale;
     if (!SCALES[scale]) { console.error(`unknown scale: ${scale}`); process.exit(2); }
     const dag = buildDag(wish, scale);
     const json = JSON.stringify(dag, null, 2);
@@ -435,4 +500,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography };
