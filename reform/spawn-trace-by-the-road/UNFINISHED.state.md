@@ -14,12 +14,46 @@ PR #35   https://github.com/kikusyo1101/paradise-forge/pull/35
          前幕が未commitのまま残していたものを救出した。
 
 ブランチ reform/spawn-trace-by-the-road   push 済み・PR 未提出
-         最終コミット a90d3f5
+         最終コミット 261933e(PR #35 マージ後の main の上に rebase 済み)
+         リモートと完全同期: ahead 0 / behind 0 / main-behind 0
          環: 6ドメイン中 4批准(discovery/requirements/architecture/construction)
          quality 相の途中で神の停止命令により中断
 ```
 
-**自己診断(単独走行で実測):**
+## 0.1 【最重要】rebase 後の門は走らせていない — **未検査である**
+
+`git rebase origin/main` を行った(PR #35 のマージで main が2つ進んだため)。
+競合は無く自動で通ったが、**その後の自己診断を完走させていない**。
+
+```
+$ node tests/paradise.test.js
+(rebase 後は実行を中断した — 神が新セッションで測ると判じたため)
+```
+
+**rebase 前の単独走行では 306 passed, 0 failed だった。**
+だが rebase は #35 の散文9ファイルを取り込んでおり、
+`census.js`(文書の数を実測に合わせる門)が動く余地がある。
+**「たぶん緑」を緑と呼ばない**(第16条)。
+
+### 次幕が最初に打つべきコマンド(この順で)
+
+```bash
+cd <worktree>                            # §5 の作業場を先に掃く
+node tests/paradise.test.js              # 単独走行で。並行させない(則E)
+node graph/census.js check               # 文書の数 ↔ 実数
+node graph/workspace.js check            # 第30条
+node graph/apply-seat.js verify          # 第31条
+node graph/check-agents.js               # 第25条
+node graph/wiring.js check               # 第48条
+node graph/deploy.js check
+node graph/apply-guards.js verify
+```
+
+**一つでも赤ならそれを先に片づける。** 赤を抱えたまま D17/D18 へ進むと、
+どちらの赤か分からなくなり、また測り方を誤る(第三幕がまさにそれで時を溶かした)。
+```
+
+**自己診断(rebase **前**の単独走行での実測 — §0.1 の通り rebase 後は未検査):**
 ```
 $ node tests/paradise.test.js
 Paradise self-test: 306 passed, 0 failed      (main は 290 — +16本)
@@ -196,7 +230,9 @@ C:\Users\kikus\AppData\Local\hermes\cache\delegation\live\deleg_41253b63\task-1.
 ## 6. 次に手を付けるなら
 
 ```
-1. 【最優先】作業場を掃く → 単独走行を確保 → D17/D18/D14/D20 を1件ずつ検証
+0. 【必須の前提】作業場を掃く(§5)→ 単独走行で門を全て走らせる(§0.1)
+             rebase 後は未検査である。緑を確かめるまで次へ進まない
+1. 【最優先】D17/D18/D14/D20 を1件ずつ検証
              本物なら engine を直し、門を建てる。偽なら review-partial.md に反証を追記
 2. 【安全】  security.md を書く — 特に「採取器が run に何を書くか」
              (会話ログ本文・絶対パスの混入は X-2 と同型の穴)
@@ -205,3 +241,26 @@ C:\Users\kikus\AppData\Local\hermes\cache\delegation\live\deleg_41253b63\task-1.
 5. 【条文】  憲法 第27条が引く parentToolUseId は実機に無い。
              reform の道で条文を実測に合わせるべきか判断する
 ```
+
+---
+
+## 7. 第三幕の教主が犯した、報告そのものの過ち
+
+**「PR #35 は神の御手を待っている」と報告したが、その時点で既にマージ済みだった。**
+
+```
+$ gh pr list --state all
+35 MERGED 2026-09-03T01:31:41Z    ← マージ済み
+(教主が見ていたのは 07:30 頃の fetch の断面)
+```
+
+fetch から3時間経った断面を現況と信じ、神に古い報せを差し出した。
+神が「リモートと同期できていないのでは」と質して初めて気づいた。
+
+さらにその直後、**「中身は同一で SHA が違うだけ」と推測で述べ、
+`git diff` を実際に打ったら空ではなかった**(#35 の9ファイル分の差が在った)。
+実物を見る前に結論を口にしたのである。
+
+> **則H: 状態を報告する前に、その状態を今この瞬間に測り直せ。**
+> 特に `git`/`gh` の遠隔状態は、前回の fetch の化石である。
+> **推測を述べてから確かめるな。確かめてから述べよ。**
