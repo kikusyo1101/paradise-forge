@@ -3226,6 +3226,59 @@ test('lexicon: 門は CI に配線されている — 配線されぬ門は飾�
   assert.ok(/clergy\.js lexicon-check/.test(ci), 'lexicon-check must run in the tribunal workflow');
 });
 
+test('lexicon: 門は己の作業場の残骸で鳴らないが、版管理下の散文では鳴る (教訓 gate-own-debris / 第21条)', () => {
+  // **教訓 gate-own-debris の再発を撃つ回帰試験。** CI の tribunal ジョブは
+  //   1. critic の裁定を倉のルートの verdict.md へ流し
+  //   2. 続けて paradise.test.js を回す
+  // という順で走る。かつて lexicon-check は倉を歩いて 1 が書いた verdict.md を拾い、
+  // 教訓文中の異名を「散文に異名が住む」と裁いて赤を出した。門が己の残骸で鳴っていた。
+  //
+  // ゆえに**故障注入で両側を測る**。緑になるだけの門は門ではない (第21条 壊して鳴らす):
+  //   A. 残骸を置いても緑であること     — 再発すれば赤になる
+  //   B. 版管理下の散文に異名を仕込めば赤 — 緩めすぎれば緑のままになる
+  const ROOT = path.join(__dirname, '..');
+  const run = () => require('child_process').spawnSync(process.execPath,
+    [path.join(ROOT, 'graph', 'clergy.js'), 'lexicon-check'], { encoding: 'utf8', cwd: ROOT });
+
+  // 門が拾ってはならぬ残骸の名は engine が唯一の出所として持つ (散文に写経しない)
+  assert.strictEqual(typeof clergy.isGateDebris, 'function',
+    'engine が「己の残骸か」を判ずる述語を公開していること — 試験が名前を写経すれば必ず食い違う');
+
+  const debris = [path.join(ROOT, 'verdict.md'), path.join(ROOT, 'verdict-report.json')];
+  for (const d of debris)
+    assert.ok(clergy.isGateDebris(d), `${path.basename(d)} は門自身の一時産物である`);
+  // 倉の奥の同名は成果物である — 除外はルート直下の残骸に限る
+  assert.ok(!clergy.isGateDebris(path.join(ROOT, 'docs', 'verdict.md')),
+    '除外は門の作業場だけ — 成果物の住処に触れてはならない (gate-own-debris)');
+
+  const made = [];
+  // 実際に CI が書くのと同じ中身 — 教訓 canonical-lexicon-41 は異名を本文に含む
+  const debrisText = '審査の裁定\n位階 priest の異名は ' + ['司', '祭'].join('') + ' である\n';
+  // 版管理下の実在の散文に異名を仕込む。作り物のファイルではなく**現物**を汚す —
+  // 門が現物を歩いていることまで含めて測るため (第21条: 門は現物を見て裁く)。
+  const victim = path.join(ROOT, 'README.md');
+  const victimOrig = fs.readFileSync(victim, 'utf8');
+  try {
+    for (const d of debris) { fs.writeFileSync(d, debrisText); made.push(d); }
+    // A: 残骸が在っても門は緑
+    const withDebris = run();
+    assert.strictEqual(withDebris.status, 0,
+      '門が己の作業場の残骸で鳴っている — gate-own-debris の再発:\n' + (withDebris.stdout || ''));
+    assert.ok(/異名なし/.test(withDebris.stdout), '残骸下でも掃過は清潔と報告されること: ' + withDebris.stdout);
+
+    // B: 版管理下の散文を汚せば門は鳴る。鳴らねば除外が広すぎる
+    fs.writeFileSync(victim, victimOrig + '\n' + debrisText);
+    const withPoison = run();
+    assert.strictEqual(withPoison.status, 1,
+      '版管理下の散文に異名を仕込んでも鳴らない — 除外が広すぎて門が死んでいる:\n' + (withPoison.stdout || ''));
+    assert.ok(/README\.md/.test(withPoison.stdout),
+      '門は汚された現物を名指しすること: ' + withPoison.stdout);
+  } finally {
+    fs.writeFileSync(victim, victimOrig);
+    for (const d of made) { try { fs.unlinkSync(d); } catch {} }
+  }
+});
+
 // --- 定期の営みの機構 (第43条) ---
 console.log('日次の営み (第43条):');
 

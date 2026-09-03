@@ -562,6 +562,34 @@ function orgChart() {
   };
 }
 
+/**
+ * 門が己の走行中に産む一時報告書か。
+ *
+ * **教訓 gate-own-debris の再発である** — 「門は己の作業場の残骸で不定に鳴っては
+ * ならぬ。ただし掃除してよいのは門自身の作業場だけで、成果物の住処に触れてはならない」。
+ * atlas で一度直した同じ病が、今度は lexicon 門で起きた。実測した経路:
+ *   1. tribunal.yml が `critic.js review --lessons` の出力を倉のルートの verdict.md へ流す
+ *   2. その出力には教訓 canonical-lexicon-41 の本文がそのまま載る。教訓文それ自体が
+ *      異名を引用している (教訓 canonical-lexicon-41 の一文がまさに異名を論じている)
+ *   3. 同じジョブが続けて paradise.test.js を回し、lexicon-check が倉を歩いて
+ *      **さっき自分の隣人が書いた verdict.md を拾い**、行番号つきで赤を出す
+ *
+ * なぜ除外してよいか。第41条が裁く対象は**版管理下の散文**である — 神と教主が
+ * 読み、腐れば名の揺れが人に伝染する現物のことだ。verdict.md / verdict-report.json は
+ * .gitignore にも載らぬ走行中の残骸であり、誰も読まず、次の走行で上書きされ、
+ * 掃除されれば消える。散文ではない。門の出力を門の入力に混ぜれば、判定は
+ * ファイルの残り方という**走行順序**に依存し、門は不定に鳴る。不定に鳴る門は
+ * 門ではない (第21条)。
+ *
+ * ゆえに触れるのは「門自身が産んだ残骸」だけである。版管理下の .md には一切
+ * 手心を加えない — そちらは今まで通り、異名が一つでも住めば赤くなる。
+ */
+const GATE_DEBRIS = /^verdict\.md$|^verdict-report\.json$/;
+function isGateDebris(p) {
+  // ルート直下の残骸のみ。倉の奥に同名の版管理下の散文が在れば、それは成果物である。
+  return path.dirname(path.resolve(p)) === ROOT && GATE_DEBRIS.test(path.basename(p));
+}
+
 function main() {
   const [cmd, arg] = process.argv.slice(2);
   if (cmd === 'chart') { console.log(JSON.stringify(orgChart(), null, 2)); return; }
@@ -631,6 +659,7 @@ function main() {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
         if (skip.test(p)) continue;
+        if (isGateDebris(p)) continue;
         if (e.isDirectory()) { if (e.name !== '.git' && e.name !== 'node_modules') walk(p); continue; }
         if (!exts.includes(path.extname(e.name))) continue;
         docs.push({ file: path.relative(ROOT, p), text: fs.readFileSync(p, 'utf8') });
@@ -647,4 +676,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart, LEXICON, title, lexiconCheck };
+module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart, LEXICON, title, lexiconCheck, isGateDebris };
