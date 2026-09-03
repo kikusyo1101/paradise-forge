@@ -24,7 +24,9 @@ function test(name, fn) {
 
 // --- Graph engine ---
 console.log('Graph engine:');
-const tmp = path.join(os.tmpdir(), 'paradise-test-dag.json');
+// 一時ファイルの名はプロセス固有にする — 二つのプロセスが同時に試験を走らせても
+// 互いの作業場を消さないため(第21条(c) — prove 相が並走の赤で実測した)。
+const tmp = path.join(os.tmpdir(), `paradise-test-dag-${process.pid}.json`);
 
 test('schedules a simple diamond into 3 waves', () => {
   fs.writeFileSync(tmp, JSON.stringify({ tasks: [
@@ -180,7 +182,7 @@ test('forges a gated SDLC DAG that graph-engine can schedule', () => {
   assert.ok(dag.meta.constitution.length >= 5, 'constitution embedded');
   assert.ok(dag.meta.gates.includes('verdict'), 'verdict is a gate');
   // must be a valid schedulable graph
-  const tmpF = path.join(os.tmpdir(), 'paradise-forge-dag.json');
+  const tmpF = path.join(os.tmpdir(), `paradise-forge-dag-${process.pid}.json`);
   fs.writeFileSync(tmpF, JSON.stringify(dag));
   const loaded = engineF.loadDag(tmpF);
   const v = engineF.validate(loaded);
@@ -3024,7 +3026,7 @@ test('critic: reform は三箇所を束ねて裁く — 散文だけを見て「
 test('critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)', () => {
   const artifactLesson = [{ id: 'require-discovery', label: '調査フェーズを飛ばすな',
     check: 'findings', artifact: 'findings.md', applies: null, kind: 'artifact' }];
-  const lf = path.join(os.tmpdir(), 'paradise-lesson-artifact.json');
+  const lf = path.join(os.tmpdir(), `paradise-lesson-artifact-${process.pid}.json`);
   fs.writeFileSync(lf, JSON.stringify(artifactLesson));
 
   // 本文に "findings" という英単語を1度も含まない、実在する調査成果物。
@@ -3437,14 +3439,23 @@ test('atlas: 同じ入力は同じ図を生む — 乱択は決定的である (
 
 test('atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)', () => {
   // 実物を描かせる。IR が作れることと、描画器が受理することは別である。
-  const outdir = path.join(os.tmpdir(), 'paradise-test-atlas');
-  for (const scale of ['quick', 'standard', 'full', 'reform', 'counsel']) {
-    const res = atlas.check({ scale, outdir });
-    const bad = res.rows.filter(r => !r.ok);
-    assert.deepStrictEqual(bad.map(r => `${scale}/${r.subject}: ${r.error || r.checks}`), [],
-      `${scale} の道で図が壊れた`);
-  }
-  fs.rmSync(outdir, { recursive: true, force: true });
+  //
+  // ⚠️ **作業場はプロセス固有でなければならない**(第21条(c) — prove 相の実測)。
+  // `atlas.check()` は冒頭で outdir を `rmSync` する。固定名を使うと、
+  // **二つのプロセスが同時に試験を走らせたとき片方の rmSync が
+  // もう片方の描いた html を消す** —— 図は何も壊れていないのに
+  // 「第一画面を測定できなかった (ENOENT ... hierarchy.html)」で門が落ちる。
+  // 隣の試験(「己の残骸で落ちない」)は**同じプロセスが二度走る**ことは守ったが、
+  // **二つのプロセスが同時に走る**ことは守っていなかった。同じ穴の別の口である。
+  const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-test-atlas-'));
+  try {
+    for (const scale of ['quick', 'standard', 'full', 'reform', 'counsel']) {
+      const res = atlas.check({ scale, outdir });
+      const bad = res.rows.filter(r => !r.ok);
+      assert.deepStrictEqual(bad.map(r => `${scale}/${r.subject}: ${r.error || r.checks}`), [],
+        `${scale} の道で図が壊れた`);
+    }
+  } finally { fs.rmSync(outdir, { recursive: true, force: true }); }
 });
 
 test('atlas: 交差を隠さない — 平面化不能なら standard を名乗り理由を書く (第47条)', () => {
@@ -3467,14 +3478,55 @@ test('atlas: 門は己の残骸で落ちない — 同じ作業場で二度走�
   // 実測: visual-check が図の隣に撒く PNG/JSON が残ったまま同じ outdir で
   // 描き直すと、描画器が output/input-alias で鳴いた。図は何も壊れていないのに
   // 門が落ちる — 二度目から不定に赤くなる門は、門ではなく罠である。
-  const outdir = path.join(os.tmpdir(), 'paradise-test-atlas-twice');
-  fs.rmSync(outdir, { recursive: true, force: true });
-  for (const pass of [1, 2]) {
-    const res = atlas.check({ scale: 'quick', outdir });
-    assert.deepStrictEqual(res.rows.filter(r => !r.ok).map(r => `${r.subject}: ${r.error || r.checks}`), [],
-      `${pass} 回目の走行で門が落ちた — 残骸が次の走行を汚している`);
+  //
+  // **作業場自体はプロセス固有にする**(第21条(c))。この試験が守るのは
+  // 「同じ作業場を二度使う」ことであって、「他プロセスと作業場を共有する」
+  // ことではない。共有は隔離で塞ぐ問題であり、engine の責務ではない。
+  const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-test-atlas-twice-'));
+  try {
+    for (const pass of [1, 2]) {
+      const res = atlas.check({ scale: 'quick', outdir });
+      assert.deepStrictEqual(res.rows.filter(r => !r.ok).map(r => `${r.subject}: ${r.error || r.checks}`), [],
+        `${pass} 回目の走行で門が落ちた — 残骸が次の走行を汚している`);
+    }
+  } finally { fs.rmSync(outdir, { recursive: true, force: true }); }
+});
+
+test('atlas: 門は他プロセスと作業場を共有しない — 並走で転ばない (第21条c)', () => {
+  // **同じ穴の別の口である。** 隣の試験は「同じプロセスが二度走る」ことを守ったが、
+  // **二つのプロセスが同時に走る**ことは守っていなかった。
+  //
+  // 実測(prove 相): 固定名 `os.tmpdir()/paradise-test-atlas` を二プロセスで共有して
+  // 5道を回すと、両方が赤になった:
+  //   [A] 🔴 counsel/wiring: 第一画面を測定できなかった (描画器の理由: ENOENT:
+  //          no such file or directory, open '...\paradise-test-atlas\wiring.html')
+  // `atlas.check()` は冒頭で outdir を `rmSync` する。5道を回せば5回消すので、
+  // **隣のプロセスが描いた html を消す窓が5回開く。**
+  // 図は何も壊れていない。**門が己の作業場の共有で転んでいる。**
+  //
+  // ⚠️ この試験は並走そのものを再現しない(6主題×5道×2プロセスで数分掛かり、
+  // 自己診断の中で回せば門が己の重さで腐る — 第34条)。代わりに
+  // **不変条件を撃つ**: atlas を撃つ試験の作業場は一つ残らずプロセス固有である。
+  // 固定名が一つでも戻れば、この門が即座に鳴る。
+  const src = fs.readFileSync(__filename, 'utf8');
+  const shared = [];
+  for (const m of src.matchAll(/const\s+outdir\s*=\s*path\.join\(os\.tmpdir\(\),\s*(['"`])([^'"`]*)\1/g)) {
+    // pid も乱数も混ざらない固定名 = 他プロセスと衝突する
+    if (!/\$\{|process\.pid|Math\.random|Date\.now/.test(m[2])) shared.push(m[2]);
   }
-  fs.rmSync(outdir, { recursive: true, force: true });
+  assert.deepStrictEqual(shared, [],
+    `atlas の作業場に固定名が残っている: ${shared.join(', ')}\n` +
+    `  fs.mkdtempSync(path.join(os.tmpdir(), '<prefix>-')) を使え —— ` +
+    `二つのプロセスが同時に走れば、片方の rmSync がもう片方の図を消す`);
+  // 実際に mkdtempSync で取った作業場は互いに違う住所を返す(隔離の実証)
+  const a = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-atlas-iso-'));
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-atlas-iso-'));
+  try {
+    assert.notStrictEqual(a, b, 'mkdtempSync が同じ住所を二度返した — 隔離になっていない');
+  } finally {
+    fs.rmSync(a, { recursive: true, force: true });
+    fs.rmSync(b, { recursive: true, force: true });
+  }
 });
 
 test('atlas: 自画像は生成物であり追跡されない (第29条)', () => {
@@ -4179,6 +4231,266 @@ test('atlas: 測定できなかったことを「溢れた」と呼ばない (�
     'conclave に scroll:true が宣言された — 実測は fits である。測らずに格下げすれば緑を買収したのと同じ');
   assert.notStrictEqual(atlasMod.SUBJECTS.dispatch.scroll, true,
     'dispatch に scroll:true が宣言された — 実測は fits である');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// prove 相 — 建造が「経路のみ・実鍛造は未実施」と自己申告した穴を撃つ
+//
+// **経路が通ることと、産まれた役者が全ての門を通ることは別である。**
+// 建造は `ordain verify` が7門を「呼ぶ」ことを撃ったが、**実際に役者を
+// 産ませて撃ってはいなかった**。本相が実際に産ませたところ、
+// `check-agents` の `misrouted` が2件鳴った —— 鍛造器は名を
+// `priests: [` の**直後**に挿していたので、産まれた役者がその枢機卿の
+// **筆頭神官**になり、`PHASE_LEAD` に無い全ての相の発令を横取りしていた
+// (`clergy.js:496` の `c.priests[0]` フォールバック)。
+//
+// **鍛造器が門を壊していた。** 経路の試験では決して見えない欠陥である。
+// ══════════════════════════════════════════════════════════════════════
+test('鍛造器が実際に産んだ役者は既存の発令を乗っ取らない (AC-D4 / AC-D7)', () => {
+  const OV = path.join(DIR, '..', 'overlay');
+  const files = {
+    clergy: path.join(DIR, '..', 'graph', 'clergy.js'),
+    domains: path.join(DIR, '..', 'graph', 'domains.json'),
+    overlay: path.join(OV, 'overlay.json'),
+  };
+  const backup = {};
+  for (const [k, f] of Object.entries(files)) backup[k] = fs.readFileSync(f, 'utf8');
+  const probe = 'video-producer-probe';
+  const md = path.join(OV, 'agents', probe + '.md');
+
+  // 乗っ取りを検出できる前提: 対象の枢機卿は既に神官を擁し、
+  // その神官が PHASE_LEAD 経由でなく筆頭として発令を受けている相が在る。
+  const before = require(path.join(DIR, '..', 'graph', 'check-agents.js'));
+  const cardinal = 'construction';
+  const priestsBefore = [...(clergyT.COLLEGE[cardinal].priests || [])];
+  assert.ok(priestsBefore.length >= 1, '前提が変わった');
+  assert.strictEqual(before.misroutedPhases().length, 0, '鍛造の前から misrouted が在る — 基線が汚れている');
+
+  try {
+    // **実際に産ませる。** dry-run ではない。
+    const r = ordainT.forge({ name: probe, domain: 'video', cardinal, rank: 'priest', write: true });
+    assert.strictEqual(r.ok, true, `鍛造が失敗した: ${(r.errors || []).join(' / ')}`);
+    assert.ok(fs.existsSync(md), '原本(overlay/agents)に定義が産まれていない');
+
+    // 台帳を読み直す(engine は require キャッシュを持つので落とす)
+    for (const f of Object.values(files)) delete require.cache[require.resolve(f)];
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'check-agents.js'))];
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'forge.js'))];
+    const ca = require(path.join(DIR, '..', 'graph', 'check-agents.js'));
+
+    // 🔴 **本件の核心** — 産まれた役者が筆頭に立てば、宣言と発令が食い違う
+    const mis = ca.misroutedPhases();
+    assert.strictEqual(mis.length, 0,
+      `鍛造した役者が既存の発令を横取りした: ${mis.map(m => `${m.phase}(宣言 ${m.declared} → 発令 ${m.dispatched})`).join(' / ')}\n` +
+      `  名を priests の先頭に挿せば、その者が枢機卿の筆頭になる (clergy.js の c.priests[0] フォールバック)`);
+
+    // 産まれた役者は末席に立つ。既存の並びは一つも動かない。
+    const cl = require(files.clergy);
+    const ps = cl.COLLEGE[cardinal].priests;
+    assert.strictEqual(ps[ps.length - 1], probe, '産まれた役者が末席に立っていない');
+    assert.deepStrictEqual(ps.slice(0, -1), priestsBefore,
+      '既存の神官の並びが動いた — 鍛造は役者を増やす行為であって、指揮系統を組み替える行為ではない');
+
+    // 分野の門は緑(宣言を持って産まれる)。実在の門は「未配備」を名指しする
+    // —— 配備器だけが実機に書く(第29条)ので、これは正しい赤である。
+    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'domains.js'))];
+    const dm = require(path.join(DIR, '..', 'graph', 'domains.js'));
+    assert.strictEqual(dm.check().ok, true, '産まれた役者が分野の門を鳴らした');
+
+    // frontmatter は位階の方針から生成される(方針違反が構造的に起きない)
+    const text = fs.readFileSync(md, 'utf8');
+    const want = clergyT.modelFor(probe, 'priest');
+    assert.ok(text.includes(`model: ${want.model}`), 'model が位階の方針から生成されていない');
+    // construction は信徒を擁するので、産まれた神官は起動の権能を要する
+    assert.ok(text.includes(clergyT.SPAWN_TOOL),
+      `信徒を擁する枢機卿の神官なのに ${clergyT.SPAWN_TOOL} が無い — apply-spawn verify が後で鳴る`);
+  } finally {
+    for (const [k, f] of Object.entries(files)) fs.writeFileSync(f, backup[k]);
+    fs.rmSync(md, { force: true });
+    for (const f of Object.values(files)) delete require.cache[require.resolve(f)];
+    for (const n of ['check-agents.js', 'forge.js', 'domains.js']) {
+      try { delete require.cache[require.resolve(path.join(DIR, '..', 'graph', n))]; } catch {}
+    }
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// prove 相 — atlas の門を**実際に壊して**鳴らす (design.md §8.4 の申し送り)
+//
+// 既存の試験は `atlas.js` の**ソースを読んで** kind の守りが在ることを撃つ。
+// **それは「門がそう書かれている」ことの証明であって、「門がそう鳴る」ことの
+// 証明ではない**(第5条: 主張は証拠ではない)。ゆえに実際に故障を注入する。
+// ══════════════════════════════════════════════════════════════════════
+test('atlas: 本当に溢れる図は OVERFLOW と画素数で鳴る (§8.4 #1)', () => {
+  const atlasMod = require(path.join(DIR, '..', 'graph', 'atlas.js'));
+  const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-of-'));
+  try {
+    // `dag` は実測 3312px 溢れており、巻物を宣言して緑になっている主題である。
+    // **宣言を外せば同じ図が赤になる** —— これが「本当に溢れる図」である。
+    const drawn = atlasMod.draw('dag', { outdir });
+    const fs2 = atlasMod.firstScreen(drawn.html);
+    if (fs2.kind === 'skipped') return;                 // Chrome 不在の環境では検めるものが無い
+    assert.strictEqual(fs2.kind, 'overflow', `dag が溢れていない — 前提が変わった (kind=${fs2.kind})`);
+    assert.ok(fs2.overflow > 0, '溢れたのに画素数が 0 — 数で裁いていない');
+
+    // 門が行に書く語と error を、宣言の有無で撃ち分ける(check() の分岐と同じ式)
+    const word = (scroll) => scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW';
+    const ok = (scroll) => fs2.ok || (fs2.kind === 'overflow' && scroll === true && !fs2.unreadable);
+    assert.strictEqual(ok(true), true, '巻物を宣言した溢れが赤 — 宣言が効いていない');
+    assert.strictEqual(ok(false), false, '宣言の無い溢れが緑 — 門が仕事をしていない');
+    assert.strictEqual(word(false), 'OVERFLOW', '溢れたのに OVERFLOW と言わない');
+    assert.ok(/\d+px/.test(fs2.reason), `溢れの理由が画素数を言わない: ${fs2.reason}`);
+  } finally { fs.rmSync(outdir, { recursive: true, force: true }); }
+});
+
+test('atlas: 描画器の実行時故障を「溢れた」と呼ばない — 実経路で撃つ (§8.4 #2)', () => {
+  // **本PRの回帰の本体である。** ソースの形ではなく、**子を起動して受け取った
+  // receipt で分類が下る**ことを撃つ。旧実装はこの4通りをすべて reason=`"fail"`
+  // に畳み、呼び手が溢れの文言を接ぎ木していた。
+  const atlasMod = require(path.join(DIR, '..', 'graph', 'atlas.js'));
+  const ARCHIFY = atlasMod.ARCHIFY;
+  const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-rt-'));
+  const original = fs.readFileSync(ARCHIFY);
+  try {
+    const html = atlasMod.draw('run', { outdir }).html;
+    const stub = (body) => fs.writeFileSync(ARCHIFY,
+      `process.stdout.write(${JSON.stringify(JSON.stringify(body))}); process.exit(1);\n`);
+
+    // 測定不能の3通り — どれも `inconclusive` であり、溢れではない
+    const inconclusive = {
+      '実行時故障': { status: 'fail', diagnostics: [{ code: 'viewer/visual-check-runtime', message: 'CDP timed out' }] },
+      '診断ゼロの非ゼロ終了': { status: 'fail', diagnostics: [] },
+    };
+    for (const [what, receipt] of Object.entries(inconclusive)) {
+      stub(receipt);
+      const r = atlasMod.firstScreen(html, { retry: false });
+      assert.strictEqual(r.kind, 'inconclusive', `${what} が inconclusive でない: ${r.kind}`);
+      assert.ok(/測定できなかった/.test(r.reason), `${what} が測定不能と言っていない: ${r.reason}`);
+      assert.ok(!/巻物/.test(r.reason), `${what} に「巻物と宣言せよ」と教えている — 嘘の直し方である`);
+      assert.strictEqual(r.overflow, 0, `${what} が溢れの画素数を騙っている: ${r.overflow}`);
+      // **巻物の許しは測定不能に効かない** —— 見なかったものを収まったと言わない
+      assert.strictEqual(r.ok || (r.kind === 'overflow'), false,
+        `${what} が巻物で免除されうる形になっている (第16条)`);
+    }
+    // JSON が壊れていても溢れと呼ばない
+    fs.writeFileSync(ARCHIFY, `process.stdout.write('not json <<<'); process.exit(1);\n`);
+    assert.strictEqual(atlasMod.firstScreen(html, { retry: false }).kind, 'inconclusive',
+      '解せない出力を溢れと呼んだ');
+
+    // 対照: 本当の溢れ / 読めない字 は別の kind に落ちる(分類が畳まれていない)
+    stub({ status: 'fail', diagnostics: [{ code: 'viewer/viewport-overflow', evidence: { scrollHeight: 2600 } }] });
+    const ov = atlasMod.firstScreen(html, { retry: false });
+    assert.strictEqual(ov.kind, 'overflow');
+    assert.strictEqual(ov.overflow, 2600, '溢れの画素数が receipt から来ていない');
+    stub({ status: 'fail', diagnostics: [{ code: 'viewer/projected-text-readability',
+      evidence: { minimumProjectedNodeTextPx: 5.57, minimumRequiredNodeTextPx: 6 } }] });
+    assert.strictEqual(atlasMod.firstScreen(html, { retry: false }).kind, 'unreadable');
+    // harness 不在は責めない
+    fs.writeFileSync(ARCHIFY, `process.stdout.write(${JSON.stringify(JSON.stringify(
+      { status: 'fail', diagnostics: [{ code: 'viewer/chrome-unavailable' }] }))}); process.exit(2);\n`);
+    const sk = atlasMod.firstScreen(html, { retry: false });
+    assert.strictEqual(sk.kind, 'skipped');
+    assert.strictEqual(sk.ok, true, '存在しない Chrome を責めている');
+
+    // 間欠故障は再試行で回復する。だが**回復しなければ赤のまま**(第16条 / 第34条)
+    const flag = path.join(outdir, 'flag');
+    fs.writeFileSync(ARCHIFY, [
+      `import fs from 'node:fs';`,
+      `const f = ${JSON.stringify(flag)};`,
+      `let n = 0; try { n = Number(fs.readFileSync(f,'utf8')) || 0; } catch {}`,
+      `fs.writeFileSync(f, String(n + 1));`,
+      `if (n === 0) { process.stdout.write(${JSON.stringify(JSON.stringify(
+        { status: 'fail', diagnostics: [{ code: 'viewer/visual-check-runtime', message: 'flaky' }] }))}); process.exit(1); }`,
+      `process.stdout.write(${JSON.stringify(JSON.stringify({ status: 'pass', diagnostics: [] }))}); process.exit(0);`,
+    ].join('\n'));
+    assert.strictEqual(atlasMod.firstScreen(html).kind, 'fits',
+      '一度きりの故障で赤にしている — 不定に落ちる門はやがて誰も見なくなる (第34条)');
+    stub(inconclusive['実行時故障']);
+    const stubborn = atlasMod.firstScreen(html);
+    assert.strictEqual(stubborn.kind, 'inconclusive');
+    assert.strictEqual(stubborn.ok, false, '再試行しても駄目なのに緑 — 判定不能は緑ではない (第16条)');
+    assert.strictEqual(stubborn.retried, true, '再試行した証跡が無い');
+  } finally {
+    fs.writeFileSync(ARCHIFY, original);
+    fs.rmSync(outdir, { recursive: true, force: true });
+  }
+});
+
+test('第52条: 序列3の例外は**実測経路**で通る — 合成した数ではなく (AC-A5 / 完了条件⑦)', () => {
+  // 既存の試験は `judge()` に `measured` を渡して判定表を撃つ。
+  // **それは判定の証明であって、測る器の証明ではない。**
+  // ここでは清浄な作業場に本物の手仕事を行い、`measure()` に測らせて
+  // `markDone` を通す —— 神が許した例外が本当に通ることの証明である。
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'tier3-sand-'));
+  const git = (...a) => execFileSync('git', a, { cwd: sand, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    git('init', '-q');
+    git('config', 'user.email', 'prove@paradise.local');
+    git('config', 'user.name', 'prove');
+    fs.writeFileSync(path.join(sand, 'seed.txt'), 'seed\n');
+    git('add', '-A'); git('commit', '-q', '-m', 'seed');
+    assert.strictEqual(execFileSync('git', ['status', '--porcelain'], { cwd: sand, encoding: 'utf8' }), '',
+      '作業場が清浄でない — 実測が他の相の残骸を拾う');
+
+    const run = epochRun('quick');
+    const p = [].concat(...run.domains.map(d => d.phases)).find(x => !x.gate);
+    conclaveT.markRunning(run, [p.id]);
+    // 単純かつ文脈の小さい手仕事: 1ファイル / 数行 / 4KiB 未満
+    const art = path.join(sand, 'note.md');
+    fs.writeFileSync(art, '# 単純な手仕事\n\n一行直した。\n');
+
+    const m = spawnTrace.measure(run, p.id, { cwd: sand, artifact: art });
+    assert.strictEqual(m.measurable, true, '測れなかった — 測れないものを閾値内と報告してはならない (第16条)');
+    assert.ok(m.files <= spawnTrace.TIERS.t3.files, `files=${m.files} が閾値を超えた — 前提が変わった`);
+    assert.ok(m.churn <= spawnTrace.TIERS.t3.churn, `churn=${m.churn} が閾値を超えた`);
+    assert.ok(m.bytes > 0 && m.bytes <= spawnTrace.TIERS.t3.bytes, `bytes=${m.bytes} が閾値外`);
+
+    // **合成 measured を渡さない。** markDone が自分で測る。
+    const v = conclaveT.markDone(run, p.id, art, { tier: 3, cwd: sand });
+    assert.strictEqual(v.state, '序列3', '神が許した例外が通らない — 神託の訂正に反する門である');
+    assert.strictEqual(p.status, 'done');
+    const line = v.lines.join(' ');
+    for (const frag of [`files=${m.files}/${spawnTrace.TIERS.t3.files}`,
+                        `churn=${m.churn}/${spawnTrace.TIERS.t3.churn}`,
+                        `bytes=${m.bytes}/${spawnTrace.TIERS.t3.bytes}`]) {
+      assert.ok(line.includes(frag), `実測と閾値の両方を出していない: ${frag}`);
+    }
+    // 器も同じ判定を下す
+    const rp = path.join(sand, 'run.json');
+    fs.writeFileSync(rp, JSON.stringify(run));
+    let code = 0;
+    try { execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'spawn-trace.js'), 'tier', rp], { encoding: 'utf8' }); }
+    catch (e) { code = e.status; }
+    assert.strictEqual(code, 0, '環が通した序列3を器が赤にした — 環と器が割れている');
+
+    // 対照: **同じ実測経路で**大きい手仕事なら赤。台帳も書き換わらない
+    const run2 = epochRun('quick');
+    const q = [].concat(...run2.domains.map(d => d.phases)).find(x => !x.gate);
+    conclaveT.markRunning(run2, [q.id]);
+    for (let i = 0; i < 5; i++) fs.writeFileSync(path.join(sand, `big${i}.txt`), 'x\n'.repeat(200));
+    assert.throws(() => conclaveT.markDone(run2, q.id, path.join(sand, 'big0.txt'), { tier: 3, cwd: sand }),
+      /序列3の枠を超えた/, '大きい手仕事が実測経路をすり抜けた — 測る器が仕事をしていない');
+    assert.strictEqual(q.status, 'running', '拒んだのに status が動いた');
+    assert.ok(!run2.tierTrace || !run2.tierTrace[q.id], '拒んだのに tierTrace を刻んでいる');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('第52条: 序列3の閾値は「以下」である — 境界ちょうどは通り、1つ超えれば鳴る', () => {
+  // **境界は門の最も嘘をつきやすい場所である。** 神が許した例外の縁を固定する。
+  const run = { epoch: { tier: 'v1' }, domains: [{ phases: [{ id: 'b', agent: 'architect', gate: false }] }], history: [] };
+  const T = spawnTrace.TIERS.t3;
+  const at = (m) => spawnTrace.judge(run, 'b', { tier: 3, measured: m });
+  assert.strictEqual(at({ files: T.files, churn: T.churn, bytes: T.bytes }).ok, true,
+    '境界ちょうどが赤 — 閾値が「未満」になっている。神が許した縁を狭めてはならない');
+  for (const [what, m] of Object.entries({
+    files: { files: T.files + 1, churn: 0, bytes: 0 },
+    churn: { files: 0, churn: T.churn + 1, bytes: 0 },
+    bytes: { files: 0, churn: 0, bytes: T.bytes + 1 },
+  })) {
+    const r = at(m);
+    assert.strictEqual(r.ok, false, `${what} が1つ超えたのに緑 — 門が仕事をしていない`);
+    assert.ok(r.lines.join(' ').includes(`${what}=`), `${what} の超過を名指ししていない`);
+  }
 });
 
 test('CI の序列の門は実在の走行を見る (第42条)', () => {

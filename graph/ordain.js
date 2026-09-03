@@ -100,16 +100,25 @@ function validate(req) {
 /**
  * agent 定義の本文。**model / effort は `clergy.modelFor` から生成する** —
  * 方針から生成された値が方針に反することはない(AC-D4 #2 の保証)。
- * `believers` を与えるときだけ起動の権能(Task = clergy.SPAWN_TOOL)を持たせる。
+ *
+ * ⚠️ **起動の権能は枢機卿の編成が決める**(prove 相の実鍛造が名指しした欠陥):
+ * `apply-spawn.needsSpawn()` は「**信徒を擁する枢機卿の神官**」全員に
+ * `Task` を要求する —— `--believers` を渡したかではない。ゆえに旧実装は
+ * 信徒を持つ枢機卿へ鍛造したとき `Task` を欠いた定義を産み、
+ * `apply-spawn` の transform が配備時に黙って足す形になっていた。
+ * **原本と実機が食い違う定義を産むのは、原本主義(第29条)の反対である。**
+ * 所属先が信徒を擁するなら、鍛造の時点で権能を持たせる。
  */
 function renderAgent(req, rank) {
   const m = clergy.modelFor(req.name, rank);
   const led = domains.load();
   const dom = led.domains[req.domain];
-  const tools = req.believers && req.believers.length
+  const col = clergy.COLLEGE[req.cardinal];
+  // 信徒を擁する枢機卿の神官は、信徒を発令する。権能は編成から導く。
+  const spawns = (req.believers && req.believers.length) || (col && (col.believers || []).length);
+  const tools = spawns
     ? `Read, Grep, Glob, Write, Edit, Bash, ${clergy.SPAWN_TOOL}`
     : 'Read, Grep, Glob, Write, Edit, Bash';
-  const col = clergy.COLLEGE[req.cardinal];
   const desc = req.description ||
     `${dom.ja} を担う${clergy.RANKS[rank].title.split(' ')[1] || rank}。枢機卿 ${col.domain} の麾下で ${dom.ja} の仕事を受け持つ。`;
   return [
@@ -191,8 +200,22 @@ function writeOverlayOwn(name) {
 /**
  * `COLLEGE` はリテラル定数である。動的登録の口は無い。
  *
- * **安全策**: 挿入は `priests: [` の直後という**一点のみ**。整形も並べ替えもしない。
+ * **安全策**: 挿入は `priests: [...]` の**末尾**という一点のみ。整形も並べ替えもしない。
  * 書いた後に再読込して構文が壊れていないことを確かめ、壊れていれば書き戻す。
+ *
+ * ⚠️ **末尾でなければならない理由**(prove 相が実鍛造して発見した欠陥):
+ * `clergy.marshalPlan()` は `PHASE_LEAD[phaseId]` に宣言の無い相を
+ * **`c.priests[0]` すなわち筆頭神官**へ落とす。ゆえに名を配列の**先頭**へ
+ * 挿すと、産まれたばかりの役者がその枢機卿の筆頭に立ち、
+ * `PHASE_LEAD` を持たない全ての相の発令を横取りする。
+ *
+ * 実測(prove 相): `construction` へ 1名鍛造しただけで
+ *   🔴 misrouted: build    (quick) 宣言 architect → 発令 <新役者>
+ *   🔴 misrouted: build-ui (full)  宣言 architect → 発令 <新役者>
+ * が鳴った。**鍛造器が門を壊していた。** 経路だけを撃つ試験では見えない。
+ *
+ * 末席に加えれば筆頭は動かず、指揮系統は組み替わらない。
+ * **鍛造は役者を増やす行為であって、序列を入れ替える行為ではない。**
  *
  * ⚠️ **正直な注記**: JS のリテラルを engine が書き換えるのは脆い。より堅いのは
  * `COLLEGE` を JSON へ外出しすることだが、それは `clergy.js` を読む全ての門
@@ -201,18 +224,22 @@ function writeOverlayOwn(name) {
  */
 function writeCollege(cardinal, name) {
   const before = fs.readFileSync(CLERGY_JS, 'utf8');
-  const key = new RegExp(`(['"]?${cardinal}['"]?\\s*:\\s*\\{[\\s\\S]*?priests:\\s*\\[)`);
+  // priests 配列を丸ごと捕らえる — 先頭ではなく**末尾**に加えるため中身が要る。
+  const key = new RegExp(`(['"]?${cardinal}['"]?\\s*:\\s*\\{[\\s\\S]*?priests:\\s*\\[)([^\\]]*)(\\])`);
   const m = before.match(key);
   if (!m) throw new Error(`clergy.js の COLLEGE["${cardinal}"].priests を見つけられない — 手で足せ`);
-  if (new RegExp(`priests:[^\\]]*['"]${name}['"]`).test(before.slice(before.indexOf(m[0])))) return false;
-  const after = before.replace(key, `$1'${name}', `);
+  if (new RegExp(`['"]${name}['"]`).test(m[2])) return false;
+  const body = m[2].trim();
+  // 末席に加える。既存の並びには一切触れない —— 筆頭が動けば発令先が変わる。
+  const next = body ? `${m[2].replace(/\s*$/, '')}, '${name}'` : `'${name}'`;
+  const after = before.replace(key, `$1${next}$3`);
   fs.writeFileSync(CLERGY_JS, after);
   try {
     delete require.cache[require.resolve(CLERGY_JS)];
     const reloaded = require(CLERGY_JS);
-    if (!reloaded.COLLEGE[cardinal] || !(reloaded.COLLEGE[cardinal].priests || []).includes(name)) {
-      throw new Error('再読込しても名が載っていない');
-    }
+    const ps = (reloaded.COLLEGE[cardinal] || {}).priests || [];
+    if (!ps.includes(name)) throw new Error('再読込しても名が載っていない');
+    if (ps[ps.length - 1] !== name) throw new Error('末席に加わっていない — 筆頭が入れ替われば発令が変わる');
   } catch (e) {
     fs.writeFileSync(CLERGY_JS, before);          // 壊したなら書き戻す
     throw new Error(`clergy.js の書き換えが壊れた — 書き戻した: ${e.message}`);
