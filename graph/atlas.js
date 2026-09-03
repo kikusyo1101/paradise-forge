@@ -1196,14 +1196,33 @@ function archify(args) {
  * 静的な 9/9 は「図として正しい」ことしか言わない。**画面に収まるかは
  * 実際に開いてみないと分からない** — 実測すると 5つの主題のうち3つが
  * 溢れていた(1301px / 2693px / 923px)。ゆえに門は目でなく数で裁く。
+ *
+ * ⚠️ **不合格には種類が在る。種類を畳めば門が嘘をつく。**
+ *
+ * 実測(reform/pontiff-office design §8): 溢れ診断も可読性診断も無い不合格の
+ * とき、旧実装の `reason` は receipt の `status` すなわち文字列 `"fail"` に
+ * 落ち、呼び手はそれに**溢れの文言を接ぎ木していた**。結果、記録された赤は
+ * `fail — 図は第一画面に収まってこそ図である。巻物でよいなら scroll:true と
+ * 宣言せよ` の形になる。図は 1px も溢れていないのに、**門は溢れたと報告し、
+ * かつ誤った直し方(巻物の宣言)まで教える。** 第34条が言う「罠」の最悪の形である。
+ *
+ * ゆえに診断コードで分類し、呼び手が意味を取り違えられない `kind` を返す:
+ *   'fits'         … exit 0
+ *   'overflow'     … viewer/viewport-overflow      (scroll:true で免除しうる)
+ *   'unreadable'   … viewer/projected-text-readability (第48条e: 決して免除しない)
+ *   'skipped'      … viewer/chrome-unavailable (exit 2)。harness 不在を責めない
+ *   'inconclusive' … viewer/visual-check-runtime / JSON 不可解 / 診断ゼロの非ゼロ終了
+ *                    **測定不能である。溢れではない。判定不能は緑でもない(第16条)。**
  */
-function firstScreen(htmlPath) {
+const FIRST_SCREEN_KINDS = Object.freeze(['fits', 'overflow', 'unreadable', 'skipped', 'inconclusive']);
+
+function firstScreenOnce(htmlPath) {
   try {
     const raw = execFileSync(process.execPath, [ARCHIFY, 'visual-check', htmlPath, '--json'], {
       cwd: path.dirname(path.dirname(ARCHIFY)), encoding: 'utf8',
       env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1' },
     });
-    return { ok: true, receipt: JSON.parse(raw) };
+    return { ok: true, kind: 'fits', overflow: 0, unreadable: 0, receipt: JSON.parse(raw) };
   } catch (e) {
     let r = null; try { r = JSON.parse(String(e.stdout)); } catch {}
     const ds = (r && r.diagnostics) || [];
@@ -1220,12 +1239,46 @@ function firstScreen(htmlPath) {
      */
     const unreadable = ds.filter(d => d.code === 'viewer/projected-text-readability');
     const px = unreadable.reduce((a, d) => Math.min(a, (d.evidence || {}).minimumProjectedNodeTextPx || 99), 99);
-    return { ok: false, overflow: worst, receipt: r, unreadable: unreadable.length ? px : 0,
-             reason: unreadable.length
-               ? `実ブラウザで字が読めない (最小 ${px.toFixed(2)}px / 床 ${(unreadable[0].evidence || {}).minimumRequiredNodeTextPx || 6}px) — 箱を広げるのではなく文言を短くするか、流れの向きを変えよ`
-               : over.length ? `第一画面に収まらない (最大 ${worst}px)` : (r && r.status) || String(e.message).slice(0, 200) };
+    // Chrome が居ない環境(CI)で「図が溢れた」と言えば、それは check-agents /
+    // deploy check が既に採っている「harness 不在なら検めるものが無い」の
+    // 流儀に反する。**存在しないものを責めない。**
+    if (ds.some(d => d.code === 'viewer/chrome-unavailable') || e.status === 2) {
+      return { ok: true, kind: 'skipped', overflow: 0, unreadable: 0, receipt: r,
+               reason: '描画器の Chrome が不在 — 検めるものが無い(ARCHIFY_CHROME を指せば測る)' };
+    }
+    if (unreadable.length) {
+      return { ok: false, kind: 'unreadable', overflow: worst, unreadable: px, receipt: r,
+        reason: `実ブラウザで字が読めない (最小 ${px.toFixed(2)}px / 床 ${(unreadable[0].evidence || {}).minimumRequiredNodeTextPx || 6}px) — 箱を広げるのではなく文言を短くするか、流れの向きを変えよ` };
+    }
+    if (over.length) {
+      return { ok: false, kind: 'overflow', overflow: worst, unreadable: 0, receipt: r,
+        reason: `第一画面に収まらない (最大 ${worst}px)` };
+    }
+    // 溢れでも可読性でもない不合格 = **測れなかった**。溢れと呼んではならない。
+    const why = (r && (r.error || (ds[0] && ds[0].message))) || String(e.message).slice(0, 200);
+    return { ok: false, kind: 'inconclusive', overflow: 0, unreadable: 0, receipt: r,
+      reason: `第一画面を測定できなかった (描画器の理由: ${String(why).slice(0, 200)})` };
   }
 }
+
+/**
+ * 測定不能は**一度だけ**再試行する。
+ *
+ * 描画器は主題ごとに Chrome を起動し CDP を 15,000ms の制限で叩く。
+ * 自己診断は 30回それを繰り返すので、負荷の高い瞬間に制限へ届きうる。
+ * 間欠故障を一発で赤にすれば CI は不定に落ち、やがて誰も見なくなる(第34条)。
+ * **だが再試行しても駄目なら赤にする — 判定不能は緑ではない(第16条)。**
+ */
+function firstScreen(htmlPath, opts = {}) {
+  let r = firstScreenOnce(htmlPath);
+  if (r.kind === 'inconclusive' && opts.retry !== false) {
+    const again = firstScreenOnce(htmlPath);
+    if (again.kind !== 'inconclusive') return again;
+    return { ...again, retried: true };
+  }
+  return r;
+}
+
 
 function draw(subject, opts = {}) {
   const spec = SUBJECTS[subject];
@@ -1311,9 +1364,12 @@ function check(opts = {}) {
       const warnOk = v.warnings === 0 || impossible;
       const profileOk = r.profile === 'showcase' ? !impossible : impossible;
       // 実ブラウザで第一画面に収まるか。巻物と宣言した主題だけ免除する。
-      const fs2 = opts.skipBrowser ? { ok: true } : firstScreen(r.html);
+      const fs2 = opts.skipBrowser ? { ok: true, kind: 'skipped', overflow: 0, unreadable: 0 } : firstScreen(r.html);
       // 巻物の宣言は「長い」ことだけを許す。読めないことは決して許さない。
-      const scrollOk = fs2.ok || (SUBJECTS[subject].scroll === true && !fs2.unreadable);
+      // **測定不能も許さない** — 測らなかったものに巻物の許しを与えれば、
+      // 門は「見なかった」を「収まっていた」と言い換えることになる(第16条)。
+      const scrollOk = fs2.ok ||
+        (fs2.kind === 'overflow' && SUBJECTS[subject].scroll === true && !fs2.unreadable);
       // 動きは名乗らねば宿らない (第50条)。図として正しくとも、静止画なら
       // Live も Signal Flow も Play story も全て死んでいる。
       const mo = opts.skipBrowser ? { ok: true } : motionAlive(r.html);
@@ -1321,10 +1377,22 @@ function check(opts = {}) {
         subject, type: r.type, profile: r.profile, minCrossings: r.minCrossings,
         ok: errorsOk && warnOk && profileOk && scrollOk && mo.ok,
         checks: `${v.checksPassed}/${v.checkCount}`, errors: v.errors, warnings: v.warnings,
-        screen: fs2.ok ? 'fits' : (fs2.unreadable ? `字 ${fs2.unreadable.toFixed(1)}px` : (SUBJECTS[subject].scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW')),
+        screenKind: fs2.kind,
+        // 語は kind から出す。**`OVERFLOW` は本当に溢れたときにだけ現れる語である。**
+        screen: fs2.kind === 'fits' ? 'fits'
+              : fs2.kind === 'skipped' ? 'skipped'
+              : fs2.kind === 'unreadable' ? `字 ${fs2.unreadable.toFixed(1)}px`
+              : fs2.kind === 'inconclusive' ? '測定不能'
+              : (SUBJECTS[subject].scroll ? `scroll(${fs2.overflow}px)` : 'OVERFLOW'),
         motion: mo.ok ? `動 ${(mo.before && mo.before.animatedEls) || 0}` : '静止',
         bytes: (r.receipt.artifact || {}).bytes,
-        ...(!scrollOk ? { error: `${fs2.reason} — 図は第一画面に収まってこそ図である。巻物でよいなら SUBJECTS に scroll:true と宣言せよ (第47条c)` } : {}),
+        // **溢れの文言は kind==='overflow' のときだけ出す。**
+        // 測定不能に「巻物と宣言せよ」と言えば、門は嘘の直し方まで教える。
+        ...(!scrollOk && fs2.kind === 'overflow'
+          ? { error: `${fs2.reason} — 図は第一画面に収まってこそ図である。巻物でよいなら SUBJECTS に scroll:true と宣言せよ (第47条c)` } : {}),
+        ...(!scrollOk && fs2.kind === 'unreadable' ? { error: fs2.reason } : {}),
+        ...(!scrollOk && fs2.kind === 'inconclusive'
+          ? { error: `${fs2.reason} — 測れなかったことは「溢れた」ことではない。描画器を直せ(第16条 / 第42条)` } : {}),
         ...(errorsOk && !profileOk ? { error: impossible
           ? '平面化不能なのに showcase を名乗っている — 交差を隠している'
           : 'showcase を満たせる図が standard を名乗っている — 格下げの根拠が無い' } : {}),
@@ -1397,4 +1465,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, ARCHIFY };
+module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, ARCHIFY, firstScreen, FIRST_SCREEN_KINDS };
