@@ -228,6 +228,17 @@ jobs:
             console.log('spawn trace gate fires correctly on all three states');
           "
 
+      - name: 👁 Tier audit — 序列の門が実在の走行を見る (第42条 / 第52条)
+        # 走査対象は実在する conclave.json（合成した run ではない）。
+        # 合成 run しか見ない門は健全な系しか見ない — 故障注入の段(上)と対になる。
+        # 既存の走行は紀元の印を持たないので黄に落ち、CI は落ちない。
+        # 落ちるのは紀元以後の違反だけである。
+        run: node graph/spawn-trace.js audit
+
+      - name: 🎭 Domains — 役者は担える分野を宣言しているか (第52条)
+        # 実在(check-agents)と適合(domains)は別の問いである。
+        run: node graph/domains.js check
+
   tribunal:
     name: ⚖️ 執行官の裁定 (independent judgment)
     runs-on: ubuntu-latest
@@ -244,17 +255,42 @@ jobs:
 
       - name: 執行官を召喚 — critic による敵対的自己批評
         id: critic
+        # ⚠️ **`|| true` を外した** (reflect C-2 / 教主が rework2 で是正)。
+        #
+        # 実測(reflect, 2026-09-03): この段は `|| true` により
+        #   正常73件→緑 / 壊れJSON 0件→緑 / 不在 0件→緑 / 空配列 0件→緑
+        # **何を食わせても緑**だった。81行上(:181)に教主自身が
+        # 「`|| true` を付けるな — 付けた瞬間 critic が何を言おうと CI は緑になる」
+        # と書いた戒めが、この段で破られていた。
+        #
+        # ── 三段それぞれの扱い ────────────────────────────────
+        # 1. `lessons.js export` … **`|| true` を外す。**
+        #    CI に KG は無いので export は 0 件を書き、**版管理下の 72 件を消す**。
+        #    engine 側で「0 件で非空を上書きするなら exit 1」を建てた(lessons.js)。
+        #    ゆえにこの段は CI で必ず鳴る —— **鳴るのが正しい。**
+        #    だから **CI では export を撃たない**。版管理下の lessons.json を
+        #    そのまま使う。生成物の中身は前提にしない(第29条)が、
+        #    「存在すること」は前提にしてよい —— 追跡下のファイルだからである。
+        # 2. `critic review --lessons` … **`|| true` を外す。**
+        #    critic は教訓 0 件/読めない帳を `INCONCLUSIVE` として exit 1 にする。
+        #    「教訓を撃たずに何も見つからなかった」を緑にしない(第37条)。
+        # 3. `workspace check` … 下の段で扱う。
         run: |
-          node graph/lessons.js export --out graph/lessons.json || true
           echo "### 🔍 Reflect — 楽園エンジンの自己批評" > verdict.md
           echo '```' >> verdict.md
-          node graph/critic.js review graph --self --lessons graph/lessons.json >> verdict.md 2>&1 || true
+          # 版管理下の教訓帳で撃つ。CI で export し直せば 0 件になり、
+          # 「教訓を撃たない断罪」になる —— それは門の形をした飾りである。
+          test -s graph/lessons.json || { echo "::error::graph/lessons.json が無い/空 — 断罪の門が教訓を一つも撃てない"; exit 1; }
+          node graph/critic.js review graph --self --lessons graph/lessons.json >> verdict.md 2>&1
           echo '```' >> verdict.md
           # 創造物はもはや楽園に住まない(第30条)。CI が検めるのは engine のみ。
           # 創造物の批評は paradise-creations 側で行う。
           echo "### 🏛️ Workspace — 創造物の分離 (第30条)" >> verdict.md
           echo '```' >> verdict.md
-          node graph/workspace.js check >> verdict.md 2>&1 || true
+          # ⚠️ `|| true` を外した。`workspace.js check` は verify job の
+          # 「🏛️ Workspace」段でも撃たれており、**そこで既に赤になる門である**。
+          # ここで緑に潰せば、同じ門が二つの job で違う答えを出す(第27条: 環と器が割れる)。
+          node graph/workspace.js check >> verdict.md 2>&1
           echo '```' >> verdict.md
 
       - name: 裁定を下す — SHIP / REWORK / BLOCK

@@ -111,7 +111,8 @@ function checkPayload(raw, opts = {}) {
 }
 
 function main() {
-  const [cmd] = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+  const [cmd] = argv;
   if (cmd === 'schema') {
     console.log(JSON.stringify({
       phase: '<phase id>', status: 'done|failed|blocked',
@@ -122,15 +123,30 @@ function main() {
     return;
   }
   if (cmd === 'check') {
+    /**
+     * `--run <run.json>` を渡すと、成果物の実在だけでなく**起動の証跡**も検める。
+     *
+     * この経路(`opts.run` → `file-but-unspawned`)は既に実装されていた。
+     * **CLI に口が無かっただけである** —— 器は正しく、環が呼んでいなかった。
+     * `--run` を渡さない従来の呼び方は **exit code も出力も一切変えない。**
+     */
+    const ri = argv.indexOf('--run');
+    let run = null;
+    if (ri > -1) {
+      const rp = argv[ri + 1];
+      if (!rp) { console.error('--run needs a path'); process.exit(2); }
+      try { run = JSON.parse(fs.readFileSync(rp, 'utf8')); }
+      catch (e) { console.error(`run-state が読めない: ${rp} — ${e.message}`); process.exit(2); }
+    }
     // read a JSON result from stdin, validate + reconcile (fail-closed on garbage)
     let d = ''; process.stdin.on('data', c => d += c); process.stdin.on('end', () => {
-      const rec = checkPayload(d);
+      const rec = checkPayload(d, run ? { run } : {});
       console.log(JSON.stringify(rec, null, 2));
       process.exit(rec.accepted ? 0 : 1);
     });
     return;
   }
-  console.error('commands: schema | check (result JSON on stdin)');
+  console.error('commands: schema | check [--run <run.json>] (result JSON on stdin)');
   process.exit(2);
 }
 if (require.main === module) main();

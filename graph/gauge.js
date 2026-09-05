@@ -37,8 +37,13 @@
 const fs = require('fs');
 const path = require('path');
 const workspace = require('./workspace.js');
+/**
+ * 序列の集計は **spawn-trace が唯一の出所**である (第41条 / 第52条)。
+ * gauge が自分で `tierTrace` を数え直せば、五値の定義が二箇所に住む。
+ */
+const trace = require('./spawn-trace.js');
 
-const WEIGHTS = { rework: 10, retryOverhead: 5, loopGuard: 15, incomplete: 20 };
+const WEIGHTS = { rework: 10, retryOverhead: 5, loopGuard: 15, incomplete: 20, tierBreach: 10 };
 const LEDGER_NAME = 'gauge-ledger.jsonl';
 
 function ledgerPath() {
@@ -97,11 +102,53 @@ function score(run) {
   if (history.length) { ts0 = Date.parse(history[0].ts); ts1 = Date.parse(history[history.length - 1].ts); }
   const durationMs = (ts0 != null && ts1 != null && !isNaN(ts0) && !isNaN(ts1)) ? ts1 - ts0 : null;
 
+  /**
+   * ── 序列の指標 (第52条 / H) ─────────────────────────────────────
+   *
+   * 「誰が働いたか」はこれまでどの項にも入らなかった。神託が述べた
+   * 「教主の工数が圧倒的に多い」は、**`tier3Ratio` が下がることでしか反証できない**(第38条)。
+   *
+   * **既存9鍵は名も値も一切変えない。足すだけである。** 集計は自前で書かず
+   * `spawn-trace` の四値をそのまま読む —— 定義が二箇所に住めば必ず食い違う。
+   */
+  const tt = (run && run.tierTrace) || {};
+  const marked = phases.filter(p => tt[p.id]);
+  /**
+   * 序列の式を掛けるか (reflect C-3)。
+   *
+   * ⚠️ 旧実装は `trace.hasEpoch(run)` を読んだ —— **印を消せば式が全部飛ぶ。**
+   * 「印なし = legacy = 罰しない」は、印を消しただけの走行にも同じ恩赦を与えた。
+   * `epochStatus` は 'legacy'(機構が無かった時代)と 'stripped'(紀元以後なのに印が無い)を
+   * 分ける。**stripped には式を掛ける** —— 恩赦は移行のためであって回避のためではない。
+   */
+  const underEra = (r) => trace.epochStatus(r) !== 'legacy';
+  const declaredIs = (n) => marked.filter(p => tt[p.id].declared === n && tt[p.id].state !== 'unobservable').length;
+  const tier1 = declaredIs(1), tier2 = declaredIs(2);
+  const tier3 = marked.filter(p => trace.isTier3State(tt[p.id].state)).length;
+  const unobservable = underEra(run)
+    ? marked.filter(p => tt[p.id].state === 'unobservable').length
+    // 印を持たない run は全相が観測不能である。**tier1 とは別の鍵で数える**(AC-H1)。
+    : phases.length;
+  const noTier = underEra(run)
+    ? phases.filter(p => p.status === 'done' && (!tt[p.id] || tt[p.id].declared == null) && (!tt[p.id] || tt[p.id].state !== 'unobservable')).length
+    : 0;
+  // 序列1/2 を名乗りながら証跡の無い相 (門を素通りした legacy 台帳では立たない)
+  const tier12Unproven = underEra(run)
+    ? marked.filter(p => [1, 2].includes(tt[p.id].declared) && ['no-trace', 'asserted-only'].includes(tt[p.id].state)).length
+    : 0;
+  const tier3Ratio = phases.length ? +(tier3 / phases.length).toFixed(3) : 0;
+
   const raw = 100
     - WEIGHTS.rework * reworkCount
     - WEIGHTS.retryOverhead * retryOverhead
     - WEIGHTS.loopGuard * loopGuardTrips
-    - WEIGHTS.incomplete * (complete ? 0 : 1);
+    - WEIGHTS.incomplete * (complete ? 0 : 1)
+    /**
+     * **式は legacy に掛けない** (AC-H3)。過去の台帳の点を後から書き換えれば、
+     * 比較の基準線そのものが動き、以後どの reform も改善を証明できなくなる。
+     * **そして序列3は罰しない** — 神託の訂正が明示的に許した例外を秤が罰してはならない。
+     */
+    - (underEra(run) ? WEIGHTS.tierBreach * (noTier + tier12Unproven) : 0);
   const composite = Math.max(0, Math.min(100, raw));
 
   return {
@@ -115,6 +162,8 @@ function score(run) {
     retryOverhead,
     loopGuardTrips,
     durationMs,
+    // ── 序列 (足すだけ。既存鍵の名も値も動かさない) ──
+    tier1, tier2, tier3, noTier, unobservable, tier3Ratio,
   };
 }
 
@@ -184,9 +233,10 @@ function baseline() {
   return out;
 }
 
-const COMPARE_KEYS = ['score', 'firstPassRate', 'reworkCount', 'retryOverhead', 'loopGuardTrips'];
+const COMPARE_KEYS = ['score', 'firstPassRate', 'reworkCount', 'retryOverhead', 'loopGuardTrips', 'tier3Ratio'];
 /** 高いほど良い metric か */
-const HIGHER_BETTER = { score: true, firstPassRate: true, reworkCount: false, retryOverhead: false, loopGuardTrips: false };
+// `tier3Ratio` は **下がるほど良い** — 教主の手の割合が減ることが改善である(第52条)。
+const HIGHER_BETTER = { score: true, firstPassRate: true, reworkCount: false, retryOverhead: false, loopGuardTrips: false, tier3Ratio: false };
 
 function latestFor(slug, entries) {
   const hits = entries.filter(e => e.slug === slug && e.metrics);

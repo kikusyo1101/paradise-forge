@@ -32,12 +32,71 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('./graph-engine.js');
 const clergy = require('./clergy.js');
+/**
+ * 序列の門はここから来る (第52条)。
+ *
+ * かつて conclave は spawn-trace を一度も require していなかった。ゆえに
+ * 「誰が働いたか」を環が問わず、教主が己の手で書いた成果物も同じく done になった。
+ * **閾値も判定表も spawn-trace ただ一箇所に住む** — 二つ書けば必ず食い違う。
+ */
+const trace = require('./spawn-trace.js');
 
 const MAX_DOMAIN_REWORK = 3; // loop-guard at the domain level too
 // 第51条c: 回復もまた有限である。無限に帰れる環は静止の代わりに永久機関になる。
 const MAX_PHASE_RESUME = 2;
 // 第51条b: この時を過ぎた `running` は、走者が斃れたものとみなす(15分)。
 const STALE_MS = 15 * 60 * 1000;
+
+/**
+ * 「沈黙している」と機械が名指しできる境 (reflect C-5)。
+ *
+ * ⚠️ **`STALE_MS` と別の数である。理由を書く。**
+ * `STALE_MS`(15分)は第51条が **`resume` の回収判定**のために置いた数である ——
+ * 「この running は剥がして良いか」を問う。`resume --force` で覆せるし、
+ * 偽陽性の代償は「生きている走者を剥がしうる」だが `--force` の壁がある。
+ *
+ * 沈黙の名指しは**別の問い**である ——「神に見せるべきか」。偽陽性の代償は騒音であり、
+ * 騒音は門を無視させる(第21条の教訓)。ゆえに閾値も別でなければならない(第36条)。
+ *
+ * ── 実測から導いた (第38条: 測らなかった走行は語れない) ─────────────
+ * 実在8走行の `dispatch` → `done` 所要時間 **66 件**を全て測った:
+ *   p25=1.8分  p50=9.9分  p75=32.0分  p90=54.5分  p95=68.0分  max=103.1分
+ *   15分以上: 27/66 = **40.9%**   60分以上: 7件   90分以上: 1件   120分以上: **0件**
+ *
+ * **15分をそのまま沈黙の境にすれば、正常に走っている相の 4 割が鳴る。**
+ * reflect が「census は12分・atlas は12分・subagent は1時間超」と警告した通りで、
+ * 実測はそれより悪い。騒音になる。
+ *
+ * `SILENT_MS = 120分` は **p100(103.1分)を超える最小の切りの良い数**である。
+ * 実測した 66 件の正常な相は**一件も**この境を越えない = **偽陽性ゼロ**。
+ * 越えたなら「これまでのどの相よりも長く黙っている」であり、名指しに値する。
+ *
+ * **これは「閾値を緩めて門を通した」のではない。** 緩めたのではなく、
+ * 元々**存在しなかった**門(`--json` は `dispatchedAt` すら運んでいなかった)を、
+ * 実測した分布の上に建てた。境を下げるのは沈黙の長さを実測してからである(C-5b)。
+ */
+const SILENT_MS = 120 * 60 * 1000;
+
+/**
+ * 相の滞留を三値で読む (reflect C-5)。**判定は一箇所に住む** ——
+ * `statusBoard`(人が読む)と `status --json`(機械が読む)が別々に数えれば必ず食い違う。
+ *
+ *   { state:'ok' }                        … running でない、または若い
+ *   { state:'no-dispatch' }               … running なのに発令の刻が無い(判定不能)
+ *   { state:'stale',  ageMs }             … STALE_MS 超 — resume の回収対象 (第51条)
+ *   { state:'silent', ageMs }             … SILENT_MS 超 — 実測のどの相よりも長い沈黙
+ * `silent` は必ず `stale` でもある(120 > 15)。両方の鍵を立てる。
+ */
+function phaseSilence(p, at = Date.now()) {
+  if (!p || p.status !== 'running') return { state: 'ok', running: false, stale: false, silent: false, ageMs: null };
+  const t = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
+  if (Number.isNaN(t)) return { state: 'no-dispatch', running: true, stale: false, silent: false, ageMs: null };
+  const ageMs = at - t;
+  return {
+    state: ageMs >= SILENT_MS ? 'silent' : (ageMs >= STALE_MS ? 'stale' : 'ok'),
+    running: true, stale: ageMs >= STALE_MS, silent: ageMs >= SILENT_MS, ageMs,
+  };
+}
 
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function save(p, o) { fs.writeFileSync(p, JSON.stringify(o, null, 2)); }
@@ -74,6 +133,20 @@ function convene(dagPath) {
 
   return {
     meta: dag.meta || {}, created: now(),
+    /**
+     * 紀元(epoch)の印 — 序列を宣言する経路が機構に在った時代の走行である証 (第52条)。
+     *
+     * **`meta` の中ではなく run の最上位に置く。** `meta` は forge が作る DAG から
+     * 丸ごと転記される(上の `meta: dag.meta || {}`)ので、そこに置けば **古い DAG を
+     * 読み直して convene し直した run が印を持たない**という抜け穴が開く。
+     * 印は「この run を作った engine が新しかったか」の証であり、
+     * **DAG の性質ではなく run の出自**である。ゆえに convene が自分の手で刻む。
+     *
+     * 印を手で消せば legacy を騙れる。だが `conclave.json` は版管理下に在り、
+     * `epoch` の削除は diff に現れる —— **機構は騙りを防げないが、
+     * 騙りを見えなくすることはできない。**
+     */
+    epoch: { tier: trace.TIER_EPOCH, at: now() },
     domains,
     history: [{ ts: now(), event: 'convene', detail: `${domains.length} domains, ${dag.tasks.length} phases` }],
   };
@@ -184,6 +257,15 @@ function next(run, opts = {}) {
           },
           // 神官がさらに細分する場合の割当（信徒は実体を持つ）
           marshal: believers.length ? clergy.marshalPlan(id, { priestCanSpawn: true }) : null,
+          /**
+           * その相について既定で妥当な序列の**助言**である。強制ではない (第52条 / 第34条)。
+           * 発令の時点で「この相は序列3を名乗れない」と分かっていれば、教主は
+           * 最後に拒まれるのではなく最初に知る。**次に何をすべきかを言わない門は罠である。**
+           */
+          tier_hint: {
+            default: 1,
+            ...(ph.gate ? { forbidden: [3], why: '門相は序列3を名乗れない (第9条)' } : {}),
+          },
         };
       }),
       // 並列度は天井(20)ではなく実用値(4)に従う。
@@ -278,8 +360,21 @@ function resume(run, opts = {}) {
  * 第27条「subagent の done を信じない」は、**記録する者自身にも向く**。
  * 教主が神官を疑っても、教主が書いた台帳を誰も疑わなければ嘘は残る。
  * ゆえに engine が拒む —— 人の注意力ではなく機械が守る(第50条)。
+ *
+ * ── 序列の門 (第52条) ────────────────────────────────────────────
+ * `opts.tier` で教主がその相をどの序列で処理したかを申告する。判定は
+ * `spawn-trace.judge()` **ただ一つ**が下す(環と器が別の判定を書けば必ず食い違う)。
+ *
+ * **門は throw する。** 戻り値で可否を返す形にすれば、`markDone` を直に呼ぶ
+ * 既存8本の試験がすべて意味を変える。throw なら CLI が `save` に到達せず、
+ * **run ファイルは書き換わらない**(既存の実在検査が既にこの形である)。
+ *
+ * **そして門は「紀元の印を持つ run」にしか立たない。** 印を持たない run
+ * (legacy・手書きの合成 run)では `tier` 未申告でも従来通り通り、
+ * `tierTrace[id].state = 'unobservable'` が刻まれる —— 黄は緑ではないが、
+ * 機構の欠陥を走行者の罪として記録しない(第16条)。
  */
-function markDone(run, id, artifactPath) {
+function markDone(run, id, artifactPath, opts = {}) {
   const p = allPhases(run).get(id);
   if (!p) throw new Error('unknown phase: ' + id);
   if (artifactPath) {
@@ -294,8 +389,27 @@ function markDone(run, id, artifactPath) {
         `  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
     }
   }
+
+  // 序列の判定。**成果物の実在を検めた後**に立つ — 名乗った物が無いのは
+  // 序列以前の問題であり、先に鳴るべき門である。
+  const v = trace.judge(run, id, { tier: opts.tier, artifact: artifactPath, cwd: opts.cwd });
+  if (!v.ok) {
+    const e = new Error(v.lines.join('\n') + `\n  (判定: ${v.state} / 相 ${id})`);
+    e.tierVerdict = v;
+    throw e;
+  }
+  run.tierTrace = run.tierTrace || {};
+  run.tierTrace[id] = {
+    declared: opts.tier == null ? null : Number(opts.tier),
+    state: v.state,
+    ...(v.measured ? { measured: { files: v.measured.files, churn: v.measured.churn, bytes: v.measured.bytes } } : {}),
+    lines: v.lines,
+    at: (opts.now || now)(),
+  };
+
   p.status = 'done'; if (artifactPath) p.artifactPath = artifactPath;
   run.history.push({ ts: now(), event: 'done', detail: id + (artifactPath ? ' → ' + artifactPath : '') });
+  return v;
 }
 
 /**
@@ -355,15 +469,13 @@ function statusBoard(run) {
     lines.push(`${dg[d.status] || '?'} 枢機卿 ${d.cardinal} — ${d.domain}${rw}   [review: ${d.reviewClass}]`);
     for (const p of d.phases) {
       // 第51条a: 静止は失敗より悪い。中断の疑いがある running を人に見せ、沈黙を破る。
+      // **判定は `phaseSilence` ただ一つが下す** (reflect C-5)。
+      // `--json` も同じ関数を読む —— 人の画面と機械の口が違う判定を書けば必ず食い違う。
       let note = '';
-      if (p.status === 'running') {
-        const at = p.dispatchedAt ? Date.parse(p.dispatchedAt) : NaN;
-        if (Number.isNaN(at)) note = '  ⚠ (running・発令の刻なし — resume --force で回収せよ)';
-        else {
-          const age = Date.now() - at;
-          if (age >= STALE_MS) note = `  ⚠ (running ${Math.round(age / 60000)}分 — 中断の疑い。resume で回収せよ)`;
-        }
-      }
+      const sil = phaseSilence(p);
+      if (sil.state === 'no-dispatch') note = '  ⚠ (running・発令の刻なし — resume --force で回収せよ)';
+      else if (sil.state === 'silent') note = `  🔴 (running ${Math.round(sil.ageMs / 60000)}分 — 実測のどの相より長い沈黙 [>${Math.round(SILENT_MS / 60000)}分]。神へ知らせよ)`;
+      else if (sil.state === 'stale') note = `  ⚠ (running ${Math.round(sil.ageMs / 60000)}分 — 中断の疑い。resume で回収せよ)`;
       const rs = p.resumes ? ` (resume ${p.resumes})` : '';
       lines.push(`     ${pg[p.status] || '?'} ${p.gate ? '⚖️' : '  '} ${p.id} @${p.agent}${rs}${note}`);
     }
@@ -390,7 +502,21 @@ function main() {
     if (step.phase === 'wave') markRunning(run, step.dispatch.map(d => d.id));
     save(rp, run); console.log(JSON.stringify(step, null, 2));
   } else if (cmd === 'done') {
-    need(); const run = load(rp); markDone(run, pos[0], f.artifact); save(rp, run); console.log(statusBoard(run));
+    need(); const run = load(rp);
+    /**
+     * 序列の門が throw したら **save に到達しない** — run ファイルは書き換わらない。
+     * これが「拒んだのに台帳だけ進む」を構造的に禁じる形である(第22条)。
+     */
+    try {
+      const v = markDone(run, pos[0], f.artifact, { tier: f.tier });
+      save(rp, run);
+      if (v && v.state === 'unobservable') console.log(v.lines.join('\n'));
+      else if (v && v.lines && v.lines.length) console.log(v.lines.join('\n'));
+      console.log(statusBoard(run));
+    } catch (e) {
+      console.error(e.message);
+      process.exit(1);
+    }
   } else if (cmd === 'resume') {
     // 第51条: 中断した走者の残骸を環へ戻す。
     need(); const run = load(rp);
@@ -410,6 +536,28 @@ function main() {
     if (f.json) {
       const dr = run.domains.filter(d => d.status === 'ratified').length;
       const phases = [...allPhases(run).values()];   // allPhases は Map を返す — 実測で確かめた
+      /**
+       * 滞留を機械の口へ載せる (reflect C-5)。
+       *
+       * ⚠️ 実測(reflect): `--json` の相の鍵は `id,agent,status,gate` のみで、
+       * **`dispatchedAt` も stale 判定も運んでいなかった。** 第51条が建てた警告は
+       * `statusBoard` の**人間向けテキストにしか**載らず、機械は読めなかった。
+       * 「鳴らない番人は、番人が居ないことより見つかりにくい」の実例である。
+       *
+       * **新しい engine は建てない。** 判定は `phaseSilence` ただ一つ ——
+       * `statusBoard` が読むのと同じ関数である(別集計を書けば必ず食い違う)。
+       */
+      const at = Date.now();
+      const sil = new Map(phases.map(p => [p.id, phaseSilence(p, at)]));
+      const jsonPhase = (p) => {
+        const s = sil.get(p.id);
+        return {
+          id: p.id, agent: p.agent, status: p.status, gate: !!p.gate,
+          dispatchedAt: p.dispatchedAt || null,
+          // 滞留の三値と経過時間。**閾値も機械へ渡す** — 読み手が別の数を持たないため(第41条)
+          silence: s.state, ageMs: s.ageMs, stale: s.stale, silent: s.silent,
+        };
+      };
       process.stdout.write(JSON.stringify({
         domainsRatified: dr,
         domainsTotal: run.domains.length,
@@ -418,14 +566,20 @@ function main() {
         domains: run.domains.map(d => ({
           cardinal: d.cardinal, domain: d.domain, status: d.status, reworks: d.reworks || 0,
           reviewClass: d.reviewClass,
-          phases: (d.phases || []).map(p => ({ id: p.id, agent: p.agent, status: p.status, gate: !!p.gate })),
+          phases: (d.phases || []).map(jsonPhase),
         })),
         historyLength: (run.history || []).length,
+        // ── 沈黙の門 (第51条 / reflect C-5) ──
+        // 機械が**名指し**できる形にする。数えるだけでは resume を撃てない。
+        staleMs: STALE_MS, silentMs: SILENT_MS, at: new Date(at).toISOString(),
+        stalePhases: phases.filter(p => sil.get(p.id).stale).map(p => p.id),
+        silentPhases: phases.filter(p => sil.get(p.id).silent).map(p => p.id),
+        noDispatchPhases: phases.filter(p => sil.get(p.id).state === 'no-dispatch').map(p => p.id),
       }) + '\n');
       return;
     }
     console.log(statusBoard(run));
-  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
-module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS };
+module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, phaseSilence, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, SILENT_MS };

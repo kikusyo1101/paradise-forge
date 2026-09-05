@@ -135,12 +135,13 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 290/290 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 339/339 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
 orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・
-clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework）・synod（計画サイクル）。
+clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework・中断からの再開）・synod（計画サイクル）・
+domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）。
 
 ---
 
@@ -186,7 +187,10 @@ wish → 🔍discover → specify → design → detail → build → verify →
 
 | ツール | 役割 |
 |--------|------|
-| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華。discover/reflect/verdict をゲート化。道は6本 (quick/standard/full/reform/counsel/**cartography**) — 産物の種別が道を決める(第49条) |
+| `graph/forge.js` | 小さき声を **scale適応SDLC DAG** に昇華。discover/reflect/verdict をゲート化。道は6本 (quick/standard/full/reform/counsel/**cartography**) — 産物の種別が道を決める(第49条)。`admit()` が分野の適合を裁き、担い手の居ない願いを既定の道へ黙って落とさない(第52条) |
+| `graph/domains.js` | **役者は何を担えるか**。`domains.json` の台帳を読み、願いを分野へ写し、道が名指しする役者が分野を宣言しているか裁く。`check-agents`(実在)とは**別の問い**である — 実在するだけでは足りない(第52条) |
+| `graph/ordain.js` | **役者の鍛造器**。`forge --write` が overlay の原本(agent 定義・overlay.json・COLLEGE・分野台帳)を1コマンドで揃える。**配備はしない** — 原本を書く器と実機に書く器は別である(第29条)。手編集0ファイル / 鍛造→`deploy --write`→`verify` の3工程 |
+| `graph/spawn-trace.js` | **起動の証跡と序列の門**。誰が起動されたかを三値(observed/asserted-only/no-trace)で観測し、教主の権能の三段(委譲/編成/教主の手)を実測と突合して裁く。**閾値も判定表もここ一箇所に住む** — `tiers` が数を語り、`tier` が事後に突合し、`audit` が全走行を監査する(第27条・第52条) |
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定。走行(trajectory)も読む(第38条) |
 | `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条) |
@@ -309,6 +313,7 @@ node tests/motion-probe-leak.test.js      # 門が己の残骸で不定に鳴ら
 教主(Pontiff) が実装しPRを出す
       ↓
 機械ゲート (CI: verify job)        ← self-test・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
+      ↓                              序列の監査・分野の適合も同 job（第52条）
       ↓
 執行官 (CI: tribunal job)          ← critic の敵対的自己批評 → verdict.js の裁定を PR に掲示
       ↓                              どの枢機卿にも従属しない（憲法第9・11条）
