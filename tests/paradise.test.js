@@ -3035,6 +3035,88 @@ test('critic: 創造物の掟 — toISOString と CDN を名指しで捕らえ�
     'a lawful creation must pass the creation laws: ' + cleanFails.join(','));
 });
 
+test('critic: 空の .paradise-source を置くだけでは免除されない — 門は自己申告を信じない', () => {
+  // 実測された脱法穴 (2026-08-31 review.md §3 / security-report.md): 創造物相当の
+  // dir に空の `.paradise-source` を 1 個置くだけで no-wall-clock-iso /
+  // no-external-deps / domain-markers-present の 3 法すべてが素通りしていた。
+  // 掟を機構化したこと自体が 1 ファイルで無効化できた — 門の存在意義を消す穴。
+  const outlaw = `
+    <html><head><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head>
+    <script>const d = new Date().toISOString();</script></html>`;
+  const d = makeCreation('# spec\n- AC: works', outlaw, { fileName: 'index.html' });
+  // 活きた脱法を実際に仕込む: 空のマーカー
+  fs.writeFileSync(path.join(d, '.paradise-source'), '');
+  const r = critic.review(d, {});
+  const failed = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(failed.includes('no-wall-clock-iso'),
+    '空マーカーで toISOString の掟が素通りした: ' + failed.join(','));
+  assert.ok(failed.includes('no-external-deps'),
+    '空マーカーで外部依存の掟が素通りした: ' + failed.join(','));
+  assert.ok(failed.includes('domain-markers-present'),
+    '空マーカーで DOMAIN マーカーの掟が素通りした: ' + failed.join(','));
+  // 退けたことを **名指しで** 残す (黙って素通りも、黙って却下もしない)
+  const claim = r.results.find(x => x.id === 'exemption-claim-verified');
+  assert.ok(claim && !claim.ok, '免除の申告を裁く門が立っていない');
+  assert.ok(/自己申告を退けた/.test(claim.note) && /\.paradise-source/.test(claim.note),
+    '却下は名指しで残らねばならない: ' + (claim && claim.note));
+  assert.strictEqual(r.clean, false, '脱法した創造物が clean を名乗ってはならない');
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic: --self フラグも住所が伴わなければ免除されない (フラグは自己申告である)', () => {
+  const d = makeCreation('# spec\n- AC: works',
+    '<html><script>const d = new Date().toISOString();</script></html>', { fileName: 'index.html' });
+  const r = critic.review(d, { self: true });
+  const failed = r.results.filter(x => !x.ok).map(x => x.id);
+  assert.ok(failed.includes('no-wall-clock-iso'),
+    '--self だけで創造物の掟が素通りした: ' + failed.join(','));
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('critic: 本物の engine (graph/) は免除され続ける — 偽陽性を作らない', () => {
+  const graphDir = path.join(__dirname, '..', 'graph');
+  for (const opts of [{}, { self: true }]) {
+    const r = critic.review(graphDir, opts);
+    const failed = r.results.filter(x => !x.ok).map(x => x.id);
+    assert.ok(!failed.includes('no-wall-clock-iso') && !failed.includes('no-external-deps')
+      && !failed.includes('exemption-claim-verified'),
+      'engine が誤って鳴った (opts=' + JSON.stringify(opts) + '): ' + failed.join(','));
+  }
+  // 免除したなら、その旨が必ず出力に名指しで残ること
+  const claim = critic.review(graphDir, {}).results.find(x => x.id === 'exemption-claim-verified');
+  assert.ok(claim.ok && /免除を適用した/.test(claim.note),
+    '免除は黙って適用してはならない: ' + claim.note);
+});
+
+test('critic: 免除の資格は住所が決める — resolveSelf/engineLocation の裁定', () => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-exempt-'));
+  fs.writeFileSync(path.join(outside, '.paradise-source'), '');
+  const rejected = critic.resolveSelf(outside, {});
+  assert.strictEqual(rejected.claimed, true, '申告そのものは読み取る');
+  assert.strictEqual(rejected.granted, false, '楽園の倉の外の申告は退ける');
+
+  const granted = critic.resolveSelf(path.join(__dirname, '..', 'graph'), {});
+  assert.strictEqual(granted.granted, true, '楽園の graph/ の申告は通る');
+
+  // 創造物の倉の中は、たとえ倉を楽園の内側に指しても engine ではない
+  const fakeCreations = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-creations-'));
+  const slug = path.join(fakeCreations, 'thing');
+  fs.mkdirSync(slug);
+  fs.writeFileSync(path.join(slug, '.paradise-source'), '');
+  const inCreations = critic.resolveSelf(slug,
+    { engineRoot: fakeCreations, creationsRoot: fakeCreations });
+  assert.strictEqual(inCreations.granted, false,
+    '創造物の倉の中に居るものは engine を名乗れない');
+  assert.ok(/創造物の倉の中/.test(inCreations.location.reason), inCreations.location.reason);
+
+  // 申告が無ければ granted は false (だが門は鳴らない — 掟がそのまま適用されるだけ)
+  const noClaim = critic.resolveSelf(path.join(__dirname, '..', 'graph'), { engineRoot: outside });
+  assert.strictEqual(noClaim.granted, false);
+
+  fs.rmSync(outside, { recursive: true, force: true });
+  fs.rmSync(fakeCreations, { recursive: true, force: true });
+});
+
 test('critic: 創造物の掟は engine 自身 (--self) には適用されない — 門は消さず分ける (第36条)', () => {
   // graph/ の engine は toISOString を正当に使う (kg.js の ts など)。
   const r = critic.review(path.join(__dirname, '..', 'graph'), { self: true });
