@@ -98,6 +98,116 @@ function phaseSilence(p, at = Date.now()) {
   };
 }
 
+/**
+ * 見捨てられた走行の境 (第53条)。
+ *
+ * ⚠️ **`STALE_MS`(15分)とも `SILENT_MS`(120分)とも別の数である。理由を書く。**
+ * 前の二つは **相** を見る —— 「この `running` の走者は生きているか」。
+ * この数は **走行そのもの** を見る —— 「この環は、もう誰も回していないのではないか」。
+ * 相が `pending` のまま忘れられた走行は、`running` を一つも持たないので
+ * `phaseSilence` の目には一切映らない。**実測がそれを証明した**(下記)。
+ *
+ * ── 実測から導いた (第38条: 測らなかった走行は語れない) ─────────────
+ * 実在する走行帳 8 本 (paradise/reform 4 + creations 4) を全て読み、
+ * **環を閉じた 5 本**の全事象間隔 **173 件**を測った:
+ *   p50=0.0分  p90=17.5分  p95=32.0分  max=110.4分
+ *   **24時間(1440分)を超えた間隔は 0 件。**
+ * 対して見捨てられていた 2 本:
+ *   reform/claude-md-diet   domains 4/6 のまま **9892分**(6.9日)無音、実装は PR #23 でマージ済
+ *   reform/pontiff-office   domains 5/6 のまま **5703分**(4.0日)無音
+ *
+ * `ABANDONED_MS = 24時間` は **閉じた走行の最長間隔(110.4分)の約13倍**であり、
+ * 測った 173 件は**一件も**越えない = **偽陽性ゼロ**。越えたなら
+ * 「これまでのどの正常な走行よりも長く環が止まっている」であり、名指しに値する。
+ * 境を下げるのは、より多くの走行を測ってからである。
+ */
+const ABANDONED_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 走行が「見捨てられている」かを判ずる。**判定は一箇所に住む** ——
+ * `audit` の CLI も、`tests` も、dashboard も、この関数だけを読む。
+ *
+ * 第16条の作法: **測れなかったものをゼロで埋めない。** 時刻を一つも読めない
+ * 走行帳は `state:'unknown'` / `idleMs:null` で返り、**それでも名指しされる**。
+ * 「判定不能」を黙って緑に落とすのは、見逃しと同じである。
+ *
+ *   { state:'closed' }      … domains が全て ratified — 環は閉じた
+ *   { state:'unknown' }     … 時刻が読めない(判定不能)。null のまま名指しする
+ *   { state:'active' }      … 未完だが最近動いている
+ *   { state:'abandoned' }   … 未完のまま ABANDONED_MS を超えて無音
+ *
+ * @param {object} run 走行帳
+ * @param {number} at  現在時刻(ms)
+ */
+function runAbandonment(run, at = Date.now()) {
+  const ds = (run && run.domains) || [];
+  const total = ds.length;
+  const ratified = ds.filter(d => d.status === 'ratified').length;
+  const closed = total > 0 && ratified === total;
+  // 環の「最後の鼓動」は history の最終事象。無ければ created に落ちる。
+  const stamps = [];
+  if (run && run.created) stamps.push(Date.parse(run.created));
+  for (const h of ((run && run.history) || [])) if (h && h.ts) stamps.push(Date.parse(h.ts));
+  // 相の発令の刻も鼓動である(history を持たない古い帳のため)
+  for (const d of ds) for (const p of (d.phases || [])) if (p && p.dispatchedAt) stamps.push(Date.parse(p.dispatchedAt));
+  const valid = stamps.filter(n => !Number.isNaN(n));
+  const lastBeat = valid.length ? Math.max(...valid) : null;
+  const base = { ratified, total, closed, lastBeat: lastBeat === null ? null : new Date(lastBeat).toISOString() };
+  if (closed) return { state: 'closed', abandoned: false, idleMs: lastBeat === null ? null : at - lastBeat, ...base };
+  if (lastBeat === null) {
+    // **ゼロで埋めない。** 判定できないことを名指しして返す (第16条)。
+    return { state: 'unknown', abandoned: false, idleMs: null, ...base };
+  }
+  const idleMs = at - lastBeat;
+  return { state: idleMs >= ABANDONED_MS ? 'abandoned' : 'active', abandoned: idleMs >= ABANDONED_MS, idleMs, ...base };
+}
+
+/**
+ * 全ての走行帳を走査し、見捨てられた環を名指しする (第53条)。
+ *
+ * **住所は自分で決めない** —— `workspace.runLedgers()` が唯一の権威である(第30条)。
+ * 走行帳が読めなければ `state:'unreadable'` として**名指しする**。
+ * 読めなかったものを黙って除けば、壊れた帳ほど門をすり抜ける。
+ *
+ * @returns {{at:string, abandonedMs:number, ledgers:object[], abandoned:string[], unknown:string[], unreadable:string[]}}
+ */
+function auditRuns(opts = {}) {
+  const workspace = require('./workspace.js');
+  const at = typeof opts.at === 'number' ? opts.at : Date.now();
+  const leds = opts.ledgers || workspace.runLedgers(opts.repoRoot, opts);
+  const ledgers = [];
+  for (const l of leds) {
+    let run;
+    try { run = JSON.parse(fs.readFileSync(l.path, 'utf8')); }
+    catch (e) { ledgers.push({ ...l, state: 'unreadable', abandoned: false, idleMs: null, ratified: null, total: null, error: String(e.message || e) }); continue; }
+    ledgers.push({ ...l, ...runAbandonment(run, at) });
+  }
+  return {
+    at: new Date(at).toISOString(), abandonedMs: ABANDONED_MS, ledgers,
+    abandoned: ledgers.filter(l => l.state === 'abandoned').map(l => l.path),
+    unknown: ledgers.filter(l => l.state === 'unknown').map(l => l.path),
+    unreadable: ledgers.filter(l => l.state === 'unreadable').map(l => l.path),
+  };
+}
+
+/** 監査を人の画面へ。機械の口(`--json`)と同じ `auditRuns` を読む — 二重集計を書かない。 */
+function auditBoard(rep) {
+  const lines = ['CONCLAVE AUDIT — 見捨てられた走行 (第53条)', '═'.repeat(56)];
+  const d = ms => ms === null ? '判定不能' : `${Math.round(ms / 60000)}分`;
+  for (const l of rep.ledgers) {
+    const g = { closed: '✓', active: '▶', abandoned: '🔴', unknown: '⚠', unreadable: '⚠' }[l.state] || '?';
+    const n = l.total === null ? '?/?' : `${l.ratified}/${l.total}`;
+    let note = '';
+    if (l.state === 'abandoned') note = `  🔴 環が閉じぬまま ${d(l.idleMs)} 無音 [>${Math.round(rep.abandonedMs / 60000)}分] — 閉じるか畳むかを決めよ`;
+    else if (l.state === 'unknown') note = '  ⚠ 時刻を一つも読めない走行帳 — 判定不能(ゼロで埋めない: 第16条)';
+    else if (l.state === 'unreadable') note = `  ⚠ 走行帳が読めない: ${l.error}`;
+    lines.push(`${g} [${l.where}] ${l.slug}  domains ${n}${note}`);
+  }
+  lines.push('═'.repeat(56),
+    `見捨てられた走行: ${rep.abandoned.length} / 判定不能: ${rep.unknown.length + rep.unreadable.length} / 全 ${rep.ledgers.length}`);
+  return lines.join('\n');
+}
+
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function save(p, o) { fs.writeFileSync(p, JSON.stringify(o, null, 2)); }
 function now() { return new Date().toISOString(); }
@@ -579,7 +689,20 @@ function main() {
       return;
     }
     console.log(statusBoard(run));
-  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json]'); process.exit(2); }
+  } else if (cmd === 'audit') {
+    /**
+     * 第53条の門。**`--run` を取らない** —— 一本の走行ではなく、全ての走行帳を見る。
+     * 見捨てられた走行が一件でも在れば exit 1。判定不能もまた exit 1 である
+     * (第16条: 測れなかったものを緑に落とさない)。
+     */
+    const rep = auditRuns();
+    if (f.json) process.stdout.write(JSON.stringify(rep) + '\n');
+    else console.log(auditBoard(rep));
+    const bad = rep.abandoned.length + rep.unknown.length + rep.unreadable.length;
+    process.exit(bad === 0 ? 0 : 1);
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json] | audit [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
-module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, phaseSilence, MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, SILENT_MS };
+module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, phaseSilence,
+  runAbandonment, auditRuns, auditBoard,
+  MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, SILENT_MS, ABANDONED_MS };

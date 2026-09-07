@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 339/339 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 340/340 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -167,7 +167,7 @@ node graph/orchestrator.js auto --run <run.json>   # 次アクション(wave/ver
 | ツール | 役割 |
 |--------|------|
 | `graph/clergy.js` | **組織モデル** — 5枢機卿（discovery/requirements/architecture/construction/quality）＋独立執行官。各枢機卿に担当フェーズ・神官・信徒・レビュークラス・内部PDCA |
-| `graph/conclave.js` | **再帰オーケストレーター**（supervisor-of-supervisors）。大きな円=ドメイン間PDCA、小さな円=枢機卿内フェーズPDCA。ratify（適切クラス承認）・ドメイン内rework・各層loop-guard |
+| `graph/conclave.js` | **再帰オーケストレーター**（supervisor-of-supervisors）。大きな円=ドメイン間PDCA、小さな円=枢機卿内フェーズPDCA。ratify（適切クラス承認）・ドメイン内rework・各層loop-guard。`audit` が全走行帳を横断して**見捨てられた環**を名指しする(第53条) |
 | `graph/synod.js` | **計画サイクル** — 神託→枢機卿編成を計画→plan自己批評→改善してから conclave へ |
 | `/conclave` コマンド | 聖職位階を招集し神託を創造物に変える玉座 |
 
