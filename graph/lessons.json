@@ -574,5 +574,37 @@
     "applies": "paradise-internal",
     "kind": "mechanism",
     "ts": "2026-09-02T20:32:57.672Z"
+  },
+  {
+    "id": "fix-all-siblings-of-the-same-flaw",
+    "label": "同じ関数の中で同じ病を片側だけ直すな",
+    "check": "同じ関数の中で同じ病を片側だけ直すな — B-1 で files/churn の fail-open を塞いだが同じ関数の bytes は catch {} のまま残り、reflect が同一構造の BLOCK として再発見した。修復のとき『同じ設計上の問いを持つ箇所を全て洗ったか』を必ず問え",
+    "applies": "paradise-internal",
+    "kind": "conduct",
+    "ts": "2026-09-03T11:40:01.651Z"
+  },
+  {
+    "id": "gate-neutralized-by-or-true",
+    "label": "|| true を付けた門は門ではない",
+    "check": "CI の段に || true を付けた瞬間、その門は何を食わせても緑になる。楽園は自分でこの戒めを workflow に書きながら 81 行下で破っていた。門の exit code を捨てるなら理由をコメントで書け。理由を書けないなら外せ",
+    "applies": "paradise-internal",
+    "kind": "conduct",
+    "ts": "2026-09-03T11:40:01.699Z"
+  },
+  {
+    "id": "epoch-marker-needs-a-timestamp",
+    "label": "印の有無だけを見る門は印を消せば消える",
+    "check": "移行のための恩赦(epoch なしは unobservable)は、印を消しただけの走行にも同じ恩赦を与えた。導入時刻を engine の中に持ち created と比べれば legacy と門の回避を機械で分けられる。恩赦は移行のためであって回避のためではない",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-03T11:40:01.746Z"
+  },
+  {
+    "id": "abandoned-run-must-ring",
+    "label": "見捨てられた走行は機構が名指しする — マージは環の完了ではない",
+    "check": "走行帳が domains ratified < 全数 のまま一定期間無音なら engine が名指しせよ (conclave.js audit / runAbandonment)。実測: reform-claude-md-diet は 4/6 のまま 6.9日 放置され実装だけ PR #23 でマージされ 95 コミット何も鳴らなかった。相を見る phaseSilence は running の dispatchedAt しか読まないので、pending のまま忘れられた走行には構造的に映らない — 走行そのものを見る別の目が要る。閾値は STALE/SILENT と別物で 1 箇所にだけ置き、実測(閉じた走行 5 本の全事象間隔 173 件 max=110.4分)を越える境に据える。時刻を読めない走行帳は 0 で埋めず null のまま名指しせよ (第16条)。また reform の走行帳が創造物の倉に迷い込む流出は strayCreations の逆向きであり workspace.strayRuns が見る — 混入は履歴を汚すだけだが流出は審査そのものを迂回する|check",
+    "applies": "paradise-internal",
+    "kind": "mechanism",
+    "ts": "2026-09-07T11:58:02.010Z"
   }
 ]

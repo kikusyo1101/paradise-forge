@@ -147,6 +147,90 @@ function hardcodedRefs(repoRoot = REPO_ROOT) {
   return out;
 }
 
+/**
+ * 走行帳 (conclave.json) の住む二つの場所。
+ *
+ * 第30条は**創造物**の住所を定めた。だが「走行帳」はそれとは別の生き物である ——
+ * 創造物の走行帳は創造物と共に倉に住むが、**楽園自身を改める reform の走行帳は
+ * 楽園本体の `reform/` に住まねばならない**(第23条の道)。engine を書き換えた
+ * 証跡が engine のリポジトリの外に在れば、PR の審査からも CI からも見えない。
+ *
+ * ここは**住所を数える者**であって、裁く者ではない。裁きは `strayRuns` と
+ * `conclave.js audit` が行う —— 住所を知ってよいのはこのファイルだけだからである。
+ *
+ * @returns {{path:string, where:'paradise'|'creations', slug:string}[]}
+ */
+function runLedgers(repoRoot = REPO_ROOT, opts = {}) {
+  const out = [];
+  const scan = (base, where) => {
+    let names;
+    try { names = fs.readdirSync(base); } catch { return; }
+    for (const slug of names.sort()) {
+      const p = path.join(base, slug, 'conclave.json');
+      if (fs.existsSync(p)) out.push({ path: p, where, slug });
+    }
+  };
+  scan(path.join(repoRoot, 'reform'), 'paradise');
+  const r = resolve({ repoRoot, ...opts });
+  // 倉が無い環境(CI の checkout など)では創造物側は数えない。
+  // 「見に行けなかった」を「一件も無い」と偽らないため、`where` で出所が判る。
+  if (r.exists) scan(r.root, 'creations');
+  return out;
+}
+
+/**
+ * reform の走行帳が engine の repo に**居ることを示す**印。
+ *
+ * 一本の規則では足りない —— `meta.scale` は forge が付ける宣言に過ぎず、
+ * 宣言を欠いた古い走行を素通しにする(第19条: 形だけ見る門は意味を見逃す)。
+ * ゆえに**宣言・名前・実際に触った物**の三方から見る。一つでも当たれば reform である。
+ */
+const REFORM_MARKS = [
+  { id: 'scale', why: "meta.scale が 'reform' を名乗っている" },
+  { id: 'slug', why: "倉での名が 'reform-' で始まる" },
+  { id: 'artifact', why: '成果物が楽園 engine (graph/ tests/ overlay/ .github/ CONSTITUTION.md CLAUDE.md) を指している' },
+];
+/** 成果物の道が楽園 engine を指しているか。倉の外の道は creation ではない。 */
+const ENGINE_PATH_RE = /(^|[\\/])(graph|tests|overlay|hooks|\.github|dashboard)[\\/]|(^|[\\/])(CONSTITUTION|CONSTITUTION\.INDEX|CLAUDE|README)\.md$/;
+
+/**
+ * reform の走行が **engine を改めたのに、走行帳だけ創造物の倉に居る** のを検める。
+ *
+ * `strayCreations()` の**逆向き**である。あちらは「創造物が楽園に紛れ込む」を見た。
+ * こちらは「楽園を改めた証跡が楽園の外へ流れ出る」を見る。害はあちらより重い ——
+ * 混入は履歴を汚すだけだが、**流出は審査そのものを迂回する**。engine を書き換えた
+ * 走行帳が PR に載らなければ、環が閉じたかを誰も PR の上で確かめられない。
+ *
+ * 倉が無ければ空を返す(門は黙る。狼少年より無言がまし — 第21条)。
+ * @returns {{path:string, slug:string, marks:string[], why:string, ratified:number|null, total:number|null}[]}
+ */
+function strayRuns(repoRoot = REPO_ROOT, opts = {}) {
+  const out = [];
+  for (const led of runLedgers(repoRoot, opts)) {
+    if (led.where !== 'creations') continue;
+    let run;
+    try { run = JSON.parse(fs.readFileSync(led.path, 'utf8')); } catch { continue; }
+    const marks = [];
+    if (run && run.meta && String(run.meta.scale) === 'reform') marks.push('scale');
+    if (/^reform[-_]/i.test(led.slug)) marks.push('slug');
+    const arts = [];
+    for (const d of (run.domains || [])) for (const p of (d.phases || [])) if (p.artifactPath) arts.push(String(p.artifactPath));
+    // 倉の中を指す道は creation の成果物である。engine を指す道だけを咎める。
+    const hits = arts.filter(a => !a.includes(SIBLING_NAME) && ENGINE_PATH_RE.test(a));
+    if (hits.length) marks.push('artifact');
+    if (!marks.length) continue;
+    const ds = run.domains || [];
+    out.push({
+      path: led.path, slug: led.slug, marks,
+      why: REFORM_MARKS.filter(m => marks.includes(m.id)).map(m => m.why).join(' / '),
+      ratified: ds.length ? ds.filter(d => d.status === 'ratified').length : null,
+      total: ds.length || null,
+      engineArtifacts: hits.slice(0, 5),
+    });
+  }
+  return out;
+}
+
 // --- CLI ---
 if (require.main === module) {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -165,12 +249,23 @@ if (require.main === module) {
       process.exit(2);
     }
     console.log(init(rest[0]));
+  } else if (cmd === 'runs') {
+    // 走行帳の住所を印字するだけの口。数えられるものは名指しできる(第22条)。
+    for (const l of runLedgers()) console.log(`${l.where.padEnd(10)} ${l.slug.padEnd(28)} ${l.path}`);
   } else if (cmd === 'check') {
     const stray = strayCreations();
     const hard = hardcodedRefs();
-    if (stray.length === 0 && hard.length === 0) {
-      console.log('✓ 楽園に創造物の混入なし・住所の直書きなし');
+    const runs = strayRuns();
+    if (stray.length === 0 && hard.length === 0 && runs.length === 0) {
+      console.log('✓ 楽園に創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし');
       process.exit(0);
+    }
+    if (runs.length) {
+      console.log(`✗ reform の走行帳が創造物の倉に居る (${runs.length} 件) — 楽園の reform/<slug>/ へ移せ`);
+      for (const r of runs) {
+        console.log(`  ${r.path}  [${r.marks.join(',')}]  domains ${r.ratified}/${r.total}`);
+        console.log(`     ${r.why}`);
+      }
     }
     if (stray.length) {
       console.log(`✗ 楽園が創造物を抱えている (${stray.length} 件) — paradise-creations へ移せ`);
@@ -183,9 +278,10 @@ if (require.main === module) {
     }
     process.exit(1);
   } else {
-    console.log('usage: workspace.js root | resolve [--json] | init <slug> | check');
+    console.log('usage: workspace.js root | resolve [--json] | init <slug> | runs | check');
     process.exit(1);
   }
 }
 
-module.exports = { resolve, root, defaultRoot, creationDir, init, strayCreations, hardcodedRefs, REPO_ROOT, SIBLING_NAME };
+module.exports = { resolve, root, defaultRoot, creationDir, init, strayCreations, hardcodedRefs,
+  runLedgers, strayRuns, REFORM_MARKS, ENGINE_PATH_RE, REPO_ROOT, SIBLING_NAME };
