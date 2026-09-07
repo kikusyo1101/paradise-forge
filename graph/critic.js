@@ -29,6 +29,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const workspace = require('./workspace.js');
 
 /**
  * The adversarial checklist. Each check is a probe with a severity.
@@ -126,6 +127,22 @@ function builtinChecks() {
         const hits = (ctx.codeBlob.match(/\b(sk-[a-z0-9]{8,}|api[_-]?key\s*[:=]\s*['"][^'"]+|password\s*[:=]\s*['"][^'"]+)/gi) || []);
         return hits.length ? { ok: false, note: `${hits.length} possible secret(s) in code` }
                            : { ok: true, note: 'no secrets detected' };
+      } },
+
+    // --- 免除の自己申告を裁く門 (門は自己申告を信じない) -------------------
+    // この門だけは **免除されない**。免除そのものを裁くからである。
+    { id: 'exemption-claim-verified', severity: 'gap',
+      desc: '創造物の掟の免除 (.paradise-source / --self) は、住所が楽園の engine だと裏付けられた時だけ通る',
+      run: (ctx) => {
+        const c = ctx.selfClaim;
+        if (!c || !c.claimed) return { ok: true, note: '免除の申告なし — 創造物の掟をそのまま適用する' };
+        if (c.granted) {
+          // **免除したら必ず名指しで残す。** 黙って素通りさせない。
+          return { ok: true, note: `免除を適用した (engine): 申告=${c.claimedBy.join('+')} / ${c.location.reason}` };
+        }
+        return { ok: false, note:
+          `免除の自己申告を退けた — 申告=${c.claimedBy.join('+')} だが ${c.location.reason}。`
+          + ' 創造物の掟はそのまま適用される (門は自己申告を信じない)' };
       } },
 
     // --- 創造物の掟 (第39条: 散文だった掟の機構化) --------------------------
@@ -574,18 +591,69 @@ function selfScopeSubject(dir) {
   return ' ' + scopes.join(' ') + ' ';
 }
 
+/**
+ * ── 免除の資格を「場所」で検める (脱法穴の封鎖) ────────────────────────
+ *
+ * かつて免除は **自己申告** だけで通った: 空の `.paradise-source` を 1 個置けば
+ * no-wall-clock-iso / no-external-deps / domain-markers-present の 3 法すべてが
+ * 'engine code is exempt' で素通りした。掟を機構化したこと自体が、1 ファイルで
+ * 無効化できた — 門の存在意義を消す穴である。
+ *
+ * よって免除は二段構えにする:
+ *   1. **申告** — `.paradise-source` マーカー、または `--self` フラグ
+ *   2. **検証** — その道が本当に楽園の倉 (workspace.REPO_ROOT) の中に在り、
+ *                 かつ創造物の倉 (workspace.root()) の中では **ない** こと
+ * 申告だけでは足りない。場所が伴わない申告は **退け、かつ名指しで鳴らす**
+ * (`exemption-claim-verified`)。黙って素通りさせない。
+ */
+function isInside(parent, child) {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+/** その道が「楽園の engine の一部」として実在するかを住所で答える。 */
+function engineLocation(dir, opts = {}) {
+  const abs = path.resolve(dir);
+  const engineRoot = path.resolve(opts.engineRoot || workspace.REPO_ROOT);
+  let creationsRoot = null;
+  try { creationsRoot = path.resolve(opts.creationsRoot || workspace.root()); } catch { /* 住所不明 */ }
+  if (creationsRoot && isInside(creationsRoot, abs)) {
+    return { inside: false, reason: `創造物の倉の中に居る (${creationsRoot}) — engine ではない` };
+  }
+  if (!isInside(engineRoot, abs)) {
+    return { inside: false, reason: `楽園の倉 (${engineRoot}) の外に居る — engine ではない` };
+  }
+  return { inside: true, reason: `楽園の倉の中: ${path.relative(engineRoot, abs) || '.'}` };
+}
+
+/**
+ * 免除の申告と、その資格の裁定。
+ * @returns {{claimed:boolean, granted:boolean, claimedBy:string[], location:object|null}}
+ */
+function resolveSelf(dir, opts = {}) {
+  const claimedBy = [];
+  if (opts.self) claimedBy.push('--self');
+  try { if (fs.statSync(path.join(dir, '.paradise-source')).isFile()) claimedBy.push('.paradise-source'); } catch { /* 無い */ }
+  if (!claimedBy.length) return { claimed: false, granted: false, claimedBy, location: null };
+  const location = engineLocation(dir, opts);
+  return { claimed: true, granted: location.inside, claimedBy, location };
+}
+
 function review(dir, opts = {}) {
   const ctx = collect(dir, opts);
   // Self-source mode: when reviewing the paradise's OWN engine code (not a
   // creation), the creation-shaped checks (needs requirements.md / a co-located
   // test file / findings.md) do not apply — tests live centrally, there is no
-  // per-module spec. Detect via an explicit opt-out marker or the --self flag.
-  const isSelf = opts.self || fs.existsSync(path.join(dir, '.paradise-source'));
+  // per-module spec. 申告 (marker / --self) は入口にすぎず、**資格は場所が決める**。
+  const selfClaim = resolveSelf(dir, opts);
+  const isSelf = selfClaim.granted;
   // A self-review has no spec, so the scope fence has no subject to match against
   // and would skip EVERY scoped lesson — the paradise would be blind to exactly
   // the past misses it recorded about itself. Declare what the engine IS instead.
   if (isSelf) ctx.scopeSubject = selfScopeSubject(dir);
   ctx.isSelf = isSelf; // 創造物の掟 (第39条) は engine 自身には適用しない
+  ctx.selfClaim = selfClaim;
+
   let checks = [...builtinChecks(), ...lessonChecks(ctx.lessons)];
   if (isSelf) {
     const creationOnly = new Set(['spec-musthaves-covered', 'acceptance-criteria-present', 'tests-exist', 'grounded-in-discovery', 'claims-backed-by-runnable-evidence', 'visual-identity-declared', 'surface-verified', 'ux-intent-declared']);
@@ -676,4 +744,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks, scopeMatches, selfScopeSubject };
+module.exports = { review, render, builtinChecks, extractMustHaves, lessonChecks, scopeMatches, selfScopeSubject, resolveSelf, engineLocation };
