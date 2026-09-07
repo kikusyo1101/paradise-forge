@@ -29,6 +29,12 @@ jobs:
       - name: 🏛️ Workspace — 創造物が楽園に紛れていないか (第30条)
         run: node graph/workspace.js check
 
+      - name: 🔁 Conclave audit — 見捨てられた走行が居ないか (第53条)
+        # 環は閉じるまで走行である。マージは環の完了ではない ——
+        # 走行帳が未完のまま無音なら exit 1 で鳴る。判定不能もまた緑ではない(第16条)。
+        # `|| true` を付けない: 潰した門は門の形をした飾りである。
+        run: node graph/conclave.js audit
+
       - name: 📜 Constitution — 憲法条文の存在確認
         run: |
           test -f CONSTITUTION.md || { echo "::error::CONSTITUTION.md is missing"; exit 1; }
