@@ -5568,6 +5568,20 @@ test('C-5 [HIGH]: status --json が dispatchedAt と滞留を運ぶ — 機械�
   } finally { fs.rmSync(sand, { recursive: true, force: true }); }
 });
 
+// --- 第53条: 見捨てられた走行 / 迷子の走行帳 (欠陥A・欠陥B) ---
+/**
+ * 走行の門を自己診断から呼ぶ。**同一プロセスで require する** ——
+ * dashboard 系と同じ作法(node 起動代を本数分払わない)。
+ * この門は砂場(tmpdir)にしか触れないので、ブラウザも常駐サーバも起こさない。
+ */
+console.log('\n第53条 走行の門 (abandoned-run):');
+test('abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (第53条)', () => {
+  const rep = require(path.join(DIR, 'abandoned-run.test.js'));
+  assert.strictEqual(rep.fail, 0,
+    `abandoned-run が ${rep.fail} 件落ちた: ${(rep.failures || []).join(' / ')}`);
+  assert.ok(rep.pass >= 11, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
+});
+
 // --- report ---
 console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
