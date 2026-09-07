@@ -219,7 +219,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -247,9 +247,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/pontiff-office/verdict-report.json",
           "dispatchedAt": "2026-09-03T12:29:40.875Z",
           "resumes": 0
         }
@@ -378,6 +378,16 @@
       "ts": "2026-09-03T12:29:40.875Z",
       "event": "dispatch",
       "detail": "verdict"
+    },
+    {
+      "ts": "2026-09-07T10:22:17.887Z",
+      "event": "done",
+      "detail": "verdict → reform/pontiff-office/verdict-report.json"
+    },
+    {
+      "ts": "2026-09-07T10:22:24.286Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "tierTrace": {
@@ -436,6 +446,14 @@
         "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
       ],
       "at": "2026-09-03T12:29:40.826Z"
+    },
+    "verdict": {
+      "declared": null,
+      "state": "unobservable",
+      "lines": [
+        "unobservable — 序列を宣言する経路が機構に無かった時代の走行である(第16条: 判定不能は緑ではない)"
+      ],
+      "at": "2026-09-07T10:22:17.887Z"
     }
   }
 }

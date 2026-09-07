@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-03T07:22:06.291Z",
+  "generated": "2026-09-07T10:28:25.239Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 106,
+    "nodeCount": 109,
     "edgeCount": 33,
     "nodes": [
       {
@@ -764,6 +764,24 @@
         "type": "lesson",
         "label": "門の射程外の写経は、古くなっても鳴らない",
         "degree": 0
+      },
+      {
+        "id": "fix-all-siblings-of-the-same-flaw",
+        "type": "lesson",
+        "label": "同じ関数の中で同じ病を片側だけ直すな",
+        "degree": 0
+      },
+      {
+        "id": "gate-neutralized-by-or-true",
+        "type": "lesson",
+        "label": "|| true を付けた門は門ではない",
+        "degree": 0
+      },
+      {
+        "id": "epoch-marker-needs-a-timestamp",
+        "type": "lesson",
+        "label": "印の有無だけを見る門は印を消せば消える",
+        "degree": 0
       }
     ],
     "edges": [
@@ -940,7 +958,7 @@
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 72
+      "lesson": 75
     }
   },
   "lessons": [
@@ -1303,6 +1321,21 @@
       "id": "gate-out-of-range-rots",
       "label": "門の射程外の写経は、古くなっても鳴らない",
       "check": "control.html は DEFAULT_PORT / POLL_MS / base() を paradise.js から写経していた。写経は片方だけ古くなるが、この画面を開く門が無かったので壊れても鳴らなかった。負債を直すときはコードだけでなく『鳴らない状態』そのものを直せ — 出所を一つにし、その画面を門の射程に入れる|check|applies:paradise-internal"
+    },
+    {
+      "id": "fix-all-siblings-of-the-same-flaw",
+      "label": "同じ関数の中で同じ病を片側だけ直すな",
+      "check": "同じ関数の中で同じ病を片側だけ直すな — B-1 で files/churn の fail-open を塞いだが同じ関数の bytes は catch {} のまま残り、reflect が同一構造の BLOCK として再発見した。修復のとき『同じ設計上の問いを持つ箇所を全て洗ったか』を必ず問え|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "gate-neutralized-by-or-true",
+      "label": "|| true を付けた門は門ではない",
+      "check": "CI の段に || true を付けた瞬間、その門は何を食わせても緑になる。楽園は自分でこの戒めを workflow に書きながら 81 行下で破っていた。門の exit code を捨てるなら理由をコメントで書け。理由を書けないなら外せ|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "epoch-marker-needs-a-timestamp",
+      "label": "印の有無だけを見る門は印を消せば消える",
+      "check": "移行のための恩赦(epoch なしは unobservable)は、印を消しただけの走行にも同じ恩赦を与えた。導入時刻を engine の中に持ち created と比べれば legacy と門の回避を機械で分けられる。恩赦は移行のためであって回避のためではない|applies:paradise-internal|kind:mechanism"
     }
   ],
   "creations": [
