@@ -1,0 +1,53 @@
+{
+  "creation": "reform/claude-md-diet",
+  "note": "遡及裁定。実装は PR #23 として 2026-08-31T22:51:44Z に main へマージ済 (merge a197cd9)。以後 96 コミット。全ての数は 2026-09-07 に現在の main 上で自ら駆動した実測である。",
+  "build": "pass",
+  "tests": {
+    "passed": 339,
+    "failed": 0,
+    "total": 339,
+    "coverage": null,
+    "evidence": "node tests/paradise.test.js → 339 passed, 0 failed (exit 0, real 5m42.046s) / PARADISE_UPSTREAM=/nonexistent CLAUDE_HOME=/nonexistent でも 339 passed, 0 failed (exit 0)"
+  },
+  "lint": {
+    "status": "pass",
+    "warnings": 0,
+    "evidence": "node graph/census.js check → ✓ every number the paradise claims about itself is true (exit 0) / node graph/codex.js check → ✓ 索引は本文と一致している (52 条) (exit 0) / node graph/apply-guards.js verify → ✓ deny 9 / ask 1 / allow 5, hook matcher 15 件 (exit 0)"
+  },
+  "security": {
+    "issues": 2,
+    "secrets": 0,
+    "detail": [
+      "Issue 1 (security-report.md / review.md §1 が名指した虚偽記載): CLAUDE.md 26-27 行が『main直接コミットは permissions/hooks/CI が拒む』と書くが、POLICY deny 9 件にも .git/hooks (空) にも該当規則は無い。GitHub 保護は push/merge のみを拒み、enforce_admins:false。2026-08-31 に二人の審査官が独立に名指したにもかかわらず 2026-09-07 現在も未是正。本走行で是正を試みたが agent-instruction 保護に BLOCKED され、迂回はしなかった。",
+      "review.md §3 の .paradise-source 脱法が実測で再現した: creations 相当のディレクトリに空の .paradise-source を 1 個置くだけで no-wall-clock-iso / no-external-deps / domain-markers-present の 3 法すべてが 'engine code is exempt' で素通りする。掟の機構化という本改修の土台を 1 ファイルで無効化できる。"
+    ],
+    "resolved": [
+      "Issue 3 (ReDoS) は解消済みを実測で確認: 現行 VOLATILE_NUMBER_RES[0] は /自己診断[^\\n]{0,80}?\\d+\\s*件/ と有界化されており、20万字の敵対的入力で 33ms。旧の無界版を同入力で走らせると 32,359ms — 約 980 倍の差。",
+      "secrets: 0 — 差分・現物ともに検出ゼロ"
+    ]
+  },
+  "spec": {
+    "satisfied": false,
+    "met": [
+      "AC-1 CLAUDE.md は最初の1画面に痩せる: 10,780 B → 3,054 B (▲71.7%, 40 行)。目標 4,000 B を下回る",
+      "AC-2 創造物の掟は機構へ: critic checklist に no-wall-clock-iso(gap) / no-external-deps(gap) / domain-markers-present(smell) が実在。汚した創造物を実際に作って 3 件すべてが名指しで鳴ることを実走で確認",
+      "AC-3 diet 門が方針転換に追従: CLAUDE_MD_BUDGET=4096 / GLOBAL=2048 / RULES=4096。現物 CLAUDE.md に 5,000 B 足すと『常時ロードの散文が 8054 B — 予算 4096 B』、『自己診断 339 件』を足すと『テスト数は census が数える』で鳴り、原状復帰後は findings 0。ハーネス側も global 1,576/2,048・無スコープ rules 2,482/4,096 で緑",
+      "AC-4 門を壊して鳴らす: tests/paradise.test.js に diet 門 6 本 (2993/3002/3016/3208/3218/3239 行)。3016 行は『門が check() に配線されているか』まで assert しており、鳴らない門を飾りとして落とす"
+    ],
+    "unmet": [
+      "AC-5『全門緑 + 憲法第39条 + 文書更新』のうち文書更新が不合格 — CLAUDE.md に『main直接コミットは機械が拒む』という虚偽記載が残存する。門 (自己診断 339×2環境 / census / codex / apply-guards) と憲法第39・40条の追記は緑だが、AC-5 は文書の正しさまでを条件としているため満たさない"
+    ]
+  },
+  "diff": {
+    "files": 19,
+    "evidence": "git show --stat dfa4b98 → CLAUDE.md / CONSTITUTION.md / CONSTITUTION.INDEX.md / README.md / dashboard 2 / graph/census.js / graph/critic.js / overlay/commands/ship.md / overlay/overlay.json / overlay/root/CLAUDE.md / overlay/rules 8本"
+  },
+  "trajectory": {
+    "score": 80,
+    "reworkCount": 0,
+    "firstPassRate": 1,
+    "loopGuardTrips": 0,
+    "evidence": "node graph/gauge.js score reform/claude-md-diet/conclave.json --json → {\"score\":80,\"complete\":false,\"phasesTotal\":11,\"phasesDone\":10,\"domainsTotal\":6,\"domainsRatified\":5,\"firstPassRate\":1,\"reworkCount\":0,\"loopGuardTrips\":0,\"durationMs\":596528099,\"unobservable\":11}",
+    "caveat": "reworkCount:0 / firstPassRate:1 は『荒れなかった走行』ではなく『環が回らなかった走行』の姿である。review.md が散文で差し戻しを宣告したのに conclave.js ratify --reject が打たれなかったため、機械の目には差し戻しゼロに映る。durationMs 596,528,099 (≒6.9日) がその宙吊りの長さそのものである。unobservable:11 は序列を宣言する経路が機構に無かった時代の走行であることを示す。"
+  }
+}

@@ -23,10 +23,12 @@
 
 ## 機械が強制していること (写経しない — 出所は apply-guards / CI)
 
-force-push・main直接コミット・`~/.claude` 手編集・`.env` 読み書きは
-**permissions/hooks/CI が拒む** (`node graph/apply-guards.js verify` が証拠)。
-仕事は必ずブランチ → PR — **マージは神の御手のみ** (CODEOWNERS + 保護)。
-ブランチを切る前の `node graph/branch-guard.js` だけは散文の掟 — 必ず走らせる。
+force-push・`~/.claude` 手編集・`.env` 読み書きは **permissions が拒む**
+(`node graph/apply-guards.js verify` が証拠 — deny 9 / ask 1)。
+仕事は必ずブランチ → PR — main への **push** は GitHub の保護が拒み、
+**マージは神の御手のみ** (CODEOWNERS + 保護)。
+だが **main へのローカル commit を拒む機構は無い**(`.git/hooks/` は空)。
+ここと `node graph/branch-guard.js` を切る前に走らせることだけが散文の掟である。
 
 ## 機械が強制できない判断則 (だからここに書く)
 
