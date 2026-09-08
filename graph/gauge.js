@@ -37,7 +37,8 @@
  *   gauge.js compare <slugA> <slugB>          台帳から Δ 表
  *   gauge.js compare --last <N>               直近 N 件の推移
  *   gauge.js ledger                           台帳の一覧(畳んだ版)
- *   gauge.js ledger --audit                   重複と矛盾を数える(在れば exit 1)
+ *   gauge.js ledger --audit                   重複と矛盾を数える
+ *                                             (exit 1 = 掃除で消える重複 / exit 2 = 人が読むべき行)
  */
 'use strict';
 const fs = require('fs');
@@ -288,7 +289,14 @@ function fingerprint(entry) {
  * 導出できる」は、まさに格納値を信じる必要が無いことの宣言である。
  * `fp` は人が目で読む注記として残るが、**判断には一切使わない**。
  *
- * 性能: `fingerprint` は sha256 一回。実台帳規模(10^4 行)で無視できる。
+ * 性能(実測。「無視できる」と書いて測らないのは第38条違反だった —— review-2 P-2):
+ * 常時再導出は自己申告の短絡に比べ `foldLedger` を **x8〜x17**、`record` を **x7〜x9** 遅くする
+ * (N=20000 で fold 4ms → 68ms、N=10000 の record ×10 で 85ms → 757ms)。
+ * **それでも自己申告には戻らない**(S-1 の再発は台帳の記録が黙って消える病である)。
+ * 代わりに**同じ行の鍵を二度導出しないこと**で代償を返す:
+ *   - `foldLedger` は呼び出しの内側だけで生きる memo を持つ(整列の比較子が O(n log n) 回叩く)
+ *   - `baseline` は `keyIndex` を一度だけ組み、M 創造物 × N 行の O(M·N) を O(M+N) に戻す
+ * **memo が保持するのは再導出した鍵であって自己申告ではない** —— S-1 とは無関係である。
  *
  * 深すぎる行(S-2)は `null` を返す —— 呼び手が破損行として扱う。
  */
@@ -298,6 +306,23 @@ function trueKey(e) {
     if (err && err.code === 'GAUGE_TOO_DEEP') return null;
     throw err;
   }
+}
+
+/**
+ * **再導出した鍵 → 行** の索引(keep-first)。`record` / `baseline` の重複検査の唯一の材料。
+ *
+ * **行の自己申告 `fp` は一切見ない(S-1)。** 索引の鍵は必ず `trueKey` の返り値である。
+ * 一度組めば `baseline` が M 回の record で使い回せる —— これが R-3 / P-2 の処置である。
+ */
+function keyIndex(entries) {
+  const idx = new Map();
+  for (const e of (Array.isArray(entries) ? entries : [])) {
+    if (!e || typeof e !== 'object' || !e.metrics) continue;   // 材料の無い行は鍵を持たない
+    const derived = trueKey(e);                                // ★ 常に再導出。自己申告は見ない(S-1)
+    if (derived === null) continue;                            // 深すぎる行は鍵を持たない(S-2)
+    if (!idx.has(derived)) idx.set(derived, e);                // 先着を正とする(keep-first)
+  }
+  return idx;
 }
 
 /**
@@ -314,13 +339,25 @@ function trueKey(e) {
 function foldLedger(entries) {
   const keep = new Map();                        // fp -> entry
   const passthrough = [];                        // 畳みの対象外(metrics 無し / 深すぎ)
+  /**
+   * **鍵の memo(P-2)。** 呼び出しの内側だけで生き、返らない —— 台帳の第二の住所にはならない。
+   * 整列の比較子は O(n log n) 回叩くので、memo が無いと同じ行の sha256 を何度も引き直す。
+   * **保持するのは `trueKey` の返り値**であって行の自己申告ではない(S-1 とは無関係)。
+   */
+  const memo = new Map();
+  const key = (e) => {
+    if (memo.has(e)) return memo.get(e);
+    const k = trueKey(e);
+    memo.set(e, k);
+    return k;
+  };
   for (const e of (Array.isArray(entries) ? entries : [])) {
     if (!e || typeof e !== 'object') continue;   // 壊れた値は落とす(fail-safe)
     // metrics を持たない行(baseline の {slug,error} 等)は畳みの対象外。
     // 指紋の材料が無いものを畳めば、別々の失敗が一つに見える。
     // **`keep` の鍵空間に混ぜない**(R-6: 外から `fp:"raw:0"` を名乗る行と衝突しうる)。
     if (!e.metrics) { passthrough.push(e); continue; }
-    const fp = trueKey(e);                       // ★ 常に再導出する。行の自己申告は信じない(S-1)
+    const fp = key(e);                           // ★ 常に再導出する。行の自己申告は信じない(S-1)
     if (fp === null) { passthrough.push(e); continue; }   // 深すぎる行は畳まず素通し(S-2)
     const cur = keep.get(fp);
     if (!cur || String(e.ts) < String(cur.ts)) keep.set(fp, e);   // keep-first = ts 最小
@@ -329,9 +366,19 @@ function foldLedger(entries) {
     const ta = String((a && a.ts) || ''), tb = String((b && b.ts) || '');
     if (ta !== tb) return ta < tb ? -1 : 1;
     // 同時刻の tie-break も決定的に —— shuffle しても同じ列を返すための必須条件。
-    const fa = (a && a.metrics ? trueKey(a) : '') || '';
-    const fb = (b && b.metrics ? trueKey(b) : '') || '';
-    return fa < fb ? -1 : fa > fb ? 1 : 0;
+    const fa = (a && a.metrics ? key(a) : '') || '';
+    const fb = (b && b.metrics ? key(b) : '') || '';
+    if (fa !== fb) return fa < fb ? -1 : 1;
+    /**
+     * **第二段(P-4)。** `metrics` を持たない行どうしは `ts` も鍵も持たないので、
+     * ここまでで全て比較不能 = `Array.sort` の安定性任せ = 入力順依存だった。
+     * 「shuffle しても同じ列」という上の宣言が passthrough について破れていた。
+     * 行の正規化文字列を最後の錘にする —— 中身が同じ行なら並べ替えても同じ列になる。
+     */
+    let ja = '', jb = '';
+    try { ja = canonical(a); } catch { ja = ''; }
+    try { jb = canonical(b); } catch { jb = ''; }
+    return ja < jb ? -1 : ja > jb ? 1 : 0;
   });
 }
 
@@ -344,6 +391,18 @@ function foldLedger(entries) {
  * **源である `readLedger()` が畳むこと以外に無い。**
  *
  * 生の全行が要る者には `readLedger({ raw: true })` を残す(監査・掃除・後方互換)。
+ *
+ * ── `raw:true` は**本当に生**である(review-2 P-1) ─────────────────
+ *
+ * S-2 の修理は too-deep の読み飛ばしを `opts.raw` の**前**に置いた。結果:
+ *   ① `raw:true` が行を落とした(ファイル 2 行 → 1 行)。監査と掃除の唯一の材料が痩せた。
+ *   ② `auditLedger` の `too-deep` 枝が CLI から**到達不能**になり、
+ *      全行が深すぎる台帳を `--audit` が `rows=0 … exit 0`「健全」と答えた。
+ *      **読めなかった行を 0 件と偽るのは第16条に真っ向から反する。**
+ *   ③ FR-8 の掃除(畳んだ版で置き換える)が深い行を**ファイルから永久に消す**。
+ * ゆえに **`raw` は too-deep の検査より前で返す**。深すぎる行の扱いは
+ * `foldLedger`(passthrough)と `auditLedger`(too-deep 枝)が既に持っている ——
+ * 上流が先に捨てていたせいで、その備えが使われていなかっただけである。
  */
 function readLedger(opts = {}) {
   const p = ledgerPath();
@@ -355,23 +414,32 @@ function readLedger(opts = {}) {
   // `canonical()` の底を越えるほど深い入れ子の一行も、同じく破損である。
   // ここで名指して読み飛ばす —— 一行のために台帳全体を落とさない(第55条 e)。
   const out = [];
+  const src = new Map();   // row -> 元の行テキスト(名指しに使う。深い行は JSON.stringify できない)
   for (const line of fs.readFileSync(p, 'utf8').split('\n').filter(Boolean)) {
     let row;
     try { row = JSON.parse(line); }
     catch { console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`); continue; }
+    if (row && typeof row === 'object') src.set(row, line);
+    out.push(row);
+  }
+  // ★ 生を名乗る道は、深さの検査より**前**に返る。生は生である(P-1)。
+  if (opts.raw) return out;
+  const kept = [];
+  for (const row of out) {
     if (row && typeof row === 'object' && row.metrics && trueKey(row) === null) {
-      console.error(`⚠️ ledger line skipped (too deep, > ${MAX_CANONICAL_DEPTH}): ${line.slice(0, 60)}…`);
+      // **`JSON.stringify(row)` を使ってはならない** —— 深すぎる行はまさにそこで
+      // `RangeError` を投げ、S-2 が塞いだ穴を名指しの側から開け直す。元の行テキストを使う。
+      console.error(`⚠️ ledger line skipped (too deep, > ${MAX_CANONICAL_DEPTH}): ${String(src.get(row) || '').slice(0, 60)}…`);
       continue;
     }
-    out.push(row);
+    kept.push(row);
   }
   // 畳みは parse を全部終えた**後**に掛かる。破損行の扱いには一切影響しない。
   // `foldLedger` も try の内側に置く —— 畳みで倒れれば生の行まで失われる。
-  if (opts.raw) return out;
-  try { return foldLedger(out); }
+  try { return foldLedger(kept); }
   catch (err) {
     console.error(`⚠️ fold failed, returning raw rows: ${err.message}`);
-    return out;   // fail-open: 畳めなくとも記録は返す
+    return kept;   // fail-open: 畳めなくとも記録は返す
   }
 }
 
@@ -383,7 +451,7 @@ function readLedger(opts = {}) {
  * 書く」側に倒す。削除・truncate・`writeFileSync` の経路は一つも足さない。
  * **台帳の第一の徳は「記録が失われない」ことである。**
  */
-function record(runFile, slug) {
+function record(runFile, slug, index) {
   const run = JSON.parse(fs.readFileSync(runFile, 'utf8'));
   const m = score(run);
   const entry = {
@@ -394,13 +462,15 @@ function record(runFile, slug) {
   };
   entry.fp = fingerprint(entry);   // ★ 鍵は entry の中に住む(第二の住所を作らない)
 
+  /**
+   * 既記録の検査。**`index` を渡されたらそれを使う(P-2 / R-3)** ——
+   * `baseline` が M 創造物のために台帳を M 回読み直す O(M·N) を O(M+N) に戻す。
+   * 索引の鍵は `keyIndex` が `trueKey` で組んだものであり、**行の自己申告ではない**(S-1)。
+   */
   let existing = null;
   try {
-    for (const e of readLedger({ raw: true })) {
-      if (!e || typeof e !== 'object') continue;
-      if (!e.metrics) continue;                  // 材料の無い行は鍵を持たない
-      if (trueKey(e) === entry.fp) { existing = e; break; }   // ★ 再導出して突き合わせる(S-1)
-    }
+    const idx = index instanceof Map ? index : keyIndex(readLedger({ raw: true }));
+    existing = idx.get(entry.fp) || null;
   } catch (err) {
     // 読めない台帳は「書く」側に倒す。既存行は決して消さない。
     console.error(`⚠️ ledger unreadable, recording anyway: ${err.message}`);
@@ -410,6 +480,9 @@ function record(runFile, slug) {
   if (existing) return { ...existing, skipped: true };
 
   fs.appendFileSync(ledgerPath(), JSON.stringify(entry) + '\n');
+  // 索引を渡されている場合は、いま刻んだ行も索引に載せる ——
+  // さもなくば同一走行を二つ持つ倉で `baseline` 一回のうちに二度刻んでしまう。
+  if (index instanceof Map && !index.has(entry.fp)) index.set(entry.fp, entry);
   return entry;
 }
 
@@ -418,18 +491,26 @@ function baseline() {
   const root = workspace.resolve().root;
   const out = [];
   if (!fs.existsSync(root)) return out;
+  /**
+   * **台帳は一度だけ読む(P-2 / R-3)。** 旧実装は `record` の内側で創造物の数だけ
+   * 台帳を読み直しており、M 創造物 × N 行の O(M·N·sha256) だった(実測: N=4000 / 20 創造物で 602ms)。
+   * 集合はメモリ上にしか住まない —— **索引ファイルは作らない**(第30条 / NG-8)。
+   */
+  let idx;
+  try { idx = keyIndex(readLedger({ raw: true })); }
+  catch (err) { console.error(`⚠️ ledger unreadable, recording anyway: ${err.message}`); idx = new Map(); }
   for (const dir of fs.readdirSync(root, { withFileTypes: true })) {
     if (!dir.isDirectory()) continue;
     for (const name of ['conclave.json']) {
       const f = path.join(root, dir.name, name);
       if (fs.existsSync(f)) {
-        try { out.push(record(f, dir.name)); }
+        try { out.push(record(f, dir.name, idx)); }
         catch (e) { out.push({ slug: dir.name, error: e.message }); }
       }
     }
     // orchestrator 形式 *.run.json も拾う
     for (const f of fs.readdirSync(path.join(root, dir.name)).filter(n => n.endsWith('.run.json'))) {
-      try { out.push(record(path.join(root, dir.name, f), dir.name)); }
+      try { out.push(record(path.join(root, dir.name, f), dir.name, idx)); }
       catch (e) { out.push({ slug: dir.name, error: e.message }); }
     }
   }
@@ -478,7 +559,7 @@ function latestFor(slug, entries) {
  */
 function auditLedger(entries) {
   const list = Array.isArray(entries) ? entries.filter(e => e && e.metrics) : [];
-  const byFp = new Map();      // trueKey -> entry[]
+  const byFp = new Set();      // 相異なる trueKey の集合(R-7: 行を溜めても誰も読まなかった)
   const conflicts = [];
   let tooDeep = 0;
   for (const e of list) {
@@ -490,8 +571,7 @@ function auditLedger(entries) {
         observations: [{ ts: e.ts, fp: e.fp || null, score: null }] });
       continue;
     }
-    if (!byFp.has(fp)) byFp.set(fp, []);
-    byFp.get(fp).push(e);
+    byFp.add(fp);
     // ★ 名乗った鍵と真の鍵の突き合わせ。ここが S-1 の門である。
     if (e.fp != null && e.fp !== fp) {
       conflicts.push({
@@ -502,7 +582,12 @@ function auditLedger(entries) {
   }
   const rows = list.length;
   const distinct = byFp.size + tooDeep;
-  return { rows, distinct, duplicates: Math.max(0, rows - distinct), conflicts };
+  /**
+   * **`tooDeep` を返り値に載せる(第16条 / P-1)。** 「読めなかった行が何行あるか」は
+   * `conflicts` の中に埋もれさせてよい数ではない —— 呼び手(CLI)がこれを見て
+   * 「健全」と答えない義務を負う。0 で埋めず、数えて名乗る。
+   */
+  return { rows, distinct, tooDeep, duplicates: Math.max(0, rows - distinct), conflicts };
 }
 
 function compare(a, b) {
@@ -575,26 +660,59 @@ function main() {
       return;
     }
     if (cmd === 'ledger') {
-      // 監査(FR-7 / 読み取り専用)。**生の全行**を数える —— 畳んでから数えては
-      // 重複が見えない。判別可能な信号: 重複か矛盾が在れば exit 1。
+      /**
+       * 監査(FR-7 / 読み取り専用)。**生の全行**を数える —— 畳んでから数えては
+       * 重複が見えない。`readLedger({raw:true})` が本当に生を返すこと(P-1 の修理)が
+       * この道の前提である。上流が深い行を先に捨てていた頃、この命令は
+       * 全行が読めない台帳を `rows=0 … exit 0` =「健全」と答えていた。
+       *
+       * **信号を分ける(P-8)。**
+       *   exit 0 = 健全
+       *   exit 1 = 機械が畳めば消える欠陥(重複)。掃除 (FR-8) で必ずゼロにできる。
+       *   exit 2 = 人が中身を見るまで消えない事故(偽の鍵 / 深すぎて読めない行)。
+       * 掃除で消せるものと消せないものを同じ信号に載せれば、
+       * R-2 が戒めた「鳴りっぱなしの門」に再びなる。
+       */
       if (argv.includes('--audit')) {
-        const a = auditLedger(readLedger({ raw: true }));
-        console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length}`);
+        const raw = readLedger({ raw: true });
+        const a = auditLedger(raw);
+        console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length} too-deep=${a.tooDeep}`);
         for (const c of a.conflicts) {
           if (c.kind === 'too-deep') {
-            console.log(`  ⚠️ 矛盾: ${c.slug} — 入れ子が深すぎて鍵を導けない行(読み飛ばされる)@ ${c.observations[0].ts}`);
+            console.log(`  ⚠️ 読めない行: ${c.slug} — 入れ子が深すぎて鍵を導けない(> ${MAX_CANONICAL_DEPTH}。畳みでも掃除でも消してはならない)@ ${c.observations[0].ts}`);
           } else {
             console.log(`  ⚠️ 矛盾: ${c.slug} — 名乗る指紋 ${c.declared} が中身から導かれる ${c.actual} と食い違う (@ ${c.observations[0].ts}, score ${c.observations[0].score})`);
           }
         }
-        process.exit(a.duplicates > 0 || a.conflicts.length > 0 ? 1 : 0);
+        const human = a.conflicts.length;   // forged-fp と too-deep はどちらも人の手が要る
+        if (human > 0) { console.log(`  🔴 人が読むべき行が ${human} 件ある — 掃除では消えない`); process.exit(2); }
+        process.exit(a.duplicates > 0 ? 1 : 0);
       }
-      const folded = readLedger();
+      /**
+       * **台帳は一度しか読まない(R-8 / P-6)。** 旧実装は `readLedger()` と
+       * `readLedger({raw:true})` を続けて呼び、破損行の警告が二重に出ていた
+       * (破損 3 行の台帳で `⚠️ line skipped` が 6 回)。同じファイルを二度読んで
+       * 二度警告する画面は、行が倍あるように見せる。
+       */
       const raw = readLedger({ raw: true });
+      const tooDeepRows = raw.filter(r => r && typeof r === 'object' && r.metrics && trueKey(r) === null);
+      const foldable = raw.filter(r => !tooDeepRows.includes(r));
+      let folded;
+      try { folded = foldLedger(foldable); }
+      catch (err) { console.error(`⚠️ fold failed, returning raw rows: ${err.message}`); folded = foldable; }
       const lines = [renderLedger(folded)];
-      // 畳んだ件数を名乗る —— 黙って行を減らす画面は信用できない。
-      if (raw.length !== folded.length) {
-        lines.push(`  (raw ${raw.length} 行 / 重複 ${raw.length - folded.length} 行を畳んだ — \`gauge.js ledger --audit\` で内訳)`);
+      /**
+       * 畳んだ件数を名乗る —— 黙って行を減らす画面は信用できない(NFR-1)。
+       * **深すぎて読み飛ばした行を「重複」に混ぜない(第16条 / P-1)。**
+       * 読めなかった行を畳んだ行と同じ数に載せるのは、測れなかったものを埋める行為である。
+       */
+      const tooDeep = tooDeepRows.length;
+      const dropped = raw.length - folded.length - tooDeep;
+      if (dropped > 0 || tooDeep > 0) {
+        const parts = [];
+        if (dropped > 0) parts.push(`重複 ${dropped} 行を畳んだ`);
+        if (tooDeep > 0) parts.push(`深すぎて読めない ${tooDeep} 行を読み飛ばした`);
+        lines.push(`  (raw ${raw.length} 行 / ${parts.join(' / ')} — \`gauge.js ledger --audit\` で内訳)`);
       }
       console.log(lines.join('\n'));
       return;
@@ -611,5 +729,5 @@ if (require.main === module) main();
 module.exports = {
   score, normalize, record, baseline, compare, readLedger, ledgerPath, WEIGHTS,
   // ── 冪等性の器(足すだけ。既存 export は一つも消さない・名も変えない) ──
-  fingerprint, foldLedger, latestFor, auditLedger,
+  fingerprint, foldLedger, latestFor, auditLedger, keyIndex,
 };
