@@ -194,7 +194,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/spawn-trace.js` | **起動の証跡と序列の門**。誰が起動されたかを三値(observed/asserted-only/no-trace)で観測し、教主の権能の三段(委譲/編成/教主の手)を実測と突合して裁く。**閾値も判定表もここ一箇所に住む** — `tiers` が数を語り、`tier` が事後に突合し、`audit` が全走行を監査する(第27条・第52条) |
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定。走行(trajectory)も読む(第38条) |
-| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条)。**台帳は冪等** — 行は材料(`slug`+`scale`+`metrics`)から導かれる指紋を持ち、同じ観測は二度刻まれない。予防(`record` が追記前に検める)と治癒(`readLedger` が読み時に畳む)の二重。`ledger --audit` が重複・矛盾・指紋なき行を名指す(在れば exit 1)(第55条) |
+| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条)。**台帳は冪等** — 行は材料(`slug`+`scale`+`metrics`)から導かれる指紋を持ち、同じ観測は二度刻まれない。予防(`record` が追記前に検める)と治癒(`readLedger` が読み時に畳む)の二重。`ledger --audit` が重複・偽の指紋・深すぎて読めない行を名指す — **exit 0 健全 / 1 掃除で消える重複 / 2 人が読むまで消えない事故(偽の指紋・読めない行) / 3 命令の誤り**。生の全行は `readLedger({raw:true})` だけが返す(CLI の `--raw` は無い)(第55条) |
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
