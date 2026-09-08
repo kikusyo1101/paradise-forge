@@ -141,7 +141,8 @@ node ~/Documents/workspace/paradise/tests/paradise.test.js   # 394/394 pass
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
 orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・
 clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework・中断からの再開）・synod（計画サイクル）・
-domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）。
+domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）・
+gauge（走行の採点と**台帳の冪等性**・指紋/畳み/監査・故障注入で門が鳴ることまで・第38条・第55条）。
 
 ---
 
@@ -193,7 +194,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/spawn-trace.js` | **起動の証跡と序列の門**。誰が起動されたかを三値(observed/asserted-only/no-trace)で観測し、教主の権能の三段(委譲/編成/教主の手)を実測と突合して裁く。**閾値も判定表もここ一箇所に住む** — `tiers` が数を語り、`tier` が事後に突合し、`audit` が全走行を監査する(第27条・第52条) |
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定。走行(trajectory)も読む(第38条) |
-| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条) |
+| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条)。**台帳は冪等** — 行は材料(`slug`+`scale`+`metrics`)から導かれる指紋を持ち、同じ観測は二度刻まれない。予防(`record` が追記前に検める)と治癒(`readLedger` が読み時に畳む)の二重。`ledger --audit` が重複・矛盾・指紋なき行を名指す(在れば exit 1)(第55条) |
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
