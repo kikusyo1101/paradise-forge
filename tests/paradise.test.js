@@ -4635,6 +4635,363 @@ test('gauge(故障注入): 私が新たに発明した 5 変異で門が exit 1 
 
 
 
+// ══ prove attempt 3: 過去 96 変異と重ならない層に立てた門 ═══════════════
+/**
+ * 過去三度、「無音ゼロ」の報告のあとで別の目が穴を見つけた。今回は層を変えて
+ * 27 変異を打ち、**11 件が無音だった**。以下はその 11 件を塞ぐ門である。
+ * 狙った層: CLI の引数解釈と exit code / 下流(pulse)の結合 / 環境依存 /
+ * 境界値 / 門ヘルパー自身。**「門は完全です」とは書かない。**
+ */
+
+/** gauge.js を子プロセスで叩く。人が歩く道そのものを撃つ(module 直呼びではない)。 */
+function gaugeCli(args, sandbox) {
+  const res = require('child_process').spawnSync(process.execPath, [GAUGE_JS, ...args],
+    { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: sandbox } });
+  return { code: res.status, out: String(res.stdout || '') + String(res.stderr || '') };
+}
+
+test('gauge(CLI): --audit は旗の位置に依らず効く (P3/C2 — 引数解釈)', () => {
+  /**
+   * `argv.includes('--audit')` を `argv[1] === '--audit'` に縮めても門は全部緑だった。
+   * 位置依存の旗は、人が `ledger --json --audit` と打った瞬間に**黙って監査をやめ**、
+   * 重複だらけの台帳を「一覧」として exit 0 で見せる。旗は位置ではなく存在で効くこと。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    for (const args of [['ledger', '--audit'], ['ledger', '--verbose', '--audit'], ['ledger', '--audit', '--x']]) {
+      const r = gaugeCli(args, tmp);
+      assert.ok(/rows=30/.test(r.out),
+        `${args.join(' ')} が監査を行わなかった — 旗が位置に依存している: ${r.out.slice(0, 200)}`);
+      assert.strictEqual(r.code, 1, `${args.join(' ')} の exit が 1 でない: ${r.code}`);
+    }
+  });
+});
+
+test('gauge(CLI): score --json も旗の位置に依らず効く (P3/C5)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    for (const args of [['score', run, '--json'], ['score', run, '--label', 'x', '--json']]) {
+      const r = gaugeCli(args, tmp);
+      assert.strictEqual(r.code, 0, `${args.join(' ')} が落ちた: ${r.out}`);
+      assert.doesNotThrow(() => JSON.parse(r.out.trim().split('\n').pop()),
+        `--json が JSON を出さなかった — 旗が位置に依存している: ${r.out.slice(0, 200)}`);
+    }
+  });
+});
+
+test('gauge(CLI): compare --last の N は整数でなければ拒む — NaN を窓に通さない (P3/C3)', () => {
+  /**
+   * 検査を外しても門は全部緑だった。`--last abc` は `Number('abc') = NaN`、
+   * `slice(-NaN)` は **全行**を返す。人は「直近 3 件」を頼んだつもりで台帳全体を
+   * 見せられ、しかも exit 0。誤りは黙って別の答えにすり替わってはならない(第16条)。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    for (const bad of ['abc', '0', '-1', '2.5', 'NaN', 'Infinity']) {
+      const r = gaugeCli(['compare', '--last', bad], tmp);
+      assert.strictEqual(r.code, 3,
+        `--last ${bad} が exit ${r.code} で通った — 不正な N が窓に届いている: ${r.out.slice(0, 160)}`);
+      assert.ok(/usage/.test(r.out), `--last ${bad} が使い方を名乗らない: ${r.out.slice(0, 160)}`);
+    }
+    assert.strictEqual(gaugeCli(['compare', '--last', '3'], tmp).code, 0, '正しい N が拒まれた');
+  });
+});
+
+test('gauge(CLI): compare --last の窓は台帳の**末尾** N である (P3/C7)', () => {
+  /**
+   * `slice(-n)` を `slice(0,n)` に変えても門は全部緑だった。「直近」が「最古」に
+   * 化けても誰も気づかない秤は、推移を語る器として成り立たない。
+   * 畳んだ列は ts 昇順なので、末尾 N = 時刻の新しい N である。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, GAUGE_OBSERVATIONS.map(o => gaugeRow(o)));
+    const r = gaugeCli(['compare', '--last', '2'], tmp);
+    assert.strictEqual(r.code, 0, `compare --last 2 が落ちた: ${r.out}`);
+    assert.ok(/tenbin/.test(r.out) && /reform-claude-md-diet/.test(r.out),
+      `窓が末尾 2 件でない — 「直近」が最古を指している: ${r.out}`);
+    assert.ok(!/coin/.test(r.out), `最古の行が「直近 2 件」に載った: ${r.out}`);
+  });
+});
+
+test('gauge(CLI): record は slug 無しでは一行も書かない (P3/C8)', () => {
+  /**
+   * usage 検査から `slug` を落としても門は全部緑だった。実際には
+   * `slug: undefined` の行が台帳に刻まれ(`fingerprint` は `?? null` で受ける)、
+   * **誰の観測でもない行**が永久に残る。台帳の行は必ず名を持つこと。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const led = path.join(tmp, 'gauge-ledger.jsonl');
+    for (const args of [['record', run], ['record', run, '--slug'], ['record', run, '--slug', '']]) {
+      const r = gaugeCli(args, tmp);
+      assert.strictEqual(r.code, 3, `${args.join(' ')} が exit ${r.code} で通った: ${r.out.slice(0, 160)}`);
+      const written = fs.existsSync(led) ? fs.readFileSync(led, 'utf8') : '';
+      assert.strictEqual(written.trim(), '', `slug 無しの record が台帳に書いた: ${written.slice(0, 200)}`);
+    }
+    assert.strictEqual(gaugeCli(['record', run, '--slug', 'coin'], tmp).code, 0, '正しい record が拒まれた');
+    assert.ok(/"slug":"coin"/.test(fs.readFileSync(led, 'utf8')), '正しい record が書かれていない');
+  });
+});
+
+test('gauge(CLI): 知らない命令は非ゼロで拒む — 誤字を成功と呼ばない (P3/C6)', () => {
+  /**
+   * `process.exit(3)` を 0 にしても門は全部緑だった。`gauge.js recrod …` が
+   * exit 0 を返せば、CI も cron も「記録した」と信じて先へ進む。
+   * **何もしなかったことを成功と名乗るのが、この秤で最も危険な嘘である。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    for (const args of [['bogus'], [], ['ledgerr'], ['--audit']]) {
+      const r = gaugeCli(args, tmp);
+      assert.notStrictEqual(r.code, 0,
+        `\`gauge.js ${args.join(' ')}\` が exit 0 を返した — 誤字が成功に見える: ${r.out.slice(0, 160)}`);
+      assert.strictEqual(r.code, 3, `使い方の誤りは exit 3 であること (実際 ${r.code}): ${r.out.slice(0, 160)}`);
+    }
+  });
+});
+
+test('gauge(下流): pulse の断面は畳んだ台帳を載せる — 画面の三段重なりは源で治す (P3/D1)', () => {
+  /**
+   * `pulse.js:428` を `readLedger({raw:true})` に変えても gauge の門は全部緑だった。
+   * FR-3 が治した「画面に同じ点が三段並ぶ」は、**下流が生を採った瞬間に戻る**。
+   * NG-4 が pulse の改修を遠ざけたのは源で治すためであり、
+   * 源が治ったことを下流の断面で確かめる門が無ければ、治癒は繋がっていない。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-pulse-'));
+  try {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const res = require('child_process').spawnSync(process.execPath, ['-e',
+      `process.env.PARADISE_CREATIONS=${JSON.stringify(tmp)};` +
+      `const s=require(${JSON.stringify(path.join(DIR, '..', 'graph', 'pulse.js'))}).snapshot();` +
+      `console.log(JSON.stringify({n:(s.ledger||[]).length,slugs:(s.ledger||[]).map(r=>r.slug)}));`],
+      { encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, `pulse の断面が落ちた: ${res.stderr}`);
+    const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+    assert.strictEqual(got.n, 6,
+      `pulse の ledger 断面が ${got.n} 行 — 生の 30 行が画面へ流れている (FR-3 が下流に届いていない)`);
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('gauge(下流): pulse の断面は metrics なし行で倒れない (P3/D2 / 第55条 e)', () => {
+  /**
+   * `r.metrics ? … : null` を直参照に変えても gauge の門は全部緑だった。
+   * `baseline` は失敗した創造物に `{slug,error}` を積む —— これは**実在する形**である。
+   * 一行の欠けで断面が丸ごと落ちれば、ダッシュボードは台帳ごと沈黙する。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-pulse2-'));
+  try {
+    writeGaugeLedger(tmp, [
+      JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])),
+      JSON.stringify({ ts: '2026-01-02T00:00:00.000Z', slug: 'broken', error: 'run-state carries no phases' }),
+    ]);
+    const res = require('child_process').spawnSync(process.execPath, ['-e',
+      `process.env.PARADISE_CREATIONS=${JSON.stringify(tmp)};` +
+      `const s=require(${JSON.stringify(path.join(DIR, '..', 'graph', 'pulse.js'))}).snapshot();` +
+      `console.log(JSON.stringify({ledger:s.ledger,errs:(s.errors||[]).map(e=>e.engine||e)}));`],
+      { encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, `pulse が metrics なし行で落ちた: ${res.stderr.slice(0, 300)}`);
+    const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+    assert.ok(Array.isArray(got.ledger),
+      `ledger 断面が null になった — 一行の欠けで台帳全体が沈黙した: ${JSON.stringify(got.errs)}`);
+    assert.strictEqual(got.ledger.length, 2, `行が落ちた: ${JSON.stringify(got.ledger)}`);
+    assert.strictEqual(got.ledger.find(r => r.slug === 'broken').score, null,
+      'metrics なし行の score は null で名乗ること — 0 で埋めない (第16条)');
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('gauge(環境): 倉が存在しない機で baseline も ledger も倒れない (P3/E5 / 第20条)', () => {
+  /**
+   * `baseline` の `existsSync(root)` を外しても門は全部緑だった。creations を
+   * clone していない機(CI の一部・新しい端末)では倉そのものが無い。
+   * そこで秤が ENOENT で落ちれば、**gauge を呼ぶ道が全部連鎖で落ちる**。
+   */
+  const ghost = path.join(os.tmpdir(), `paradise-gauge-ghost-${process.pid}`);
+  try { fs.rmSync(ghost, { recursive: true, force: true }); } catch {}
+  assert.ok(!fs.existsSync(ghost), '前提: 倉が存在しないこと');
+  for (const args of [['baseline'], ['ledger'], ['ledger', '--audit']]) {
+    const r = gaugeCli(args, ghost);
+    assert.strictEqual(r.code, 0,
+      `倉の無い機で \`gauge.js ${args.join(' ')}\` が exit ${r.code} で落ちた: ${r.out.slice(0, 200)}`);
+    assert.ok(!/ENOENT/.test(r.out), `倉の不在を事故として叫んだ: ${r.out.slice(0, 200)}`);
+  }
+  assert.ok(!fs.existsSync(ghost), '倉の無い機で秤が勝手に倉を作った — 住所の主は workspace である (第30条)');
+});
+
+test('門ヘルパー: withGaugeSandbox は必ず仮倉へ振り替える — 外の env を尊重しない (P3/T1)', () => {
+  /**
+   * `process.env.PARADISE_CREATIONS = tmp` を `= prev || tmp` に変えても門は全部緑だった。
+   * その形では、外側で env が立っている機(まさに CI で gauge を測る時)に
+   * **85 本の門がまるごと実台帳を相手に走る**。第30条の約束「門は実台帳を一行も
+   * 書き換えない」が、環境変数一つで崩れる。門ヘルパーの主張自身を守る(第55条 i)。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const outer = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-outer-'));
+  try {
+    process.env.PARADISE_CREATIONS = outer;
+    let seen = null;
+    withGaugeSandbox((g, tmp) => { seen = { tmp, root: require(WORKSPACE_JS).resolve().root }; });
+    assert.notStrictEqual(seen.root, outer,
+      '外側の PARADISE_CREATIONS がそのまま使われた — 仮倉への振替が効いていない');
+    assert.strictEqual(path.resolve(seen.root), path.resolve(seen.tmp),
+      `門が見た倉 ${seen.root} が仮倉 ${seen.tmp} と違う`);
+    assert.strictEqual(process.env.PARADISE_CREATIONS, outer, '外側の env が戻されていない');
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(outer, { recursive: true, force: true });
+  }
+});
+
+test('門ヘルパー: test() の失敗が必ず数に載る — 集計行が嘘をつかない (P3/T2 / 第16条)', () => {
+  /**
+   * `test()` の catch から `fail++` を落としても、gauge の門は全部緑「に見えた」。
+   * 集計行 `N passed, 0 failed` は census が README に写す数であり、
+   * **数え方が嘘をつけば全ての門の緑が無意味になる**。ここは門の根である。
+   * 実物の `test` を撃つと集計が汚れるので、同じ本文を子プロセスで走らせて撃つ。
+   */
+  const src = fs.readFileSync(path.join(DIR, 'paradise.test.js'), 'utf8');
+  const m = src.match(/function test\(name, fn\) \{[\s\S]*?\n\}/);
+  assert.ok(m, 'test() の定義が見つからない — 門の形が変わった');
+  assert.ok(/fail\+\+/.test(m[0]), '失敗を数える一行が消えている — 集計行が永久に 0 failed になる');
+  assert.ok(/pass\+\+/.test(m[0]), '成功を数える一行が消えている');
+  const res = require('child_process').spawnSync(process.execPath, ['-e',
+    `let pass=0,fail=0;\n${m[0]}\ntest('x',()=>{throw new Error('BOOM')});` +
+    `test('y',()=>{});console.log(JSON.stringify({pass,fail}));`], { encoding: 'utf8' });
+  assert.strictEqual(res.status, 0, `test() の抜き出しが走らない: ${res.stderr.slice(0, 200)}`);
+  const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+  assert.deepStrictEqual(got, { pass: 1, fail: 1 },
+    `失敗が集計に載らない — 「0 failed」が構造的に嘘になる: ${JSON.stringify(got)}`);
+});
+
+// ── AC-8a/8b/8c: 掃除の手順を仮倉で模擬する(実台帳は一行も触らない) ──
+/**
+ * prove attempt 2 は「AC-8a/8b/8c には門が無い」と正直に報告した。実台帳を
+ * 触らずに掃除を検めることは**できる** —— 掃除は creations 側の別 PR(AC-8d)だが、
+ * **手順そのもの**は純粋な変換であり、仮倉で実演すれば機械が裁ける。
+ * ここで撃つのは「掃除の結果が 6 行になるか」ではなく
+ * **「30 行を畳んで書き戻す手順が、観測を一つも失わず、行数だけを減らすか」**である。
+ */
+test('gauge: FR-8 の掃除は 30 行を 6 行にし、観測を一つも失わない (AC-8a / AC-8b — 仮倉で模擬)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const led = path.join(tmp, 'gauge-ledger.jsonl');
+    writeGaugeLedger(tmp, gauge30Rows());
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 30, `素材が 30 行でない: ${raw.length}`);
+    // design.md が定める掃除の手順: raw を畳んで書き戻す。
+    const folded = g.foldLedger(raw);
+    fs.writeFileSync(led, folded.map(r => JSON.stringify(r)).join('\n') + '\n');
+    // AC-8a: 行数
+    const after = fs.readFileSync(led, 'utf8').split('\n').filter(Boolean);
+    assert.strictEqual(after.length, 6, `掃除後が 6 行でない: ${after.length}`);
+    // AC-8a: 内訳が V-9 の実測と一致する
+    const got = after.map(l => JSON.parse(l)).map(e => `${e.slug} ${e.metrics.score}`).sort();
+    assert.deepStrictEqual(got, [
+      'coin 100', 'habit 45', 'reform-claude-md-diet 80',
+      'reform-eval-gauge 100', 'reform-eval-gauge 80', 'tenbin 100',
+    ].sort(), `掃除後の内訳が V-9 の実測と違う: ${JSON.stringify(got)}`);
+    // AC-8b: 指紋の集合が前後で完全一致 —— 観測は一つも失われない
+    const before = new Set(raw.map(r => g.fingerprint(r)));
+    const afterSet = new Set(after.map(l => g.fingerprint(JSON.parse(l))));
+    assert.strictEqual(before.size, 6, `畳む前の distinct が 6 でない: ${before.size}`);
+    assert.deepStrictEqual([...afterSet].sort(), [...before].sort(),
+      '掃除で観測が失われた/生まれた — 指紋の集合が前後で一致しない (AC-8b)');
+    // 掃除の後に監査が黙る(鳴りっぱなしの門にしない)
+    assert.strictEqual(gaugeCli(['ledger', '--audit'], tmp).code, 0,
+      '掃除を終えた台帳で --audit が鳴った — 掃除が到達点でないなら AC-8 は達成不能である');
+  });
+});
+
+test('gauge: 掃除は keep-first — 残るのは各指紋の最古の行である (AC-8b の含意)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const folded = g.foldLedger(g.readLedger({ raw: true }));
+    for (const o of GAUGE_OBSERVATIONS) {
+      const hit = folded.find(e => e.slug === o.slug && e.metrics.score === o.score);
+      assert.ok(hit, `${o.slug} ${o.score} が掃除で消えた`);
+      assert.strictEqual(hit.ts, o.ts,
+        `${o.slug} に残ったのが最古の行でない (${hit.ts} ≠ ${o.ts}) — keep-last に化けている`);
+    }
+  });
+});
+
+test('gauge(故障注入): prove attempt 3 の無音 11 種のうち engine 側 6 種で各門が鳴る', () => {
+  /**
+   * **注入版に対して非ゼロ・実物に対してゼロ** —— 片側だけでは門ではない(第21条)。
+   * 門ヘルパー側の変異(T1/T2)と下流(D1/D2)は上の各門が直に撃っているので、
+   * ここでは engine を壊す道だけを子プロセスで回す。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-inj3-'));
+  try {
+    const mutations = [
+      { tag: 'C2', name: 'c2.js', mutate: s => s.replace("argv.includes('--audit')", "argv[1] === '--audit'") },
+      { tag: 'C3', name: 'c3.js',
+        mutate: s => s.replace(/if \(!Number\.isInteger\(n\) \|\| n < 1\) \{[^}]*\}/, '') },
+      { tag: 'C6', name: 'c6.js', mutate: s => s.replace(/process\.exit\(3\);(\r?\n)  \} catch/, 'process.exit(0);$1  } catch') },
+      { tag: 'C7', name: 'c7.js', mutate: s => s.replace('filter(e => e.metrics).slice(-n)', 'filter(e => e.metrics).slice(0, n)') },
+      { tag: 'C8', name: 'c8.js', mutate: s => s.replace("if (!file || !slug) { console.error('usage: gauge.js record", "if (!file) { console.error('usage: gauge.js record") },
+      { tag: 'E5', name: 'e5.js', mutate: s => s.replace('  if (!fs.existsSync(root)) return out;\r\n', '').replace('  if (!fs.existsSync(root)) return out;\n', '') },
+    ];
+    /**
+     * 注入版の CLI を直に撃つ(`runGaugeGate` は module を require する道なので、
+     * CLI の引数解釈を壊す変異は届かない —— **道が違えば門も違う**)。
+     */
+    const cli = (engine, sandbox, args) => {
+      const r = require('child_process').spawnSync(process.execPath, [engine, ...args],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: sandbox } });
+      return { code: r.status, out: String(r.stdout || '') + String(r.stderr || '') };
+    };
+    const probes = {
+      C2: (eng, box) => {
+        writeGaugeLedger(box, gauge30Rows());
+        const r = cli(eng, box, ['ledger', '--verbose', '--audit']);
+        return /rows=30/.test(r.out) && r.code === 1;
+      },
+      C3: (eng, box) => {
+        writeGaugeLedger(box, gauge30Rows());
+        return cli(eng, box, ['compare', '--last', 'abc']).code === 3;
+      },
+      C6: (eng, box) => cli(eng, box, ['bogus']).code === 3,
+      C7: (eng, box) => {
+        writeGaugeLedger(box, GAUGE_OBSERVATIONS.map(o => gaugeRow(o)));
+        const r = cli(eng, box, ['compare', '--last', '2']);
+        return r.code === 0 && /tenbin/.test(r.out) && !/coin/.test(r.out);
+      },
+      C8: (eng, box) => {
+        const run = path.join(box, 'run.json');
+        fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+        const r = cli(eng, box, ['record', run]);
+        const led = path.join(box, 'gauge-ledger.jsonl');
+        return r.code === 3 && (!fs.existsSync(led) || fs.readFileSync(led, 'utf8').trim() === '');
+      },
+      E5: (eng, box) => {
+        const ghost = path.join(box, 'ghost');
+        return ['baseline', 'ledger'].every(c => cli(eng, ghost, [c]).code === 0);
+      },
+    };
+    const rang = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const mk = (tag) => { const d = path.join(sand, m.tag + '-' + tag); fs.mkdirSync(d, { recursive: true }); return d; };
+      assert.strictEqual(probes[m.tag](brokenPath, mk('broken')), false,
+        `${m.tag} を注入しても門の検査が通った — 穴が残っている`);
+      assert.strictEqual(probes[m.tag](GAUGE_JS, mk('real')), true,
+        `${m.tag} の門が実物で鳴った — 門自身が壊れている`);
+      rang.push(m.tag);
+    }
+    assert.strictEqual(rang.length, 6, `6 変異を撃っていない: ${rang.join(',')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+
+
 // ── FR-9 / NFR-1 門と画面 ──────────────────────────────────────────────
 
 test('gauge: ledger の出力が畳んだ件数を名乗る (NFR-1)', () => {
