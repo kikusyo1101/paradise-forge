@@ -2930,6 +2930,2635 @@ test('gauge: 台帳は追記型で record→compare が前後を語る', () => {
   }
 });
 
+// --- Gauge 台帳の冪等性 (第55条 / reform: gauge-ledger-idempotent) ---
+/**
+ * 門の作法(既存 2906-2931 と `withGuard` 1083-1097 の同型):
+ *   1. `fs.mkdtempSync` で仮倉を作る
+ *   2. `PARADISE_CREATIONS` で住所を振り替える(**第30条を破らない**)
+ *   3. workspace.js / gauge.js の require.cache を捨ててから require
+ *   4. finally で env を戻し、cache を再度捨て、仮倉を消す
+ *
+ * **実台帳は一行も書き換えない。** 門は仮倉としか話さない。
+ */
+console.log('\nGauge 台帳の冪等性 (第55条):');
+
+const GAUGE_JS = path.join(DIR, '..', 'graph', 'gauge.js');
+const WORKSPACE_JS = path.join(DIR, '..', 'graph', 'workspace.js');
+
+function withGaugeSandbox(fn) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-fp-'));
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  process.env.PARADISE_CREATIONS = tmp;
+  delete require.cache[require.resolve(WORKSPACE_JS)];
+  delete require.cache[require.resolve(GAUGE_JS)];
+  try {
+    return fn(require(GAUGE_JS), tmp);
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS;
+    else process.env.PARADISE_CREATIONS = prevEnv;
+    delete require.cache[require.resolve(WORKSPACE_JS)];
+    delete require.cache[require.resolve(GAUGE_JS)];
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/** 台帳の行を仮倉に直に置く。`fp` を付けるかは呼び手が決める(後方互換の門が使う)。 */
+function writeGaugeLedger(tmp, rows) {
+  fs.writeFileSync(path.join(tmp, 'gauge-ledger.jsonl'),
+    rows.map(r => (typeof r === 'string' ? r : JSON.stringify(r))).join('\n') + '\n');
+}
+
+/** 実台帳と同型の観測(distinct 6)。V-3 / design §0 の実測値をそのまま写す。 */
+const GAUGE_OBSERVATIONS = [
+  { slug: 'coin', score: 100, ts: '2026-08-31T13:54:12.961Z' },
+  { slug: 'habit', score: 45, ts: '2026-08-31T13:54:12.962Z' },
+  { slug: 'reform-eval-gauge', score: 80, ts: '2026-08-31T13:54:12.963Z' },
+  { slug: 'reform-eval-gauge', score: 100, ts: '2026-08-31T14:01:25.440Z' },
+  { slug: 'tenbin', score: 100, ts: '2026-09-01T03:39:58.444Z' },
+  { slug: 'reform-claude-md-diet', score: 80, ts: '2026-09-02T07:03:12.473Z' },
+];
+
+/** 旧形式(`fp` を持たない)の entry を組む — 実台帳の 11 鍵に合わせる。 */
+function gaugeRow(o, ts) {
+  return {
+    ts: ts || o.ts,
+    slug: o.slug,
+    scale: 'standard',
+    metrics: {
+      score: o.score, complete: true, phasesTotal: 4, phasesDone: 4,
+      domainsTotal: 1, domainsRatified: 1, firstPassRate: 1,
+      reworkCount: 0, retryOverhead: 0, loopGuardTrips: 0, durationMs: 1800000,
+    },
+  };
+}
+
+/** 実台帳同型の 30 行(6 観測 × 5 重複。重複は ts だけが違う)。 */
+function gauge30Rows() {
+  const rows = [];
+  for (let copy = 0; copy < 5; copy++) {
+    for (const o of GAUGE_OBSERVATIONS) {
+      // 先着(ts 最小)は copy 0。畳みは必ずこの行を残さねばならない。
+      rows.push(gaugeRow(o, copy === 0 ? o.ts : `2026-09-0${copy + 3}T00:00:00.00${copy}Z`));
+    }
+  }
+  return rows;
+}
+
+/**
+ * **窓が汚れる並び**(discovery V-6 の実測 `habit / coin / habit` と同じ形)。
+ *
+ * 重複を台帳の**末尾側**に置く —— `compare --last N` は `slice(-n)` で窓を採るので、
+ * 重複が先頭に固まっている台帳では畳みを外しても偶然きれいな窓が出てしまう。
+ * **たまたま緑になる並びで門を書けば、それは門ではない。**
+ * 生の並び:  A1 B1 C1 A2 C2 A3   → 生の窓(末尾3) = A C A(汚染)
+ * 畳んだ列:  A B C(ts 昇順)     → 畳んだ窓        = A B C(健全)
+ */
+function gaugeWindowRows() {
+  const A = (ts) => gaugeRow({ slug: 'habit', score: 45 }, ts);
+  const B = (ts) => gaugeRow({ slug: 'coin', score: 100 }, ts);
+  const C = (ts) => gaugeRow({ slug: 'tenbin', score: 80 }, ts);
+  return [
+    A('2026-09-01T00:00:00.000Z'), B('2026-09-01T00:00:01.000Z'), C('2026-09-01T00:00:02.000Z'),
+    A('2026-09-02T00:00:00.000Z'), C('2026-09-02T00:00:02.000Z'), A('2026-09-03T00:00:00.000Z'),
+  ];
+}
+
+/**
+ * 故障注入 — 実装を壊した複製を仮倉に置く(`tests/paradise.test.js:5067-5085` の先例と同型)。
+ * 置換が効かなければ「前提が変わった」= 門の失効。**ここで必ず鳴らす。**
+ */
+function injectGauge(sandDir, name, replacer) {
+  const src = fs.readFileSync(GAUGE_JS, 'utf8');
+  const broken = replacer(src);
+  assert.notStrictEqual(broken, src, `注入すべき箇所が見つからない — 実装の形が変わった (${name})`);
+  const out = path.join(sandDir, name);
+  // 相対 require を実物の graph/ に向け直す(複製は graph/ の外に住むため)
+  fs.writeFileSync(out, broken.replace(/require\('\.\/([\w.-]+)'\)/g,
+    (_, f) => `require(${JSON.stringify(path.join(DIR, '..', 'graph', f))})`));
+  return out;
+}
+
+/**
+ * 門そのものを子プロセスとして撃つ。**「門が exit 1 で鳴る」を文字どおり実測する。**
+ * 注入版に対して非ゼロ、実物に対してゼロ —— 片側だけでは門ではない(第21条 壊して鳴らす)。
+ */
+function runGaugeGate(enginePath, sandbox, body) {
+  const script = `
+    process.env.PARADISE_CREATIONS = ${JSON.stringify(sandbox)};
+    const assert = require('assert');
+    const fs = require('fs');
+    const path = require('path');
+    const g = require(${JSON.stringify(enginePath)});
+    const LEDGER = path.join(${JSON.stringify(sandbox)}, 'gauge-ledger.jsonl');
+    const lines = () => (fs.existsSync(LEDGER)
+      ? fs.readFileSync(LEDGER, 'utf8').split('\\n').filter(Boolean).length : 0);
+    ${body}
+  `;
+  try {
+    const out = execFileSync(process.execPath, ['-e', script],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return { code: 0, out: String(out) };
+  } catch (e) {
+    return { code: e.status == null ? -1 : e.status, out: String(e.stdout || '') + String(e.stderr || '') };
+  }
+}
+
+/** 仮倉に conclave.json を持つ創造物の部屋を作る(baseline が拾う形)。 */
+function seedGaugeCreations(tmp, slugs) {
+  for (const [i, slug] of slugs.entries()) {
+    fs.mkdirSync(path.join(tmp, slug), { recursive: true });
+    fs.writeFileSync(path.join(tmp, slug, 'conclave.json'),
+      JSON.stringify(makeGaugeRun({ reworks: i })));
+  }
+}
+
+// ── FR-1 冪等鍵 ────────────────────────────────────────────────────────
+
+test('gauge: 同一 run の二度の record は同じ指紋を名乗る (AC-1a / FR-1)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const a = g.record(run, 'coin');
+    const b = g.record(run, 'coin');
+    assert.ok(a.fp, '一度目の entry が指紋を名乗っていない');
+    assert.strictEqual(b.fp || g.fingerprint(b), a.fp, '同じ観測が別の鍵を名乗った — 冪等性が成り立たない');
+    assert.strictEqual(b.skipped, true, '二度目が既記録を名乗っていない');
+    assert.ok(/^g1:[0-9a-f]{16}$/.test(a.fp), `指紋の形が版を名乗っていない: ${a.fp}`);
+  });
+});
+
+test('gauge: 指紋は ts に依存しない (AC-1b / FR-1)', () => {
+  const base = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const moved = { ...base, ts: '1999-01-01T00:00:00.000Z' };
+  assert.strictEqual(gauge.fingerprint(moved), gauge.fingerprint(base),
+    'ts を変えたら鍵が動いた — 同じ観測が二度刻まれる');
+  // 材料は slug / scale / metrics の三つ。どれを動かしても鍵は動かねばならない。
+  assert.notStrictEqual(gauge.fingerprint({ ...base, slug: 'other' }), gauge.fingerprint(base));
+  assert.notStrictEqual(gauge.fingerprint({ ...base, scale: 'grand' }), gauge.fingerprint(base));
+  assert.notStrictEqual(
+    gauge.fingerprint({ ...base, metrics: { ...base.metrics, score: 99 } }), gauge.fingerprint(base));
+  // 鍵順に依存しない(素の JSON.stringify を材料にしていないことの門)
+  const reversed = {};
+  for (const k of Object.keys(base.metrics).reverse()) reversed[k] = base.metrics[k];
+  assert.strictEqual(gauge.fingerprint({ ...base, metrics: reversed }), gauge.fingerprint(base),
+    'metrics の鍵順で指紋が割れた — JSON.stringify を直に材料にしている');
+});
+
+test('gauge: 冪等化は第二の住所を持ち込まない (AC-1c / 第30条)', () => {
+  const src = fs.readFileSync(GAUGE_JS, 'utf8');
+  const code = src.split('\n').filter(l => !/^\s*[*/]/.test(l)).join('\n');
+  assert.ok(!/paradise-creations/.test(code), 'gauge.js が住所を直書きしている (第30条)');
+  assert.ok(!/gauge-index|\.gauge-cache|fpIndex/.test(code), '指紋の索引ファイルを作っている (NG-8)');
+  // 書き込みは append 一本のまま。削除・切り詰めの経路を足していない(fail-open / R-10)。
+  assert.strictEqual((code.match(/writeFileSync|unlinkSync|truncateSync|rmSync/g) || []).length, 0,
+    'record に破壊的書き込みの経路が足された — 台帳の第一の徳は「記録が失われない」こと');
+  const r = execFileSync(process.execPath, [WORKSPACE_JS, 'check'], { encoding: 'utf8' });
+  assert.ok(/混入なし|no /.test(r), `workspace check が汚染を報じた: ${r}`);
+});
+
+// ── FR-2 書き側の予防 ──────────────────────────────────────────────────
+
+test('gauge: baseline を二度走らせても台帳は増えない (AC-2a / 冪等性の核)', () => {
+  withGaugeSandbox((g, tmp) => {
+    seedGaugeCreations(tmp, ['coin', 'habit']);
+    const L = path.join(tmp, 'gauge-ledger.jsonl');
+    const lines = () => fs.readFileSync(L, 'utf8').split('\n').filter(Boolean).length;
+    g.baseline(); const n1 = lines();
+    g.baseline(); const n2 = lines();
+    g.baseline(); const n3 = lines();
+    assert.strictEqual(n1, 2, `基線は2創造物で2行のはず (実測 ${n1})`);
+    assert.strictEqual(n2, n1, `二度目で ${n1} → ${n2} に増えた — 同じ観測が二度刻まれている`);
+    assert.strictEqual(n3, n1, `三度目で ${n1} → ${n3} に増えた`);
+  });
+});
+
+test('gauge: record の二度打ちも一行 — 人が実際に歩く道 (AC-2b / FR-2)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    g.record(run, 'coin');
+    g.record(run, 'coin');
+    g.record(run, 'coin');
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 1, `record ×3 で ${raw.length} 行 — /conclave の道が素通りしている`);
+  });
+});
+
+test('gauge: 二度目の record は沈黙せず「既記録」を名乗る (AC-2c)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const env = { ...process.env, PARADISE_CREATIONS: tmp };
+    const cli = () => execFileSync(process.execPath, [GAUGE_JS, 'record', run, '--slug', 'coin'],
+      { encoding: 'utf8', env });
+    const first = cli();
+    const second = cli();   // exit 0 でなければ execFileSync が throw する(= 重複は失敗ではない)
+    assert.ok(/recorded/.test(first) && !/already/.test(first), `一度目の文言が違う: ${first}`);
+    assert.ok(/already recorded/.test(second), `二度目が既記録を名乗らない: ${second}`);
+    assert.notStrictEqual(second.trim(), first.trim(), '二度目が一度目と区別できない');
+  });
+});
+
+test('gauge(故障注入): 冪等検査を外すと AC-2a の門が exit 1 で鳴る (AC-2d)', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-inj2-'));
+  try {
+    // 注入: record の重複検査を丸ごと削り、無条件 append(欠陥の元の姿)に戻す
+    const brokenPath = injectGauge(sand, 'gauge.broken-idem.js', src => src.replace(
+      /let existing = null;[\s\S]*?if \(existing\) \{[\s\S]*?\n  \}/,
+      'let existing = null;'));
+    // 仮倉は engine ごとに分ける(片方の台帳がもう片方に漏れないため)
+    const mk = (tag) => {
+      const box = path.join(sand, tag);
+      seedGaugeCreations(box, ['coin', 'habit']);
+      return box;
+    };
+    const gate = `
+      g.baseline(); const n1 = lines();
+      g.baseline(); const n2 = lines();
+      console.log('n1=' + n1 + ' n2=' + n2);
+      assert.strictEqual(n1, 2, 'baseline が2行を刻んでいない');
+      assert.strictEqual(n2, n1, 'baseline 二度目で ' + n1 + ' → ' + n2 + ' に増えた');
+    `;
+    // ① 注入版で撃つ → 門は非ゼロで鳴らねばならない
+    const broken = runGaugeGate(brokenPath, mk('broken'), gate);
+    assert.notStrictEqual(broken.code, 0,
+      `冪等検査を外しても門が緑だった (exit ${broken.code}) — この門は健全な系しか見ていない`);
+    assert.ok(/n1=2 n2=4/.test(broken.out),
+      `注入版が期待どおり壊れていない: ${broken.out.slice(0, 300)}`);
+    // ② 実物で撃つ → 緑
+    const real = runGaugeGate(GAUGE_JS, mk('real'), gate);
+    assert.strictEqual(real.code, 0, `実物の engine で門が鳴った: ${real.out.slice(0, 300)}`);
+    assert.ok(/n1=2 n2=2/.test(real.out), `実物が冪等でない: ${real.out.slice(0, 300)}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+// ── FR-3 読み側の治癒 ──────────────────────────────────────────────────
+
+test('gauge: 実台帳同型の30行が6行に畳まれる (AC-3a / FR-3)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 30, `生の行が ${raw.length} 行 — 投入した30行が読めていない`);
+    assert.strictEqual(g.foldLedger(raw).length, 6, '畳みが distinct 6 に届いていない');
+    assert.strictEqual(g.readLedger().length, 6, 'readLedger の既定が畳んでいない');
+    const a = g.auditLedger(raw);
+    assert.deepStrictEqual({ rows: a.rows, distinct: a.distinct, duplicates: a.duplicates },
+      { rows: 30, distinct: 6, duplicates: 24 });
+  });
+});
+
+test('gauge: 畳みは 80→100 の本物の改善を殺さない (AC-3b / 第38条)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const folded = g.readLedger();
+    const evals = folded.filter(e => e.slug === 'reform-eval-gauge')
+      .map(e => e.metrics.score).sort((x, y) => x - y);
+    assert.deepStrictEqual(evals, [80, 100],
+      '改善を語る二行が畳みに殺された — 秤が自分で第38条を破っている');
+    // 先着(ts 最小)が残っていること。行位置ではなく ts で選ばれている。
+    const coin = folded.find(e => e.slug === 'coin');
+    assert.strictEqual(coin.ts, '2026-08-31T13:54:12.961Z', 'keep-first でない行が残った');
+  });
+});
+
+test('gauge: 重複台帳でも compare --last 3 が3つの異なる観測を返す (AC-3c)', () => {
+  withGaugeSandbox((g, tmp) => {
+    // 生の末尾3行は habit / tenbin / habit(V-6 と同じ汚染)。畳みが効けば3つとも別になる。
+    writeGaugeLedger(tmp, gaugeWindowRows());
+    const rawWindow = gaugeWindowRows().slice(-3).map(e => `${e.slug}:${e.metrics.score}`);
+    assert.strictEqual(new Set(rawWindow).size, 2, `門の前提が崩れた — 生の窓が汚れていない: ${rawWindow}`);
+    const out = execFileSync(process.execPath, [GAUGE_JS, 'compare', '--last', '3'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    const rows = out.split('\n').filter(l => /\/100/.test(l)).map(l => l.trim().replace(/\s+/g, ' '));
+    assert.strictEqual(rows.length, 3, `窓が3行でない: ${JSON.stringify(rows)}`);
+    const keys = rows.map(l => l.replace(/^\S+\s+/, ''));   // ts を落とし (score, slug) で見る
+    assert.strictEqual(new Set(keys).size, 3,
+      `窓に同じ観測が二度並んだ — 偽の「変化なし」を捏造している: ${JSON.stringify(keys)}`);
+  });
+});
+
+test('gauge(故障注入): 畳みを外すと AC-3c の門が exit 1 で鳴る (AC-3d)', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-inj3-'));
+  try {
+    const brokenPath = injectGauge(sand, 'gauge.broken-fold.js', src =>
+      src.replace('try { return foldLedger(kept); }', 'try { return kept; }'));
+    const gate = `
+      const rows = g.readLedger().filter(e => e.metrics).slice(-3);
+      const keys = rows.map(e => e.slug + ':' + e.metrics.score);
+      console.log('window=' + JSON.stringify(keys));
+      assert.strictEqual(rows.length, 3, '窓が3行でない');
+      assert.strictEqual(new Set(keys).size, 3, '窓に同じ観測が二度並んだ: ' + JSON.stringify(keys));
+    `;
+    const mk = (tag) => {
+      const d = path.join(sand, tag);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'gauge-ledger.jsonl'),
+        gaugeWindowRows().map(r => JSON.stringify(r)).join('\n') + '\n');
+      return d;
+    };
+    const broken = runGaugeGate(brokenPath, mk('broken'), gate);
+    assert.notStrictEqual(broken.code, 0,
+      `畳みを外しても門が緑だった (exit ${broken.code}) — 窓の汚染を見ていない`);
+    assert.ok(/window=.*habit.*habit/.test(broken.out),
+      `注入版の窓が汚れていない: ${broken.out.slice(0, 300)}`);
+    const real = runGaugeGate(GAUGE_JS, mk('real'), gate);
+    assert.strictEqual(real.code, 0, `実物の engine で門が鳴った: ${real.out.slice(0, 400)}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+// ── FR-4 順序非依存 ────────────────────────────────────────────────────
+
+test('gauge: 行順を入れ替えても畳んだ結果が同一 (AC-4a / FR-4)', () => {
+  const rows = gauge30Rows();
+  const shuffle = (a, seed) => {
+    const b = a.slice();
+    let s = seed;
+    for (let i = b.length - 1; i > 0; i--) {
+      s = (s * 1103515245 + 12345) % 2147483648;      // 決定的な擬似乱数(門が揺れないため)
+      const j = s % (i + 1);
+      [b[i], b[j]] = [b[j], b[i]];
+    }
+    return b;
+  };
+  const base = JSON.stringify(gauge.foldLedger(rows));
+  for (const seed of [1, 7, 42, 1234, 99991]) {
+    assert.strictEqual(JSON.stringify(gauge.foldLedger(shuffle(rows, seed))), base,
+      `shuffle(seed=${seed}) で畳みの結果が動いた — 行位置を時刻の代理にしている`);
+  }
+});
+
+test('gauge: 「最新」は ts の最大であって末尾行ではない (AC-4b / FR-4)', () => {
+  // git マージ後の実測の並び: T0, T2, T1(行順は時刻順ではない)
+  const mk = (ts, score) => ({ ts, slug: 'coin', scale: 'standard',
+    metrics: { ...gaugeRow(GAUGE_OBSERVATIONS[0]).metrics, score } });
+  const entries = [mk('2026-01-01T00:00:00.000Z', 10), mk('2026-03-01T00:00:00.000Z', 30),
+    mk('2026-02-01T00:00:00.000Z', 20)];
+  const latest = gauge.latestFor('coin', entries);
+  assert.strictEqual(latest.ts, '2026-03-01T00:00:00.000Z',
+    `末尾行を「最新」と呼んだ (ts=${latest.ts}) — 行位置は時刻ではない`);
+  assert.strictEqual(latest.metrics.score, 30);
+  assert.strictEqual(gauge.latestFor('ghost', entries), null, '居ない slug に行を捏造した');
+});
+
+test('gauge(故障注入): hits[hits.length-1] に戻すと AC-4b の門が exit 1 で鳴る (AC-4c)', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-inj4-'));
+  try {
+    const brokenPath = injectGauge(sand, 'gauge.broken-latest.js', src => src.replace(
+      /return hits\.reduce\(\(best, e\) => \(String\(e\.ts \|\| ''\) > String\(best\.ts \|\| ''\) \? e : best\), hits\[0\]\);/,
+      'return hits[hits.length - 1];'));
+    const rows = [
+      { ts: '2026-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 10 } },
+      { ts: '2026-03-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 30 } },
+      { ts: '2026-02-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 20 } },
+    ];
+    const gate = `
+      const raw = g.readLedger({ raw: true });
+      const latest = g.latestFor('coin', raw);
+      console.log('latest=' + latest.ts + ' score=' + latest.metrics.score);
+      assert.strictEqual(latest.ts, '2026-03-01T00:00:00.000Z',
+        '末尾行を最新と呼んだ: ' + latest.ts);
+    `;
+    const mk = (tag) => {
+      const d = path.join(sand, tag);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'gauge-ledger.jsonl'),
+        rows.map(r => JSON.stringify(r)).join('\n') + '\n');
+      return d;
+    };
+    const broken = runGaugeGate(brokenPath, mk('broken'), gate);
+    assert.notStrictEqual(broken.code, 0,
+      `位置依存の実装に戻しても門が緑だった (exit ${broken.code})`);
+    assert.ok(/latest=2026-02-01/.test(broken.out),
+      `注入版が末尾行を返していない: ${broken.out.slice(0, 300)}`);
+    const real = runGaugeGate(GAUGE_JS, mk('real'), gate);
+    assert.strictEqual(real.code, 0, `実物の engine で門が鳴った: ${real.out.slice(0, 400)}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+// ── FR-5 後方互換 ──────────────────────────────────────────────────────
+
+test('gauge: 冪等鍵を持たない旧形式のみの台帳で行が一つも落ちない (AC-5a / FR-5)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const rows = GAUGE_OBSERVATIONS.map(o => gaugeRow(o));
+    assert.ok(rows.every(r => r.fp === undefined), '素材が旧形式でない — 門の前提が崩れている');
+    writeGaugeLedger(tmp, rows);
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, rows.length,
+      `旧形式 ${rows.length} 行のうち ${raw.length} 行しか読めていない — 鍵の無い行を落としている`);
+    assert.ok(raw.every(e => e.metrics && typeof e.metrics.score === 'number'), '中身が壊れて読まれた');
+  });
+});
+
+test('gauge: 鍵が無くても再計算で畳める (AC-5b / FR-5)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const rows = gauge30Rows();
+    assert.ok(rows.every(r => r.fp === undefined), '素材が旧形式でない');
+    writeGaugeLedger(tmp, rows);
+    assert.strictEqual(g.readLedger().length, 6, '鍵の無い旧行を畳めていない');
+  });
+});
+
+test('gauge: 新旧混在(鍵あり/なしの同一観測)は1行に畳まれる (AC-5c / FR-5)', () => {
+  const old = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const fresh = { ...old, ts: '2026-12-31T23:59:59.999Z', fp: gauge.fingerprint(old) };
+  const folded = gauge.foldLedger([old, fresh]);
+  assert.strictEqual(folded.length, 1,
+    '鍵を持つ行と持たない行が別物と判定された — fp 自身を材料に含めている');
+  assert.strictEqual(folded[0].ts, old.ts, 'keep-first でない行が残った');
+  // 逆順でも同じ(順序非依存との合わせ技)
+  assert.strictEqual(gauge.foldLedger([fresh, old]).length, 1);
+});
+
+// ── FR-6 破損耐性 ──────────────────────────────────────────────────────
+
+/** 衝突マーカーを挟んだ台帳。生きた3行は互いに異なる metrics を持つ。 */
+function corruptLedgerLines() {
+  const mk = (ts, score) => JSON.stringify({ ts, slug: 'coin', scale: 'standard',
+    metrics: { ...gaugeRow(GAUGE_OBSERVATIONS[0]).metrics, score } });
+  return [
+    mk('2026-01-01T00:00:00.000Z', 10),
+    '<<<<<<< HEAD',
+    mk('2026-03-01T00:00:00.000Z', 30),
+    '=======',
+    mk('2026-02-01T00:00:00.000Z', 20),
+    '>>>>>>> A',
+  ];
+}
+
+test('gauge: 衝突マーカー入り台帳でも生きた3行が読める (AC-6a / FR-6)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    let raw;
+    assert.doesNotThrow(() => { raw = g.readLedger({ raw: true }); },
+      '破損行で例外を投げた — 一行の破損で秤全体が倒れる');
+    assert.strictEqual(raw.length, 3, `生きた3行のうち ${raw.length} 行しか読めていない`);
+  });
+});
+
+test('gauge: 破損台帳に畳みを掛けても生きた行が減らない (AC-6b / FR-6)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    assert.strictEqual(g.readLedger().length, 3,
+      '畳みが破損台帳の生きた行を落とした — 畳みは parse の後段でなければならない');
+  });
+});
+
+test('gauge: 破損行が在っても record は既存行を失わない (AC-6c / fail-open)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    const before = g.readLedger({ raw: true }).length;
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    g.record(run, 'newcomer');
+    const after = g.readLedger({ raw: true }).length;
+    assert.ok(after >= before, `record 後に生きた行が ${before} → ${after} に減った`);
+    assert.strictEqual(after, before + 1, '新しい観測が刻まれていない');
+    // 破損行そのものもファイルに残っている(engine は台帳を切り詰めない)
+    const text = fs.readFileSync(path.join(tmp, 'gauge-ledger.jsonl'), 'utf8');
+    assert.ok(/<<<<<<< HEAD/.test(text) && />>>>>>> A/.test(text),
+      'engine が台帳を書き直して破損行を消した — 削除の経路を足してはならない');
+  });
+});
+
+// ── FR-7 矛盾を隠さない ────────────────────────────────────────────────
+
+test('gauge: 同一 slug で metrics が違えば畳まれず2行残る (AC-7a / FR-7)', () => {
+  const a = gaugeRow({ slug: 'reform-claude-md-diet', score: 80, ts: '2026-09-02T07:03:12.473Z' });
+  const b = gaugeRow({ slug: 'reform-claude-md-diet', score: 100, ts: '2026-09-08T00:00:00.000Z' });
+  const folded = gauge.foldLedger([a, b]);
+  assert.strictEqual(folded.length, 2, '食い違う観測を黙って一つに畳んだ — 矛盾を隠している');
+  assert.notStrictEqual(gauge.fingerprint(a), gauge.fingerprint(b), '別の観測が同じ鍵を名乗った');
+});
+
+test('gauge: 矛盾は判別可能な信号で名指される (AC-7b / NFR-2)', () => {
+  const run = (rows) => withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, rows);
+    try {
+      const out = execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+      return { code: 0, out };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  /**
+   * **矛盾 = 名乗る指紋と中身から導かれる指紋の食い違い**(S-1 / R-2 で定義を正した)。
+   * 同一 slug の別観測(80 → 100)は矛盾ではなく履歴である —— そちらで鳴らせば
+   * 掃除を終えた台帳が永遠に赤になり、`requirements.md:318` の「掃除後 exit 0」が
+   * 達成不能になる(R-2 の実測)。
+   */
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  const forged = {
+    ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+    fp: gauge.fingerprint(honest),   // ★ 別観測に他人の鍵を載せる = 偽の鍵
+  };
+  const dirty = run([{ ...honest, fp: gauge.fingerprint(honest) }, forged]);
+  /**
+   * **信号を分けた(P-8)。** 偽の鍵は掃除では消えない事故であり、人が中身を見るまで赤である。
+   * 掃除で必ず消える重複と同じ exit 1 に載せれば、CI に繋いだ瞬間に恒久的な赤になり、
+   * R-2 が戒めた「鳴りっぱなしの門」に再びなる。**exit 2 = 人が読むべき行。**
+   */
+  assert.strictEqual(dirty.code, 2, `偽の指紋が exit 2(人の手が要る)を返していない: ${dirty.out}`);
+  assert.ok(/矛盾/.test(dirty.out) && /coin/.test(dirty.out), `矛盾を名指していない: ${dirty.out}`);
+  assert.ok(/conflicts=1/.test(dirty.out), `矛盾を数えていない: ${dirty.out}`);
+  // 重複だけなら exit 1(機械が畳めば消える欠陥)
+  const dup = run(gauge30Rows());
+  assert.strictEqual(dup.code, 1, '重複24行を素通りさせた');
+  assert.ok(/rows=30 distinct=6 duplicates=24/.test(dup.out), `内訳が実測と違う: ${dup.out}`);
+  // 健全な台帳では黙る(鳴りっぱなしの門は無視される)
+  const clean = run(GAUGE_OBSERVATIONS.filter(o => o.slug !== 'reform-eval-gauge').map(o => gaugeRow(o)));
+  assert.strictEqual(clean.code, 0, `健全な台帳で鳴った: ${clean.out}`);
+  assert.ok(/duplicates=0 conflicts=0/.test(clean.out), clean.out);
+});
+
+/**
+ * ── R-2: 掃除後の台帳は exit 0 でなければならない ──────────────────
+ *
+ * `requirements.md:318`(NFR-2)と `design.md:565` が「畳んだ 6 行に対し exit 0」と
+ * 約束している。旧実装は同一 slug の**正当な改善**(reform-eval-gauge 80→100)を
+ * 矛盾と呼び、掃除を完璧に終えても `conflicts=1` / exit 1 を返した(実測)。
+ * 改善を記録するたびに増える門は CI で恒久的に赤になり、無視される門になる。
+ */
+test('gauge: 掃除後の台帳(改善 80→100 を含む)は exit 0 (R-2 / NFR-2)', () => {
+  withGaugeSandbox((g, tmp) => {
+    // 実台帳と同型の 30 行を畳んだ 6 行 —— この中に 80→100 の改善が両方残る。
+    writeGaugeLedger(tmp, gauge30Rows());
+    const folded = g.readLedger();
+    assert.strictEqual(folded.length, 6, '前提が崩れた — 畳みが 6 行にならない');
+    const evals = folded.filter(e => e.slug === 'reform-eval-gauge').map(e => e.metrics.score).sort((a, b) => a - b);
+    assert.deepStrictEqual(evals, [80, 100], '前提が崩れた — 改善2行が素材に居ない');
+    // 掃除した(= 畳んだ)台帳を書き戻して audit を撃つ
+    writeGaugeLedger(tmp, folded);
+    let res;
+    try {
+      res = { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { res = { code: e.status, out: String(e.stdout || '') }; }
+    assert.strictEqual(res.code, 0,
+      `掃除後の台帳で --audit が鳴った — 鳴りっぱなしの門である (R-2): ${res.out}`);
+    assert.ok(/rows=6 distinct=6 duplicates=0 conflicts=0/.test(res.out),
+      `掃除後の内訳が期待と違う: ${res.out}`);
+  });
+});
+
+/**
+ * ── S-1: 行が名乗る `fp` は自己申告である。engine は信じてはならない ──
+ *
+ * 旧実装は `e.fp || fingerprint(e)` と書き、行の自己申告をそのまま鍵に採った。
+ * `score:99` の別観測に `score:10` の鍵を載せるだけで **99 の観測が黙って消え**、
+ * `--audit` は `conflicts=0`(重複1)としか答えなかった(教主の実測)。
+ * これは第55条(d)「矛盾を黙って畳まない」の実質的な不成立である。
+ */
+test('gauge: 偽の指紋を載せた行が本物の観測を飲み込まない (S-1 / 第55条 d)', () => {
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  honest.fp = gauge.fingerprint(honest);
+  const forged = {
+    ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+    fp: honest.fp,   // ★ 中身は別物なのに、他人の鍵を名乗る
+  };
+  const folded = gauge.foldLedger([honest, forged]);
+  assert.strictEqual(folded.length, 2,
+    '偽の鍵を信じて別観測を畳んだ — score:99 の観測が黙って消えた (S-1)');
+  assert.deepStrictEqual(folded.map(e => e.metrics.score).sort((a, b) => a - b), [10, 99],
+    `残った観測が違う: ${JSON.stringify(folded.map(e => e.metrics.score))}`);
+  // 逆順でも同じ(順序非依存との合わせ技)
+  assert.strictEqual(gauge.foldLedger([forged, honest]).length, 2);
+  // audit は「重複」ではなく「矛盾」として名指す
+  const a = gauge.auditLedger([honest, forged]);
+  assert.strictEqual(a.conflicts.length, 1, `偽の鍵を矛盾として名指していない: ${JSON.stringify(a)}`);
+  assert.strictEqual(a.conflicts[0].kind, 'forged-fp');
+  assert.strictEqual(a.conflicts[0].declared, honest.fp);
+  assert.notStrictEqual(a.conflicts[0].actual, honest.fp, '真の鍵を導き直していない');
+  assert.strictEqual(a.duplicates, 0, '矛盾を「重複」と誤って分類した (S-1 の症状そのもの)');
+});
+
+test('gauge(故障注入): 自己申告の fp を信じる実装に戻すと S-1 の門が exit 1 で鳴る', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-s1-'));
+  try {
+    // trueKey を「行が名乗る鍵をまず信じる」旧実装に戻す
+    const brokenPath = injectGauge(sand, 'gauge.trust-fp.js', src =>
+      src.replace('  try { return fingerprint(e); }',
+                  '  if (e && e.fp) return e.fp;\n  try { return fingerprint(e); }'));
+    const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+    honest.fp = gauge.fingerprint(honest);
+    const forged = { ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }), fp: honest.fp };
+    const gate = `
+      const folded = g.foldLedger(${JSON.stringify([honest, forged])});
+      console.log('folded=' + JSON.stringify(folded.map(e => e.metrics.score)));
+      assert.strictEqual(folded.length, 2, '偽の鍵で観測が消えた');
+    `;
+    const mk = (tag) => { const d = path.join(sand, tag); fs.mkdirSync(d, { recursive: true }); return d; };
+    const broken = runGaugeGate(brokenPath, mk('broken'), gate);
+    assert.notStrictEqual(broken.code, 0,
+      `fp を信じる実装に戻しても門が緑だった (exit ${broken.code}) — S-1 を捕らえていない`);
+    assert.ok(/folded=\[10\]/.test(broken.out), `注入版が観測を飲み込んでいない: ${broken.out.slice(0, 300)}`);
+    const real = runGaugeGate(GAUGE_JS, mk('real'), gate);
+    assert.strictEqual(real.code, 0, `実物の engine で門が鳴った: ${real.out.slice(0, 400)}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+/**
+ * ── S-2: 深い入れ子の一行で秤全体を倒さない ────────────────────────
+ *
+ * `JSON.parse` は深さ 20000 に耐えるが、旧 `canonical()` は無制限再帰で
+ * `RangeError` を投げ、`readLedger()` ごと倒れた(教主の実測)。
+ * `pulse.js` が `readLedger()` を断面に載せるため、**ダッシュボードごと落ちる**。
+ * これは本改修が新規に持ち込んだ穴であり、第55条(e)「一行の破損で秤全体を
+ * 倒さない」への裏切りである。深すぎる行は**破損行として読み飛ばす**のが正しい。
+ */
+/** `JSON.parse` は通るが `canonical` の底を越える一行(生の文字列として組む)。 */
+function deepGaugeLine(depth) {
+  return '{"ts":"2026-01-01T00:00:00.000Z","slug":"deep","scale":"standard","metrics":{"nest":'
+    + '['.repeat(depth) + '1' + ']'.repeat(depth) + '}}';
+}
+
+test('gauge: 深い入れ子の一行で台帳全体が倒れない (S-2 / 第55条 e)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const line = deepGaugeLine(20000);
+    assert.doesNotThrow(() => JSON.parse(line),
+      '門の前提が崩れた — JSON.parse がこの行を読めないなら S-2 の素材にならない');
+    const healthy = gaugeRow(GAUGE_OBSERVATIONS[0]);
+    writeGaugeLedger(tmp, [line, JSON.stringify(healthy)]);
+    let folded, raw;
+    assert.doesNotThrow(() => { raw = g.readLedger({ raw: true }); },
+      '深い一行で readLedger({raw:true}) が倒れた — 一行の破損で秤全体が倒れる (S-2)');
+    assert.doesNotThrow(() => { folded = g.readLedger(); },
+      '深い一行で readLedger() が倒れた — 畳みが try の外に居る (S-2)');
+    // 深すぎる行は破損行として読み飛ばされ、健全な行は必ず生き残る
+    assert.strictEqual(folded.length, 1, `生きた行が残っていない: ${JSON.stringify(folded)}`);
+    assert.strictEqual(folded[0].slug, healthy.slug, '生き残ったのが健全な行ではない');
+    // canonical の底は例外で名乗る —— 黙って 'null' を返して別物を同じ鍵にしない
+    const deepRow = JSON.parse(line);
+    assert.throws(() => gauge.fingerprint(deepRow), /nests deeper/,
+      '深すぎる値を黙って畳んだ — 別の深い行どうしが同じ鍵になる');
+    // 浅い行は今までどおり通る(底が現実の値を巻き込んでいないこと)
+    assert.doesNotThrow(() => gauge.fingerprint(healthy), '現実の metrics が深さ上限に引っかかった');
+  });
+});
+
+test('gauge(故障注入): canonical の深さの底を外すと S-2 の門が exit 1 で鳴る', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-s2-'));
+  try {
+    const brokenPath = injectGauge(sand, 'gauge.no-depth-cap.js', src =>
+      src.replace('if (depth > MAX_CANONICAL_DEPTH) throw tooDeepError(MAX_CANONICAL_DEPTH);', ''));
+    const gate = `
+      const folded = g.readLedger();
+      console.log('rows=' + folded.length);
+      assert.strictEqual(folded.length, 1, '生きた行が残っていない');
+    `;
+    const mk = (tag) => {
+      const d = path.join(sand, tag);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'gauge-ledger.jsonl'),
+        deepGaugeLine(20000) + '\n' + JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])) + '\n');
+      return d;
+    };
+    const broken = runGaugeGate(brokenPath, mk('broken'), gate);
+    assert.notStrictEqual(broken.code, 0,
+      `深さの底を外しても門が緑だった (exit ${broken.code}) — S-2 を捕らえていない`);
+    assert.ok(/Maximum call stack|RangeError/.test(broken.out),
+      `注入版が RangeError で倒れていない: ${broken.out.slice(0, 300)}`);
+    const real = runGaugeGate(GAUGE_JS, mk('real'), gate);
+    assert.strictEqual(real.code, 0, `実物の engine で門が鳴った: ${real.out.slice(0, 400)}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+/**
+ * ── R-1: 設計 §2.2 が力説した正規化規則に門を立てる ────────────────
+ *
+ * review が 20 変異を注入し、M2/M3/M4/M6/M11 が **368 passed のまま素通り**した。
+ * 実装のコメントと design.md が「憲法である」と書いていた規則を、
+ * 機械が一つも守っていなかった。ここで機械に守らせる。
+ */
+test('gauge: 非有限は null であって 0 ではない (R-1/M2 / 第16条)', () => {
+  const fp = (metrics) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics });
+  // 測れなかったもの(NaN / ±Infinity)を 0 で埋めれば、別の観測が同じ鍵になる。
+  assert.notStrictEqual(fp({ a: NaN }), fp({ a: 0 }),
+    'NaN を 0 で埋めた — 測れなかったものと 0 が同じ鍵になった (第16条違反)');
+  assert.notStrictEqual(fp({ a: Infinity }), fp({ a: 0 }), 'Infinity を 0 で埋めた (第16条違反)');
+  assert.notStrictEqual(fp({ a: -Infinity }), fp({ a: 0 }), '-Infinity を 0 で埋めた (第16条違反)');
+  // NaN / ±Infinity / null は互いに同値(すべて「測れなかった」)
+  assert.strictEqual(fp({ a: NaN }), fp({ a: null }), 'NaN と null が別鍵 — 正規化が壊れている');
+  assert.strictEqual(fp({ a: Infinity }), fp({ a: null }));
+  assert.strictEqual(fp({ a: -Infinity }), fp({ a: null }));
+});
+
+test('gauge: -0 は 0 に畳まれ、丸めが浮動小数の揺れを吸う (R-1/M3・M4)', () => {
+  const fp = (metrics) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics });
+  assert.strictEqual(fp({ a: -0 }), fp({ a: 0 }),
+    '-0 が畳まれていない — JS の Object.is(-0,0)===false が指紋に漏れている (M3)');
+  assert.strictEqual(fp({ a: 0.1 + 0.2 }), fp({ a: 0.3 }),
+    '丸めが効いていない — 生の除算結果が入れば同じ観測の指紋が割れる (M4)');
+  assert.strictEqual(fp({ a: 1 / 3 }), fp({ a: 0.333333 }), 'toFixed(6) の丸めが効いていない (M4)');
+  // 丸めが荒すぎて別物を潰していないこと(6 桁は現存する全ての値を無損失に通す)
+  assert.notStrictEqual(fp({ a: 0.1234561 }), fp({ a: 0.1234571 }), '丸めが粗すぎて別の値を潰した');
+});
+
+test('gauge: 同時刻の 2 行でも畳みの列が決定的 (R-1/M6 / FR-4)', () => {
+  // AC-4a の素材(gauge30Rows)は ts が全て相異なるため tie-break の枝を一度も踏まない。
+  // 同一 ts の 2 行を明示的に混ぜて、その枝を撃つ。
+  const TS = '2026-05-05T00:00:00.000Z';
+  const a = gaugeRow({ slug: 'alpha', score: 10, ts: TS });
+  const b = gaugeRow({ slug: 'bravo', score: 20, ts: TS });
+  const c = gaugeRow({ slug: 'charlie', score: 30, ts: TS });
+  const base = JSON.stringify(gauge.foldLedger([a, b, c]));
+  for (const perm of [[a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]]) {
+    assert.strictEqual(JSON.stringify(gauge.foldLedger(perm)), base,
+      '同時刻の行の並びで畳みの列が動いた — tie-break が決定的でない (M6)');
+  }
+  assert.strictEqual(gauge.foldLedger([a, b, c]).length, 3, '同時刻の別観測が畳まれて消えた');
+});
+
+test('gauge: fp は指紋の材料に入らない (R-1/M11 / AC-5c の成立条件)', () => {
+  /**
+   * review の指摘どおり、旧 AC-5c の門は `fresh` を実装の `fingerprint(old)` で
+   * 組み立てていたため、材料に `fp` を混ぜる変異でも「たまたま」通った。
+   * ここでは **`record()` が実際に書いた fp 付き entry** と、そこから
+   * `fp` を剥がしただけの同一観測を突き合わせる —— 実装依存の素材を使わない。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const written = g.record(run, 'coin');            // fp を持つ本物の entry
+    assert.ok(written.fp, 'record が fp を書いていない — 門の前提が崩れた');
+    const stripped = { ...written };
+    delete stripped.fp;                                // 鍵だけを剥がした同一観測
+    assert.strictEqual(g.fingerprint(stripped), g.fingerprint(written),
+      'fp の有無で鍵が動いた — fp 自身を指紋の材料に含めている (M11 / AC-5c 不成立)');
+    assert.strictEqual(g.foldLedger([written, { ...stripped, ts: '2026-12-31T23:59:59.999Z' }]).length, 1,
+      '鍵を持つ行と持たない同一観測が畳まれない (M11)');
+  });
+});
+
+test('gauge(故障注入): M2/M3/M4/M6/M11 の各変異で門が exit 1 で鳴る (R-1)', () => {
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-r1-'));
+  try {
+    const fpBody = `
+      const fp = (m) => g.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+    `;
+    const TS = '2026-05-05T00:00:00.000Z';
+    const row = (slug, score) => ({ ts: TS, slug, scale: 'standard', metrics: { score } });
+    const mutations = [
+      { tag: 'M2', name: 'gauge.m2.js',
+        mutate: s => s.replace("if (!Number.isFinite(v)) return 'null';", "if (!Number.isFinite(v)) return '0';"),
+        gate: fpBody + `assert.notStrictEqual(fp({a:NaN}), fp({a:0}), 'NaN を 0 で埋めた');` },
+      { tag: 'M3', name: 'gauge.m3.js',
+        mutate: s => s.replace('const n = Object.is(v, -0) ? 0 : Number(v.toFixed(6));',
+                               'const n = Number(v.toFixed(6));').replace('return String(n);',
+                               'return Object.is(v, -0) ? "-0" : String(n);'),
+        gate: fpBody + `assert.strictEqual(fp({a:-0}), fp({a:0}), '-0 が畳まれていない');` },
+      { tag: 'M4', name: 'gauge.m4.js',
+        mutate: s => s.replace('const n = Object.is(v, -0) ? 0 : Number(v.toFixed(6));',
+                               'const n = Object.is(v, -0) ? 0 : v;'),
+        gate: fpBody + `assert.strictEqual(fp({a:0.1+0.2}), fp({a:0.3}), '丸めが効いていない');` },
+      { tag: 'M6', name: 'gauge.m6.js',
+        // tie-break を丸ごと外す(第一段の鍵も第二段の canonical も殺す)。
+        // 第一段だけを外しても第二段が拾う = 二重防御であって穴ではない。
+        mutate: s => s.replace('    if (fa !== fb) return fa < fb ? -1 : 1;', '    return 0;'),
+        gate: `
+          const rows = ${JSON.stringify([row('alpha', 10), row('bravo', 20), row('charlie', 30)])};
+          const base = JSON.stringify(g.foldLedger(rows));
+          const perms = [[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+          for (const p of perms) {
+            assert.strictEqual(JSON.stringify(g.foldLedger(p.map(i => rows[i]))), base,
+              '同時刻の並びで畳みの列が動いた');
+          }` },
+      { tag: 'M11', name: 'gauge.m11.js',
+        mutate: s => s.replace('    metrics: e.metrics ?? null,',
+                               '    metrics: e.metrics ?? null,\n    fp: e.fp ?? null,'),
+        gate: `
+          const written = { ts: 'T', slug: 'coin', scale: 'standard', metrics: { score: 7 } };
+          written.fp = g.fingerprint(written);
+          const stripped = { ...written }; delete stripped.fp;
+          assert.strictEqual(g.fingerprint(stripped), g.fingerprint(written),
+            'fp の有無で鍵が動いた');` },
+    ];
+    const results = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const d = path.join(sand, m.tag);
+      fs.mkdirSync(d, { recursive: true });
+      const broken = runGaugeGate(brokenPath, d, m.gate);
+      results.push(`${m.tag}:broken=${broken.code}`);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — review が名指した無音の変異が残っている`);
+      const real = runGaugeGate(GAUGE_JS, d, m.gate);
+      results.push(`${m.tag}:real=${real.code}`);
+      assert.strictEqual(real.code, 0, `${m.tag} の門が実物で鳴った: ${real.out.slice(0, 300)}`);
+    }
+    assert.strictEqual(results.length, 10, `全 5 変異を撃っていない: ${results.join(' ')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+/** R-1/M7: metrics を持たない行(baseline の {slug,error})は畳みで落ちない。 */
+test('gauge: metrics を持たない行は畳みで落ちない (R-1/M7)', () => {
+  const err1 = { slug: 'broken-a', error: 'no phases' };
+  const err2 = { slug: 'broken-b', error: 'never dispatched' };
+  const ok = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const folded = gauge.foldLedger([err1, err2, ok]);
+  assert.strictEqual(folded.length, 3,
+    `metrics なし行が畳みに食われた: ${JSON.stringify(folded.map(e => e.slug))}`);
+  assert.deepStrictEqual(folded.filter(e => e.error).map(e => e.slug).sort(), ['broken-a', 'broken-b'],
+    '別々の失敗が一つに見えている');
+  // R-6: 外から `fp:"raw:0"` を名乗る行が流入しても metrics なし行を食わない
+  const intruder = { ts: 'T', slug: 's', scale: 'standard', metrics: { score: 1 }, fp: 'raw:0' };
+  assert.strictEqual(gauge.foldLedger([err1, intruder]).length, 2,
+    '`raw:` を名乗る行が metrics なし行と鍵空間で衝突した (R-6)');
+});
+
+/**
+ * ── PROVE attempt 2: 私が新たに発明した変異が素通りした穴を埋める ────
+ *
+ * 既存 379 門に対し 25 種の新しい変異を注入したところ、**13 種が無音**だった
+ * (N3/N5/N6/N7/N8/N9/N10/N11/N14/N16/N18/N23/N25)。
+ * 実装のコメントと design.md が語る規則を、機械が一つも守っていない箇所である。
+ * 以下はその穴を一つずつ塞ぐ門であり、末尾の故障注入がそれぞれ鳴ることを実測する。
+ */
+
+test('gauge: 深さの底は現実の入れ子を巻き込まない — 底を絞りすぎない (N3)', () => {
+  // 実在する metrics の深さは 2。底を 2 に絞れば現実の観測が「破損」になる。
+  // 「深すぎる行を落とす」門(S-2)は底を **きつくする**方向を一切見ていなかった。
+  const nest = (d) => { let v = 1; for (let i = 0; i < d; i++) v = [v]; return v; };
+  for (const d of [1, 2, 4, 8, 16, 32]) {
+    assert.doesNotThrow(() => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(d) } }),
+      `深さ ${d} の値が破損扱いになった — 底が現実の観測を巻き込んでいる (N3)`);
+  }
+  // 底そのものは在り続けること(N2 の裏返し。両側から挟む)
+  assert.throws(() => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(20000) } }),
+    /nests deeper/, '底が消えた — 一行で秤全体が倒れる (S-2)');
+});
+
+test('gauge: 配列の順序は意味である — 並べ替えても同じ鍵にならない (N5)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ a: [1, 2] }), fp({ a: [2, 1] }),
+    '配列の順序が指紋に出ていない — 別の観測が同じ鍵になる (N5 / 実装 §2.2「配列は順序を保つ」)');
+  assert.notStrictEqual(fp({ a: ['x', 'y'] }), fp({ a: ['y', 'x'] }));
+  assert.strictEqual(fp({ a: [1, 2] }), fp({ a: [1, 2] }), '同じ配列で鍵が揺れた');
+});
+
+test('gauge: 文字列は引用される — 型の違いが鍵に出る (N6)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  /**
+   * 引用を外すと文字列の `'100'` と数の `100` が同じ正規形になる。
+   * `score` が文字列で流れ込んだ行と本物の行が**同じ観測として畳まれ**、
+   * 一方が黙って消える。型は観測の一部である。
+   */
+  assert.notStrictEqual(fp({ score: '100' }), fp({ score: 100 }),
+    '文字列の "100" と数の 100 が同じ鍵になった — 文字列が引用されていない (N6)');
+  assert.notStrictEqual(fp({ a: 'null' }), fp({ a: null }),
+    '文字列 "null" と「測れなかった」が同じ鍵になった (N6 / 第16条)');
+  assert.notStrictEqual(fp({ a: 'true' }), fp({ a: true }), '文字列 "true" と真が同じ鍵になった (N6)');
+});
+
+test('gauge: object の鍵名は指紋の材料である (N23)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ score: 1 }), fp({ reworkCount: 1 }),
+    '鍵名が指紋に出ていない — score:1 と reworkCount:1 が同じ観測になる (N23)');
+  assert.notStrictEqual(fp({ a: 1, b: 2 }), fp({ a: 2, b: 1 }), '鍵と値の対応が指紋に出ていない');
+});
+
+test('gauge: 真偽値は数に潰されない (N25)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ complete: true }), fp({ complete: 1 }),
+    'true と 1 が同じ鍵になった — complete:true の観測が別物に飲まれる (N25)');
+  assert.notStrictEqual(fp({ complete: false }), fp({ complete: 0 }));
+  assert.notStrictEqual(fp({ complete: false }), fp({ complete: null }),
+    'false と「測れなかった」が同じ鍵になった (第16条)');
+});
+
+test('gauge: 指紋の版は黙って動かない — g1: の値を固定する (N18)', () => {
+  /**
+   * 版接頭辞 `g1:` は**材料と正規化の版**を名乗る約束である(実装 §指紋)。
+   * hash や正規化を差し替えれば過去の全行の鍵が動くのに、接頭辞が `g1:` の
+   * ままなら **台帳は嘘の版を名乗る**。既存門は形(`g1:[0-9a-f]{16}`)しか
+   * 見ておらず、sha256 → md5 の差し替えが無音だった(N18)。
+   * ゆえに実際の値を固定する。**変えるなら `g2:` を名乗り、この定数も改めること。**
+   */
+  assert.strictEqual(
+    gauge.fingerprint({ slug: 'coin', scale: 'standard', metrics: { score: 100, complete: true } }),
+    'g1:96a83cffd711ac01',
+    'g1: を名乗ったまま指紋の値が動いた — 過去の台帳の鍵が黙って別物になった (N18)');
+});
+
+test('gauge: 壊れた ts でも keep-first が決定的 (N7)', () => {
+  /**
+   * 実装は「`Date.parse` を挟まない」と明記する —— 壊れた `ts` で `NaN` が出れば
+   * 比較が非決定になるからである。だが既存門はこの枝を一度も踏んでいなかった。
+   */
+  const mk = (ts) => ({ ts, slug: 's', scale: 'standard', metrics: { score: 5 } });
+  const good = mk('2026-01-01T00:00:00.000Z'), broken = mk('not-a-date');
+  const ab = gauge.foldLedger([good, broken]).map(e => e.ts);
+  const ba = gauge.foldLedger([broken, good]).map(e => e.ts);
+  assert.deepStrictEqual(ab, ba,
+    `壊れた ts で畳みの結果が並び順に依存した (${JSON.stringify(ab)} vs ${JSON.stringify(ba)}) — Date.parse の NaN が漏れている (N7)`);
+  assert.strictEqual(ab.length, 1, '同一観測が畳まれていない');
+});
+
+test('gauge: 深すぎる行は畳みで消されず素通しされる (N8)', () => {
+  // `readLedger` は深すぎる行を読み飛ばすが、`foldLedger` に直接渡された場合の
+  // 素通し(passthrough)は誰も検めていなかった —— 畳みが黙って行を消していた。
+  const deepRow = JSON.parse(deepGaugeLine(200));
+  const healthy = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const folded = gauge.foldLedger([healthy, deepRow]);
+  assert.strictEqual(folded.length, 2,
+    `深すぎる行が畳みに食われた: ${JSON.stringify(folded.map(e => e.slug))} (N8)`);
+  assert.ok(folded.some(e => e.slug === 'deep'), '深い行が消えた — 記録は失われてはならない');
+});
+
+test('gauge: record は行の自己申告 fp を信じない (N9 / S-1 の書き側)', () => {
+  /**
+   * S-1 の門は `foldLedger` / `auditLedger` の**読み側**しか見ていなかった。
+   * `record` の突き合わせを `e.fp || trueKey(e)` に緩める変異は無音である —
+   * 偽の鍵を名乗る一行を台帳に置くだけで、**別の本物の観測が二度と刻まれなくなる**。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const target = { ts: '2026-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard',
+      metrics: { score: 1 }, fp: g.fingerprint({ slug: 'coin', scale: 'standard', metrics: g.score(makeGaugeRun()) }) };
+    assert.notStrictEqual(target.fp, g.fingerprint(target), '素材が偽の鍵になっていない — 門の前提が崩れた');
+    writeGaugeLedger(tmp, [target]);
+    const e = g.record(run, 'coin');
+    assert.notStrictEqual(e.skipped, true,
+      '偽の鍵を名乗る一行で本物の観測が刻まれなくなった — record が自己申告を信じている (N9)');
+    assert.strictEqual(g.readLedger({ raw: true }).length, 2, '新しい観測が台帳に届いていない');
+  });
+});
+
+test('gauge: 読めない台帳で record は黙って「既記録」を名乗らない (N10 / fail-open)', () => {
+  /**
+   * fail-open の約束は「重複を見逃して**書く**側に倒れる」である。
+   * catch を `return { skipped: true }` に変える変異は無音だった ——
+   * 台帳が読めない時に**黙って記録を捨てる**のは、台帳の第一の徳への裏切り。
+   */
+  withGaugeSandbox((g, tmp) => {
+    // 台帳の位置をディレクトリにする = 読めもせず書けもしない台帳
+    fs.mkdirSync(path.join(tmp, 'gauge-ledger.jsonl'));
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    let ret = null;
+    assert.throws(() => { ret = g.record(run, 'coin'); },
+      (err) => /EISDIR|EPERM|EACCES/.test(String(err.code || err.message)),
+      `読めない台帳で record が黙って戻った: ${JSON.stringify(ret)} — 記録を捨てている (N10)`);
+  });
+});
+
+test('gauge: audit は深すぎる行を「重複」と数えない (N11 / 第16条)', () => {
+  // 鍵を導けない行を distinct から外せば、**一行が勝手に重複として計上される**。
+  // 掃除しようのない偽の重複を報じる門は、鳴りっぱなしの門と同じ害を持つ。
+  const deepRow = JSON.parse(deepGaugeLine(200));
+  const healthy = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const a = gauge.auditLedger([healthy, deepRow]);
+  assert.strictEqual(a.rows, 2, '行数の数え方が違う');
+  assert.strictEqual(a.duplicates, 0,
+    `深すぎる行を重複と数えた (duplicates=${a.duplicates}) — 存在しない重複を報じている (N11)`);
+  assert.strictEqual(a.distinct, 2, `distinct が tooDeep を落としている (${a.distinct}) (N11)`);
+  assert.ok(a.conflicts.some(c => c.kind === 'too-deep'), '深すぎる行を矛盾として名指していない');
+});
+
+test('gauge: 破損行は黙って捨てられず標準エラーで名指される (N14 / 第16条)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    const r = require('child_process').spawnSync(process.execPath, [GAUGE_JS, 'ledger'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.strictEqual(r.status, 0, `ledger が落ちた: ${r.stderr}`);
+    assert.ok(/ledger line skipped \(corrupt\)/.test(r.stderr),
+      `破損行を黙って捨てた — 読み飛ばしたことが誰にも見えない (N14): stderr=${JSON.stringify(r.stderr)}`);
+    // `ledger` は畳んだ版と生の版を各一度読むので警告は 3 行 × 読み回数。
+    // **少なくとも破損 3 行分が名指されること**を主張する(読み回数は実装の裁量)。
+    const named = (r.stderr.match(/ledger line skipped \(corrupt\)/g) || []).length;
+    assert.ok(named >= 3 && named % 3 === 0,
+      `破損 3 行の名指しが ${named} 件 — 一部の破損行が黙殺されている (N14)`);
+    for (const marker of ['<<<<<<< HEAD', '=======', '>>>>>>> A']) {
+      assert.ok(r.stderr.includes(marker.slice(0, 7)),
+        `破損行 ${marker} が名指されていない — 何を捨てたかが見えない (N14)`);
+    }
+  });
+});
+
+test('gauge: 「最新」は metrics を持つ行の中から選ばれる (N16)', () => {
+  /**
+   * `baseline()` は失敗した創造物に `{slug, error}` を残す。`latestFor` の
+   * `&& e.metrics` を外すと、**error 行が「最新」として compare に流れ**、
+   * `ea.metrics[k]` で秤全体が倒れる。既存門はこの絞りを一度も検めていない。
+   */
+  const good = { ts: '2026-01-01T00:00:00.000Z', slug: 's', scale: 'standard', metrics: { score: 7 } };
+  const errRow = { ts: '2026-09-09T00:00:00.000Z', slug: 's', error: 'no phases' };
+  const latest = gauge.latestFor('s', [good, errRow]);
+  assert.ok(latest && latest.metrics, `error 行を「最新」と呼んだ: ${JSON.stringify(latest)} (N16)`);
+  assert.strictEqual(latest.ts, good.ts, '観測を持つ行が選ばれていない');
+  assert.strictEqual(gauge.latestFor('s', [errRow]), null, 'error 行しか無いのに観測を捏造した');
+});
+
+test('gauge: 門は仮倉の残骸も住所の振替も残さない (門自身の衛生)', () => {
+  // 門同士が状態を漏らせば、単独では緑・並べると赤という最悪の門になる。
+  const prev = process.env.PARADISE_CREATIONS;
+  let box = null;
+  withGaugeSandbox((g, tmp) => {
+    box = tmp;
+    assert.ok(g.ledgerPath().startsWith(tmp), '住所が仮倉に振り替わっていない');
+    fs.writeFileSync(path.join(tmp, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])) + '\n');
+  });
+  assert.strictEqual(process.env.PARADISE_CREATIONS, prev, '仮倉の env が門の外に漏れた');
+  assert.ok(!fs.existsSync(box), `仮倉の残骸が残った: ${box}`);
+  // 二つの仮倉が互いの台帳を見ないこと(門同士の独立)
+  const seen = [];
+  withGaugeSandbox((g, tmp) => { seen.push(g.readLedger({ raw: true }).length); });
+  withGaugeSandbox((g, tmp) => {
+    fs.writeFileSync(path.join(tmp, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[1])) + '\n');
+    seen.push(g.readLedger({ raw: true }).length);
+  });
+  withGaugeSandbox((g) => { seen.push(g.readLedger({ raw: true }).length); });
+  assert.deepStrictEqual(seen, [0, 1, 0], `仮倉の台帳が門を跨いで漏れた: ${JSON.stringify(seen)}`);
+});
+
+test('gauge(故障注入): prove attempt 2 の新変異 13 種で各門が exit 1 で鳴る', () => {
+  /**
+   * 上の各門は、**この注入で鳴ることを実測して初めて門である**。
+   * 注入版で非ゼロ・実物でゼロの両側を撃つ(第21条 壊して鳴らす)。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-p2-'));
+  try {
+    const fpBody = `const fp = (m) => g.fingerprint({ slug: 's', scale: 'standard', metrics: m });\n`;
+    const deep = (d) => "JSON.parse('{\"ts\":\"D\",\"slug\":\"deep\",\"scale\":\"standard\",\"metrics\":{\"n\":'"
+      + ` + '['.repeat(${d}) + '1' + ']'.repeat(${d}) + '}}')`;
+    const mutations = [
+      { tag: 'N3', name: 'p2.n3.js',
+        mutate: s => s.replace('const MAX_CANONICAL_DEPTH = 64;', 'const MAX_CANONICAL_DEPTH = 2;'),
+        gate: `const nest = (d) => { let v = 1; for (let i = 0; i < d; i++) v = [v]; return v; };
+          assert.doesNotThrow(() => g.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(8) } }),
+            '現実の深さが破損扱いになった');` },
+      { tag: 'N5', name: 'p2.n5.js',
+        mutate: s => s.replace("if (Array.isArray(v)) return '[' + v.map(x => canonical(x, depth + 1)).join(',') + ']';",
+                               "if (Array.isArray(v)) return '[' + v.map(x => canonical(x, depth + 1)).sort().join(',') + ']';"),
+        gate: fpBody + `assert.notStrictEqual(fp({a:[1,2]}), fp({a:[2,1]}), '配列の順序が消えた');` },
+      { tag: 'N6', name: 'p2.n6.js',
+        mutate: s => s.replace("  if (typeof v === 'string') return JSON.stringify(v);",
+                               "  if (typeof v === 'string') return v;"),
+        gate: fpBody + `assert.notStrictEqual(fp({score:'100'}), fp({score:100}), '文字列と数が同じ鍵になった');` },
+      { tag: 'N7', name: 'p2.n7.js',
+        mutate: s => s.replace("    if (!cur || String(e.ts) < String(cur.ts)) keep.set(fp, e);",
+                               "    if (!cur || Date.parse(e.ts) < Date.parse(cur.ts)) keep.set(fp, e);"),
+        gate: `const mk = (ts) => ({ ts, slug: 's', scale: 'standard', metrics: { score: 5 } });
+          const good = mk('2026-01-01T00:00:00.000Z'), broken = mk('not-a-date');
+          assert.deepStrictEqual(g.foldLedger([good, broken]).map(e => e.ts),
+            g.foldLedger([broken, good]).map(e => e.ts), '壊れた ts で並び順に依存した');` },
+      { tag: 'N8', name: 'p2.n8.js',
+        mutate: s => s.replace("    if (fp === null) { passthrough.push(e); continue; }",
+                               "    if (fp === null) { continue; }"),
+        gate: `const deepRow = ${deep(200)};
+          const ok = { ts: 'T', slug: 's', scale: 'standard', metrics: { score: 1 } };
+          assert.strictEqual(g.foldLedger([ok, deepRow]).length, 2, '深すぎる行が畳みに食われた');` },
+      { tag: 'N9', name: 'p2.n9.js',
+        // 索引の鍵を自己申告に戻す(S-1 の書き側の再発)
+        mutate: s => s.replace('    const derived = trueKey(e);', '    const derived = e.fp || trueKey(e);'),
+        gate: `const runFile = path.join(${JSON.stringify(sand)}, 'p2n9.run.json');
+          fs.writeFileSync(runFile, ${JSON.stringify(JSON.stringify(makeGaugeRun()))});
+          const truth = g.fingerprint({ slug: 'coin', scale: 'standard',
+            metrics: g.score(JSON.parse(fs.readFileSync(runFile, 'utf8'))) });
+          // ★ 既存行は「正当な先着」の形にする(走行の開始の後・余分な鍵なし)——
+          //    さもなくば F-1 の先回り検査が先に発火し、S-1 の穴が塞がって見える。
+          fs.writeFileSync(LEDGER, JSON.stringify({ ts: '2026-08-31T00:20:00.000Z', slug: 'coin',
+            scale: 'standard', metrics: { score: 1 }, fp: truth }) + '\\n');
+          const e = g.record(runFile, 'coin');
+          assert.notStrictEqual(e.skipped, true, '偽の鍵で本物の観測が刻まれなくなった');` },
+      { tag: 'N10', name: 'p2.n10.js',
+        mutate: s => s.replace("    console.error(`⚠️ ledger unreadable, recording anyway: ${err.message}`);",
+                               "    return { ...entry, skipped: true };"),
+        gate: `fs.mkdirSync(LEDGER);
+          const runFile = path.join(${JSON.stringify(sand)}, 'p2n10.run.json');
+          fs.writeFileSync(runFile, ${JSON.stringify(JSON.stringify(makeGaugeRun()))});
+          let ret = null;
+          assert.throws(() => { ret = g.record(runFile, 'coin'); },
+            (err) => /EISDIR|EPERM|EACCES/.test(String(err.code || err.message)),
+            '読めない台帳で黙って戻った: ' + JSON.stringify(ret));` },
+      { tag: 'N11', name: 'p2.n11.js',
+        mutate: s => s.replace('  const distinct = byFp.size + tooDeep;', '  const distinct = byFp.size;'),
+        gate: `const deepRow = ${deep(200)};
+          const ok = { ts: 'T', slug: 's', scale: 'standard', metrics: { score: 1 } };
+          const a = g.auditLedger([ok, deepRow]);
+          assert.strictEqual(a.duplicates, 0, '深すぎる行を重複と数えた: ' + a.duplicates);` },
+      { tag: 'N14', name: 'p2.n14.js',
+        mutate: s => s.replace(/^      console\.error\(`⚠️ ledger line skipped \(corrupt\).*$/m, '      void 0;'),
+        gate: `fs.writeFileSync(LEDGER, ${JSON.stringify(corruptLedgerLines().join('\n') + '\n')});
+          const errs = [];
+          const orig = console.error; console.error = (...a) => errs.push(a.join(' '));
+          try { g.readLedger({ raw: true }); } finally { console.error = orig; }
+          assert.ok(errs.some(l => /corrupt/.test(l)), '破損行を黙って捨てた');` },
+      { tag: 'N16', name: 'p2.n16.js',
+        mutate: s => s.replace(/    e && e\.slug === slug && e\.metrics && !isCorruptMark\(e\) && trueKey\(e\) !== null\);/,
+                               '    e && e.slug === slug);'),
+        gate: `const good = { ts: '2026-01-01T00:00:00.000Z', slug: 's', scale: 'standard', metrics: { score: 7 } };
+          const errRow = { ts: '2026-09-09T00:00:00.000Z', slug: 's', error: 'no phases' };
+          const latest = g.latestFor('s', [good, errRow]);
+          assert.ok(latest && latest.metrics, 'error 行を最新と呼んだ');` },
+      { tag: 'N18', name: 'p2.n18.js',
+        mutate: s => s.replace("crypto.createHash('sha256')", "crypto.createHash('md5')"),
+        gate: `assert.strictEqual(
+            g.fingerprint({ slug: 'coin', scale: 'standard', metrics: { score: 100, complete: true } }),
+            'g1:96a83cffd711ac01', 'g1: を名乗ったまま指紋の値が動いた');` },
+      { tag: 'N23', name: 'p2.n23.js',
+        mutate: s => s.replace("      parts.push(JSON.stringify(k) + ':' + canonical(v[k], depth + 1));",
+                               "      parts.push(canonical(v[k], depth + 1));"),
+        gate: fpBody + `assert.notStrictEqual(fp({score:1}), fp({reworkCount:1}), '鍵名が指紋に出ていない');` },
+      { tag: 'N25', name: 'p2.n25.js',
+        mutate: s => s.replace("  if (typeof v === 'boolean') return v ? 'true' : 'false';",
+                               "  if (typeof v === 'boolean') return v ? '1' : '0';"),
+        gate: fpBody + `assert.notStrictEqual(fp({complete:true}), fp({complete:1}), 'true と 1 が同じ鍵になった');` },
+    ];
+    const rang = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const mk = (tag) => {
+        const d = path.join(sand, m.tag + '-' + tag);
+        fs.mkdirSync(d, { recursive: true });
+        return d;
+      };
+      const broken = runGaugeGate(brokenPath, mk('broken'), m.gate);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — 穴が残っている: ${broken.out.slice(0, 200)}`);
+      const real = runGaugeGate(GAUGE_JS, mk('real'), m.gate);
+      assert.strictEqual(real.code, 0, `${m.tag} の門が実物で鳴った: ${real.out.slice(0, 300)}`);
+      rang.push(m.tag);
+    }
+    assert.strictEqual(rang.length, 13, `13 変異を撃っていない: ${rang.join(',')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+
+/**
+ * ══ review attempt 2 の指摘に立てる門 (P-1 / P-2 / P-3 / P-4 …) ══════════
+ *
+ * review-2 は 39 変異を撃ち **14 が無音**だった。とくに重いのは
+ * **門ヘルパー(`injectGauge` / `runGaugeGate` / `withGaugeSandbox` / `writeGaugeLedger`)を
+ * 守る門が一本も無い**ことである(T1/T2/T4/T7 が全て無音)。
+ * 故障注入門は「壊したら赤くなる」と主張する装置なのだから、
+ * **その主張自体が失効していないことを守る門が要る。**
+ */
+
+// ── P-3: 門ヘルパー自身を守る門(装置の失効検知) ─────────────────────
+
+test('門ヘルパー: injectGauge は「注入が空振りした」ときに必ず倒れる (P-3 / T1)', () => {
+  /**
+   * `injectGauge` の `assert.notStrictEqual` は **全ての故障注入門の唯一の失効検知**である。
+   * これを外すと、実装の形が変わって置換が空振りしても「注入版 = 実物」で門が回り、
+   * **注入門が永久に無意味な緑を返す**。装置を守る門が無いかぎり、
+   * 6 本の故障注入門の緑は信用に足りない(review-2 §4.3)。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-t1-'));
+  try {
+    // ① 何も変えない replacer(= 置換の空振り)は必ず throw すること
+    assert.throws(() => injectGauge(sand, 'noop.js', src => src),
+      /注入すべき箇所が見つからない/,
+      'injectGauge が空振りを見逃した — 注入門が「実物 = 注入版」で永久に緑を返す (T1)');
+    // ② 実在しない目印を置換しようとしても throw すること(replace は静かに no-op する)
+    assert.throws(() => injectGauge(sand, 'ghost.js', src => src.replace('この文字列は gauge.js に存在しない', 'X')),
+      /注入すべき箇所が見つからない/,
+      '実装から消えた目印を撃っても injectGauge が黙った (T1)');
+    // ③ 本当に変えたときは通ること(片側だけの門は門ではない)
+    const real = injectGauge(sand, 'ok.js', src => src.replace("'use strict';", "'use strict'; /*mutated*/"));
+    assert.ok(fs.existsSync(real), '正当な注入で複製が書かれていない');
+    assert.ok(/\/\*mutated\*\//.test(fs.readFileSync(real, 'utf8')), '注入が複製に載っていない');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('門ヘルパー: runGaugeGate は exit code を捏造しない (P-3 / T2)', () => {
+  /**
+   * `runGaugeGate` が失敗時に常に `code:1` を返すなら、注入版が**どんな理由で**落ちても
+   * (構文誤り・require 失敗・別の例外)門は「鳴った」と読む。
+   * **第16条: 別の理由の赤を緑の根拠にしてはならない。**
+   * ゆえに「exit 0 の子には 0」「exit N の子には N」の**両側**を実測する。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-t2-'));
+  try {
+    const box = path.join(sand, 'box');
+    fs.mkdirSync(box, { recursive: true });
+    const ok = runGaugeGate(GAUGE_JS, box, `console.log('ALIVE');`);
+    assert.strictEqual(ok.code, 0, `成功した子プロセスに非ゼロを返した: ${ok.code} / ${ok.out}`);
+    assert.ok(/ALIVE/.test(ok.out), `子プロセスの stdout を運んでいない: ${ok.out}`);
+    // 失敗の exit code を**そのまま**運ぶこと(1 に丸めない)
+    const seven = runGaugeGate(GAUGE_JS, box, `process.exit(7);`);
+    assert.strictEqual(seven.code, 7, `exit 7 を ${seven.code} に捏造した — 別の理由の赤を緑の根拠にしている (T2)`);
+    const failed = runGaugeGate(GAUGE_JS, box, `assert.strictEqual(1, 2, 'BOOM');`);
+    assert.notStrictEqual(failed.code, 0, 'assert が落ちた子をゼロと読んだ');
+    assert.ok(/BOOM/.test(failed.out), `失敗した子の出力を運んでいない: ${failed.out}`);
+    // require が失敗する道でも 0 を返さない(構文誤りを「鳴った」と読まないため)
+    const broken = runGaugeGate(path.join(sand, 'does-not-exist.js'), box, `console.log('never');`);
+    assert.notStrictEqual(broken.code, 0, 'require できない engine でゼロを返した');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('門ヘルパー: withGaugeSandbox は仮倉を必ず片付ける — 例外の道でも (P-3 / T4)', () => {
+  /**
+   * `finally` の `rmSync` が外れても衛生門は自分が作った tmp しか見ないので鳴らない。
+   * ここでは **helper が返した仮倉の道そのもの**を検める。例外を投げた道も必ず片付くこと。
+   */
+  let boxOk = null, boxThrow = null;
+  const prev = process.env.PARADISE_CREATIONS;
+  withGaugeSandbox((g, tmp) => { boxOk = tmp; fs.writeFileSync(path.join(tmp, 'x.txt'), 'x'); });
+  assert.ok(boxOk && !fs.existsSync(boxOk), `正常な道で仮倉の残骸が残った: ${boxOk}`);
+  assert.throws(() => withGaugeSandbox((g, tmp) => { boxThrow = tmp; throw new Error('BOOM'); }), /BOOM/);
+  assert.ok(boxThrow && !fs.existsSync(boxThrow),
+    `例外の道で仮倉の残骸が残った: ${boxThrow} — finally の掃除が外れている (T4)`);
+  assert.strictEqual(process.env.PARADISE_CREATIONS, prev, '例外の道で住所の振替が漏れた');
+});
+
+test('門ヘルパー: writeGaugeLedger は投入した行を一行も減らさない (P-3 / T7)', () => {
+  /**
+   * 素材が黙って痩せれば、門は偽の緑を返す。とくに「完全同一行の重複」を素材にする門が
+   * 将来書かれた瞬間に効く罠である(review-2 T7)。**素材の忠実さを機械が守る。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    const one = gaugeRow(GAUGE_OBSERVATIONS[0]);
+    const rows = [one, one, one, gaugeRow(GAUGE_OBSERVATIONS[1])];   // ★ 完全同一行 ×3
+    writeGaugeLedger(tmp, rows);
+    const text = fs.readFileSync(path.join(tmp, 'gauge-ledger.jsonl'), 'utf8');
+    const lines = text.split('\n').filter(Boolean);
+    assert.strictEqual(lines.length, rows.length,
+      `投入 ${rows.length} 行が ${lines.length} 行になった — 素材が黙って痩せている (T7)`);
+    assert.strictEqual(g.readLedger({ raw: true }).length, rows.length, '生の読みで素材が減った');
+  });
+});
+
+test('門ヘルパー: 素材の gauge30Rows / gaugeWindowRows は期待どおり汚れている (P-3 / T3・T5)', () => {
+  // 素材が痩せれば門は空打ちになる。**門の前提を門が検算する。**
+  const r30 = gauge30Rows();
+  assert.strictEqual(r30.length, 30, `素材が 30 行でない: ${r30.length}`);
+  assert.strictEqual(new Set(r30.map(e => gauge.fingerprint(e))).size, 6,
+    '素材の distinct が 6 でない — 重複の素材が痩せている (T3)');
+  const win = gaugeWindowRows();
+  const rawWin = win.slice(-3).map(e => e.slug);
+  assert.strictEqual(new Set(rawWin).size < 3, true,
+    `生の窓が汚れていない — 畳みを外しても偶然きれいな窓が出る素材である (T5): ${JSON.stringify(rawWin)}`);
+});
+
+// ── P-1: 人が歩く道(CLI)を子プロセスで撃つ ─────────────────────────
+
+/** 深さ `d` の metrics を持つ台帳行のテキスト(JSON.parse は通るが canonical の底を越える)。 */
+function deepGaugeRowLine(slug, ts, d) {
+  return `{"ts":${JSON.stringify(ts)},"slug":${JSON.stringify(slug)},"scale":"standard","metrics":{"score":50,"n":`
+    + '['.repeat(d) + '1' + ']'.repeat(d) + '}}';
+}
+
+test('gauge: readLedger({raw:true}) は本当に生の全行を返す (P-1 ①)', () => {
+  /**
+   * S-2 の修理は too-deep の読み飛ばしを `opts.raw` の**前**に置き、
+   * 「生」を名乗る道が行を落としていた(実測: ファイル 2 行 → `raw` 1 行)。
+   * `raw` は監査と FR-8 の掃除の**唯一の材料**であり、ここが痩せれば
+   * 掃除は深い行をファイルから永久に消す。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const healthy = JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0]));
+    const deep = deepGaugeRowLine('deepy', '2026-01-02T00:00:00.000Z', 200);
+    writeGaugeLedger(tmp, [healthy, deep]);
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 2,
+      `ファイル 2 行に対し raw が ${raw.length} 行 — 「生」を名乗る道が行を落としている (P-1)`);
+    assert.ok(raw.some(e => e.slug === 'deepy'), '深すぎる行が raw から消えた — 掃除の素材が痩せる');
+    // 畳んだ道では今までどおり読み飛ばされる(S-2 は保たれている)
+    assert.strictEqual(g.readLedger().length, 1, '畳んだ道が深すぎる行を通した — S-2 が緩んだ');
+  });
+});
+
+test('gauge(CLI): 全行が深すぎる台帳を --audit が「健全」と答えない (P-1 ② / 第16条)', () => {
+  /**
+   * **門は engine を直に呼ばず、人が歩く道を子プロセスで撃つ。**
+   * N11 の門は `auditLedger([...])` を直接呼ぶので、上流の `readLedger` が
+   * 先に行を捨てている不整合を**構造的に見られなかった**(review-2 P-1 ②)。
+   * 実測されていた病: 3 行すべてが深すぎる台帳で `rows=0 … exit 0` =「健全」。
+   * **読めなかった行を 0 件と偽るのは第16条に真っ向から反する。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [1, 2, 3].map(i => deepGaugeRowLine('deepy', `2026-01-0${i}T00:00:00.000Z`, 200)));
+    let res;
+    try {
+      res = { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { res = { code: e.status, out: String(e.stdout || '') + String(e.stderr || '') }; }
+    assert.notStrictEqual(res.code, 0,
+      `全行が読めない台帳を --audit が exit 0 =「健全」と答えた: ${res.out}`);
+    assert.ok(/rows=3/.test(res.out), `読めなかった行を 0 件と偽った: ${res.out}`);
+    assert.ok(/too-deep=3/.test(res.out), `深すぎる行を数えて名乗っていない: ${res.out}`);
+    assert.ok(/深すぎ/.test(res.out), `「深すぎ」の語が一度も出ない — 名指していない: ${res.out}`);
+    assert.ok(/deepy/.test(res.out), `どの行かを名指していない: ${res.out}`);
+  });
+});
+
+test('gauge(CLI): 深すぎる行を「畳んだ重複」に混ぜて数えない (P-1 / NFR-1 / 第16条)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [
+      ...gauge30Rows().map(r => JSON.stringify(r)),
+      deepGaugeRowLine('deepy', '2026-01-09T00:00:00.000Z', 200),
+    ]);
+    const out = execFileSync(process.execPath, [GAUGE_JS, 'ledger'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.ok(/raw 31 行/.test(out), `生の件数を名乗っていない: ${out}`);
+    assert.ok(/重複 24 行を畳んだ/.test(out),
+      `深すぎる 1 行を重複 25 として数えた — 読めなかった行を畳んだ行と混ぜている: ${out}`);
+    assert.ok(/深すぎて読めない 1 行/.test(out), `読み飛ばした行を名乗っていない: ${out}`);
+  });
+});
+
+test('gauge: FR-8 の掃除(畳んだ版で置き換える)が深すぎる行を消さない (P-1 ③ / 第55条 e)', () => {
+  /**
+   * 掃除の素材は `readLedger({raw:true})` である。`raw` が痩せていた頃、
+   * 掃除を実行した瞬間に「読み飛ばされていただけの行」がファイルからも永久に消えた。
+   * ここでは **design.md が定める掃除の手順そのもの**を仮倉で実演し、行が残ることを撃つ。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const dup = gaugeRow(GAUGE_OBSERVATIONS[0]);
+    const deep = deepGaugeRowLine('deepy', '2026-01-05T00:00:00.000Z', 200);
+    writeGaugeLedger(tmp, [JSON.stringify(dup), JSON.stringify(dup), deep]);
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 3, `掃除の素材が痩せている: ${raw.length} 行`);
+    // 掃除 = 「生の全行を畳んで書き戻す」。畳みは深すぎる行を passthrough で保つ。
+    const cleaned = g.foldLedger(raw);
+    assert.ok(cleaned.some(e => e.slug === 'deepy'),
+      `掃除の結果から深すぎる行が消えた — 台帳の第一の徳(記録が失われない)を壊す (P-1 ③)`);
+    assert.strictEqual(cleaned.length, 2, `重複が畳まれていない: ${JSON.stringify(cleaned.map(e => e.slug))}`);
+  });
+});
+
+test('gauge(CLI): audit の信号は「掃除できる欠陥」と「人が読むべき事故」を分ける (P-8)', () => {
+  const run = (rows) => withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, rows);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  assert.strictEqual(run(gauge30Rows()).code, 1, '掃除で消える重複が exit 1 でない');
+  assert.strictEqual(run([{ ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+    fp: gauge.fingerprint(honest) }]).code, 2, '偽の鍵(人の手が要る)が exit 2 でない');
+  assert.strictEqual(run([deepGaugeRowLine('d', '2026-01-03T00:00:00.000Z', 200)]).code, 2,
+    '読めない行(人の手が要る)が exit 2 でない');
+  assert.strictEqual(run(GAUGE_OBSERVATIONS.filter(o => o.slug !== 'reform-eval-gauge').map(o => gaugeRow(o))).code, 0,
+    '健全な台帳で鳴った — 鳴りっぱなしの門である');
+});
+
+// ── P-2: 性能の処置(S-1 を再発させずに) ──────────────────────────────
+
+test('gauge: keyIndex の鍵は再導出であって自己申告ではない (P-2 / S-1 の再発防止)', () => {
+  /**
+   * 性能のために索引を持ち込んだ。**索引が自己申告 `fp` を鍵にした瞬間に S-1 が再発する。**
+   * ここで「偽の鍵を載せた行が索引の中で正しい鍵に住む」ことを撃つ。
+   */
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  const forged = { ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+    fp: gauge.fingerprint(honest) };   // ★ 別観測に他人の鍵
+  const idx = gauge.keyIndex([forged]);
+  assert.strictEqual(idx.size, 1, '索引が行を落とした');
+  assert.ok(idx.has(gauge.fingerprint(forged)),
+    '索引が偽の自己申告を鍵にした — S-1 が索引の形で再発している');
+  assert.ok(!idx.has(gauge.fingerprint(honest)),
+    '偽の鍵で本物の観測を飲み込む道が索引に残っている');
+  // 深すぎる行と metrics なし行は鍵を持たない(0 で埋めず、索引に載せない)
+  assert.strictEqual(gauge.keyIndex([{ slug: 's', error: 'x' }]).size, 0, 'metrics なし行が鍵を持った');
+  assert.strictEqual(gauge.keyIndex([JSON.parse(deepGaugeRowLine('d', 'T', 200))]).size, 0,
+    '深すぎる行が鍵を持った');
+});
+
+test('gauge: baseline は台帳を創造物の数だけ読み直さない (P-2 / R-3)', () => {
+  /**
+   * 旧実装は `record` の内側で創造物ごとに台帳を読み直し、M×N の sha256 を焚いていた
+   * (実測: 台帳 4000 行 × 20 創造物で 602ms → 索引を一度組むと 30ms)。
+   * **読んだ回数を数える** —— 時間で門を書けば機械の速さで揺れる。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    seedGaugeCreations(tmp, ['c1', 'c2', 'c3', 'c4', 'c5']);
+    const ledger = path.join(tmp, 'gauge-ledger.jsonl');
+    const realRead = fs.readFileSync;
+    let reads = 0;
+    fs.readFileSync = function (p, ...rest) {
+      if (String(p) === ledger) reads++;
+      return realRead.call(fs, p, ...rest);
+    };
+    try { g.baseline(); } finally { fs.readFileSync = realRead; }
+    assert.strictEqual(reads, 1,
+      `baseline が台帳を ${reads} 回読んだ — 創造物ごとの読み直しが残っている (R-3 / P-2)`);
+  });
+});
+
+test('gauge: baseline の索引化でも同一走行は二度刻まれない (P-2 が冪等性を壊していない)', () => {
+  withGaugeSandbox((g, tmp) => {
+    // 同一内容の run を二つの創造物名で置く → slug が違えば別の観測、同じなら一行
+    seedGaugeCreations(tmp, ['c1']);
+    fs.mkdirSync(path.join(tmp, 'c1', 'sub'), { recursive: true });
+    fs.copyFileSync(path.join(tmp, 'c1', 'conclave.json'), path.join(tmp, 'c1', 'same.run.json'));
+    const first = g.baseline();
+    const n1 = g.readLedger({ raw: true }).length;
+    const skippedInRun = first.filter(e => e && e.skipped).length;
+    assert.ok(skippedInRun >= 1,
+      'baseline 一回のうちに同一観測を二度刻んだ — 索引が刻んだ行を載せていない');
+    g.baseline();
+    assert.strictEqual(g.readLedger({ raw: true }).length, n1,
+      '二度目の baseline で台帳が増えた — 冪等性が壊れた');
+  });
+});
+
+test('gauge: foldLedger は同じ行の鍵を二度導出しない (P-2 のメモ化)', () => {
+  /**
+   * 整列の比較子は O(n log n) 回叩く。memo が無いと同一行の sha256 を何度も引き直し、
+   * 同時刻の行が多い台帳で実測 x13〜x17 の差が出た(20000 行で 1063ms → 61ms)。
+   * **導出の回数を数える** —— 時間で門を書けば機械の速さで揺れる。
+   */
+  const nodeCrypto = require('crypto');   // ★ global の WebCrypto ではない。gauge.js が使うのと同一の module
+  const realCreateHash = nodeCrypto.createHash;
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    rows.push({ ts: '2026-01-01T00:00:00.000Z', slug: 's' + i, scale: 'standard', metrics: { score: i } });
+  }
+  let calls = 0;
+  nodeCrypto.createHash = function (...a) { calls++; return realCreateHash.apply(nodeCrypto, a); };
+  try { gauge.foldLedger(rows); } finally { nodeCrypto.createHash = realCreateHash; }
+  assert.ok(calls <= rows.length,
+    `40 行の畳みで sha256 を ${calls} 回焚いた — 同じ行の鍵を二度導出している (P-2)`);
+  assert.ok(calls > 0, '鍵を一度も導出していない — 自己申告に戻っていないか (S-1)');
+});
+
+// ── P-4: metrics なし行の順序依存 ──────────────────────────────────────
+
+test('gauge: metrics を持たない行が複数在っても畳みの列は入力順に依存しない (P-4 / AC-4a)', () => {
+  /**
+   * passthrough の行は `ts` も鍵も持たないので比較不能 = `Array.sort` の安定性任せ =
+   * **入力順のまま**だった(実測: [0,1,2] → e1,e2,e3 / [2,1,0] → e3,e2,e1)。
+   * `gauge.js` の tie-break のコメントは「shuffle しても同じ列を返すための必須条件」と
+   * 宣言しているのに、その宣言が passthrough について守られていなかった。
+   */
+  const rows = [{ slug: 'a', error: 'e1' }, { slug: 'b', error: 'e2' }, { slug: 'c', error: 'e3' }];
+  const base = JSON.stringify(gauge.foldLedger(rows));
+  for (const p of [[0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]) {
+    assert.strictEqual(JSON.stringify(gauge.foldLedger(p.map(i => rows[i]))), base,
+      `metrics なし行の並びを入れ替えたら畳みの列が動いた: ${JSON.stringify(p)} (P-4)`);
+  }
+});
+
+// ── P-6: 台帳の二度読み ────────────────────────────────────────────────
+
+test('gauge(CLI): ledger は台帳を二度読まない — 破損の警告が二重に出ない (P-6 / R-8)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    const res = require('child_process').spawnSync(process.execPath, [GAUGE_JS, 'ledger'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.strictEqual(res.status, 0, `ledger が倒れた: ${res.stderr}`);
+    const warnings = (String(res.stderr || '').match(/line skipped \(corrupt\)/g) || []).length;
+    assert.strictEqual(warnings, 3,
+      `破損 3 行に対し警告が ${warnings} 回 — 台帳を二度読んで二度警告している (R-8 / P-6)`);
+  });
+});
+
+// ── review-2 の無音 14 種のうち、実害を確認した変異に門を立てる ─────────
+
+test('gauge: 材料の falsy な値は null に潰されない — ?? と || の違い (P-3 / V1)', () => {
+  // `??` を書いた意図(`''`/`0`/`false` を null と区別する)を機械に守らせる。
+  const mk = (scale) => gauge.fingerprint({ slug: 'a', scale, metrics: { score: 1 } });
+  assert.notStrictEqual(mk(''), mk(null), `空文字の scale が null と同じ鍵になった (V1)`);
+  assert.notStrictEqual(mk(0), mk(null), `0 の scale が null と同じ鍵になった (V1)`);
+  assert.notStrictEqual(mk(false), mk(null), `false の scale が null と同じ鍵になった (V1)`);
+});
+
+test('gauge: undefined の鍵は出力せず落とす — 書く前と読み戻し後で鍵が割れない (P-3 / V2)', () => {
+  /**
+   * `JSON.stringify` は `undefined` 値の鍵を落とす。正規化が `"null"` として出せば、
+   * **書く前(undefined あり)と読み戻し後(鍵なし)で鍵が割れ**、同じ観測が二度刻まれる。
+   * 冪等性の核が壊れる(review-2 V2)。
+   */
+  const withUndef = { slug: 'a', scale: 'standard', metrics: { score: 1, extra: undefined } };
+  const roundTrip = JSON.parse(JSON.stringify(withUndef));
+  assert.strictEqual(gauge.fingerprint(withUndef), gauge.fingerprint(roundTrip),
+    'undefined の鍵を持つ行が JSONL の往復で別の鍵になった — 同じ観測が二度刻まれる (V2)');
+  assert.strictEqual(gauge.fingerprint(withUndef), gauge.fingerprint({ slug: 'a', scale: 'standard', metrics: { score: 1 } }),
+    'undefined の鍵が材料に混ざっている (V2)');
+});
+
+test('gauge: 数の丸めは有効桁ではなく小数桁である — 大きな値が同一鍵にならない (P-3 / V3)', () => {
+  /**
+   * `toPrecision(6)` は 7 桁目以降を丸める。実測: `durationMs` 1800000 と 1800000.4 が同一鍵、
+   * 123456789 と 123456790 も同一鍵になる。`durationMs` は実台帳に実在する鍵であり、
+   * **別走行が畳まれて片方が消える**(review-2 V3)。
+   */
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ durationMs: 1800000 }), fp({ durationMs: 1800000.4 }),
+    '1800000 と 1800000.4 が同一鍵 — 別走行が畳まれて片方が消える (V3)');
+  assert.notStrictEqual(fp({ durationMs: 123456789 }), fp({ durationMs: 123456790 }),
+    '大きな整数の隣どうしが同一鍵になった (V3)');
+  // それでも浮動小数の揺れは吸うこと(丸めを消してはならない = M3/M4 と両立)
+  assert.strictEqual(fp({ a: 0.1 + 0.2 }), fp({ a: 0.3 }), '丸めが効いていない');
+});
+
+test('gauge(CLI): compare --last の窓に metrics なし行を載せない (P-3 / V9)', () => {
+  /**
+   * `metrics` なし行が窓に載ると `renderLedger` の `e.metrics.score` / `e.ts.slice` で
+   * **秤全体が倒れる**(実測: TypeError)。窓の絞りは飾りではない。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [
+      ...GAUGE_OBSERVATIONS.slice(0, 3).map(o => JSON.stringify(gaugeRow(o))),
+      JSON.stringify({ slug: 'broken', error: 'no phases' }),
+    ]);
+    const res = require('child_process').spawnSync(process.execPath, [GAUGE_JS, 'compare', '--last', '4'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.strictEqual(res.status, 0,
+      `metrics なし行が窓に載って秤が倒れた: ${String(res.stdout) + String(res.stderr)}`);
+    assert.ok(!/broken/.test(String(res.stdout)), `metrics なし行が窓に載った: ${res.stdout}`);
+  });
+});
+
+test('gauge: audit の入口は metrics なし行を数に入れない — 偽の重複を報じない (P-3 / V10)', () => {
+  /**
+   * `metrics` を持たない別々の失敗行はすべて同一鍵になる(材料が `{slug}` だけ)。
+   * 入口の filter を外すと、**掃除しようのない偽の重複**を audit が報じ続ける。
+   */
+  const a = gauge.auditLedger([{ slug: 'a' }, { slug: 'a', error: '別の失敗' }, { slug: 'b', error: 'x' }]);
+  assert.strictEqual(a.rows, 0, `metrics なし行を監査の数に入れた: rows=${a.rows} (V10)`);
+  assert.strictEqual(a.duplicates, 0, `存在しない重複を報じた: ${a.duplicates} (V10)`);
+  // 材料が同じなら鍵も同じ = filter を外せば偽の重複になる、という前提を明示的に検算する
+  assert.strictEqual(gauge.fingerprint({ slug: 'a' }), gauge.fingerprint({ slug: 'a', error: '別の失敗' }),
+    '門の前提が崩れた — metrics なし行が別の鍵を持つなら V10 の危険は無い');
+});
+
+test('gauge: 環境変数で畳みや監査を無効化する裏口が無い (P-3 / V11・W8)', () => {
+  /**
+   * **設定で無効化できる門は、門の不在に等しい。**
+   * `GAUGE_NO_FOLD=1` のような裏口があれば FR-3 の全てが env 一つで消える。
+   * 門は env を設定しないので永久に気づかない(review-2 V11)。
+   */
+  const src = fs.readFileSync(GAUGE_JS, 'utf8');
+  const hits = src.match(/process\.env(\.\w+|\[[^\]]+\])/g) || [];
+  assert.deepStrictEqual(hits, [],
+    `gauge.js が環境変数を読んでいる: ${hits.join(', ')} — 振る舞いを env で変える裏口は門の不在に等しい (V11)`);
+  // 実際に env を汚しても振る舞いが動かないこと(source の grep だけを根拠にしない)
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const dirty = { ...process.env, PARADISE_CREATIONS: tmp,
+      GAUGE_NO_FOLD: '1', PARADISE_GAUGE_STRICT: '', GAUGE_SKIP_AUDIT: '1' };
+    const res = require('child_process').spawnSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+      { encoding: 'utf8', env: dirty });
+    assert.strictEqual(res.status, 1, `env を汚したら audit の信号が変わった: ${res.status} / ${res.stdout}`);
+    assert.ok(/duplicates=24/.test(String(res.stdout)), `env を汚したら畳みが止まった: ${res.stdout}`);
+  });
+});
+
+test('gauge: record が刻む ts は辞書順が時刻順になる形式である (P-3 / V12)', () => {
+  /**
+   * 畳みの keep-first は「**文字列の辞書順 = 時刻順**」を前提にする。
+   * local 文字列では辞書順が時刻順にならない(実測: `"Tue Sep 08 2026" < "Wed Jan 01 2020"` が true)。
+   * `ts` の形式が崩れれば **keep-first が壊れ**、画面にも壊れた文字列が出る。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const e = g.record(run, 'coin');
+    assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(e.ts),
+      `record の ts が ISO8601 UTC でない: ${e.ts} — 辞書順が時刻順でなくなり keep-first が壊れる (V12)`);
+    // 辞書順 = 時刻順であることを実際に確かめる
+    const later = new Date(Date.parse(e.ts) + 86400000).toISOString();
+    assert.ok(e.ts < later, `辞書順が時刻順になっていない: ${e.ts} vs ${later}`);
+  });
+});
+
+test('gauge: 畳みが倒れても生の行は返る — fail-open が実装されている (P-3 / W3)', () => {
+  /**
+   * `readLedger` の catch が `[]` を返すようになると、**畳めなかっただけで記録が消える**。
+   * 第55条(e)「fail-open: 畳めなくとも記録は返す」の実体はこの一行である。
+   * 実際に `foldLedger` を倒す注入版で、行が返ることを撃つ(人が歩く道の等価物)。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-w3-'));
+  try {
+    const throwFold = (src) => src.replace('function foldLedger(entries) {',
+      "function foldLedger(entries) {\n  throw new Error('fold blew up');");
+    const brokenPath = injectGauge(sand, 'gauge.fold-throws.js', throwFold);
+    const gate = `
+      const rows = g.readLedger();
+      console.log('rows=' + rows.length);
+      assert.strictEqual(rows.length, 2, '畳みが倒れたら生の行まで消えた — fail-open が成立していない (W3)');
+    `;
+    const mk = (tag) => {
+      const d = path.join(sand, tag);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'gauge-ledger.jsonl'),
+        GAUGE_OBSERVATIONS.slice(0, 2).map(o => JSON.stringify(gaugeRow(o))).join('\n') + '\n');
+      return d;
+    };
+    // ① 畳みが必ず倒れる版でも生の行が返ること = fail-open が生きている証拠
+    const injected = runGaugeGate(brokenPath, mk('thrown'), gate);
+    assert.strictEqual(injected.code, 0,
+      `畳みが倒れた道で行が失われた — fail-open が成立していない (W3): ${injected.out.slice(0, 300)}`);
+    // ② catch を `[]` 返しに変えた版では必ず鳴ること(片側だけでは門ではない)
+    const nullifiedPath = injectGauge(sand, 'gauge.fold-null.js', src =>
+      throwFold(src).replace('    return kept;   // fail-open: 畳めなくとも記録は返す', '    return [];'));
+    const nullified = runGaugeGate(nullifiedPath, mk('nulled'), gate);
+    assert.notStrictEqual(nullified.code, 0,
+      'catch を [] 返しにしても門が緑だった — 記録が消える道を捕らえていない (W3)');
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('gauge(故障注入): 私が新たに発明した 5 変異で門が exit 1 で鳴る (build attempt 3)', () => {
+  /**
+   * **修理がまた新たな病を生んでいないかを、自分の変異で確かめる。**
+   * 今回の修理(raw の位置・索引・memo・tie-break の第二段・exit code の分割)は
+   * すべて新しい面であり、review-2 の 39 変異はここを一つも撃っていない。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-b3-'));
+  try {
+    const deepLine = (d) => "'" + deepGaugeRowLine('deepy', '2026-01-02T00:00:00.000Z', d).replace(/'/g, "\\'") + "'";
+    const healthyLine = JSON.stringify(JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])));
+    const mutations = [
+      { tag: 'B1', name: 'b3.raw-back.js',
+        // ★ 「生」の道が深すぎる行を落とす(P-1 ① の再発)
+        mutate: s => s.replace('  if (opts.raw) return out;',
+          '  if (opts.raw) return out.filter(r => !(r && typeof r === \'object\' && r.metrics && trueKey(r) === null));'),
+        gate: `fs.writeFileSync(LEDGER, ${healthyLine} + '\\n' + ${deepLine(200)} + '\\n');
+          assert.strictEqual(g.readLedger({ raw: true }).length, 2,
+            'raw が行を落とした: ' + g.readLedger({ raw: true }).length);` },
+      { tag: 'B2', name: 'b3.audit-silent.js',
+        // ★ audit が too-deep を数えず「健全」と答える(第16条違反の再発)
+        mutate: s => s.replace('  return { rows, distinct, tooDeep, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts };',
+                               "  return { rows, distinct, tooDeep: 0, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts: conflicts.filter(c => c.kind !== 'too-deep') };"),
+        gate: `const a = g.auditLedger([JSON.parse(${deepLine(200)})]);
+          assert.strictEqual(a.tooDeep, 1, '読めない行を 0 件と偽った: ' + a.tooDeep);
+          assert.ok(a.conflicts.some(c => c.kind === 'too-deep'), '読めない行を名指していない');` },
+      { tag: 'B3', name: 'b3.index-forged.js',
+        // ★ 索引が自己申告を鍵にする(S-1 が索引の形で再発)
+        mutate: s => s.replace('    const derived = trueKey(e);', '    const derived = e.fp || trueKey(e);'),
+        gate: `const honest = { ts: '2026-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 10 } };
+          const forged = { ts: '2026-01-02T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 99 },
+            fp: g.fingerprint(honest) };
+          const idx = g.keyIndex([forged]);
+          assert.ok(idx.has(g.fingerprint(forged)), '索引が偽の自己申告を鍵にした');
+          assert.ok(!idx.has(g.fingerprint(honest)), '偽の鍵で本物の観測を飲み込む道が残った');` },
+      { tag: 'B4', name: 'b3.tiebreak2.js',
+        // ★ tie-break の第二段(P-4)を殺す
+        mutate: s => s.replace('    return ja < jb ? -1 : ja > jb ? 1 : 0;', '    return 0;'),
+        gate: `const rows = [{ slug: 'a', error: 'e1' }, { slug: 'b', error: 'e2' }, { slug: 'c', error: 'e3' }];
+          const base = JSON.stringify(g.foldLedger(rows));
+          for (const p of [[2,1,0],[1,2,0],[0,2,1]]) {
+            assert.strictEqual(JSON.stringify(g.foldLedger(p.map(i => rows[i]))), base,
+              'metrics なし行の並びで畳みの列が動いた');
+          }` },
+      { tag: 'B5', name: 'b3.baseline-noindex.js',
+        // ★ baseline が索引を渡すのをやめる(R-3 / P-2 の再発)
+        mutate: s => s.replace(/record\(f, dir\.name, idx\)/, 'record(f, dir.name)'),
+        gate: `const LED = LEDGER;
+          fs.writeFileSync(LED, '');
+          fs.mkdirSync(path.join(${JSON.stringify(sand)}, 'seedbox'), { recursive: true });
+          const realRead = fs.readFileSync;
+          let reads = 0;
+          fs.readFileSync = function (p2, ...rest) { if (String(p2) === LED) reads++; return realRead.call(fs, p2, ...rest); };
+          try { g.baseline(); } finally { fs.readFileSync = realRead; }
+          assert.strictEqual(reads, 1, 'baseline が台帳を ' + reads + ' 回読んだ');` },
+    ];
+    const rang = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const mk = (tag) => {
+        const d = path.join(sand, m.tag + '-' + tag);
+        fs.mkdirSync(d, { recursive: true });
+        if (m.tag === 'B5') {
+          // baseline が拾う創造物を 3 つ置く(素材が無ければ変異は現れない)
+          for (const slug of ['s1', 's2', 's3']) {
+            fs.mkdirSync(path.join(d, slug), { recursive: true });
+            fs.writeFileSync(path.join(d, slug, 'conclave.json'), JSON.stringify(makeGaugeRun()));
+          }
+        }
+        return d;
+      };
+      const broken = runGaugeGate(brokenPath, mk('broken'), m.gate);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — 穴が残っている: ${broken.out.slice(0, 300)}`);
+      const real = runGaugeGate(GAUGE_JS, mk('real'), m.gate);
+      assert.strictEqual(real.code, 0, `${m.tag} の門が実物で鳴った: ${real.out.slice(0, 400)}`);
+      rang.push(m.tag);
+    }
+    assert.strictEqual(rang.length, 5, `5 変異を撃っていない: ${rang.join(',')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+
+
+// ══ prove attempt 3: 過去 96 変異と重ならない層に立てた門 ═══════════════
+/**
+ * 過去三度、「無音ゼロ」の報告のあとで別の目が穴を見つけた。今回は層を変えて
+ * 27 変異を打ち、**11 件が無音だった**。以下はその 11 件を塞ぐ門である。
+ * 狙った層: CLI の引数解釈と exit code / 下流(pulse)の結合 / 環境依存 /
+ * 境界値 / 門ヘルパー自身。**「門は完全です」とは書かない。**
+ */
+
+/** gauge.js を子プロセスで叩く。人が歩く道そのものを撃つ(module 直呼びではない)。 */
+function gaugeCli(args, sandbox) {
+  const res = require('child_process').spawnSync(process.execPath, [GAUGE_JS, ...args],
+    { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: sandbox } });
+  return { code: res.status, out: String(res.stdout || '') + String(res.stderr || '') };
+}
+
+test('gauge(CLI): --audit は旗の位置に依らず効く (P3/C2 — 引数解釈)', () => {
+  /**
+   * `argv.includes('--audit')` を `argv[1] === '--audit'` に縮めても門は全部緑だった。
+   * 位置依存の旗は、人が `ledger --json --audit` と打った瞬間に**黙って監査をやめ**、
+   * 重複だらけの台帳を「一覧」として exit 0 で見せる。旗は位置ではなく存在で効くこと。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    for (const args of [['ledger', '--audit'], ['ledger', '--verbose', '--audit'], ['ledger', '--audit', '--x']]) {
+      const r = gaugeCli(args, tmp);
+      assert.ok(/rows=30/.test(r.out),
+        `${args.join(' ')} が監査を行わなかった — 旗が位置に依存している: ${r.out.slice(0, 200)}`);
+      assert.strictEqual(r.code, 1, `${args.join(' ')} の exit が 1 でない: ${r.code}`);
+    }
+  });
+});
+
+test('gauge(CLI): score --json も旗の位置に依らず効く (P3/C5)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    for (const args of [['score', run, '--json'], ['score', run, '--label', 'x', '--json']]) {
+      const r = gaugeCli(args, tmp);
+      assert.strictEqual(r.code, 0, `${args.join(' ')} が落ちた: ${r.out}`);
+      assert.doesNotThrow(() => JSON.parse(r.out.trim().split('\n').pop()),
+        `--json が JSON を出さなかった — 旗が位置に依存している: ${r.out.slice(0, 200)}`);
+    }
+  });
+});
+
+test('gauge(CLI): compare --last の N は整数でなければ拒む — NaN を窓に通さない (P3/C3)', () => {
+  /**
+   * 検査を外しても門は全部緑だった。`--last abc` は `Number('abc') = NaN`、
+   * `slice(-NaN)` は **全行**を返す。人は「直近 3 件」を頼んだつもりで台帳全体を
+   * 見せられ、しかも exit 0。誤りは黙って別の答えにすり替わってはならない(第16条)。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    for (const bad of ['abc', '0', '-1', '2.5', 'NaN', 'Infinity']) {
+      const r = gaugeCli(['compare', '--last', bad], tmp);
+      assert.strictEqual(r.code, 3,
+        `--last ${bad} が exit ${r.code} で通った — 不正な N が窓に届いている: ${r.out.slice(0, 160)}`);
+      assert.ok(/usage/.test(r.out), `--last ${bad} が使い方を名乗らない: ${r.out.slice(0, 160)}`);
+    }
+    assert.strictEqual(gaugeCli(['compare', '--last', '3'], tmp).code, 0, '正しい N が拒まれた');
+  });
+});
+
+test('gauge(CLI): compare --last の窓は台帳の**末尾** N である (P3/C7)', () => {
+  /**
+   * `slice(-n)` を `slice(0,n)` に変えても門は全部緑だった。「直近」が「最古」に
+   * 化けても誰も気づかない秤は、推移を語る器として成り立たない。
+   * 畳んだ列は ts 昇順なので、末尾 N = 時刻の新しい N である。
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, GAUGE_OBSERVATIONS.map(o => gaugeRow(o)));
+    const r = gaugeCli(['compare', '--last', '2'], tmp);
+    assert.strictEqual(r.code, 0, `compare --last 2 が落ちた: ${r.out}`);
+    assert.ok(/tenbin/.test(r.out) && /reform-claude-md-diet/.test(r.out),
+      `窓が末尾 2 件でない — 「直近」が最古を指している: ${r.out}`);
+    assert.ok(!/coin/.test(r.out), `最古の行が「直近 2 件」に載った: ${r.out}`);
+  });
+});
+
+test('gauge(CLI): record は slug 無しでは一行も書かない (P3/C8)', () => {
+  /**
+   * usage 検査から `slug` を落としても門は全部緑だった。実際には
+   * `slug: undefined` の行が台帳に刻まれ(`fingerprint` は `?? null` で受ける)、
+   * **誰の観測でもない行**が永久に残る。台帳の行は必ず名を持つこと。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const led = path.join(tmp, 'gauge-ledger.jsonl');
+    for (const args of [['record', run], ['record', run, '--slug'], ['record', run, '--slug', '']]) {
+      const r = gaugeCli(args, tmp);
+      assert.strictEqual(r.code, 3, `${args.join(' ')} が exit ${r.code} で通った: ${r.out.slice(0, 160)}`);
+      const written = fs.existsSync(led) ? fs.readFileSync(led, 'utf8') : '';
+      assert.strictEqual(written.trim(), '', `slug 無しの record が台帳に書いた: ${written.slice(0, 200)}`);
+    }
+    assert.strictEqual(gaugeCli(['record', run, '--slug', 'coin'], tmp).code, 0, '正しい record が拒まれた');
+    assert.ok(/"slug":"coin"/.test(fs.readFileSync(led, 'utf8')), '正しい record が書かれていない');
+  });
+});
+
+test('gauge(CLI): 知らない命令は非ゼロで拒む — 誤字を成功と呼ばない (P3/C6)', () => {
+  /**
+   * `process.exit(3)` を 0 にしても門は全部緑だった。`gauge.js recrod …` が
+   * exit 0 を返せば、CI も cron も「記録した」と信じて先へ進む。
+   * **何もしなかったことを成功と名乗るのが、この秤で最も危険な嘘である。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    for (const args of [['bogus'], [], ['ledgerr'], ['--audit']]) {
+      const r = gaugeCli(args, tmp);
+      assert.notStrictEqual(r.code, 0,
+        `\`gauge.js ${args.join(' ')}\` が exit 0 を返した — 誤字が成功に見える: ${r.out.slice(0, 160)}`);
+      assert.strictEqual(r.code, 3, `使い方の誤りは exit 3 であること (実際 ${r.code}): ${r.out.slice(0, 160)}`);
+    }
+  });
+});
+
+test('gauge(下流): pulse の断面は畳んだ台帳を載せる — 画面の三段重なりは源で治す (P3/D1)', () => {
+  /**
+   * `pulse.js:428` を `readLedger({raw:true})` に変えても gauge の門は全部緑だった。
+   * FR-3 が治した「画面に同じ点が三段並ぶ」は、**下流が生を採った瞬間に戻る**。
+   * NG-4 が pulse の改修を遠ざけたのは源で治すためであり、
+   * 源が治ったことを下流の断面で確かめる門が無ければ、治癒は繋がっていない。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-pulse-'));
+  try {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const res = require('child_process').spawnSync(process.execPath, ['-e',
+      `process.env.PARADISE_CREATIONS=${JSON.stringify(tmp)};` +
+      `const s=require(${JSON.stringify(path.join(DIR, '..', 'graph', 'pulse.js'))}).snapshot();` +
+      `console.log(JSON.stringify({n:(s.ledger||[]).length,slugs:(s.ledger||[]).map(r=>r.slug)}));`],
+      { encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, `pulse の断面が落ちた: ${res.stderr}`);
+    const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+    assert.strictEqual(got.n, 6,
+      `pulse の ledger 断面が ${got.n} 行 — 生の 30 行が画面へ流れている (FR-3 が下流に届いていない)`);
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('gauge(下流): pulse の断面は metrics なし行で倒れない (P3/D2 / 第55条 e)', () => {
+  /**
+   * `r.metrics ? … : null` を直参照に変えても gauge の門は全部緑だった。
+   * `baseline` は失敗した創造物に `{slug,error}` を積む —— これは**実在する形**である。
+   * 一行の欠けで断面が丸ごと落ちれば、ダッシュボードは台帳ごと沈黙する。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-pulse2-'));
+  try {
+    writeGaugeLedger(tmp, [
+      JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])),
+      JSON.stringify({ ts: '2026-01-02T00:00:00.000Z', slug: 'broken', error: 'run-state carries no phases' }),
+    ]);
+    const res = require('child_process').spawnSync(process.execPath, ['-e',
+      `process.env.PARADISE_CREATIONS=${JSON.stringify(tmp)};` +
+      `const s=require(${JSON.stringify(path.join(DIR, '..', 'graph', 'pulse.js'))}).snapshot();` +
+      `console.log(JSON.stringify({ledger:s.ledger,errs:(s.errors||[]).map(e=>e.engine||e)}));`],
+      { encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, `pulse が metrics なし行で落ちた: ${res.stderr.slice(0, 300)}`);
+    const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+    assert.ok(Array.isArray(got.ledger),
+      `ledger 断面が null になった — 一行の欠けで台帳全体が沈黙した: ${JSON.stringify(got.errs)}`);
+    assert.strictEqual(got.ledger.length, 2, `行が落ちた: ${JSON.stringify(got.ledger)}`);
+    assert.strictEqual(got.ledger.find(r => r.slug === 'broken').score, null,
+      'metrics なし行の score は null で名乗ること — 0 で埋めない (第16条)');
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('gauge(環境): 倉が存在しない機で baseline も ledger も倒れない (P3/E5 / 第20条)', () => {
+  /**
+   * `baseline` の `existsSync(root)` を外しても門は全部緑だった。creations を
+   * clone していない機(CI の一部・新しい端末)では倉そのものが無い。
+   * そこで秤が ENOENT で落ちれば、**gauge を呼ぶ道が全部連鎖で落ちる**。
+   */
+  const ghost = path.join(os.tmpdir(), `paradise-gauge-ghost-${process.pid}`);
+  try { fs.rmSync(ghost, { recursive: true, force: true }); } catch {}
+  assert.ok(!fs.existsSync(ghost), '前提: 倉が存在しないこと');
+  for (const args of [['baseline'], ['ledger'], ['ledger', '--audit']]) {
+    const r = gaugeCli(args, ghost);
+    assert.strictEqual(r.code, 0,
+      `倉の無い機で \`gauge.js ${args.join(' ')}\` が exit ${r.code} で落ちた: ${r.out.slice(0, 200)}`);
+    assert.ok(!/ENOENT/.test(r.out), `倉の不在を事故として叫んだ: ${r.out.slice(0, 200)}`);
+  }
+  assert.ok(!fs.existsSync(ghost), '倉の無い機で秤が勝手に倉を作った — 住所の主は workspace である (第30条)');
+});
+
+test('門ヘルパー: withGaugeSandbox は必ず仮倉へ振り替える — 外の env を尊重しない (P3/T1)', () => {
+  /**
+   * `process.env.PARADISE_CREATIONS = tmp` を `= prev || tmp` に変えても門は全部緑だった。
+   * その形では、外側で env が立っている機(まさに CI で gauge を測る時)に
+   * **85 本の門がまるごと実台帳を相手に走る**。第30条の約束「門は実台帳を一行も
+   * 書き換えない」が、環境変数一つで崩れる。門ヘルパーの主張自身を守る(第55条 i)。
+   */
+  const prevEnv = process.env.PARADISE_CREATIONS;
+  const outer = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-outer-'));
+  try {
+    process.env.PARADISE_CREATIONS = outer;
+    let seen = null;
+    withGaugeSandbox((g, tmp) => { seen = { tmp, root: require(WORKSPACE_JS).resolve().root }; });
+    assert.notStrictEqual(seen.root, outer,
+      '外側の PARADISE_CREATIONS がそのまま使われた — 仮倉への振替が効いていない');
+    assert.strictEqual(path.resolve(seen.root), path.resolve(seen.tmp),
+      `門が見た倉 ${seen.root} が仮倉 ${seen.tmp} と違う`);
+    assert.strictEqual(process.env.PARADISE_CREATIONS, outer, '外側の env が戻されていない');
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS; else process.env.PARADISE_CREATIONS = prevEnv;
+    fs.rmSync(outer, { recursive: true, force: true });
+  }
+});
+
+test('門ヘルパー: test() の失敗が必ず数に載る — 集計行が嘘をつかない (P3/T2 / 第16条)', () => {
+  /**
+   * `test()` の catch から `fail++` を落としても、gauge の門は全部緑「に見えた」。
+   * 集計行 `N passed, 0 failed` は census が README に写す数であり、
+   * **数え方が嘘をつけば全ての門の緑が無意味になる**。ここは門の根である。
+   * 実物の `test` を撃つと集計が汚れるので、同じ本文を子プロセスで走らせて撃つ。
+   */
+  const src = fs.readFileSync(path.join(DIR, 'paradise.test.js'), 'utf8');
+  const m = src.match(/function test\(name, fn\) \{[\s\S]*?\n\}/);
+  assert.ok(m, 'test() の定義が見つからない — 門の形が変わった');
+  assert.ok(/fail\+\+/.test(m[0]), '失敗を数える一行が消えている — 集計行が永久に 0 failed になる');
+  assert.ok(/pass\+\+/.test(m[0]), '成功を数える一行が消えている');
+  const res = require('child_process').spawnSync(process.execPath, ['-e',
+    `let pass=0,fail=0;\n${m[0]}\ntest('x',()=>{throw new Error('BOOM')});` +
+    `test('y',()=>{});console.log(JSON.stringify({pass,fail}));`], { encoding: 'utf8' });
+  assert.strictEqual(res.status, 0, `test() の抜き出しが走らない: ${res.stderr.slice(0, 200)}`);
+  const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
+  assert.deepStrictEqual(got, { pass: 1, fail: 1 },
+    `失敗が集計に載らない — 「0 failed」が構造的に嘘になる: ${JSON.stringify(got)}`);
+});
+
+// ── AC-8a/8b/8c: 掃除の手順を仮倉で模擬する(実台帳は一行も触らない) ──
+/**
+ * prove attempt 2 は「AC-8a/8b/8c には門が無い」と正直に報告した。実台帳を
+ * 触らずに掃除を検めることは**できる** —— 掃除は creations 側の別 PR(AC-8d)だが、
+ * **手順そのもの**は純粋な変換であり、仮倉で実演すれば機械が裁ける。
+ * ここで撃つのは「掃除の結果が 6 行になるか」ではなく
+ * **「30 行を畳んで書き戻す手順が、観測を一つも失わず、行数だけを減らすか」**である。
+ */
+test('gauge: FR-8 の掃除は 30 行を 6 行にし、観測を一つも失わない (AC-8a / AC-8b — 仮倉で模擬)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const led = path.join(tmp, 'gauge-ledger.jsonl');
+    writeGaugeLedger(tmp, gauge30Rows());
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 30, `素材が 30 行でない: ${raw.length}`);
+    // design.md が定める掃除の手順: raw を畳んで書き戻す。
+    const folded = g.foldLedger(raw);
+    fs.writeFileSync(led, folded.map(r => JSON.stringify(r)).join('\n') + '\n');
+    // AC-8a: 行数
+    const after = fs.readFileSync(led, 'utf8').split('\n').filter(Boolean);
+    assert.strictEqual(after.length, 6, `掃除後が 6 行でない: ${after.length}`);
+    // AC-8a: 内訳が V-9 の実測と一致する
+    const got = after.map(l => JSON.parse(l)).map(e => `${e.slug} ${e.metrics.score}`).sort();
+    assert.deepStrictEqual(got, [
+      'coin 100', 'habit 45', 'reform-claude-md-diet 80',
+      'reform-eval-gauge 100', 'reform-eval-gauge 80', 'tenbin 100',
+    ].sort(), `掃除後の内訳が V-9 の実測と違う: ${JSON.stringify(got)}`);
+    // AC-8b: 指紋の集合が前後で完全一致 —— 観測は一つも失われない
+    const before = new Set(raw.map(r => g.fingerprint(r)));
+    const afterSet = new Set(after.map(l => g.fingerprint(JSON.parse(l))));
+    assert.strictEqual(before.size, 6, `畳む前の distinct が 6 でない: ${before.size}`);
+    assert.deepStrictEqual([...afterSet].sort(), [...before].sort(),
+      '掃除で観測が失われた/生まれた — 指紋の集合が前後で一致しない (AC-8b)');
+    // 掃除の後に監査が黙る(鳴りっぱなしの門にしない)
+    assert.strictEqual(gaugeCli(['ledger', '--audit'], tmp).code, 0,
+      '掃除を終えた台帳で --audit が鳴った — 掃除が到達点でないなら AC-8 は達成不能である');
+  });
+});
+
+test('gauge: 掃除は keep-first — 残るのは各指紋の最古の行である (AC-8b の含意)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const folded = g.foldLedger(g.readLedger({ raw: true }));
+    for (const o of GAUGE_OBSERVATIONS) {
+      const hit = folded.find(e => e.slug === o.slug && e.metrics.score === o.score);
+      assert.ok(hit, `${o.slug} ${o.score} が掃除で消えた`);
+      assert.strictEqual(hit.ts, o.ts,
+        `${o.slug} に残ったのが最古の行でない (${hit.ts} ≠ ${o.ts}) — keep-last に化けている`);
+    }
+  });
+});
+
+test('gauge(故障注入): prove attempt 3 の無音 11 種のうち engine 側 6 種で各門が鳴る', () => {
+  /**
+   * **注入版に対して非ゼロ・実物に対してゼロ** —— 片側だけでは門ではない(第21条)。
+   * 門ヘルパー側の変異(T1/T2)と下流(D1/D2)は上の各門が直に撃っているので、
+   * ここでは engine を壊す道だけを子プロセスで回す。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-inj3-'));
+  try {
+    const mutations = [
+      { tag: 'C2', name: 'c2.js', mutate: s => s.replace("argv.includes('--audit')", "argv[1] === '--audit'") },
+      { tag: 'C3', name: 'c3.js',
+        mutate: s => s.replace(/if \(!Number\.isInteger\(n\) \|\| n < 1\) \{[^}]*\}/, '') },
+      { tag: 'C6', name: 'c6.js', mutate: s => s.replace(/process\.exit\(3\);(\r?\n)  \} catch/, 'process.exit(0);$1  } catch') },
+      { tag: 'C7', name: 'c7.js', mutate: s => s.replace('filter(e => e.metrics).slice(-n)', 'filter(e => e.metrics).slice(0, n)') },
+      { tag: 'C8', name: 'c8.js', mutate: s => s.replace("if (!file || !slug) { console.error('usage: gauge.js record", "if (!file) { console.error('usage: gauge.js record") },
+      { tag: 'E5', name: 'e5.js', mutate: s => s.replace('  if (!fs.existsSync(root)) return out;\r\n', '').replace('  if (!fs.existsSync(root)) return out;\n', '') },
+    ];
+    /**
+     * 注入版の CLI を直に撃つ(`runGaugeGate` は module を require する道なので、
+     * CLI の引数解釈を壊す変異は届かない —— **道が違えば門も違う**)。
+     */
+    const cli = (engine, sandbox, args) => {
+      const r = require('child_process').spawnSync(process.execPath, [engine, ...args],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: sandbox } });
+      return { code: r.status, out: String(r.stdout || '') + String(r.stderr || '') };
+    };
+    const probes = {
+      C2: (eng, box) => {
+        writeGaugeLedger(box, gauge30Rows());
+        const r = cli(eng, box, ['ledger', '--verbose', '--audit']);
+        return /rows=30/.test(r.out) && r.code === 1;
+      },
+      C3: (eng, box) => {
+        writeGaugeLedger(box, gauge30Rows());
+        return cli(eng, box, ['compare', '--last', 'abc']).code === 3;
+      },
+      C6: (eng, box) => cli(eng, box, ['bogus']).code === 3,
+      C7: (eng, box) => {
+        writeGaugeLedger(box, GAUGE_OBSERVATIONS.map(o => gaugeRow(o)));
+        const r = cli(eng, box, ['compare', '--last', '2']);
+        return r.code === 0 && /tenbin/.test(r.out) && !/coin/.test(r.out);
+      },
+      C8: (eng, box) => {
+        const run = path.join(box, 'run.json');
+        fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+        const r = cli(eng, box, ['record', run]);
+        const led = path.join(box, 'gauge-ledger.jsonl');
+        return r.code === 3 && (!fs.existsSync(led) || fs.readFileSync(led, 'utf8').trim() === '');
+      },
+      E5: (eng, box) => {
+        const ghost = path.join(box, 'ghost');
+        return ['baseline', 'ledger'].every(c => cli(eng, ghost, [c]).code === 0);
+      },
+    };
+    const rang = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const mk = (tag) => { const d = path.join(sand, m.tag + '-' + tag); fs.mkdirSync(d, { recursive: true }); return d; };
+      assert.strictEqual(probes[m.tag](brokenPath, mk('broken')), false,
+        `${m.tag} を注入しても門の検査が通った — 穴が残っている`);
+      assert.strictEqual(probes[m.tag](GAUGE_JS, mk('real')), true,
+        `${m.tag} の門が実物で鳴った — 門自身が壊れている`);
+      rang.push(m.tag);
+    }
+    assert.strictEqual(rang.length, 6, `6 変異を撃っていない: ${rang.join(',')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+
+
+// ── build attempt 4: F-1 / F-2 / D-3〜D-6 の門 ────────────────────────
+/**
+ * **この節が塞ぐ穴は、いずれも「門が無かったから残っていた」ものである。**
+ * security-3 の F-1(先回り毒)/ F-2(全滅した台帳を健全と答える)、
+ * review-3 の D-3(exit code の規約違反)/ D-4(latestFor が読めない行を選ぶ)/
+ * D-5(renderLedger の error 枝)/ D-6(無状態性が構造的に観測不能)。
+ */
+console.log('\nGauge 先回りと破損の門 (build attempt 4):');
+
+/** 先回り毒の素材: 走行の開始より前に住み、余分な鍵を持つ行。 */
+function preemptionPoison(g, run, opts = {}) {
+  const row = {
+    ts: opts.ts || '1999-01-01T00:00:00.000Z',
+    slug: opts.slug || 'coin', scale: 'standard', metrics: g.score(run),
+  };
+  if (opts.note !== null) row.note = opts.note || 'ATTACKER';
+  row.fp = g.fingerprint(row);   // ★ 中身と整合する鍵。forged-fp では捕まらない
+  return row;
+}
+
+test('gauge: 先回り毒は正当な観測を刻ませないことができない (F-1 / 第55条 e)', () => {
+  /**
+   * 指紋の材料は `slug`+`scale`+`metrics` で `ts` を含まない(冪等性の成立条件)。
+   * `score()` は決定的なので、**未来の観測の指紋は先に計算できる**。
+   * 旧実装は材料が一致すれば無条件に skip した —— 教主の実測で
+   * 「正当な観測は永遠に刻まれない / audit は exit 0 で健全と答える」。
+   * **「同じ観測は二度刻まない」が「先に名乗った者が勝つ」になっていた。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = makeGaugeRun();
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(run));
+    writeGaugeLedger(tmp, [preemptionPoison(g, run)]);
+    const e = g.record(rf, 'coin');
+    assert.notStrictEqual(e.skipped, true,
+      '先回り毒で正当な観測が刻まれなくなった — 冪等性が「先着が勝つ」に化けている (F-1)');
+    assert.strictEqual(e.preempted, true, '先回りを名指していない — 黙って飲み込んでいる (F-1)');
+    assert.ok(Array.isArray(e.reasons) && e.reasons.length, `理由を列挙していない: ${JSON.stringify(e.reasons)}`);
+    const rows = fs.readFileSync(path.join(tmp, 'gauge-ledger.jsonl'), 'utf8').split('\n').filter(Boolean);
+    assert.strictEqual(rows.length, 2, `正当な観測が台帳に届いていない: ${rows.length} 行`);
+    // 毒の行も消えていない(記録は失われない / 第55条 e)
+    assert.ok(rows.some(l => JSON.parse(l).note === 'ATTACKER'), '毒の行を engine が消した — 削除の経路を足してはならない');
+  });
+});
+
+test('gauge: 攻撃者が居なくても起きる — 狂った時計と古い台帳のマージ (F-1 の現実の形)', () => {
+  /**
+   * F-1 は敵対的攻撃者を要さない。**時計の狂った機**が未来の ts で刻めば、
+   * 以後その観測は永久に skip される。**古い台帳のマージ**も同じ形になる。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = makeGaugeRun();
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(run));
+    // 余分な鍵を一つも持たない = 書式は完全に正しい。狂っているのは時計だけ。
+    const future = { ts: '2099-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: g.score(run) };
+    future.fp = g.fingerprint(future);
+    writeGaugeLedger(tmp, [future]);
+    const e = g.record(rf, 'coin');
+    assert.strictEqual(e.preempted, true,
+      `未来に住む行を「正当な先着」として受け入れた — 狂った時計が観測を永久に殺す (F-1)`);
+    assert.ok(e.reasons.some(r => /未来/.test(r)), `未来の ts を名指していない: ${JSON.stringify(e.reasons)}`);
+  });
+});
+
+test('gauge: 正当な先着は今までどおり黙って skip される — 鳴りっぱなしの門にしない (F-1 の裏)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = makeGaugeRun();
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(run));
+    // 走行の開始より後・余分な鍵なし = 秤自身が書いた形
+    const honest = { ts: '2026-08-31T00:40:00.000Z', slug: 'coin', scale: 'standard', metrics: g.score(run) };
+    honest.fp = g.fingerprint(honest);
+    writeGaugeLedger(tmp, [honest]);
+    const e = g.record(rf, 'coin');
+    assert.strictEqual(e.skipped, true, `正当な先着で先回りを叫んだ — 鳴りっぱなしの門である: ${JSON.stringify(e.reasons)}`);
+    assert.strictEqual(fs.readFileSync(path.join(tmp, 'gauge-ledger.jsonl'), 'utf8').split('\n').filter(Boolean).length, 1,
+      '冪等性が壊れた — 同じ観測が二度刻まれた');
+  });
+});
+
+test('gauge(CLI): 先回りは exit 2 で名乗る — 呼び手が成功と読まない (F-1 / 第16条)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const run = makeGaugeRun();
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(run));
+    writeGaugeLedger(tmp, [preemptionPoison(g, run)]);
+    const r = gaugeCli(['record', rf, '--slug', 'coin'], tmp);
+    assert.strictEqual(r.code, 2, `先回りが exit ${r.code} を返した — CI・cron が成功と読む (F-1)`);
+    assert.ok(/先回り/.test(r.out), `先回りを画面で名指していない: ${r.out.slice(0, 300)}`);
+    // audit も独立に鳴る(誰も record しなくても毒は見える)
+    const a = gaugeCli(['ledger', '--audit'], tmp);
+    assert.strictEqual(a.code, 2, `毒の残る台帳を audit が exit ${a.code} で健全と答えた (F-1)`);
+    assert.ok(/suspect=1/.test(a.out), `先回りの疑いを数えていない: ${a.out.slice(0, 300)}`);
+  });
+});
+
+test('gauge(CLI): 全滅した台帳を --audit が rows=0 exit 0 で健全と答えない (F-2 / 第16条)', () => {
+  /**
+   * P-1 は too-deep について同じ病を直したが、**隣の入口(corrupt 行)には届いていなかった。**
+   * 教主の実測: ファイル 4 行(全部 corrupt)に対し `rows=0 … exit 0`。
+   * **読めなかった行を 0 件と偽るのは、測れなかったものをゼロで埋める行為である。**
+   */
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [
+      '{"ts":"2026-01-01T00:00:00.000Z","slug":"coin","scale":"stan',   // git マージで切れた行
+      '<<<<<<< HEAD',
+      'not json at all',
+      '{"ts":"2026-01-02T00:00:00.000Z","slug":"x"}',                   // metrics なし(読めるが材料が無い)
+    ]);
+    const r = gaugeCli(['ledger', '--audit'], tmp);
+    assert.notStrictEqual(r.code, 0,
+      `全滅した台帳を --audit が exit 0 =「健全」と答えた — 第16条違反 (F-2): ${r.out.slice(0, 300)}`);
+    assert.strictEqual(r.code, 2, `破損行は人が読むまで消えない事故 = exit 2 であること (実際 ${r.code})`);
+    assert.ok(/corrupt=3/.test(r.out), `読めなかった行を数えていない: ${r.out.slice(0, 300)}`);
+    assert.ok(/破損行/.test(r.out), `読めなかった行を名指していない: ${r.out.slice(0, 300)}`);
+  });
+});
+
+test('gauge: corrupt の標識は監査だけの権能 — 掃除の素材を汚さない (F-2 の副作用防止)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    // 既定の raw は今までどおり「生きた行の生の列」。標識は混ざらない。
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, 3, `既定の raw の意味が変わった: ${raw.length} 行`);
+    assert.ok(raw.every(r => r && !r.__gaugeCorrupt), '掃除の素材に破損の標識が混ざった — 台帳が標識で汚れる');
+    // 監査だけが標識を受け取る
+    const marked = g.readLedger({ raw: true, withCorrupt: true });
+    assert.strictEqual(marked.length, 6, `監査が読めなかった行を受け取れていない: ${marked.length}`);
+    assert.strictEqual(marked.filter(r => r && r.__gaugeCorrupt).length, 3, '破損 3 行が標識になっていない');
+    // 掃除(畳んで書き戻す)を通しても標識はファイルに入らない
+    const cleaned = g.foldLedger(raw);
+    assert.ok(cleaned.every(r => !r.__gaugeCorrupt), '掃除の結果に標識が残った');
+  });
+});
+
+test('gauge(CLI): exit code の規約に実装が従う — 2 は台帳の事故に予約する (D-3)', () => {
+  /**
+   * `gauge.js` 冒頭の散文は「3 = 命令・引数の誤り」と約束していたが、
+   * `score /no/such/file` は **exit 2** を返していた —— **散文が嘘をついていた。**
+   * 2 は `--audit` の「人が読むべき事故」に予約された信号であり、
+   * 打ち間違いが台帳の汚染として報告される道を塞ぐ。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(makeGaugeRun()));
+    fs.writeFileSync(path.join(tmp, 'garbage.json'), '{not json');
+    // 引数の誤り = 3(散文の約束)
+    for (const args of [
+      ['score', path.join(tmp, 'no-such-file.json')],
+      ['score', path.join(tmp, 'garbage.json')],
+      ['compare', 'ghostA', 'ghostB'],
+      ['bogus'], ['compare', '--last', 'abc'], ['score'],
+    ]) {
+      const r = gaugeCli(args, tmp);
+      assert.strictEqual(r.code, 3,
+        `\`gauge.js ${args.join(' ')}\` は引数の誤り = exit 3 であること (実際 ${r.code}): ${r.out.slice(0, 160)}`);
+    }
+    // 台帳の事故 = 2。この二つが同じ信号を運んではならない。
+    writeGaugeLedger(tmp, [{ ...gaugeRow(GAUGE_OBSERVATIONS[0]), fp: 'g1:0000000000000000' }]);
+    assert.strictEqual(gaugeCli(['ledger', '--audit'], tmp).code, 2, '台帳の事故が exit 2 でない');
+    // 測れない run-state も 2(第37条: 不在は通過ではない)
+    const empty = path.join(tmp, 'empty.json');
+    fs.writeFileSync(empty, JSON.stringify({ meta: {}, phases: {}, history: [] }));
+    assert.strictEqual(gaugeCli(['score', empty], tmp).code, 2,
+      '相を持たない run-state は「測れない」= exit 2 であること');
+  });
+});
+
+test('gauge: latestFor は生の配列を渡されても読めない行を「最新」に選ばない (D-4)', () => {
+  /**
+   * 絞りが `e.metrics` だけだった頃、**too-deep の行にも metrics は在る**ので、
+   * 生の配列を渡すと読めない行が「最新」になった。実測で `compare` の答えが
+   * `100→45 (-55)` から `100→1 (-99)` に化けた。
+   * ドキュメントは「順序非依存を関数自身の性質として持たせる」と宣言している ——
+   * **読めない行の排除も同じく関数自身の性質でなければならない。**
+   */
+  const deepRow = JSON.parse(deepGaugeRowLine('coin', '2026-06-01T00:00:00.000Z', 200));
+  const good = gaugeRow({ slug: 'coin', score: 45, ts: '2026-01-01T00:00:00.000Z' });
+  const latest = gauge.latestFor('coin', [good, deepRow]);
+  assert.ok(latest, '生の配列で「最新」が消えた');
+  assert.strictEqual(latest.ts, good.ts,
+    `読めない行を「最新」として返した: ${JSON.stringify(latest.ts)} — 呼び手任せにしてはならない (D-4)`);
+  assert.strictEqual(gauge.latestFor('coin', [deepRow]), null,
+    '読めない行しか無いのに観測を捏造した (D-4)');
+});
+
+test('gauge(CLI): 壊れた conclave.json 一つで baseline の画面が倒れない (D-5 / 第55条 e)', () => {
+  /**
+   * `baseline` は壊れた `conclave.json` を持つ創造物に `{slug, error}` を積む —— 実在する形。
+   * `renderLedger` の error 枝を落とすと `e.ts.slice` で **画面が全滅する**。
+   * pulse では守られていた第55条(e)が、源である gauge の画面では守られていなかった。
+   */
+  withGaugeSandbox((g, tmp) => {
+    seedGaugeCreations(tmp, ['healthy']);
+    fs.mkdirSync(path.join(tmp, 'broken'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'broken', 'conclave.json'), '{not json');
+    const r = gaugeCli(['baseline'], tmp);
+    assert.strictEqual(r.code, 0, `壊れた一つで baseline が倒れた: ${r.out.slice(0, 300)}`);
+    assert.ok(/✗ broken/.test(r.out), `壊れた創造物を名指していない: ${r.out.slice(0, 300)}`);
+    assert.ok(/healthy/.test(r.out), `健全な創造物まで画面から消えた — 一行の破損で全体が倒れている: ${r.out.slice(0, 300)}`);
+    // 画面の関数そのものも、ts / metrics の欠落に耐える(security-3 F-4 の形)
+    assert.doesNotThrow(() => g.foldLedger([{ slug: 'x', error: 'e' }]), '畳みが error 行で倒れた');
+  });
+});
+
+// ── prove attempt 4: 無門だった箇所に門を足す ────────────────────────
+/**
+ * **教主が実装を一箇所ずつ壊して実測した結果、以下の四箇所は無門だった。**
+ * 「修理が入っている」ことと「門が立っている」ことは別である(第21条 壊して鳴らす)。
+ */
+
+test('gauge(CLI): baseline も先回りを exit 2 で名乗る — 呼び手が成功と読まない (prove-4 / F-1)', () => {
+  /**
+   * `record` の門は在ったが **`baseline` の門は無かった**。実測: `baseline` の
+   * `out.filter(e => e.preempted)` を `[]` に潰しても **111 門すべてが緑のまま**だった。
+   * `baseline` は cron / CI が叩く道であり、毒を踏んだまま exit 0 を返せば
+   * 「先着が勝つ」が誰にも見えずに通り過ぎる —— F-1 が塞いだはずの穴が呼び手の側で開く。
+   */
+  withGaugeSandbox((g, tmp) => {
+    seedGaugeCreations(tmp, ['coin']);
+    const run = JSON.parse(fs.readFileSync(path.join(tmp, 'coin', 'conclave.json'), 'utf8'));
+    writeGaugeLedger(tmp, [preemptionPoison(g, run, { slug: 'coin' })]);
+    const r = gaugeCli(['baseline'], tmp);
+    assert.strictEqual(r.code, 2,
+      `baseline が先回りを踏んで exit ${r.code} を返した — cron・CI が成功と読む (prove-4 / F-1)`);
+    assert.ok(/先回り/.test(r.out), `baseline が先回りを名指していない: ${r.out.slice(0, 400)}`);
+    // 正当な観測は刻まれ、毒の行も消えていない(記録は失われない / 第55条 e)
+    const rows = fs.readFileSync(path.join(tmp, 'gauge-ledger.jsonl'), 'utf8').split('\n').filter(Boolean);
+    assert.strictEqual(rows.length, 2, `baseline の道で正当な観測が台帳に届いていない: ${rows.length} 行`);
+    assert.ok(rows.some(l => JSON.parse(l).note === 'ATTACKER'), 'baseline が毒の行を消した');
+  });
+});
+
+test('gauge: 画面は ts / metrics の欠落に耐える — 測れないものを 0 で埋めない (prove-4 / D-5)', () => {
+  /**
+   * `renderLedger` の耐性は **CLI 越しでは撃てない**(`ledger` は畳みが、
+   * `compare --last` は `e.metrics` の絞りが、壊れた行を先に落とす)。実測:
+   * `e.ts.slice` / `String(e.metrics.score)` に戻しても **一門も鳴らなかった**。
+   * ゆえに純関数として直に撃つ。**倒れないだけでは足りない** —— 欠落は `?` と
+   * 名乗らねばならない(第16条: 測れなかったものをゼロで埋めない)。
+   */
+  const g = require(GAUGE_JS);
+  const out = g.renderLedger([
+    { slug: 'noTs', scale: 'standard', metrics: { score: 42 } },                     // ts が無い
+    { ts: '2026-09-01T00:00:00.000Z', slug: 'noMetrics', scale: 'standard' },        // metrics が無い
+    { ts: '2026-09-01T00:00:01.000Z', slug: 'nullScore', metrics: { score: null } }, // score が null
+    { ts: '2026-09-01T00:00:02.000Z', slug: 'ok', scale: 'standard', metrics: { score: 88 } },
+  ]);
+  assert.ok(/noTs/.test(out), `ts の無い行が画面から消えた: ${out}`);
+  assert.ok(/\(ts なし\)/.test(out), `ts の欠落を名乗っていない — 黙って埋めている (第16条): ${out}`);
+  assert.ok(/noMetrics/.test(out) && /nullScore/.test(out), `metrics の無い行が画面から消えた: ${out}`);
+  assert.ok(/\?\/100/.test(out), `測れなかった点を \`?\` と名乗っていない (第16条): ${out}`);
+  assert.ok(!/0\/100/.test(out), `測れなかった点を 0 で埋めた (第16条): ${out}`);
+  assert.ok(/88\/100/.test(out) && /\bok\b/.test(out),
+    `一行の欠落で健全な行まで画面から消えた — 第55条(e): ${out}`);
+});
+
+test('gauge: 画面は非オブジェクトの行で倒れない — 一行の破損が全体を殺さない (prove-4 / D-5)', () => {
+  /**
+   * `null` / 文字列 / 数が混じった列は、`readLedger({raw:true})` が実際に返す形である
+   * (JSONL に `null` や `123` の一行が在れば `JSON.parse` は成功して**オブジェクトでない値**を返す)。
+   * この枝も CLI 越しには畳みが先に落として届かず、無門だった。
+   */
+  const g = require(GAUGE_JS);
+  let out;
+  assert.doesNotThrow(() => {
+    out = g.renderLedger([
+      null, 'raw-string', 123,
+      { ts: '2026-09-01T00:00:00.000Z', slug: 'alive', scale: 'standard', metrics: { score: 77 } },
+    ]);
+  }, '非オブジェクトの行で画面が倒れた — 一行の破損で台帳全体が読めなくなる (第55条 e)');
+  assert.ok(/読めない行/.test(out), `読めない行を名指していない — 黙って捨てている (第16条): ${out}`);
+  assert.strictEqual((out.match(/読めない行/g) || []).length, 3,
+    `読めない行を数えそこねている(3 行あるはず): ${out}`);
+  assert.ok(/77\/100/.test(out) && /alive/.test(out),
+    `読めない行に巻き込まれて生きた行まで消えた: ${out}`);
+  // 破損標識(F-2)も画面で名乗る —— 監査の目に映る形が画面でも読める
+  const c = g.renderLedger([{ __gaugeCorrupt: true, line: '{broken json' }]);
+  assert.ok(/破損行/.test(c) && /broken json/.test(c), `破損標識を画面が名乗らない: ${c}`);
+});
+
+
+test('gauge(故障注入): prove attempt 4 で足した 3 門も壊せば鳴る (G9〜G11 / 第21条)', () => {
+  /**
+   * **門を足しただけでは門ではない。** 足した門が本当に鳴ることを、
+   * G1〜G8 と同じ作法(注入版で非ゼロ・実物でゼロ)で実測する。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-p4-'));
+  try {
+    const runJson = JSON.stringify(JSON.stringify(makeGaugeRun()));
+    const mutations = [
+      { tag: 'G9', name: 'p4.baseline-silent.js',
+        // ★ baseline が先回りを踏んでも exit 2 を返さない(呼び手側で穴が開く)
+        mutate: s => s.replace('      const pre = out.filter(e => e && e.preempted);',
+                               '      const pre = [];'),
+        gate: `const sb = path.dirname(LEDGER);
+          const dir = path.join(sb, 'G9box'); fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(path.join(dir, 'conclave.json'), ${runJson});
+          const run = JSON.parse(${runJson});
+          const row = { ts: '1999-01-01T00:00:00.000Z', slug: 'G9box', scale: 'standard', metrics: g.score(run), note: 'ATTACKER' };
+          row.fp = g.fingerprint(row);
+          fs.writeFileSync(LEDGER, JSON.stringify(row) + '\\n');
+          const r = require('child_process').spawnSync(process.execPath, [${JSON.stringify(GAUGE_JS)}, 'baseline'],
+            { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: sb } });
+          assert.strictEqual(r.status, 2,
+            'baseline が先回りを踏んで exit ' + r.status + ' を返した — cron・CI が成功と読む');
+          assert.ok(/先回り/.test(String(r.stdout) + String(r.stderr)), 'baseline が先回りを名指していない');`,
+        selfCheck: true },
+      { tag: 'G10', name: 'p4.render-ts.js',
+        // ★ ts / metrics の欠落に耐えない画面に戻す(D-5 の再発)
+        mutate: s => s.replace("    const ts = typeof e.ts === 'string' ? e.ts.slice(0, 16) : '(ts なし)      ';",
+                               '    const ts = e.ts.slice(0, 16);'),
+        gate: `const out = g.renderLedger([{ slug: 'noTs', scale: 'standard', metrics: { score: 42 } }]);
+          assert.ok(/noTs/.test(out) && /\\(ts なし\\)/.test(out), 'ts 欠落を名乗らない画面: ' + out);` },
+      { tag: 'G11', name: 'p4.render-nonobj.js',
+        // ★ 非オブジェクトの行で画面が倒れる(第55条 e の再発)
+        mutate: s => s.replace("    if (!e || typeof e !== 'object') { lines.push('  ✗ (読めない行)'); continue; }",
+                               '    if (false) { continue; }'),
+        gate: `const out = g.renderLedger([null, 'raw', 123,
+            { ts: '2026-09-01T00:00:00.000Z', slug: 'alive', scale: 'standard', metrics: { score: 77 } }]);
+          assert.strictEqual((out.match(/読めない行/g) || []).length, 3, '読めない行を名指さない: ' + out);
+          assert.ok(/alive/.test(out), '生きた行が消えた: ' + out);` },
+    ];
+    let rang = 0;
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const box = path.join(sand, m.tag);
+      fs.mkdirSync(box, { recursive: true });
+      /**
+       * G9 は **CLI の exit code** を撃つ(修理は `main()` の中に住むので、
+       * 関数を直に呼んでも注入が届かない —— 教主が実測で一度これを踏んだ)。
+       * G7 と同じ作法で、門の script 内の実物パスを注入版に振り替える。
+       */
+      const body = m.selfCheck ? m.gate.replace(JSON.stringify(GAUGE_JS), JSON.stringify(brokenPath)) : m.gate;
+      const broken = runGaugeGate(brokenPath, box, body);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — 穴が残っている: ${broken.out.slice(0, 300)}`);
+      rang++;
+      const realBox = path.join(sand, m.tag + '-real');
+      fs.mkdirSync(realBox, { recursive: true });
+      const real = runGaugeGate(GAUGE_JS, realBox, m.gate);
+      assert.strictEqual(real.code, 0,
+        `${m.tag} の門が実物の engine で鳴った: ${real.out.slice(0, 300)}`);
+    }
+    assert.strictEqual(rang, 3, `3 変異すべてが鳴っていない: ${rang}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+test('gauge: 非冪等の再発を N 回で撃つ — この改革の本旨 (prove-4 / 回帰)', () => {
+  /**
+   * **この環が直したのはただ一つ「同じ観測を二度刻む」ことである。**
+   * 既存の門は baseline ×3 / record ×3 で撃っていた。修理が幾重にも積まれた今、
+   * **元の欠陥が戻っていないこと**を N を増やして念を押す —— 一度でも増えれば
+   * 台帳は走行の数ではなく叩いた回数を数える器に落ちる。
+   */
+  withGaugeSandbox((g, tmp) => {
+    seedGaugeCreations(tmp, ['coin', 'habit', 'tenbin']);
+    const L = path.join(tmp, 'gauge-ledger.jsonl');
+    const lines = () => (fs.existsSync(L) ? fs.readFileSync(L, 'utf8').split('\n').filter(Boolean).length : 0);
+    const seen = [];
+    for (let i = 0; i < 5; i++) { g.baseline(); seen.push(lines()); }
+    assert.strictEqual(seen[0], 3, `基線は3創造物で3行のはず (実測 ${seen[0]})`);
+    assert.deepStrictEqual(seen, [3, 3, 3, 3, 3],
+      `baseline ×5 で行数が動いた — 非冪等が再発している: ${JSON.stringify(seen)}`);
+
+    // 同じ run を同じ run のまま 10 回叩く(人が /conclave で実際に歩く道)
+    const rf = path.join(tmp, 'run.json');
+    fs.writeFileSync(rf, JSON.stringify(makeGaugeRun({ reworks: 1 })));
+    const before = lines();
+    const results = [];
+    for (let i = 0; i < 10; i++) results.push(g.record(rf, 'solo'));
+    assert.strictEqual(lines(), before + 1,
+      `record ×10 で ${lines() - before} 行増えた — 同じ観測が二度刻まれている`);
+    assert.strictEqual(results.filter(r => r.skipped).length, 9,
+      `二度目以降が「既記録」を名乗っていない: ${JSON.stringify(results.map(r => !!r.skipped))}`);
+    assert.ok(!results.some(r => r.preempted),
+      '正当な繰り返しを先回りと誤認した — 鳴りっぱなしの門になっている (F-1 の裏)');
+
+    // 台帳は誰も消していない(削除の経路を足さない / 第55条 e)
+    const raw = g.readLedger({ raw: true });
+    assert.strictEqual(raw.length, before + 1, `台帳の行が失われた: ${raw.length}`);
+    const a = g.auditLedger(raw);
+    assert.strictEqual(a.duplicates, 0, `重複が残った: ${a.duplicates}`);
+    assert.strictEqual(a.conflicts.length, 0, `健全な台帳で矛盾が鳴った: ${JSON.stringify(a.conflicts)}`);
+  });
+});
+
+test('gauge: 呼び出しを跨いで状態を持たない — 別プロセスで撬つ (D-6)', () => {
+  /**
+   * `withGaugeSandbox` は毎回 `require.cache` を捨てるので、**この性質は
+   * その作法の内側では原理的に観測できない**(review-3 が「構造的に観測不能」と呼んだ理由)。
+   * ゆえに **cache を捨てない別プロセス**で撃つ。
+   *   (a) memo: 同一オブジェクトの中身を変えて二度畳めば、二度目は別の鍵になる
+   *   (b) ledgerPath: env を振り替えれば住所が追随する(住所を固定して抱え込まない)
+   */
+  const box1 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-d6a-'));
+  const box2 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-d6b-'));
+  try {
+    fs.writeFileSync(path.join(box1, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow({ slug: 'A', score: 1, ts: '2026-01-01T00:00:00.000Z' })) + '\n');
+    fs.writeFileSync(path.join(box2, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow({ slug: 'B', score: 2, ts: '2026-01-01T00:00:00.000Z' })) + '\n');
+    const script = `
+      const assert = require('assert');
+      process.env.PARADISE_CREATIONS = ${JSON.stringify(box1)};
+      const g = require(${JSON.stringify(GAUGE_JS)});
+      const p1 = g.ledgerPath();
+      const s1 = g.readLedger().map(e => e.slug);
+      // ★ require.cache を捨てずに住所を振り替える
+      process.env.PARADISE_CREATIONS = ${JSON.stringify(box2)};
+      const p2 = g.ledgerPath();
+      const s2 = g.readLedger().map(e => e.slug);
+      assert.notStrictEqual(p1, p2, 'ledgerPath が住所を抱え込んだ — 呼び出しを跨いで状態を持っている (D-6b)');
+      assert.deepStrictEqual(s1, ['A'], '一度目が倉1 を読んでいない: ' + JSON.stringify(s1));
+      assert.deepStrictEqual(s2, ['B'], '住所を振り替えても古い倉を読んだ: ' + JSON.stringify(s2) + ' (D-6b)');
+      // memo は呼び出しの内側でしか生きない
+      const row = { ts: '2026-01-01T00:00:00.000Z', slug: 'm', scale: 'standard', metrics: { score: 1 } };
+      assert.strictEqual(g.foldLedger([row]).length, 1, '前提が崩れた');
+      row.metrics.score = 2;   // 同一オブジェクトの中身を変える = 別の観測になる
+      const twice = g.foldLedger([row, { ts: '2026-01-02T00:00:00.000Z', slug: 'm', scale: 'standard', metrics: { score: 1 } }]);
+      assert.strictEqual(twice.length, 2,
+        'memo が呼び出しを跨いで古い鍵を保持した — 台帳の第二の住所になっている (D-6a): ' + twice.length);
+      console.log('D6-OK');
+    `;
+    const r = require('child_process').spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
+    assert.strictEqual(r.status, 0,
+      `無状態性の門が鳴った: ${String(r.stdout || '') + String(r.stderr || '')}`);
+    assert.ok(/D6-OK/.test(String(r.stdout)), `門が最後まで走っていない: ${r.stdout}`);
+  } finally {
+    fs.rmSync(box1, { recursive: true, force: true });
+    fs.rmSync(box2, { recursive: true, force: true });
+  }
+});
+
+test('gauge(故障注入): build attempt 4 の新規 8 変異で各門が鳴る (第21条 壊して鳴らす)', () => {
+  /**
+   * **この環には S-2 → P-1 の前例がある** —— 修理が新しい病を生んだ。
+   * ゆえに今回の修理(先回り検査・corrupt の計上・exit code・latestFor の絞り・
+   * renderLedger の防御)を**一つずつ壊し、門が必ず鳴ることを実測する**。
+   * 注入版で非ゼロ・実物でゼロの両側を撃つ。片側だけでは門ではない。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-b4-'));
+  try {
+    const runJson = JSON.stringify(JSON.stringify(makeGaugeRun()));
+    const poisonGate = (ts, extra) => `
+      const rf = path.join(${JSON.stringify(sand)}, 'b4.run.json');
+      fs.writeFileSync(rf, ${runJson});
+      const run = JSON.parse(fs.readFileSync(rf, 'utf8'));
+      const row = { ts: ${JSON.stringify(ts)}, slug: 'coin', scale: 'standard', metrics: g.score(run)${extra} };
+      row.fp = g.fingerprint(row);
+      fs.writeFileSync(LEDGER, JSON.stringify(row) + '\\n');
+      const e = g.record(rf, 'coin');
+      assert.strictEqual(e.preempted, true, '先回りを名指していない: ' + JSON.stringify(e.skipped));
+      assert.strictEqual(lines(), 2, '正当な観測が刻まれていない: ' + lines());
+    `;
+    const mutations = [
+      { tag: 'G1', name: 'b4.no-preempt.js',
+        // ★ 先回り検査を丸ごと外す(F-1 の元の姿に戻す)
+        mutate: s => s.replace('    const why = preemptionReasons(existing, entry, run, nowIso);',
+                               '    const why = [];'),
+        gate: poisonGate('1999-01-01T00:00:00.000Z', ", note: 'ATTACKER'") },
+      { tag: 'G2', name: 'b4.no-alien.js',
+        // ★ 秤が書かない鍵を見逃す(毒が入る窓)
+        mutate: s => s.replace('  if (alien.length) why.push(`秤が書かない鍵を持つ: ${alien.join(\', \')}`);',
+                               '  if (false) why.push(String(alien));'),
+        gate: poisonGate('2026-08-31T00:40:00.000Z', ", note: 'ATTACKER'") },
+      { tag: 'G3', name: 'b4.no-runstart.js',
+        // ★ 走行の開始より前に住む行を「正当な先着」と認める
+        mutate: s => s.replace('    if (start && ets < start) {', '    if (false) {'),
+        gate: poisonGate('1999-01-01T00:00:00.000Z', '') },
+      { tag: 'G4', name: 'b4.no-future.js',
+        // ★ 未来に住む行を見逃す(狂った時計 / 古い台帳のマージ)
+        mutate: s => s.replace('    if (skew > CLOCK_SKEW_TOLERANCE_MS) {', '    if (false) {'),
+        gate: poisonGate('2099-01-01T00:00:00.000Z', '') },
+      { tag: 'G5', name: 'b4.corrupt-blind.js',
+        // ★ 読めなかった行を監査に渡さない(F-2 の元の姿)
+        mutate: s => s.replace('      if (opts.raw && opts.withCorrupt) out.push({ [CORRUPT_MARK]: true, line: line.slice(0, 200) });',
+                               '      if (false) out.push(null);'),
+        gate: `fs.writeFileSync(LEDGER, '<<<<<<< HEAD\\nnot json\\n');
+          const a = g.auditLedger(g.readLedger({ raw: true, withCorrupt: true }));
+          assert.strictEqual(a.corrupt, 2, '読めなかった行を 0 件と偽った: ' + a.corrupt);` },
+      { tag: 'G6', name: 'b4.audit-corrupt-silent.js',
+        // ★ corrupt を数えても conflicts に載せない = exit に届かない(P-1 と同型の再発)
+        mutate: s => s.replace("    conflicts.push({ slug: null, kind: 'corrupt', declared: null, actual: null,",
+                               "    if (false) conflicts.push({ slug: null, kind: 'corrupt', declared: null, actual: null,"),
+        gate: `fs.writeFileSync(LEDGER, '<<<<<<< HEAD\\nnot json\\n');
+          const a = g.auditLedger(g.readLedger({ raw: true, withCorrupt: true }));
+          assert.ok(a.conflicts.some(c => c.kind === 'corrupt'),
+            '読めなかった行が conflicts に載らない — exit に届かず「健全」と答える');` },
+      { tag: 'G7', name: 'b4.exit2-again.js',
+        // ★ 引数の誤りを再び exit 2 に落とす(D-3 の再発)
+        mutate: s => s.replace('    process.exit(e && e.gaugeExit ? e.gaugeExit : 2);', '    process.exit(2);'),
+        gate: `const r = require('child_process').spawnSync(process.execPath,
+            [${JSON.stringify(GAUGE_JS)}, 'score', path.join(${JSON.stringify(sand)}, 'ghost.json')],
+            { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: ${JSON.stringify(sand)} } });
+          assert.strictEqual(r.status, 3, '引数の誤りが exit 3 でない: ' + r.status);`,
+        selfCheck: true },
+      { tag: 'G8', name: 'b4.latest-raw.js',
+        // ★ latestFor の絞りを metrics だけに戻す(D-4 の再発)
+        mutate: s => s.replace("    e && e.slug === slug && e.metrics && !isCorruptMark(e) && trueKey(e) !== null);",
+                               "    e && e.slug === slug && e.metrics);"),
+        gate: `const deep = JSON.parse('{"ts":"2026-06-01T00:00:00.000Z","slug":"coin","scale":"standard","metrics":{"score":1,"j":'
+            + '['.repeat(200) + '1' + ']'.repeat(200) + '}}');
+          const good = { ts: '2026-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard', metrics: { score: 45 } };
+          const l = g.latestFor('coin', [good, deep]);
+          assert.strictEqual(l && l.ts, good.ts, '読めない行を「最新」に選んだ: ' + JSON.stringify(l && l.ts));` },
+    ];
+    let rang = 0;
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const box = path.join(sand, m.tag);
+      fs.mkdirSync(box, { recursive: true });
+      /**
+       * G7 は CLI の exit code を撃つので、門の本体が**実物の gauge.js を子で起動する**。
+       * 注入版で鳴らすには engine そのものを差し替える必要があるため、
+       * 門の script 内の実物パスを注入版に置き換えて撃つ。
+       */
+      const body = m.selfCheck ? m.gate.replace(JSON.stringify(GAUGE_JS), JSON.stringify(brokenPath)) : m.gate;
+      const broken = runGaugeGate(brokenPath, box, body);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — 穴が残っている: ${broken.out.slice(0, 300)}`);
+      rang++;
+      const realBox = path.join(sand, m.tag + '-real');
+      fs.mkdirSync(realBox, { recursive: true });
+      const real = runGaugeGate(GAUGE_JS, realBox, m.gate);
+      assert.strictEqual(real.code, 0,
+        `${m.tag} の門が実物の engine で鳴った: ${real.out.slice(0, 300)}`);
+    }
+    assert.strictEqual(rang, 8, `8 変異すべてが鳴っていない: ${rang}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+// ── FR-9 / NFR-1 門と画面 ──────────────────────────────────────────────
+
+test('gauge: ledger の出力が畳んだ件数を名乗る (NFR-1)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, gauge30Rows());
+    const out = execFileSync(process.execPath, [GAUGE_JS, 'ledger'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.ok(/raw 30 行/.test(out), `生の件数を名乗っていない: ${out}`);
+    assert.ok(/重複 24 行を畳んだ/.test(out), `畳んだ件数を名乗っていない — 黙って行を減らす画面は信用できない: ${out}`);
+  });
+});
+
+test('gauge: 門は実台帳を一行も書き換えない (AC-9c / 第30条)', () => {
+  const ws = require(WORKSPACE_JS);
+  const real = path.join(ws.resolve().root, 'gauge-ledger.jsonl');
+  if (!fs.existsSync(real)) return;   // 倉が無い機では沈黙 (第20条)
+  const digest = (p) => require('crypto').createHash('sha256')
+    .update(fs.readFileSync(p)).digest('hex');
+  const before = digest(real);
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    g.record(run, 'sandbox-only');
+    seedGaugeCreations(tmp, ['coin']);
+    g.baseline();
+    assert.ok(g.ledgerPath().startsWith(tmp), `台帳の住所が仮倉に振り替わっていない: ${g.ledgerPath()}`);
+  });
+  assert.strictEqual(digest(real), before,
+    '門が実台帳を書き換えた — 検査は仮倉としか話してはならない');
+  // env を戻した後、住所が実台帳に戻っていること(振替の後始末)
+  delete require.cache[require.resolve(WORKSPACE_JS)];
+  delete require.cache[require.resolve(GAUGE_JS)];
+  assert.strictEqual(require(GAUGE_JS).ledgerPath(), real, '住所の振替が漏れている');
+});
+
 test('verdict: 低い trajectory score は REWORK — 荒れた走行は改善ではない (第38条)', () => {
   const v = verdict.judge({ build: 'pass', tests: { passed: 9, failed: 0, total: 9, coverage: 92 },
     security: { issues: 0, secrets: 0 }, spec: { satisfied: true },
