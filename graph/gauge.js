@@ -207,9 +207,30 @@ function renderScore(m, label) {
  *   6 桁は既存の `toFixed(3)` より細かく、現存する全ての値を無損失に通す。
  * - 配列は**順序を保つ**(配列の順序は意味である)。object は鍵を sort する。
  *
+ * **深さには底がある(S-2)。** 自己再帰に上限が無ければ、深い入れ子を持つ
+ * **たった一行**が `RangeError` で `readLedger()` を倒し、pulse / dashboard まで
+ * 巻き添えにする。`JSON.parse` は耐えるのにこちらが倒れるのは、第55条(e)
+ * 「一行の破損で秤全体を倒さない」への裏切りである。ゆえに底を越えた値は
+ * **例外ではなく判別可能な標識(`GAUGE_TOO_DEEP`)を投げ**、呼び手が「破損行」として
+ * 既存の作法どおり読み飛ばす。**握り潰さない** —— 黙って `'null'` を返せば
+ * 深い別物どうしが同じ鍵になり、S-1 と同じ「黙って畳む」病になる。
+ *
+ * 上限 64: 実在する `metrics` の深さは 2。64 は現実の 30 倍の余裕を持ちつつ、
+ * Node の既定スタック(数千段)から二桁遠い。
+ *
  * 外に export しない —— 出せば第二の正規化規則が生まれる。
  */
-function canonical(v) {
+const MAX_CANONICAL_DEPTH = 64;
+
+/** 深すぎる値を名指す判別可能な誤り。`readLedger` はこれを破損行として扱う。 */
+function tooDeepError(depth) {
+  const e = new Error(`ledger value nests deeper than ${depth} — 破損行として扱う (S-2)`);
+  e.code = 'GAUGE_TOO_DEEP';
+  return e;
+}
+
+function canonical(v, depth = 0) {
+  if (depth > MAX_CANONICAL_DEPTH) throw tooDeepError(MAX_CANONICAL_DEPTH);
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   if (typeof v === 'string') return JSON.stringify(v);
@@ -218,12 +239,12 @@ function canonical(v) {
     const n = Object.is(v, -0) ? 0 : Number(v.toFixed(6));
     return String(n);
   }
-  if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
+  if (Array.isArray(v)) return '[' + v.map(x => canonical(x, depth + 1)).join(',') + ']';
   if (typeof v === 'object') {
     const parts = [];
     for (const k of Object.keys(v).sort()) {
       if (v[k] === undefined) continue;   // undefined の鍵はそもそも出力しない
-      parts.push(JSON.stringify(k) + ':' + canonical(v[k]));
+      parts.push(JSON.stringify(k) + ':' + canonical(v[k], depth + 1));
     }
     return '{' + parts.join(',') + '}';
   }
@@ -254,6 +275,32 @@ function fingerprint(entry) {
 }
 
 /**
+ * ── 行の**真の**鍵(S-1) ────────────────────────────────────────────
+ *
+ * **`e.fp` を信じてはならない。** 台帳は JSONL の平文であり、人の手編集・
+ * git の衝突解決・将来の版違いで、中身と食い違う `fp` が容易に生まれる。
+ * 旧実装は `e.fp || fingerprint(e)` と書いており、行が名乗る鍵を検証せずに
+ * 採っていた —— 結果、`score:99` の別観測に `score:10` の鍵を載せるだけで
+ * **99 の観測が黙って消え、`--audit` はそれを「重複」としか呼ばなかった**。
+ * これは第55条(d)「矛盾を黙って畳まない」の実質的な不成立である。
+ *
+ * ゆえに鍵は**常に材料から再導出する**。第55条(f)が言う「鍵は読み時に
+ * 導出できる」は、まさに格納値を信じる必要が無いことの宣言である。
+ * `fp` は人が目で読む注記として残るが、**判断には一切使わない**。
+ *
+ * 性能: `fingerprint` は sha256 一回。実台帳規模(10^4 行)で無視できる。
+ *
+ * 深すぎる行(S-2)は `null` を返す —— 呼び手が破損行として扱う。
+ */
+function trueKey(e) {
+  try { return fingerprint(e); }
+  catch (err) {
+    if (err && err.code === 'GAUGE_TOO_DEEP') return null;
+    throw err;
+  }
+}
+
+/**
  * 同一指紋は**先着(ts 最小)を残し**、ts 昇順に整列して返す。純関数・I/O 無し。
  *
  * **keep-last を採らない理由**: git マージ後の行順は時刻順ではない(実測で
@@ -266,21 +313,24 @@ function fingerprint(entry) {
  */
 function foldLedger(entries) {
   const keep = new Map();                        // fp -> entry
+  const passthrough = [];                        // 畳みの対象外(metrics 無し / 深すぎ)
   for (const e of (Array.isArray(entries) ? entries : [])) {
     if (!e || typeof e !== 'object') continue;   // 壊れた値は落とす(fail-safe)
     // metrics を持たない行(baseline の {slug,error} 等)は畳みの対象外。
     // 指紋の材料が無いものを畳めば、別々の失敗が一つに見える。
-    if (!e.metrics) { keep.set('raw:' + keep.size, e); continue; }
-    const fp = e.fp || fingerprint(e);           // ★ 鍵を持たない旧行はその場で導出
+    // **`keep` の鍵空間に混ぜない**(R-6: 外から `fp:"raw:0"` を名乗る行と衝突しうる)。
+    if (!e.metrics) { passthrough.push(e); continue; }
+    const fp = trueKey(e);                       // ★ 常に再導出する。行の自己申告は信じない(S-1)
+    if (fp === null) { passthrough.push(e); continue; }   // 深すぎる行は畳まず素通し(S-2)
     const cur = keep.get(fp);
     if (!cur || String(e.ts) < String(cur.ts)) keep.set(fp, e);   // keep-first = ts 最小
   }
-  return [...keep.values()].sort((a, b) => {
+  return [...keep.values(), ...passthrough].sort((a, b) => {
     const ta = String((a && a.ts) || ''), tb = String((b && b.ts) || '');
     if (ta !== tb) return ta < tb ? -1 : 1;
     // 同時刻の tie-break も決定的に —— shuffle しても同じ列を返すための必須条件。
-    const fa = (a && a.fp) || (a && a.metrics ? fingerprint(a) : '');
-    const fb = (b && b.fp) || (b && b.metrics ? fingerprint(b) : '');
+    const fa = (a && a.metrics ? trueKey(a) : '') || '';
+    const fb = (b && b.metrics ? trueKey(b) : '') || '';
     return fa < fb ? -1 : fa > fb ? 1 : 0;
   });
 }
@@ -300,13 +350,29 @@ function readLedger(opts = {}) {
   if (!fs.existsSync(p)) return [];
   // 追記型 JSONL は git マージで行が破損し得る。一行の破損で秤全体を
   // 倒さない — 破損行は警告して読み飛ばす(壊れた行は compare に使えないだけ)。
+  //
+  // **破損は「parse できない」だけではない(S-2)。** `JSON.parse` は耐えるが
+  // `canonical()` の底を越えるほど深い入れ子の一行も、同じく破損である。
+  // ここで名指して読み飛ばす —— 一行のために台帳全体を落とさない(第55条 e)。
   const out = [];
   for (const line of fs.readFileSync(p, 'utf8').split('\n').filter(Boolean)) {
-    try { out.push(JSON.parse(line)); }
-    catch { console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`); }
+    let row;
+    try { row = JSON.parse(line); }
+    catch { console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`); continue; }
+    if (row && typeof row === 'object' && row.metrics && trueKey(row) === null) {
+      console.error(`⚠️ ledger line skipped (too deep, > ${MAX_CANONICAL_DEPTH}): ${line.slice(0, 60)}…`);
+      continue;
+    }
+    out.push(row);
   }
   // 畳みは parse を全部終えた**後**に掛かる。破損行の扱いには一切影響しない。
-  return opts.raw ? out : foldLedger(out);
+  // `foldLedger` も try の内側に置く —— 畳みで倒れれば生の行まで失われる。
+  if (opts.raw) return out;
+  try { return foldLedger(out); }
+  catch (err) {
+    console.error(`⚠️ fold failed, returning raw rows: ${err.message}`);
+    return out;   // fail-open: 畳めなくとも記録は返す
+  }
 }
 
 /**
@@ -332,8 +398,8 @@ function record(runFile, slug) {
   try {
     for (const e of readLedger({ raw: true })) {
       if (!e || typeof e !== 'object') continue;
-      const fp = e.fp || (e.metrics ? fingerprint(e) : null);
-      if (fp === entry.fp) { existing = e; break; }
+      if (!e.metrics) continue;                  // 材料の無い行は鍵を持たない
+      if (trueKey(e) === entry.fp) { existing = e; break; }   // ★ 再導出して突き合わせる(S-1)
     }
   } catch (err) {
     // 読めない台帳は「書く」側に倒す。既存行は決して消さない。
@@ -391,42 +457,52 @@ function latestFor(slug, entries) {
 /**
  * 台帳の健全性を数える純関数。**読むだけ。書かない。**
  *
- * 矛盾 = 同一 slug に metrics が食い違う観測が二つ以上あること。
- * 判定鍵は既存の `COMPARE_KEYS` を借りる —— 二箇所に住まわせない。
- * `durationMs` のような走行環境で当然揺れる値で鳴らせば、鳴りっぱなしの門になる。
+ * ── 矛盾の定義を正した(R-2 / R-5 / S-1) ──────────────────────────
  *
- * **拒否ではなく名指し**を採る。記録を拒めば「記録が失われない」という
- * 台帳の第一の徳を壊す。矛盾は畳まれず両方残り、ここが人に見せる。
+ * 旧定義は「同一 slug に metrics が食い違う観測が二つ以上」だった。これは
+ * **同一 slug の正当な改善(80 → 100)を矛盾と呼ぶ**。掃除を完璧に終えた 6 行の
+ * 台帳でも `conflicts=1` / exit 1 になり、`requirements.md:318` と `design.md:565`
+ * が約束した「掃除後 exit 0」が**達成不能**だった。改善が記録されるたびに
+ * 増える門は、`auditLedger` 自身のコメントが戒める「鳴りっぱなしの門」である。
+ * 同一 slug の別観測は**矛盾ではなく履歴**である —— 畳みが両方残すのが正しく
+ * (AC-3b / AC-7a)、audit がそれを罪と呼ぶのは同じ倉の中で評価が割れている。
  *
- * 第16条: 片方に鍵が無い(`undefined`)場合も矛盾として鳴る。これは正しい ——
- * 「測れなかった」と「0.5 だった」は違う。0 で埋めない。
+ * **真の矛盾は「行が名乗る鍵と、中身から導かれる鍵が食い違うこと」である。**
+ * 指紋は中身の関数なのだから、正直な行では必ず一致する。食い違うのは
+ * 手編集・git の衝突解決・版ずれで**偽の鍵**が生まれた時だけであり、
+ * それこそが「別の観測を黙って飲み込む」S-1 の発火条件そのものである。
+ * ここで名指さなければ、第55条(d)「矛盾を黙って畳まない」は成立しない。
+ *
+ * 数え方はすべて**再導出した鍵**で行う。行の自己申告は数にも入れない(S-1)。
+ * 第16条: 鍵の有無や `undefined` を 0 で埋めない —— 名指す。
  */
 function auditLedger(entries) {
   const list = Array.isArray(entries) ? entries.filter(e => e && e.metrics) : [];
-  const byFp = new Map();      // fp -> entry[]
-  const bySlug = new Map();    // slug -> Map<fp, entry>
+  const byFp = new Map();      // trueKey -> entry[]
+  const conflicts = [];
+  let tooDeep = 0;
   for (const e of list) {
-    const fp = e.fp || fingerprint(e);
+    const fp = trueKey(e);
+    if (fp === null) {
+      // 深すぎて鍵が導けない行(S-2)。読み飛ばされる行であることを名指す。
+      tooDeep++;
+      conflicts.push({ slug: e.slug, kind: 'too-deep', declared: e.fp || null, actual: null,
+        observations: [{ ts: e.ts, fp: e.fp || null, score: null }] });
+      continue;
+    }
     if (!byFp.has(fp)) byFp.set(fp, []);
     byFp.get(fp).push(e);
-    if (!bySlug.has(e.slug)) bySlug.set(e.slug, new Map());
-    if (!bySlug.get(e.slug).has(fp)) bySlug.get(e.slug).set(fp, e);
-  }
-  const rows = list.length;
-  const distinct = byFp.size;
-  const conflicts = [];
-  for (const [slug, m] of bySlug) {
-    if (m.size < 2) continue;
-    const obs = [...m.values()].sort((a, b) => (String(a.ts) < String(b.ts) ? -1 : 1));
-    const diffs = COMPARE_KEYS.filter(k => new Set(obs.map(o => o.metrics[k])).size > 1);
-    if (diffs.length) {
+    // ★ 名乗った鍵と真の鍵の突き合わせ。ここが S-1 の門である。
+    if (e.fp != null && e.fp !== fp) {
       conflicts.push({
-        slug, keys: diffs,
-        observations: obs.map(o => ({ ts: o.ts, fp: o.fp || fingerprint(o), score: o.metrics.score })),
+        slug: e.slug, kind: 'forged-fp', declared: e.fp, actual: fp,
+        observations: [{ ts: e.ts, fp: e.fp, score: e.metrics && e.metrics.score }],
       });
     }
   }
-  return { rows, distinct, duplicates: rows - distinct, conflicts };
+  const rows = list.length;
+  const distinct = byFp.size + tooDeep;
+  return { rows, distinct, duplicates: Math.max(0, rows - distinct), conflicts };
 }
 
 function compare(a, b) {
@@ -477,7 +553,7 @@ function main() {
       if (!file || !slug) { console.error('usage: gauge.js record <run.json> --slug <slug>'); process.exit(3); }
       const e = record(file, slug);
       // 二度目は沈黙しない —— 名乗る。**exit code は 0 のまま**(重複は失敗ではない)。
-      if (e.skipped) console.log(`📒 already recorded: ${e.slug} → ${e.metrics.score}/100 @ ${e.ts} (同一指紋 ${e.fp || fingerprint(e)}) — 追記しない`);
+      if (e.skipped) console.log(`📒 already recorded: ${e.slug} → ${e.metrics.score}/100 @ ${e.ts} (同一指紋 ${fingerprint(e)}) — 追記しない`);
       else console.log(`📒 recorded: ${e.slug} → ${e.metrics.score}/100 (${ledgerPath()})`);
       return;
     }
@@ -505,7 +581,11 @@ function main() {
         const a = auditLedger(readLedger({ raw: true }));
         console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length}`);
         for (const c of a.conflicts) {
-          console.log(`  ⚠️ 矛盾: ${c.slug} — ${c.keys.join(',')} が食い違う (${c.observations.map(o => `${o.ts}:${o.score}`).join(' vs ')})`);
+          if (c.kind === 'too-deep') {
+            console.log(`  ⚠️ 矛盾: ${c.slug} — 入れ子が深すぎて鍵を導けない行(読み飛ばされる)@ ${c.observations[0].ts}`);
+          } else {
+            console.log(`  ⚠️ 矛盾: ${c.slug} — 名乗る指紋 ${c.declared} が中身から導かれる ${c.actual} と食い違う (@ ${c.observations[0].ts}, score ${c.observations[0].score})`);
+          }
         }
         process.exit(a.duplicates > 0 || a.conflicts.length > 0 ? 1 : 0);
       }
