@@ -3757,6 +3757,325 @@ test('gauge: metrics を持たない行は畳みで落ちない (R-1/M7)', () =>
     '`raw:` を名乗る行が metrics なし行と鍵空間で衝突した (R-6)');
 });
 
+/**
+ * ── PROVE attempt 2: 私が新たに発明した変異が素通りした穴を埋める ────
+ *
+ * 既存 379 門に対し 25 種の新しい変異を注入したところ、**13 種が無音**だった
+ * (N3/N5/N6/N7/N8/N9/N10/N11/N14/N16/N18/N23/N25)。
+ * 実装のコメントと design.md が語る規則を、機械が一つも守っていない箇所である。
+ * 以下はその穴を一つずつ塞ぐ門であり、末尾の故障注入がそれぞれ鳴ることを実測する。
+ */
+
+test('gauge: 深さの底は現実の入れ子を巻き込まない — 底を絞りすぎない (N3)', () => {
+  // 実在する metrics の深さは 2。底を 2 に絞れば現実の観測が「破損」になる。
+  // 「深すぎる行を落とす」門(S-2)は底を **きつくする**方向を一切見ていなかった。
+  const nest = (d) => { let v = 1; for (let i = 0; i < d; i++) v = [v]; return v; };
+  for (const d of [1, 2, 4, 8, 16, 32]) {
+    assert.doesNotThrow(() => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(d) } }),
+      `深さ ${d} の値が破損扱いになった — 底が現実の観測を巻き込んでいる (N3)`);
+  }
+  // 底そのものは在り続けること(N2 の裏返し。両側から挟む)
+  assert.throws(() => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(20000) } }),
+    /nests deeper/, '底が消えた — 一行で秤全体が倒れる (S-2)');
+});
+
+test('gauge: 配列の順序は意味である — 並べ替えても同じ鍵にならない (N5)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ a: [1, 2] }), fp({ a: [2, 1] }),
+    '配列の順序が指紋に出ていない — 別の観測が同じ鍵になる (N5 / 実装 §2.2「配列は順序を保つ」)');
+  assert.notStrictEqual(fp({ a: ['x', 'y'] }), fp({ a: ['y', 'x'] }));
+  assert.strictEqual(fp({ a: [1, 2] }), fp({ a: [1, 2] }), '同じ配列で鍵が揺れた');
+});
+
+test('gauge: 文字列は引用される — 型の違いが鍵に出る (N6)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  /**
+   * 引用を外すと文字列の `'100'` と数の `100` が同じ正規形になる。
+   * `score` が文字列で流れ込んだ行と本物の行が**同じ観測として畳まれ**、
+   * 一方が黙って消える。型は観測の一部である。
+   */
+  assert.notStrictEqual(fp({ score: '100' }), fp({ score: 100 }),
+    '文字列の "100" と数の 100 が同じ鍵になった — 文字列が引用されていない (N6)');
+  assert.notStrictEqual(fp({ a: 'null' }), fp({ a: null }),
+    '文字列 "null" と「測れなかった」が同じ鍵になった (N6 / 第16条)');
+  assert.notStrictEqual(fp({ a: 'true' }), fp({ a: true }), '文字列 "true" と真が同じ鍵になった (N6)');
+});
+
+test('gauge: object の鍵名は指紋の材料である (N23)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ score: 1 }), fp({ reworkCount: 1 }),
+    '鍵名が指紋に出ていない — score:1 と reworkCount:1 が同じ観測になる (N23)');
+  assert.notStrictEqual(fp({ a: 1, b: 2 }), fp({ a: 2, b: 1 }), '鍵と値の対応が指紋に出ていない');
+});
+
+test('gauge: 真偽値は数に潰されない (N25)', () => {
+  const fp = (m) => gauge.fingerprint({ slug: 's', scale: 'standard', metrics: m });
+  assert.notStrictEqual(fp({ complete: true }), fp({ complete: 1 }),
+    'true と 1 が同じ鍵になった — complete:true の観測が別物に飲まれる (N25)');
+  assert.notStrictEqual(fp({ complete: false }), fp({ complete: 0 }));
+  assert.notStrictEqual(fp({ complete: false }), fp({ complete: null }),
+    'false と「測れなかった」が同じ鍵になった (第16条)');
+});
+
+test('gauge: 指紋の版は黙って動かない — g1: の値を固定する (N18)', () => {
+  /**
+   * 版接頭辞 `g1:` は**材料と正規化の版**を名乗る約束である(実装 §指紋)。
+   * hash や正規化を差し替えれば過去の全行の鍵が動くのに、接頭辞が `g1:` の
+   * ままなら **台帳は嘘の版を名乗る**。既存門は形(`g1:[0-9a-f]{16}`)しか
+   * 見ておらず、sha256 → md5 の差し替えが無音だった(N18)。
+   * ゆえに実際の値を固定する。**変えるなら `g2:` を名乗り、この定数も改めること。**
+   */
+  assert.strictEqual(
+    gauge.fingerprint({ slug: 'coin', scale: 'standard', metrics: { score: 100, complete: true } }),
+    'g1:96a83cffd711ac01',
+    'g1: を名乗ったまま指紋の値が動いた — 過去の台帳の鍵が黙って別物になった (N18)');
+});
+
+test('gauge: 壊れた ts でも keep-first が決定的 (N7)', () => {
+  /**
+   * 実装は「`Date.parse` を挟まない」と明記する —— 壊れた `ts` で `NaN` が出れば
+   * 比較が非決定になるからである。だが既存門はこの枝を一度も踏んでいなかった。
+   */
+  const mk = (ts) => ({ ts, slug: 's', scale: 'standard', metrics: { score: 5 } });
+  const good = mk('2026-01-01T00:00:00.000Z'), broken = mk('not-a-date');
+  const ab = gauge.foldLedger([good, broken]).map(e => e.ts);
+  const ba = gauge.foldLedger([broken, good]).map(e => e.ts);
+  assert.deepStrictEqual(ab, ba,
+    `壊れた ts で畳みの結果が並び順に依存した (${JSON.stringify(ab)} vs ${JSON.stringify(ba)}) — Date.parse の NaN が漏れている (N7)`);
+  assert.strictEqual(ab.length, 1, '同一観測が畳まれていない');
+});
+
+test('gauge: 深すぎる行は畳みで消されず素通しされる (N8)', () => {
+  // `readLedger` は深すぎる行を読み飛ばすが、`foldLedger` に直接渡された場合の
+  // 素通し(passthrough)は誰も検めていなかった —— 畳みが黙って行を消していた。
+  const deepRow = JSON.parse(deepGaugeLine(200));
+  const healthy = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const folded = gauge.foldLedger([healthy, deepRow]);
+  assert.strictEqual(folded.length, 2,
+    `深すぎる行が畳みに食われた: ${JSON.stringify(folded.map(e => e.slug))} (N8)`);
+  assert.ok(folded.some(e => e.slug === 'deep'), '深い行が消えた — 記録は失われてはならない');
+});
+
+test('gauge: record は行の自己申告 fp を信じない (N9 / S-1 の書き側)', () => {
+  /**
+   * S-1 の門は `foldLedger` / `auditLedger` の**読み側**しか見ていなかった。
+   * `record` の突き合わせを `e.fp || trueKey(e)` に緩める変異は無音である —
+   * 偽の鍵を名乗る一行を台帳に置くだけで、**別の本物の観測が二度と刻まれなくなる**。
+   */
+  withGaugeSandbox((g, tmp) => {
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const target = { ts: '2026-01-01T00:00:00.000Z', slug: 'coin', scale: 'standard',
+      metrics: { score: 1 }, fp: g.fingerprint({ slug: 'coin', scale: 'standard', metrics: g.score(makeGaugeRun()) }) };
+    assert.notStrictEqual(target.fp, g.fingerprint(target), '素材が偽の鍵になっていない — 門の前提が崩れた');
+    writeGaugeLedger(tmp, [target]);
+    const e = g.record(run, 'coin');
+    assert.notStrictEqual(e.skipped, true,
+      '偽の鍵を名乗る一行で本物の観測が刻まれなくなった — record が自己申告を信じている (N9)');
+    assert.strictEqual(g.readLedger({ raw: true }).length, 2, '新しい観測が台帳に届いていない');
+  });
+});
+
+test('gauge: 読めない台帳で record は黙って「既記録」を名乗らない (N10 / fail-open)', () => {
+  /**
+   * fail-open の約束は「重複を見逃して**書く**側に倒れる」である。
+   * catch を `return { skipped: true }` に変える変異は無音だった ——
+   * 台帳が読めない時に**黙って記録を捨てる**のは、台帳の第一の徳への裏切り。
+   */
+  withGaugeSandbox((g, tmp) => {
+    // 台帳の位置をディレクトリにする = 読めもせず書けもしない台帳
+    fs.mkdirSync(path.join(tmp, 'gauge-ledger.jsonl'));
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    let ret = null;
+    assert.throws(() => { ret = g.record(run, 'coin'); },
+      (err) => /EISDIR|EPERM|EACCES/.test(String(err.code || err.message)),
+      `読めない台帳で record が黙って戻った: ${JSON.stringify(ret)} — 記録を捨てている (N10)`);
+  });
+});
+
+test('gauge: audit は深すぎる行を「重複」と数えない (N11 / 第16条)', () => {
+  // 鍵を導けない行を distinct から外せば、**一行が勝手に重複として計上される**。
+  // 掃除しようのない偽の重複を報じる門は、鳴りっぱなしの門と同じ害を持つ。
+  const deepRow = JSON.parse(deepGaugeLine(200));
+  const healthy = gaugeRow(GAUGE_OBSERVATIONS[0]);
+  const a = gauge.auditLedger([healthy, deepRow]);
+  assert.strictEqual(a.rows, 2, '行数の数え方が違う');
+  assert.strictEqual(a.duplicates, 0,
+    `深すぎる行を重複と数えた (duplicates=${a.duplicates}) — 存在しない重複を報じている (N11)`);
+  assert.strictEqual(a.distinct, 2, `distinct が tooDeep を落としている (${a.distinct}) (N11)`);
+  assert.ok(a.conflicts.some(c => c.kind === 'too-deep'), '深すぎる行を矛盾として名指していない');
+});
+
+test('gauge: 破損行は黙って捨てられず標準エラーで名指される (N14 / 第16条)', () => {
+  withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, corruptLedgerLines());
+    const r = require('child_process').spawnSync(process.execPath, [GAUGE_JS, 'ledger'],
+      { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } });
+    assert.strictEqual(r.status, 0, `ledger が落ちた: ${r.stderr}`);
+    assert.ok(/ledger line skipped \(corrupt\)/.test(r.stderr),
+      `破損行を黙って捨てた — 読み飛ばしたことが誰にも見えない (N14): stderr=${JSON.stringify(r.stderr)}`);
+    // `ledger` は畳んだ版と生の版を各一度読むので警告は 3 行 × 読み回数。
+    // **少なくとも破損 3 行分が名指されること**を主張する(読み回数は実装の裁量)。
+    const named = (r.stderr.match(/ledger line skipped \(corrupt\)/g) || []).length;
+    assert.ok(named >= 3 && named % 3 === 0,
+      `破損 3 行の名指しが ${named} 件 — 一部の破損行が黙殺されている (N14)`);
+    for (const marker of ['<<<<<<< HEAD', '=======', '>>>>>>> A']) {
+      assert.ok(r.stderr.includes(marker.slice(0, 7)),
+        `破損行 ${marker} が名指されていない — 何を捨てたかが見えない (N14)`);
+    }
+  });
+});
+
+test('gauge: 「最新」は metrics を持つ行の中から選ばれる (N16)', () => {
+  /**
+   * `baseline()` は失敗した創造物に `{slug, error}` を残す。`latestFor` の
+   * `&& e.metrics` を外すと、**error 行が「最新」として compare に流れ**、
+   * `ea.metrics[k]` で秤全体が倒れる。既存門はこの絞りを一度も検めていない。
+   */
+  const good = { ts: '2026-01-01T00:00:00.000Z', slug: 's', scale: 'standard', metrics: { score: 7 } };
+  const errRow = { ts: '2026-09-09T00:00:00.000Z', slug: 's', error: 'no phases' };
+  const latest = gauge.latestFor('s', [good, errRow]);
+  assert.ok(latest && latest.metrics, `error 行を「最新」と呼んだ: ${JSON.stringify(latest)} (N16)`);
+  assert.strictEqual(latest.ts, good.ts, '観測を持つ行が選ばれていない');
+  assert.strictEqual(gauge.latestFor('s', [errRow]), null, 'error 行しか無いのに観測を捏造した');
+});
+
+test('gauge: 門は仮倉の残骸も住所の振替も残さない (門自身の衛生)', () => {
+  // 門同士が状態を漏らせば、単独では緑・並べると赤という最悪の門になる。
+  const prev = process.env.PARADISE_CREATIONS;
+  let box = null;
+  withGaugeSandbox((g, tmp) => {
+    box = tmp;
+    assert.ok(g.ledgerPath().startsWith(tmp), '住所が仮倉に振り替わっていない');
+    fs.writeFileSync(path.join(tmp, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[0])) + '\n');
+  });
+  assert.strictEqual(process.env.PARADISE_CREATIONS, prev, '仮倉の env が門の外に漏れた');
+  assert.ok(!fs.existsSync(box), `仮倉の残骸が残った: ${box}`);
+  // 二つの仮倉が互いの台帳を見ないこと(門同士の独立)
+  const seen = [];
+  withGaugeSandbox((g, tmp) => { seen.push(g.readLedger({ raw: true }).length); });
+  withGaugeSandbox((g, tmp) => {
+    fs.writeFileSync(path.join(tmp, 'gauge-ledger.jsonl'), JSON.stringify(gaugeRow(GAUGE_OBSERVATIONS[1])) + '\n');
+    seen.push(g.readLedger({ raw: true }).length);
+  });
+  withGaugeSandbox((g) => { seen.push(g.readLedger({ raw: true }).length); });
+  assert.deepStrictEqual(seen, [0, 1, 0], `仮倉の台帳が門を跨いで漏れた: ${JSON.stringify(seen)}`);
+});
+
+test('gauge(故障注入): prove attempt 2 の新変異 13 種で各門が exit 1 で鳴る', () => {
+  /**
+   * 上の各門は、**この注入で鳴ることを実測して初めて門である**。
+   * 注入版で非ゼロ・実物でゼロの両側を撃つ(第21条 壊して鳴らす)。
+   */
+  const sand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-p2-'));
+  try {
+    const fpBody = `const fp = (m) => g.fingerprint({ slug: 's', scale: 'standard', metrics: m });\n`;
+    const deep = (d) => "JSON.parse('{\"ts\":\"D\",\"slug\":\"deep\",\"scale\":\"standard\",\"metrics\":{\"n\":'"
+      + ` + '['.repeat(${d}) + '1' + ']'.repeat(${d}) + '}}')`;
+    const mutations = [
+      { tag: 'N3', name: 'p2.n3.js',
+        mutate: s => s.replace('const MAX_CANONICAL_DEPTH = 64;', 'const MAX_CANONICAL_DEPTH = 2;'),
+        gate: `const nest = (d) => { let v = 1; for (let i = 0; i < d; i++) v = [v]; return v; };
+          assert.doesNotThrow(() => g.fingerprint({ slug: 's', scale: 'standard', metrics: { nest: nest(8) } }),
+            '現実の深さが破損扱いになった');` },
+      { tag: 'N5', name: 'p2.n5.js',
+        mutate: s => s.replace("if (Array.isArray(v)) return '[' + v.map(x => canonical(x, depth + 1)).join(',') + ']';",
+                               "if (Array.isArray(v)) return '[' + v.map(x => canonical(x, depth + 1)).sort().join(',') + ']';"),
+        gate: fpBody + `assert.notStrictEqual(fp({a:[1,2]}), fp({a:[2,1]}), '配列の順序が消えた');` },
+      { tag: 'N6', name: 'p2.n6.js',
+        mutate: s => s.replace("  if (typeof v === 'string') return JSON.stringify(v);",
+                               "  if (typeof v === 'string') return v;"),
+        gate: fpBody + `assert.notStrictEqual(fp({score:'100'}), fp({score:100}), '文字列と数が同じ鍵になった');` },
+      { tag: 'N7', name: 'p2.n7.js',
+        mutate: s => s.replace("    if (!cur || String(e.ts) < String(cur.ts)) keep.set(fp, e);",
+                               "    if (!cur || Date.parse(e.ts) < Date.parse(cur.ts)) keep.set(fp, e);"),
+        gate: `const mk = (ts) => ({ ts, slug: 's', scale: 'standard', metrics: { score: 5 } });
+          const good = mk('2026-01-01T00:00:00.000Z'), broken = mk('not-a-date');
+          assert.deepStrictEqual(g.foldLedger([good, broken]).map(e => e.ts),
+            g.foldLedger([broken, good]).map(e => e.ts), '壊れた ts で並び順に依存した');` },
+      { tag: 'N8', name: 'p2.n8.js',
+        mutate: s => s.replace("    if (fp === null) { passthrough.push(e); continue; }",
+                               "    if (fp === null) { continue; }"),
+        gate: `const deepRow = ${deep(200)};
+          const ok = { ts: 'T', slug: 's', scale: 'standard', metrics: { score: 1 } };
+          assert.strictEqual(g.foldLedger([ok, deepRow]).length, 2, '深すぎる行が畳みに食われた');` },
+      { tag: 'N9', name: 'p2.n9.js',
+        mutate: s => s.replace("      if (trueKey(e) === entry.fp) { existing = e; break; }",
+                               "      if ((e.fp || trueKey(e)) === entry.fp) { existing = e; break; }"),
+        gate: `const runFile = path.join(${JSON.stringify(sand)}, 'p2n9.run.json');
+          fs.writeFileSync(runFile, ${JSON.stringify(JSON.stringify(makeGaugeRun()))});
+          const truth = g.fingerprint({ slug: 'coin', scale: 'standard',
+            metrics: g.score(JSON.parse(fs.readFileSync(runFile, 'utf8'))) });
+          fs.writeFileSync(LEDGER, JSON.stringify({ ts: '2026-01-01T00:00:00.000Z', slug: 'coin',
+            scale: 'standard', metrics: { score: 1 }, fp: truth }) + '\\n');
+          const e = g.record(runFile, 'coin');
+          assert.notStrictEqual(e.skipped, true, '偽の鍵で本物の観測が刻まれなくなった');` },
+      { tag: 'N10', name: 'p2.n10.js',
+        mutate: s => s.replace("    console.error(`⚠️ ledger unreadable, recording anyway: ${err.message}`);",
+                               "    return { ...entry, skipped: true };"),
+        gate: `fs.mkdirSync(LEDGER);
+          const runFile = path.join(${JSON.stringify(sand)}, 'p2n10.run.json');
+          fs.writeFileSync(runFile, ${JSON.stringify(JSON.stringify(makeGaugeRun()))});
+          let ret = null;
+          assert.throws(() => { ret = g.record(runFile, 'coin'); },
+            (err) => /EISDIR|EPERM|EACCES/.test(String(err.code || err.message)),
+            '読めない台帳で黙って戻った: ' + JSON.stringify(ret));` },
+      { tag: 'N11', name: 'p2.n11.js',
+        mutate: s => s.replace('  const distinct = byFp.size + tooDeep;', '  const distinct = byFp.size;'),
+        gate: `const deepRow = ${deep(200)};
+          const ok = { ts: 'T', slug: 's', scale: 'standard', metrics: { score: 1 } };
+          const a = g.auditLedger([ok, deepRow]);
+          assert.strictEqual(a.duplicates, 0, '深すぎる行を重複と数えた: ' + a.duplicates);` },
+      { tag: 'N14', name: 'p2.n14.js',
+        mutate: s => s.replace("    catch { console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`); continue; }",
+                               "    catch { continue; }"),
+        gate: `fs.writeFileSync(LEDGER, ${JSON.stringify(corruptLedgerLines().join('\n') + '\n')});
+          const errs = [];
+          const orig = console.error; console.error = (...a) => errs.push(a.join(' '));
+          try { g.readLedger({ raw: true }); } finally { console.error = orig; }
+          assert.ok(errs.some(l => /corrupt/.test(l)), '破損行を黙って捨てた');` },
+      { tag: 'N16', name: 'p2.n16.js',
+        mutate: s => s.replace("  const hits = (Array.isArray(entries) ? entries : []).filter(e => e && e.slug === slug && e.metrics);",
+                               "  const hits = (Array.isArray(entries) ? entries : []).filter(e => e && e.slug === slug);"),
+        gate: `const good = { ts: '2026-01-01T00:00:00.000Z', slug: 's', scale: 'standard', metrics: { score: 7 } };
+          const errRow = { ts: '2026-09-09T00:00:00.000Z', slug: 's', error: 'no phases' };
+          const latest = g.latestFor('s', [good, errRow]);
+          assert.ok(latest && latest.metrics, 'error 行を最新と呼んだ');` },
+      { tag: 'N18', name: 'p2.n18.js',
+        mutate: s => s.replace("crypto.createHash('sha256')", "crypto.createHash('md5')"),
+        gate: `assert.strictEqual(
+            g.fingerprint({ slug: 'coin', scale: 'standard', metrics: { score: 100, complete: true } }),
+            'g1:96a83cffd711ac01', 'g1: を名乗ったまま指紋の値が動いた');` },
+      { tag: 'N23', name: 'p2.n23.js',
+        mutate: s => s.replace("      parts.push(JSON.stringify(k) + ':' + canonical(v[k], depth + 1));",
+                               "      parts.push(canonical(v[k], depth + 1));"),
+        gate: fpBody + `assert.notStrictEqual(fp({score:1}), fp({reworkCount:1}), '鍵名が指紋に出ていない');` },
+      { tag: 'N25', name: 'p2.n25.js',
+        mutate: s => s.replace("  if (typeof v === 'boolean') return v ? 'true' : 'false';",
+                               "  if (typeof v === 'boolean') return v ? '1' : '0';"),
+        gate: fpBody + `assert.notStrictEqual(fp({complete:true}), fp({complete:1}), 'true と 1 が同じ鍵になった');` },
+    ];
+    const rang = [];
+    for (const m of mutations) {
+      const brokenPath = injectGauge(sand, m.name, m.mutate);
+      const mk = (tag) => {
+        const d = path.join(sand, m.tag + '-' + tag);
+        fs.mkdirSync(d, { recursive: true });
+        return d;
+      };
+      const broken = runGaugeGate(brokenPath, mk('broken'), m.gate);
+      assert.notStrictEqual(broken.code, 0,
+        `${m.tag} を注入しても門が緑だった (exit ${broken.code}) — 穴が残っている: ${broken.out.slice(0, 200)}`);
+      const real = runGaugeGate(GAUGE_JS, mk('real'), m.gate);
+      assert.strictEqual(real.code, 0, `${m.tag} の門が実物で鳴った: ${real.out.slice(0, 300)}`);
+      rang.push(m.tag);
+    }
+    assert.strictEqual(rang.length, 13, `13 変異を撃っていない: ${rang.join(',')}`);
+  } finally { fs.rmSync(sand, { recursive: true, force: true }); }
+});
+
+
 // ── FR-9 / NFR-1 門と画面 ──────────────────────────────────────────────
 
 test('gauge: ledger の出力が畳んだ件数を名乗る (NFR-1)', () => {
