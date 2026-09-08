@@ -109,7 +109,7 @@
       "cardinal": "construction",
       "domain": "Construction (建造)",
       "status": "active",
-      "reworks": 2,
+      "reworks": 3,
       "phases": [
         {
           "id": "build",
@@ -120,10 +120,10 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "done",
-          "attempts": 3,
+          "status": "running",
+          "attempts": 4,
           "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/graph/gauge.js",
-          "dispatchedAt": "2026-09-08T08:53:06.867Z",
+          "dispatchedAt": "2026-09-08T14:12:51.422Z",
           "resumes": 0
         },
         {
@@ -135,7 +135,7 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "running",
+          "status": "rework",
           "attempts": 3,
           "artifactPath": null,
           "dispatchedAt": "2026-09-08T11:39:37.602Z",
@@ -163,9 +163,9 @@
           "gate": false,
           "artifact": "review.md",
           "status": "rework",
-          "attempts": 2,
+          "attempts": 3,
           "artifactPath": null,
-          "dispatchedAt": "2026-09-08T07:55:06.478Z",
+          "dispatchedAt": "2026-09-08T13:03:42.867Z",
           "resumes": 0
         },
         {
@@ -178,9 +178,9 @@
           "gate": false,
           "artifact": "security-report.md",
           "status": "rework",
-          "attempts": 2,
+          "attempts": 3,
           "artifactPath": null,
-          "dispatchedAt": "2026-09-08T07:55:06.478Z",
+          "dispatchedAt": "2026-09-08T13:03:42.867Z",
           "resumes": 0
         },
         {
@@ -193,9 +193,9 @@
           "gate": false,
           "artifact": "docs",
           "status": "rework",
-          "attempts": 2,
+          "attempts": 3,
           "artifactPath": null,
-          "dispatchedAt": "2026-09-08T07:55:06.478Z",
+          "dispatchedAt": "2026-09-08T13:03:42.867Z",
           "resumes": 0
         },
         {
@@ -422,6 +422,46 @@
       "ts": "2026-09-08T11:39:37.603Z",
       "event": "dispatch",
       "detail": "prove"
+    },
+    {
+      "ts": "2026-09-08T13:03:42.761Z",
+      "event": "done",
+      "detail": "prove → C:/Users/kikus/Documents/workspace/paradise/tests/paradise.test.js"
+    },
+    {
+      "ts": "2026-09-08T13:03:42.814Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-08T13:03:42.867Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-08T14:12:51.204Z",
+      "event": "done",
+      "detail": "review → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/review-3.md"
+    },
+    {
+      "ts": "2026-09-08T14:12:51.257Z",
+      "event": "done",
+      "detail": "security → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/security-report-3.md"
+    },
+    {
+      "ts": "2026-09-08T14:12:51.313Z",
+      "event": "done",
+      "detail": "docs → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/README.md"
+    },
+    {
+      "ts": "2026-09-08T14:12:51.366Z",
+      "event": "domain-rework",
+      "detail": "Quality (品質) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 3); un-ratified construction"
+    },
+    {
+      "ts": "2026-09-08T14:12:51.423Z",
+      "event": "dispatch",
+      "detail": "build"
     }
   ],
   "spawnTrace": {
@@ -505,6 +545,15 @@
         "rank": null,
         "at": "2026-09-08T07:55:06.330Z",
         "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-d1729431",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T13:03:42.709Z",
+        "kind": "observed"
       }
     ],
     "review": [
@@ -524,6 +573,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-08T08:53:06.506Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-04342112",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T14:12:51.047Z",
         "kind": "observed"
       }
     ],
@@ -545,6 +603,15 @@
         "rank": null,
         "at": "2026-09-08T08:53:06.554Z",
         "kind": "observed"
+      },
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-cfb5529f",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T14:12:51.099Z",
+        "kind": "observed"
       }
     ],
     "docs": [
@@ -555,6 +622,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-08T08:53:06.602Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-2-c9d1c6c7",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T14:12:51.151Z",
         "kind": "observed"
       }
     ]
@@ -596,33 +672,33 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 2 件の起動を観測: tdd-guide, tdd-guide"
+        "序列1: 3 件の起動を観測: tdd-guide, tdd-guide, tdd-guide"
       ],
-      "at": "2026-09-08T07:55:06.380Z"
+      "at": "2026-09-08T13:03:42.760Z"
     },
     "review": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 2 件の起動を観測: code-reviewer, code-reviewer"
+        "序列1: 3 件の起動を観測: code-reviewer, code-reviewer, code-reviewer"
       ],
-      "at": "2026-09-08T08:53:06.651Z"
+      "at": "2026-09-08T14:12:51.203Z"
     },
     "security": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 2 件の起動を観測: security-reviewer, security-reviewer"
+        "序列1: 3 件の起動を観測: security-reviewer, security-reviewer, security-reviewer"
       ],
-      "at": "2026-09-08T08:53:06.714Z"
+      "at": "2026-09-08T14:12:51.257Z"
     },
     "docs": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: doc-updater"
+        "序列1: 2 件の起動を観測: doc-updater, doc-updater"
       ],
-      "at": "2026-09-08T08:53:06.765Z"
+      "at": "2026-09-08T14:12:51.312Z"
     }
   }
 }

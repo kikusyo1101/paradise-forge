@@ -37,15 +37,19 @@
  *   gauge.js compare <slugA> <slugB>          台帳から Δ 表
  *   gauge.js compare --last <N>               直近 N 件の推移
  *   gauge.js ledger                           台帳の一覧(畳んだ版)
- *   gauge.js ledger --audit                   重複・偽の鍵・読めない行を数える
+ *   gauge.js ledger --audit                   重複・偽の鍵・読めない行・先回りを数える
  *
  * exit code(この秤の全命令に共通。**沈黙を成功と呼ばない**):
  *   0 = 健全 / 正常に終わった
  *   1 = `ledger --audit` のみ。**機械が畳めば消える欠陥**(重複)。掃除(FR-8)で必ずゼロにできる
- *   2 = `ledger --audit` では**人が中身を読むまで消えない事故**(偽の指紋 / 深すぎて鍵を導けない行)。
+ *   2 = **人が中身を読むまで消えない事故**。`ledger --audit` では偽の指紋 / 深すぎて鍵を導けない行 /
+ *       読めない行(corrupt) / 未来の時刻を名乗る行 / 秤が書かない鍵を持つ行。
+ *       `record` では**先回り**(既記録の行が未来に住む・秤の書式でない)。
  *       他の命令では「測れない」(相を持たない run-state 等)。第37条: 不在は通過ではない
- *   3 = 命令・引数の誤り(未知の命令・usage 不足・`--last` が整数でない)。
+ *   3 = 命令・引数の誤り(未知の命令・usage 不足・`--last` が整数でない・
+ *       **引数で指されたファイルが読めない/壊れている**)。
  *       **誤字を exit 0 で成功に見せない** —— 何もしなかったことを成功と名乗るのが最も危険な嘘である
+ *       **2 は台帳の事故に予約する** —— 打ち間違いを台帳の汚染として報告させない(review-3 D-3)。
  *
  * **`--raw` という CLI の旗は無い。** 生の全行は `readLedger({ raw: true })` という
  * **プログラム側の口**だけが返す(監査・掃除・後方互換のための材料)。
@@ -277,7 +281,56 @@ function canonical(v, depth = 0) {
  *   「過去の指紋が黙って動く」事故を構造的に防ぐ。
  * - 16 桁 = 64bit。台帳は人が目で読む器であり、64 桁の全文はノイズになる。
  *   10^4 行でも誕生日衝突は約 5×10^-12。
+ *
+ * (この註は直下の `fingerprint` に掛かる。間に挟まる書式の註は F-1 の検知面である。)
  */
+/**
+ * ── 秤が書く行の書式(F-1 / 先回り毒の検知面) ──────────────────────
+ *
+ * `record` が刻む行の鍵は **`ts` / `slug` / `scale` / `metrics` / `fp` の五つだけ**である
+ * (`gauge.js:record`)。これ以外の鍵を持つ行は、**秤が書いたものではない** ——
+ * 人の手編集・git の衝突解決・他所からの流入・そして**先回り毒**である。
+ *
+ * 指紋の材料は `slug`+`scale`+`metrics` に固定されている(冪等性の成立条件)。
+ * ゆえに材料外の鍵を**いくつ足しても鍵は変わらない** —— 先回り毒はこの窓から入る。
+ * 鍵の材料に `ts` を混ぜれば毒は防げるが、**同じ観測が撃つたび別物になり
+ * 冪等性そのものが原理的に成立しなくなる**(第55条 a)。
+ * ゆえに**材料は変えず、名指す側を強くする**。
+ */
+const ENTRY_KEYS = ['ts', 'slug', 'scale', 'metrics', 'fp'];
+
+/** 秤が書かない鍵(材料外・書式外)を名指す。0 で埋めず列挙する(第16条)。 */
+function alienKeys(e) {
+  if (!e || typeof e !== 'object') return [];
+  return Object.keys(e).filter(k => !ENTRY_KEYS.includes(k)).sort();
+}
+
+/**
+ * 読めなかった行の標識(F-2)。`JSON.parse` に失敗した行は**オブジェクトにならない**ので、
+ * 判別可能な標識に包んで初めて「何行あったか」を下流が数えられる。
+ * `readLedger({ raw:true, withCorrupt:true })` だけがこれを返す ——
+ * 既定の `raw` の意味(生きた行の生の列)は一字も変えない。
+ */
+const CORRUPT_MARK = '__gaugeCorrupt';
+function isCorruptMark(e) { return !!(e && typeof e === 'object' && e[CORRUPT_MARK] === true); }
+
+/**
+ * 引数で指されたファイルを読む。**読めない/壊れているのは「引数の誤り」である**(review-3 D-3)。
+ *
+ * 旧実装は `main()` の catch がこれを exit 2 に落としていた。だが 2 は
+ * 「台帳に人が読むべき事故がある」に予約された信号である —— **打ち間違いを
+ * 台帳の汚染として報告させれば、P-8 が分けた信号がその一段外で崩れる。**
+ * 冒頭の散文は既に「3 = 引数の誤り」と約束していた。**散文に実装を追いつかせる。**
+ */
+function readRunFile(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (err) {
+    const e = new Error(`run-state を読めない: ${file} — ${err.message}`);
+    e.gaugeExit = 3;
+    throw e;
+  }
+}
+
 function fingerprint(entry) {
   const e = entry || {};
   const material = {
@@ -416,6 +469,19 @@ function foldLedger(entries) {
  * ゆえに **`raw` は too-deep の検査より前で返す**。深すぎる行の扱いは
  * `foldLedger`(passthrough)と `auditLedger`(too-deep 枝)が既に持っている ——
  * 上流が先に捨てていたせいで、その備えが使われていなかっただけである。
+ *
+ * ── 読めなかった行は**数えられる形で**返す(F-2 / 第16条) ──────────
+ *
+ * P-1 の修理は too-deep を `auditLedger` から見えるようにした。**だが隣の入口が残った。**
+ * `JSON.parse` に失敗した行は `raw:true` でもここで捨てられ、監査の目に一度も触れない。
+ * 結果、ファイルに 4 行あって全部が壊れている台帳を `--audit` が
+ * `rows=0 … exit 0` =「健全」と答えた(security-3 F-2 の実測)。
+ * **読めなかった行を 0 件と偽るのは、測れなかったものをゼロで埋める行為である。**
+ *
+ * ゆえに `withCorrupt:true` を渡された時だけ、壊れた行を判別可能な標識
+ * (`{__gaugeCorrupt:true, line}`)として列に混ぜて返す。**既定の `raw` の意味は
+ * 一字も変えない** —— 掃除(FR-8)は生の列を書き戻す道具であり、そこに標識が混ざれば
+ * 台帳が標識で汚れる。数えるのは監査だけの権能である。
  */
 function readLedger(opts = {}) {
   const p = ledgerPath();
@@ -431,7 +497,12 @@ function readLedger(opts = {}) {
   for (const line of fs.readFileSync(p, 'utf8').split('\n').filter(Boolean)) {
     let row;
     try { row = JSON.parse(line); }
-    catch { console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`); continue; }
+    catch {
+      console.error(`⚠️ ledger line skipped (corrupt): ${line.slice(0, 60)}…`);
+      // ★ 監査だけが標識を受け取る。他の全ての呼び手には従来どおり見えない(F-2)。
+      if (opts.raw && opts.withCorrupt) out.push({ [CORRUPT_MARK]: true, line: line.slice(0, 200) });
+      continue;
+    }
     if (row && typeof row === 'object') src.set(row, line);
     out.push(row);
   }
@@ -457,6 +528,76 @@ function readLedger(opts = {}) {
 }
 
 /**
+ * ── 先回り毒への処置(F-1) ────────────────────────────────────────
+ *
+ * **設計判断を先に書く。三案を比べた。**
+ *
+ * (α) 指紋の材料に `ts` を混ぜる → **棄却**。同じ観測が撃つたび別の鍵になり、
+ *     冪等性そのものが原理的に成立しなくなる(第55条 a)。毒は防げるが病人が死ぬ。
+ * (β) 衝突した既存行を新しい観測で**上書き**する → **棄却**。台帳に削除・上書きの
+ *     経路を一つも足さないという第55条(e)の約束を破る。毒の側が「正当な観測」を
+ *     名乗れば、今度は本物の記録が消える。
+ * (γ) **材料は変えず、黙って捨てるのをやめる** → **採用**。
+ *     `record` が skip する前に既存行を三つの物差しで検める:
+ *       1. **先回り**: 既存行の `ts` が、観測している走行の**開始よりも前**に住む。
+ *          走行が始まる前にその走行を観測することは原理的に不可能である。
+ *          攻撃者・**時計の狂った機**・**古い台帳のマージ**のいずれでも同じ形で現れる。
+ *       2. **未来**: 既存行の `ts` が今より先に住む(時計の狂い / 捏造)。
+ *       3. **書式外**: 秤が書かない鍵(`note` 等)を持つ。指紋の材料外なので
+ *          いくら足しても鍵は変わらない —— 毒はまさにこの窓から入る。
+ *     一つでも当たれば **skip しない**。正当な観測を**追記した上で**名指す
+ *     (`preempted` を返り値に載せ、CLI は exit 2)。
+ *     **追記する理由**: 「記録が失われない」が台帳の第一の徳だからである。
+ *     拒めば毒の目的(正当な観測を刻ませない)がそのまま達成される。
+ *
+ * **なぜ走行の「開始」であって「終了」でないか。** 終了(最後の history)を境にすると、
+ * 記録後に点を動かさない出来事が一つ足されただけで既存行が「先回り」に見え、
+ * R-2 が戒めた「鳴りっぱなしの門」になる。開始は走行が終わっても動かない。
+ *
+ * **限界を正直に書く。** 走行の開始から今までの窓に `ts` を置き、余分な鍵を持たない毒は
+ * 依然として正当な記録と区別できない —— それは冪等性の定義そのものであって、
+ * 実装の欠陥ではない。ここで塞げるのは現実に起きる形(1999 年の毒 / 狂った時計 /
+ * 古い台帳のマージ / `note` を足した手編集)である。
+ */
+const CLOCK_SKEW_TOLERANCE_MS = 24 * 60 * 60 * 1000;   // 機の間の時計のずれを罪と呼ばない
+
+/** 走行が始まった時刻(history の最小 ts)。読めなければ null —— 0 で埋めない(第16条)。 */
+function runStartTs(run) {
+  const h = (run && Array.isArray(run.history)) ? run.history : [];
+  let min = null;
+  for (const ev of h) {
+    const t = ev && typeof ev.ts === 'string' ? ev.ts : null;
+    if (t && !isNaN(Date.parse(t)) && (min === null || t < min)) min = t;
+  }
+  return min;
+}
+
+/**
+ * 既存行が「正当な先着」と呼べるかを検める。呼べない理由を**列挙して**返す(第16条)。
+ * 空の配列 = 正当な先着 = 黙って skip してよい。
+ */
+function preemptionReasons(existing, entry, run, nowIso) {
+  const why = [];
+  if (!existing || typeof existing !== 'object') return why;
+  const ets = typeof existing.ts === 'string' ? existing.ts : null;
+  const start = runStartTs(run);
+  if (ets === null || isNaN(Date.parse(ets))) {
+    why.push(`既存行の ts が時刻として読めない (${JSON.stringify(existing.ts)})`);
+  } else {
+    if (start && ets < start) {
+      why.push(`既存行 ${ets} が走行の開始 ${start} より前に住む — 走行の前にその走行は観測できない`);
+    }
+    const skew = Date.parse(ets) - Date.parse(nowIso);
+    if (skew > CLOCK_SKEW_TOLERANCE_MS) {
+      why.push(`既存行 ${ets} が今 (${nowIso}) より未来に住む`);
+    }
+  }
+  const alien = alienKeys(existing);
+  if (alien.length) why.push(`秤が書かない鍵を持つ: ${alien.join(', ')}`);
+  return why;
+}
+
+/**
  * 採点して台帳に刻む。**同じ観測は二度刻まない(冪等)。**
  *
  * 予防(ここ)と治癒(`foldLedger`)を二重に敷く: 書き手の規律が競合等で
@@ -465,10 +606,11 @@ function readLedger(opts = {}) {
  * **台帳の第一の徳は「記録が失われない」ことである。**
  */
 function record(runFile, slug, index) {
-  const run = JSON.parse(fs.readFileSync(runFile, 'utf8'));
+  const run = readRunFile(runFile);
   const m = score(run);
+  const nowIso = new Date().toISOString();
   const entry = {
-    ts: new Date().toISOString(),
+    ts: nowIso,
     slug,
     scale: (run.meta && run.meta.scale) || null,
     metrics: m,
@@ -488,9 +630,17 @@ function record(runFile, slug, index) {
     // 読めない台帳は「書く」側に倒す。既存行は決して消さない。
     console.error(`⚠️ ledger unreadable, recording anyway: ${err.message}`);
   }
-  // 第一の記録を正とする(keep-first)。`skipped` は**返り値にだけ載る** ——
-  // 台帳のファイルには一字も書かない(足す鍵は `fp` 一つだけ)。
-  if (existing) return { ...existing, skipped: true };
+  /**
+   * 第一の記録を正とする(keep-first)。**ただし「第一」を無条件には信じない(F-1)。**
+   * 先回りの疑いが一つでも立てば skip せず、正当な観測を刻んだ上で名指す。
+   */
+  if (existing) {
+    const why = preemptionReasons(existing, entry, run, nowIso);
+    if (!why.length) return { ...existing, skipped: true };
+    fs.appendFileSync(ledgerPath(), JSON.stringify(entry) + '\n');
+    if (index instanceof Map) index.set(entry.fp, existing);   // 先着の座は動かさない(索引は既存を指したまま)
+    return { ...entry, preempted: true, preemptedBy: existing, reasons: why };
+  }
 
   fs.appendFileSync(ledgerPath(), JSON.stringify(entry) + '\n');
   // 索引を渡されている場合は、いま刻んだ行も索引に載せる ——
@@ -541,9 +691,17 @@ const HIGHER_BETTER = { score: true, firstPassRate: true, reworkCount: false, re
  * `entries` は引数で受ける —— 畳みを通っていない配列を渡されうる。
  * ゆえに順序非依存を**関数自身の性質**として持たせる(畳みとの二重防御)。
  * git マージ後の行順は時刻順ではない。行位置を時刻の代理にしてはならない。
+ *
+ * **読めない行の排除も関数自身の性質である(review-3 D-4)。** 絞りが `e.metrics` だけ
+ * だった頃、**too-deep で鍵を導けない行にも `metrics` は在る**ので、生の配列を渡すと
+ * 読めない行が「最新」になった(実測: `compare` の答えが `100→45 (-55)` から
+ * `100→1 (-99)` に化けた)。畳んだ列を渡すのは呼び手の作法であって、
+ * この関数の保証ではない —— **今日それが守られているのは幸運であって設計ではない。**
+ * 破損の標識(`__gaugeCorrupt`)も同じ理由でここで落とす。
  */
 function latestFor(slug, entries) {
-  const hits = (Array.isArray(entries) ? entries : []).filter(e => e && e.slug === slug && e.metrics);
+  const hits = (Array.isArray(entries) ? entries : []).filter(e =>
+    e && e.slug === slug && e.metrics && !isCorruptMark(e) && trueKey(e) !== null);
   if (!hits.length) return null;
   return hits.reduce((best, e) => (String(e.ts || '') > String(best.ts || '') ? e : best), hits[0]);
 }
@@ -570,11 +728,21 @@ function latestFor(slug, entries) {
  * 数え方はすべて**再導出した鍵**で行う。行の自己申告は数にも入れない(S-1)。
  * 第16条: 鍵の有無や `undefined` を 0 で埋めない —— 名指す。
  */
-function auditLedger(entries) {
-  const list = Array.isArray(entries) ? entries.filter(e => e && e.metrics) : [];
+function auditLedger(entries, opts = {}) {
+  const all = Array.isArray(entries) ? entries : [];
+  /**
+   * **読めなかった行を数える(F-2 / 第16条)。** `rows` の意味は一字も変えない
+   * (`rows` = 観測を持つ行の数。既存の門がこの意味で立っている)。
+   * 数えられなかった行は **`corrupt` という自分の鍵**で名乗る ——
+   * 重複にも distinct にも混ぜない。混ぜれば「掃除で消える欠陥」に化ける。
+   */
+  const corrupt = all.filter(isCorruptMark);
+  const list = all.filter(e => e && e.metrics && !isCorruptMark(e));
   const byFp = new Set();      // 相異なる trueKey の集合(R-7: 行を溜めても誰も読まなかった)
   const conflicts = [];
   let tooDeep = 0;
+  let suspect = 0;             // 先回りの痕跡を持つ行(未来の ts / 秤が書かない鍵)
+  const nowMs = Date.parse(opts.now || new Date().toISOString());
   for (const e of list) {
     const fp = trueKey(e);
     if (fp === null) {
@@ -592,21 +760,49 @@ function auditLedger(entries) {
         observations: [{ ts: e.ts, fp: e.fp, score: e.metrics && e.metrics.score }],
       });
     }
+    /**
+     * ── 先回りの痕跡(F-1 の監査側) ────────────────────────────
+     * `record` の予防は「その走行を記録しようとした時」にしか働かない。
+     * **毒が置かれたまま誰も record しなければ、予防は一度も発火しない。**
+     * ゆえに監査も独立に名指す —— 未来に住む行と、秤が書かない鍵を持つ行。
+     * どちらも人が中身を読むまで消えない = exit 2 の側である。
+     */
+    const why = [];
+    const ets = typeof e.ts === 'string' ? e.ts : null;
+    if (ets === null || isNaN(Date.parse(ets))) why.push(`ts が時刻として読めない (${JSON.stringify(e.ts)})`);
+    else if (!isNaN(nowMs) && Date.parse(ets) - nowMs > CLOCK_SKEW_TOLERANCE_MS) why.push(`ts が未来に住む`);
+    const alien = alienKeys(e);
+    if (alien.length) why.push(`秤が書かない鍵: ${alien.join(', ')}`);
+    if (why.length) {
+      suspect++;
+      conflicts.push({ slug: e.slug, kind: 'preemption-suspect', declared: e.fp || null, actual: fp,
+        reasons: why, observations: [{ ts: e.ts, fp: e.fp || null, score: e.metrics && e.metrics.score }] });
+    }
+  }
+  for (const c of corrupt) {
+    conflicts.push({ slug: null, kind: 'corrupt', declared: null, actual: null,
+      line: c.line, observations: [{ ts: null, fp: null, score: null }] });
   }
   const rows = list.length;
   const distinct = byFp.size + tooDeep;
   /**
-   * **`tooDeep` を返り値に載せる(第16条 / P-1)。** 「読めなかった行が何行あるか」は
-   * `conflicts` の中に埋もれさせてよい数ではない —— 呼び手(CLI)がこれを見て
-   * 「健全」と答えない義務を負う。0 で埋めず、数えて名乗る。
+   * **`tooDeep` / `corrupt` / `suspect` を返り値に載せる(第16条 / P-1 / F-2 / F-1)。**
+   * 「読めなかった行が何行あるか」は `conflicts` の中に埋もれさせてよい数ではない ——
+   * 呼び手(CLI)がこれを見て「健全」と答えない義務を負う。0 で埋めず、数えて名乗る。
    */
-  return { rows, distinct, tooDeep, duplicates: Math.max(0, rows - distinct), conflicts };
+  return { rows, distinct, tooDeep, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts };
 }
 
 function compare(a, b) {
   const entries = readLedger();
   const ea = latestFor(a, entries), eb = latestFor(b, entries);
-  if (!ea || !eb) throw new Error(`ledger has no entry for: ${!ea ? a : b} — 記録なき前後は比較できない`);
+  if (!ea || !eb) {
+    // **名指された slug が台帳に無いのは「引数の誤り」である**(review-3 D-3)。
+    // 2 は台帳の事故に予約する —— 打ち間違いを台帳の汚染として報告させない。
+    const err = new Error(`ledger has no entry for: ${!ea ? a : b} — 記録なき前後は比較できない`);
+    err.gaugeExit = 3;
+    throw err;
+  }
   const lines = [];
   lines.push('═══════ ⚖️  GAUGE COMPARE — 前後の証明 ═══════');
   lines.push(`  ${'metric'.padEnd(15)} ${a.padStart(10)} ${b.padStart(10)}   Δ`);
@@ -620,13 +816,25 @@ function compare(a, b) {
   return lines.join('\n');
 }
 
+/**
+ * 台帳の画面。**一行の破損で秤全体を倒さない(第55条 e / review-3 D-5)。**
+ *
+ * `baseline` は壊れた `conclave.json` を持つ創造物に `{slug, error}` を積む —— 実在する形である。
+ * その枝を落とすと `e.ts.slice` で画面が全滅する。error 枝だけでなく
+ * `ts` / `metrics` の欠落そのものにも耐えさせる(security-3 F-4 が名指した main 由来の穴)。
+ * **測れなかったものを 0 で埋めない** —— `?` と名乗る(第16条)。
+ */
 function renderLedger(entries) {
   const lines = ['═══════ 📒 GAUGE LEDGER ═══════'];
-  for (const e of entries) {
+  for (const e of (Array.isArray(entries) ? entries : [])) {
+    if (!e || typeof e !== 'object') { lines.push('  ✗ (読めない行)'); continue; }
+    if (isCorruptMark(e)) { lines.push(`  ✗ (破損行) ${String(e.line || '').slice(0, 48)}`); continue; }
     if (e.error) { lines.push(`  ✗ ${e.slug}: ${e.error}`); continue; }
-    lines.push(`  ${e.ts.slice(0, 16)}  ${String(e.metrics.score).padStart(3)}/100  ${e.slug}${e.scale ? ` (${e.scale})` : ''}`);
+    const ts = typeof e.ts === 'string' ? e.ts.slice(0, 16) : '(ts なし)      ';
+    const sc = (e.metrics && e.metrics.score != null) ? String(e.metrics.score) : '?';
+    lines.push(`  ${ts}  ${sc.padStart(3)}/100  ${e.slug}${e.scale ? ` (${e.scale})` : ''}`);
   }
-  if (entries.length === 0) lines.push('  (empty — まだ何も測られていない)');
+  if (!entries || entries.length === 0) lines.push('  (empty — まだ何も測られていない)');
   lines.push('═══════════════════════════════');
   return lines.join('\n');
 }
@@ -638,7 +846,7 @@ function main() {
     if (cmd === 'score') {
       const file = argv[1];
       if (!file) { console.error('usage: gauge.js score <run.json> [--json]'); process.exit(3); }
-      const run = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const run = readRunFile(file);
       const m = score(run);
       if (argv.includes('--json')) console.log(JSON.stringify(m));
       else console.log(renderScore(m, path.basename(path.dirname(path.resolve(file)))));
@@ -650,6 +858,20 @@ function main() {
       const slug = si >= 0 ? argv[si + 1] : null;
       if (!file || !slug) { console.error('usage: gauge.js record <run.json> --slug <slug>'); process.exit(3); }
       const e = record(file, slug);
+      /**
+       * **先回りを黙って飲み込まない(F-1)。** 「同じ観測は二度刻まない」が
+       * 「先に名乗った者が勝つ」に化けていた。正当な観測は既に刻んである ——
+       * ここでは何が起きたかを名指し、**人が読むべき事故として exit 2** を返す。
+       */
+      if (e.preempted) {
+        const b = e.preemptedBy || {};
+        console.log(`📒 recorded: ${e.slug} → ${e.metrics.score}/100 (${ledgerPath()})`);
+        console.error(`  🔴 先回りの疑い: 同一指紋 ${e.fp} の行が既に台帳に在るが、正当な先着とは認められない`);
+        console.error(`     既存行: ts=${JSON.stringify(b.ts)} slug=${JSON.stringify(b.slug)}`);
+        for (const r of (e.reasons || [])) console.error(`     - ${r}`);
+        console.error('     → 観測は刻んだ(記録は失わない)。既存行は人が読んで裁くこと。');
+        process.exit(2);
+      }
       // 二度目は沈黙しない —— 名乗る。**exit code は 0 のまま**(重複は失敗ではない)。
       if (e.skipped) console.log(`📒 already recorded: ${e.slug} → ${e.metrics.score}/100 @ ${e.ts} (同一指紋 ${fingerprint(e)}) — 追記しない`);
       else console.log(`📒 recorded: ${e.slug} → ${e.metrics.score}/100 (${ledgerPath()})`);
@@ -658,6 +880,13 @@ function main() {
     if (cmd === 'baseline') {
       const out = baseline();
       console.log(renderLedger(out));
+      const pre = out.filter(e => e && e.preempted);
+      if (pre.length) {
+        for (const e of pre) {
+          console.error(`  🔴 先回りの疑い: ${e.slug} (${e.fp}) — ${(e.reasons || []).join(' / ')}`);
+        }
+        process.exit(2);
+      }
       return;
     }
     if (cmd === 'compare') {
@@ -687,17 +916,26 @@ function main() {
        * R-2 が戒めた「鳴りっぱなしの門」に再びなる。
        */
       if (argv.includes('--audit')) {
-        const raw = readLedger({ raw: true });
+        /**
+         * **読めなかった行も数える(F-2)。** `withCorrupt` を渡すのはここだけである ——
+         * 掃除(FR-8)は生の列を書き戻す道具であり、標識が混ざれば台帳が汚れる。
+         * ファイルに N 行あって `rows=0` と答える道は、これで塞がる。
+         */
+        const raw = readLedger({ raw: true, withCorrupt: true });
         const a = auditLedger(raw);
-        console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length} too-deep=${a.tooDeep}`);
+        console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length} too-deep=${a.tooDeep} corrupt=${a.corrupt} suspect=${a.suspect}`);
         for (const c of a.conflicts) {
           if (c.kind === 'too-deep') {
             console.log(`  ⚠️ 読めない行: ${c.slug} — 入れ子が深すぎて鍵を導けない(> ${MAX_CANONICAL_DEPTH}。畳みでも掃除でも消してはならない)@ ${c.observations[0].ts}`);
+          } else if (c.kind === 'corrupt') {
+            console.log(`  ⚠️ 破損行: JSON として読めない — ${String(c.line || '').slice(0, 60)}…(畳みでも掃除でも消してはならない)`);
+          } else if (c.kind === 'preemption-suspect') {
+            console.log(`  ⚠️ 先回りの疑い: ${c.slug} — ${c.reasons.join(' / ')} (@ ${c.observations[0].ts}, score ${c.observations[0].score})`);
           } else {
             console.log(`  ⚠️ 矛盾: ${c.slug} — 名乗る指紋 ${c.declared} が中身から導かれる ${c.actual} と食い違う (@ ${c.observations[0].ts}, score ${c.observations[0].score})`);
           }
         }
-        const human = a.conflicts.length;   // forged-fp と too-deep はどちらも人の手が要る
+        const human = a.conflicts.length;   // forged-fp / too-deep / corrupt / 先回り はどれも人の手が要る
         if (human > 0) { console.log(`  🔴 人が読むべき行が ${human} 件ある — 掃除では消えない`); process.exit(2); }
         process.exit(a.duplicates > 0 ? 1 : 0);
       }
@@ -734,7 +972,15 @@ function main() {
     process.exit(3);
   } catch (e) {
     console.error('🔴 ' + e.message);
-    process.exit(2);
+    /**
+     * **exit code の規約を一段外でも守る(review-3 D-3)。**
+     * 旧実装はここで一律 2 を返した —— `score /no/such/file`(引数の誤り)が
+     * `--audit` の「台帳に人が読むべき事故がある」と同じ信号を運び、
+     * **P-8 が分けた信号がその一段外で崩れていた**。冒頭の散文は既に
+     * 「3 = 引数の誤り」と約束していたのだから、これは散文が嘘をついていた状態である。
+     * 引数由来の誤りは自分で `gaugeExit` を名乗る。それ以外(測れない run-state 等)は 2。
+     */
+    process.exit(e && e.gaugeExit ? e.gaugeExit : 2);
   }
 }
 
@@ -743,4 +989,6 @@ module.exports = {
   score, normalize, record, baseline, compare, readLedger, ledgerPath, WEIGHTS,
   // ── 冪等性の器(足すだけ。既存 export は一つも消さない・名も変えない) ──
   fingerprint, foldLedger, latestFor, auditLedger, keyIndex,
+  // ── F-1 / F-2 の器(足すだけ。既存 export は一つも消さない・名も変えない) ──
+  alienKeys, preemptionReasons, runStartTs, ENTRY_KEYS, CLOCK_SKEW_TOLERANCE_MS,
 };
