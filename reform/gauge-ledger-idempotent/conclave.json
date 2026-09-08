@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 3,
       "phases": [
         {
@@ -120,7 +120,7 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "running",
+          "status": "done",
           "attempts": 4,
           "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/graph/gauge.js",
           "dispatchedAt": "2026-09-08T14:12:51.422Z",
@@ -135,10 +135,10 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "rework",
-          "attempts": 3,
-          "artifactPath": null,
-          "dispatchedAt": "2026-09-08T11:39:37.602Z",
+          "status": "done",
+          "attempts": 4,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/tests/paradise.test.js",
+          "dispatchedAt": "2026-09-08T15:19:05.302Z",
           "resumes": 0
         }
       ],
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,10 +162,10 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "rework",
-          "attempts": 3,
-          "artifactPath": null,
-          "dispatchedAt": "2026-09-08T13:03:42.867Z",
+          "status": "done",
+          "attempts": 4,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/review-3.md",
+          "dispatchedAt": "2026-09-08T16:23:43.257Z",
           "resumes": 0
         },
         {
@@ -177,10 +177,10 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "rework",
-          "attempts": 3,
-          "artifactPath": null,
-          "dispatchedAt": "2026-09-08T13:03:42.867Z",
+          "status": "done",
+          "attempts": 4,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/security-report-3.md",
+          "dispatchedAt": "2026-09-08T16:23:43.258Z",
           "resumes": 0
         },
         {
@@ -192,10 +192,10 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "rework",
-          "attempts": 3,
-          "artifactPath": null,
-          "dispatchedAt": "2026-09-08T13:03:42.867Z",
+          "status": "done",
+          "attempts": 4,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/README.md",
+          "dispatchedAt": "2026-09-08T16:23:43.258Z",
           "resumes": 0
         },
         {
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/verify-report.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -236,10 +236,10 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "rework",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/tribunal-report.md",
+          "dispatchedAt": "2026-09-08T16:40:19.344Z",
           "resumes": 0
         },
         {
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/tribunal-report.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -462,6 +462,76 @@
       "ts": "2026-09-08T14:12:51.423Z",
       "event": "dispatch",
       "detail": "build"
+    },
+    {
+      "ts": "2026-09-08T15:19:05.250Z",
+      "event": "done",
+      "detail": "build → C:/Users/kikus/Documents/workspace/paradise/graph/gauge.js"
+    },
+    {
+      "ts": "2026-09-08T15:19:05.302Z",
+      "event": "dispatch",
+      "detail": "prove"
+    },
+    {
+      "ts": "2026-09-08T16:23:43.141Z",
+      "event": "done",
+      "detail": "prove → C:/Users/kikus/Documents/workspace/paradise/tests/paradise.test.js"
+    },
+    {
+      "ts": "2026-09-08T16:23:43.209Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-08T16:23:43.258Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-08T16:40:10.614Z",
+      "event": "done",
+      "detail": "verify → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/verify-report.md"
+    },
+    {
+      "ts": "2026-09-08T16:40:10.664Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-08T16:40:19.096Z",
+      "event": "done",
+      "detail": "review → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/review-3.md"
+    },
+    {
+      "ts": "2026-09-08T16:40:19.201Z",
+      "event": "done",
+      "detail": "security → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/security-report-3.md"
+    },
+    {
+      "ts": "2026-09-08T16:40:19.296Z",
+      "event": "done",
+      "detail": "docs → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/README.md"
+    },
+    {
+      "ts": "2026-09-08T16:40:19.344Z",
+      "event": "dispatch",
+      "detail": "reflect"
+    },
+    {
+      "ts": "2026-09-08T17:09:19.658Z",
+      "event": "done",
+      "detail": "reflect → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/tribunal-report.md"
+    },
+    {
+      "ts": "2026-09-08T17:09:19.710Z",
+      "event": "done",
+      "detail": "verdict → C:/Users/kikus/Documents/workspace/paradise/reform/gauge-ledger-idempotent/tribunal-report.md"
+    },
+    {
+      "ts": "2026-09-08T17:09:23.108Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "spawnTrace": {
@@ -525,6 +595,15 @@
         "rank": null,
         "at": "2026-09-08T11:39:37.470Z",
         "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-fcefbd5a",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T15:19:05.198Z",
+        "kind": "observed"
       }
     ],
     "prove": [
@@ -553,6 +632,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-08T13:03:42.709Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-b6d56b57",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T16:23:43.092Z",
         "kind": "observed"
       }
     ],
@@ -633,6 +721,39 @@
         "at": "2026-09-08T14:12:51.151Z",
         "kind": "observed"
       }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-46c65eb3",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T16:40:10.560Z",
+        "kind": "observed"
+      }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "sa-0-b6a69266",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T17:09:19.561Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "sa-0-b6a69266",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-08T17:09:19.609Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -664,17 +785,17 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 3 件の起動を観測: architect, architect, architect"
+        "序列1: 4 件の起動を観測: architect, architect, architect, architect"
       ],
-      "at": "2026-09-08T11:39:37.537Z"
+      "at": "2026-09-08T15:19:05.250Z"
     },
     "prove": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 3 件の起動を観測: tdd-guide, tdd-guide, tdd-guide"
+        "序列1: 4 件の起動を観測: tdd-guide, tdd-guide, tdd-guide, tdd-guide"
       ],
-      "at": "2026-09-08T13:03:42.760Z"
+      "at": "2026-09-08T16:23:43.140Z"
     },
     "review": {
       "declared": 1,
@@ -682,7 +803,7 @@
       "lines": [
         "序列1: 3 件の起動を観測: code-reviewer, code-reviewer, code-reviewer"
       ],
-      "at": "2026-09-08T14:12:51.203Z"
+      "at": "2026-09-08T16:40:19.096Z"
     },
     "security": {
       "declared": 1,
@@ -690,7 +811,7 @@
       "lines": [
         "序列1: 3 件の起動を観測: security-reviewer, security-reviewer, security-reviewer"
       ],
-      "at": "2026-09-08T14:12:51.257Z"
+      "at": "2026-09-08T16:40:19.200Z"
     },
     "docs": {
       "declared": 1,
@@ -698,7 +819,31 @@
       "lines": [
         "序列1: 2 件の起動を観測: doc-updater, doc-updater"
       ],
-      "at": "2026-09-08T14:12:51.312Z"
+      "at": "2026-09-08T16:40:19.296Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: verification-loop"
+      ],
+      "at": "2026-09-08T16:40:10.614Z"
+    },
+    "reflect": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: self-critic"
+      ],
+      "at": "2026-09-08T17:09:19.658Z"
+    },
+    "verdict": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: creation-judge"
+      ],
+      "at": "2026-09-08T17:09:19.709Z"
     }
   }
 }
