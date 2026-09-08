@@ -991,4 +991,13 @@ module.exports = {
   fingerprint, foldLedger, latestFor, auditLedger, keyIndex,
   // ── F-1 / F-2 の器(足すだけ。既存 export は一つも消さない・名も変えない) ──
   alienKeys, preemptionReasons, runStartTs, ENTRY_KEYS, CLOCK_SKEW_TOLERANCE_MS,
+  /**
+   * ── 画面を門から撃てるようにする(prove attempt 4 / D-5) ─────────────
+   * `renderLedger` の耐性(error 枝 / `ts` 欠落 / `metrics` 欠落 / 非オブジェクト行)は
+   * **CLI 越しには一部の枝しか届かない** —— `ledger` は `foldLedger` が非オブジェクトを
+   * 先に落とし、`compare --last` は `e.metrics` で絞る。ゆえに教主の実測では
+   * `e.ts.slice` / `e.metrics.score` / 非オブジェクト枝を壊しても**一門も鳴らなかった**。
+   * 純関数として直に撃てる形にする —— 撃てない実装は守られていない実装である(第21条)。
+   */
+  renderLedger,
 };
