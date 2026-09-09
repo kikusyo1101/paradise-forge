@@ -44,7 +44,7 @@
           "artifact": "findings.md",
           "status": "done",
           "attempts": 1,
-          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/discover.md",
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/findings.md",
           "dispatchedAt": "2026-09-09T03:49:01.756Z",
           "resumes": 0
         }
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -236,10 +236,10 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-09T09:52:04.417Z",
           "resumes": 0
         },
         {
@@ -276,7 +276,7 @@
     {
       "ts": "2026-09-09T04:07:45.763Z",
       "event": "done",
-      "detail": "discover → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/discover.md"
+      "detail": "discover → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/findings.md"
     },
     {
       "ts": "2026-09-09T04:07:48.358Z",
@@ -362,6 +362,11 @@
       "ts": "2026-09-09T09:37:49.609Z",
       "event": "ratify",
       "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-09T09:52:04.417Z",
+      "event": "dispatch",
+      "detail": "reflect"
     }
   ],
   "spawnTrace": {

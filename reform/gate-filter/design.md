@@ -2,7 +2,7 @@
 
 **相**: design(設計)／改革 `gate-filter`
 **日付**: 2026-09-09
-**入力**: `reform/gate-filter/discover.md`(471行・批准済み)、`reform/gate-filter/requirements.md`(572行・批准済み / FR10・NFR9・**AC22**・NG9)
+**入力**: `reform/gate-filter/findings.md`(471行・批准済み)、`reform/gate-filter/requirements.md`(572行・批准済み / FR10・NFR9・**AC22**・NG9)
 **約束**: 本書は設計のみを定める。**`tests/paradise.test.js` も `graph/` も `README.md` も一行も書き換えていない。**
 本書に引く行番号は design 相で自分の目で開いて確かめた。実験は `%LOCALAPPDATA%\Temp\paradise-gate-design\` の使い捨てで行い、実出力を本文に引いた。**全走(6分)は走らせていない**(不要だった)。
 

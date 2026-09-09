@@ -9,7 +9,7 @@
 
 ## 裁定
 
-**requirements.md / discover.md の「静的 442」は正しい。**
+**requirements.md / findings.md の「静的 442」は正しい。**
 **prove.md の「443」も review.md の「441」も、どちらも誤りである。**
 **`442 − 1 + 8 = 449` は「偶然正解している」のではなく、端から正しい。**
 

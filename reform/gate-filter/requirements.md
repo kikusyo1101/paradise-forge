@@ -2,7 +2,7 @@
 
 **相**: specify(要件定義)／改革 `gate-filter`
 **日付**: 2026-09-09
-**入力**: `reform/gate-filter/discover.md`(471行・批准済み)
+**入力**: `reform/gate-filter/findings.md`(471行・批准済み)
 **約束**: 本書は要件のみを定める。**engine もテストも一行も書き換えていない。**
 本書に引く行番号は、すべて specify 相で自分の目で開いて確かめたものである。
 数値は discover の実測をそのまま引く(再測はしていない。捏造もしていない)。
