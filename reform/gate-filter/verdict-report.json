@@ -1,0 +1,141 @@
+{
+  "slug": "gate-filter",
+  "produces": "artifact",
+  "wish": "楽園の engine に門の絞り込みの口を実装せよ — tests/paradise.test.js を名指しで走らせる",
+  "branch": "feat/gate-filter",
+  "head": "9db2942",
+  "measuredIn": "verdict 相が自分の手で走らせた実出力のみ。教主・他相の報告は一切写していない (第27条)。Windows / git-bash、作業樹 C:/Users/kikus/Documents/workspace/paradise、単独走行",
+
+  "build": "pass",
+  "buildEvidence": {
+    "note": "楽園はコンパイル工程を持たない。ゆえに build は「全ての常駐 engine の門が自分の目で緑を返すか」で裁いた。以下は verdict 相が実際に走らせた exit である。",
+    "gates": {
+      "node tests/paradise.test.js": "exit 0 — Paradise self-test: 455 passed, 0 failed",
+      "node graph/census.js check": "exit 0 — every number the paradise claims about itself is true",
+      "node graph/codex.js check": "exit 0 — 索引は本文と一致している (56 条)",
+      "node graph/check-agents.js": "exit 0 — the hierarchy is real, not declared",
+      "node graph/conclave.js audit": "exit 0 — 見捨てられた走行: 0 / 判定不能: 0 / 全 10",
+      "node graph/workspace.js check": "exit 0 — 創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし",
+      "node graph/wiring.js check": "exit 0 — engine 36 / 内の辺 53、孤児0・宙吊り0",
+      "node graph/branch-guard.js": "exit 0 — branch feat/gate-filter / 最新の main の上に立っている",
+      "node graph/apply-guards.js verify": "exit 0 — hook matcher 15 件すべて生きている",
+      "node graph/derived.js check": "exit 0 — no test asserts on derived content",
+      "node graph/critic.js review reform/gate-filter --lessons graph/lessons.json": "exit 0 — the critic found nothing (76 件の教訓で裁いた)"
+    }
+  },
+
+  "tests": {
+    "passed": 455,
+    "failed": 0,
+    "total": 455,
+    "command": "node tests/paradise.test.js  (引数なし全走 / background)",
+    "lastLine": "Paradise self-test: 455 passed, 0 failed",
+    "exit": 0,
+    "wallClock": "5m55.331s",
+    "seconds": 355.331,
+    "checkMarks": 547,
+    "crossMarks": 0,
+    "note": "verdict 相が自分で background に投げて得た実出力。✓ 行 547 / ✗ 行 0 は log の grep -c による実測。"
+  },
+
+  "security": {
+    "issues": 0,
+    "secrets": 0,
+    "assessed": true,
+    "secretScan": {
+      "command": "git diff main...HEAD --name-only | (reform/ を除く) → CONSTITUTION.INDEX.md / CONSTITUTION.md / README.md / tests/paradise.test.js を grep -cEi '(api[_-]?key|secret|password|passwd|token)\\s*[:=]\\s*[\"'][A-Za-z0-9/_+=-]{12,}|BEGIN .*PRIVATE KEY'",
+      "result": "SECRETS_FOUND=0"
+    },
+    "note": "出荷を止めるべき未解決の security 欠陥は 0 と裁いた。security 相が挙げた危険 4 本のうち、権限昇格・情報漏洩・外部からの攻撃面を持つものは 1 本も無い(この口はローカルで node を実行できる者だけが叩ける)。残る 3 本は下の acceptedRisks に受容済みの残債として明記した — 隠していない。",
+    "acceptedRisks": [
+      {
+        "id": "D-2",
+        "severity": "HIGH(security 相の格付け)/ 但し向きは偽陽性",
+        "claim": "共有 kgRoot に依存する門 4 本が単独走行で赤を出しうる。根治していない",
+        "mitigation": "教主が警告行を実装済み。verdict 相が実測: AC-05 走行の出力に 'Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない…(security D-2)' が実際に出た",
+        "whyNotBlocking": "誤りの向きが 緑→赤(偽の赤)であり、赤いものを緑と偽る向きではない。全走(CI と census が撃つ経路)は無傷"
+      },
+      {
+        "id": "F-3",
+        "severity": "重大(reflect 相の格付け)",
+        "claim": "門番 6 本の名が 'gate-filter: ' で揃っているので --gate-not '^gate-filter: ' の一語で全員黙らせられる",
+        "evidence": "verdict 相が実測: --gate-not '^gate-filter: ' --gate-list → 'Paradise gate list: 449 of 455 gates matched' / grep -c '^gate-filter: ' → 0",
+        "mitigation": "第56条の恒等式の錠は test() の外に在るので絞り込みでは消せない。verdict 相が実測: --gate-not '.' → exit 2 / '0 of 455 gates matched — nothing was measured'",
+        "whyNotBlocking": "門番は黙らせられるが、最後の錠は黙らない。かつ全走では GATE.active=false で門番 6 本が必ず走る"
+      },
+      {
+        "id": "ReDoS",
+        "severity": "LOW",
+        "claim": "悪い正規表現でハングする",
+        "evidence": "verdict 相が実測: timeout 30 node tests/paradise.test.js --gate '((.*)*)*zzzz' --gate-list → exit 124 (timeout)",
+        "whyNotBlocking": "攻撃者は既にローカルで node を実行できる立場。特権昇格も情報漏洩も無く、被害は自端末の停止のみ"
+      }
+    ]
+  },
+
+  "spec": {
+    "satisfied": true,
+    "unmet": [],
+    "acceptanceTotal": 22,
+    "acceptancePassed": 22,
+    "note": "AC 22 本すべてが ○。verify.md の時点で唯一 未実行 だった AC-15 を、verdict 相が本相で実際に走らせた(下記)。",
+    "ac15": {
+      "wasUnrunAtVerify": true,
+      "command": "PARADISE_GATE=zzz PARADISE_GATE_NOT=atlas GATE=zzz node -e \"console.log(JSON.stringify(require('./graph/census.js').census().tests))\"",
+      "result": "{\"passed\":455,\"failed\":0}",
+      "exit": 0,
+      "verdict": "○ — 環境変数で毒しても census は全走の 455 を返した。絞り込みは環境変数を一切読まない"
+    },
+    "residentGates": 6,
+    "residentGateNames": [
+      "gate-filter: 絞り込みは環境変数を読まない",
+      "gate-filter: census は自己診断を素で呼ぶ",
+      "gate-filter: マッチ 0 件は緑ではない — exit 2 で鳴る (AC-11 / 第16条)",
+      "gate-filter: 絞り込んだ走行は Paradise self-test: を名乗らない (AC-13 / 第22条)",
+      "gate-filter: 絞り込み走行の最終行は census / tribunal の双方に読まれない (AC-14 / 第22条)",
+      "gate-filter: 名指した門を走らせない走行は測定ではない — 数が閉じる (reflect F-1/F-2)"
+    ],
+    "openGaps": [
+      "手順止まりの AC が 16 本(AC-01〜10 / AC-12 / AC-18〜22)。常駐の門は 6 本まで。特に die() の 1 行に AC-12/18/19/20 の 4 本がぶら下がっている(reflect F-6)",
+      "F-5: 楽園は「最後に全走したのがいつか」を記憶する台帳を持たない(第56条(c)(d) が要求するが未実装)",
+      "F-4: critic.js は reform/* に scope 主語が無いため 76 件の教訓がほぼ全て out-of-scope で素通りする。critic の exit 0 は空虚な緑でありうる(reform の道そのものの穴。本改革の産物ではない)"
+    ]
+  },
+
+  "performance": {
+    "article": 38,
+    "before": { "gates": 449, "seconds": 358.8, "sourcedFrom": "改革前の基準値(本相では再現不能 — 実装が既に変わっているため)" },
+    "afterFullRun": { "gates": 455, "seconds": 355.331, "measuredBy": "verdict 相", "command": "node tests/paradise.test.js" },
+    "afterFiltered": {
+      "gates": 453,
+      "seconds": 20.664,
+      "measuredBy": "verdict 相",
+      "command": "time node tests/paradise.test.js --gate-not 'atlas: 全ての道が図になる' --gate-not 'atlas: 門は己の残骸で落ちない'",
+      "lastLine": "Paradise gate-filter: 453 of 455 gates matched — 453 green, 0 red",
+      "exit": 0
+    },
+    "statement": "453 本を 20.664 秒で測った(前: 449 本を 358.8 秒)。全走は 455 本を 355.331 秒。"
+  },
+
+  "diff": {
+    "files": 17,
+    "implementationFiles": 4,
+    "note": "git diff main...HEAD --name-only。実装側は tests/paradise.test.js / CONSTITUTION.md / CONSTITUTION.INDEX.md / README.md の 4 本。残る 13 本は reform/gate-filter/ の記録"
+  },
+
+  "trajectory": {
+    "score": 80,
+    "complete": false,
+    "phasesTotal": 11,
+    "phasesDone": 10,
+    "domainsTotal": 6,
+    "domainsRatified": 5,
+    "firstPassRate": 1,
+    "reworkCount": 0,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "durationMs": 26228997,
+    "command": "node graph/gauge.js score reform/gate-filter/conclave.json --json",
+    "note": "complete=false / phasesDone 10 は verdict 相が未 done だからである(この判定そのものが 11 本目)"
+  }
+}
