@@ -1270,8 +1270,17 @@ way to change what "complete" means.
     Write フックは、`docs/adr/*.md` を持つ他所の OSS を開いた瞬間、そのリポジトリを
     この機でだけ壊した。**規約はリポジトリと共に配られよ。機に貼り付けるな。**
 
+    (e) **除去にも射程が要る。「条件を持てない」と「条件を持たない」は違う。**
+    この条を強制する機構自身が、最初の実装で SessionStart と Stop の門を
+    消しかけた —— `tool_input` はツール事象にしか存在しないので、
+    非ツール系のハンドラは条件判定を **原理的に満たせない**。
+    満たせない者を「満たしていない」と裁けば、無実の門が黙って消える。
+    ゆえに除去は **非ゼロ終了がツール呼び出しを止める event** に閉じよ。
+    同じ理由で、`exit 1` という **文字列**をメッセージ本文に含むだけの
+    通知の門を BLOCK と誤認してはならない。**修理を裁く機構も修理である。**
+
     **これを強制する門**: `graph/apply-guards.js` の `isUnconditionalBlock` /
-    `handlerCarriesCondition` と、`FORBIDDEN_HOOKS` の名指し。回帰は
+    `handlerCarriesCondition`・`TOOL_GATE_EVENTS` と、`FORBIDDEN_HOOKS` の名指し。回帰は
     `tests/guards.test.js` の「Unconditional BLOCK」節 —— 修復の拒否・配備済みの
     除去・**止めない門を誤って外さないこと**の三方向を撃つ。
 

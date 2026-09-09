@@ -84,7 +84,11 @@ const KNOWN_TOOLS = [
 /** ハンドラが「止める」側か — 非ゼロ終了を書いているか。 */
 function handlerBlocks(command) {
   const c = command == null ? '' : String(command);
-  return /process\.exit\(\s*[1-9]/.test(c) || /\bexit\s+[1-9]/.test(c);
+  // `\bexit\s+[1-9]` では足りなかった: 通知だけの門が
+  // `console.error('hint: run exit 1 to stop')` と書いていると BLOCK と誤認する。
+  // 誤認した門は黙って外される —— **無実の門を消す修理**は、直した門より重い。
+  // ゆえにシェルの `exit` は **文の境**(行頭 / `;` / `&&` / `||`)で始まるものだけを見る。
+  return /process\.exit\(\s*[1-9]/.test(c) || /(^|[;&|\n{])\s*exit\s+[1-9]/.test(c);
 }
 
 /**
@@ -104,6 +108,17 @@ function handlerCarriesCondition(command) {
  * その hook group は「当たった全てを無条件に止める」か。
  * 生きた matcher × 止めるハンドラ × `if` 無し × スクリプト側の条件も無し。
  */
+/**
+ * 非ゼロ終了が **ツール呼び出しそのものを止める** event。
+ *
+ * `tool_input` はツール事象にしか存在しない。ゆえに SessionStart / Stop /
+ * SessionEnd のハンドラは `handlerCarriesCondition` を **原理的に満たせない**。
+ * 除去をこの一覧に閉じなければ、非ツール系の門は「条件を持てない」という
+ * ただそれだけの理由で全て無条件 BLOCK と裁かれ、黙って消える。
+ * 実測: SessionStart / Stop の門が除去対象になっていた。
+ */
+const TOOL_GATE_EVENTS = ['PreToolUse'];
+
 function isUnconditionalBlock(group) {
   if (!group || typeof group !== 'object') return false;
   if (classify(group.matcher).status !== 'live') return false;  // 死んだ門は何も止めない
@@ -637,7 +652,7 @@ function buildDesired(settings) {
             matcher: String(g && g.matcher), description: (g && g.description) || '', note: why });
           return;
         }
-        if (isUnconditionalBlock(g)) {
+        if (TOOL_GATE_EVENTS.includes(event) && isUnconditionalBlock(g)) {
           changes.push({ kind: 'unconditional-block', event, index: i,
             matcher: String(g && g.matcher), description: (g && g.description) || '',
             note: 'removed — blocks every ' + String(g && g.matcher)
@@ -823,7 +838,7 @@ module.exports = {
   classify, diagnose, diagnoseSettings,
   extractTools, extractConditions, toolsToMatcher, conditionToIf, repairGroup,
   handlerBlocks, handlerCarriesCondition, isUnconditionalBlock,
-  FORBIDDEN_HOOKS, forbiddenReason,
+  FORBIDDEN_HOOKS, forbiddenReason, TOOL_GATE_EVENTS,
   envDrift, repairEnv, hookHealth, commandExe, splitPathList, resolvesIn,
   readSettings, permissionsMatch, buildDesired, diff, apply, verify,
 };

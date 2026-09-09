@@ -672,6 +672,39 @@ test('every FORBIDDEN_HOOKS entry carries a reason', () => {
   }
 });
 
+// レビューで見つかった、この修正自身が開いた面 (第57条(c) を自分に適用する)。
+// 「無条件 BLOCK を外す」機構は、外してはならない門まで外しかけていた。
+
+test('removal is scoped to tool-gating events — a SessionStart hook survives', () => {
+  const s = { hooks: { SessionStart: [{ matcher: '*',
+    hooks: [{ type: 'command', command: "node -e \"if(!ok){process.exit(1)}\"" }] }] } };
+  const { next } = G.buildDesired(s);
+  assert.strictEqual(next.hooks.SessionStart.length, 1,
+    'tool_input を持ちえない event の門を、条件が無いという理由で消してはならない');
+});
+
+test('removal is scoped to tool-gating events — a Stop hook survives', () => {
+  const s = { hooks: { Stop: [{ matcher: '*',
+    hooks: [{ type: 'command', command: "node -e \"process.exit(1)\"" }] }] } };
+  const { next } = G.buildDesired(s);
+  assert.strictEqual(next.hooks.Stop.length, 1);
+});
+
+test('TOOL_GATE_EVENTS names only events where a non-zero exit stops the tool', () => {
+  assert.deepStrictEqual(G.TOOL_GATE_EVENTS, ['PreToolUse']);
+});
+
+test('handlerBlocks does not mistake "exit 1" inside a message for a block', () => {
+  const notify = "node -e \"console.error('hint: run exit 1 to stop')\"";
+  assert.strictEqual(G.handlerBlocks(notify), false,
+    '無実の門を BLOCK と誤認すれば、その門は黙って外される');
+});
+
+test('handlerBlocks still catches a real shell exit at a statement boundary', () => {
+  assert.strictEqual(G.handlerBlocks("grep -q x file || exit 1"), true);
+  assert.strictEqual(G.handlerBlocks("node -e \"process.exit(1)\""), true);
+});
+
 test('the real machine enforces no unconditional BLOCK', () => {
   if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
   const s = G.readSettings(G.SETTINGS);
