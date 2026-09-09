@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -120,9 +120,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/build.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -135,11 +135,11 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/prove.md",
           "dispatchedAt": null,
-          "resumes": 0
+          "resumes": 1
         }
       ],
       "reviewClass": "cardinal:quality",
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,9 +162,9 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/review.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -177,9 +177,9 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/security.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -192,9 +192,9 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/docs.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/verify.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -307,6 +307,61 @@
       "ts": "2026-09-09T04:31:23.614Z",
       "event": "ratify",
       "detail": "Architecture (設計) ratified by cardinal:requirements"
+    },
+    {
+      "ts": "2026-09-09T05:34:51.506Z",
+      "event": "done",
+      "detail": "build → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/build.md"
+    },
+    {
+      "ts": "2026-09-09T05:34:51.570Z",
+      "event": "dispatch",
+      "detail": "prove"
+    },
+    {
+      "ts": "2026-09-09T06:22:23.124Z",
+      "event": "done",
+      "detail": "build → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/build.md"
+    },
+    {
+      "ts": "2026-09-09T06:22:39.265Z",
+      "event": "resume",
+      "detail": "prove"
+    },
+    {
+      "ts": "2026-09-09T07:11:58.471Z",
+      "event": "done",
+      "detail": "prove → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/prove.md"
+    },
+    {
+      "ts": "2026-09-09T07:12:05.076Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-09T08:42:29.751Z",
+      "event": "done",
+      "detail": "review → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/review.md"
+    },
+    {
+      "ts": "2026-09-09T08:42:29.802Z",
+      "event": "done",
+      "detail": "security → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/security.md"
+    },
+    {
+      "ts": "2026-09-09T08:42:29.853Z",
+      "event": "done",
+      "detail": "docs → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/docs.md"
+    },
+    {
+      "ts": "2026-09-09T09:37:49.560Z",
+      "event": "done",
+      "detail": "verify → C:/Users/kikus/Documents/workspace/paradise/reform/gate-filter/verify.md"
+    },
+    {
+      "ts": "2026-09-09T09:37:49.609Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
     }
   ],
   "spawnTrace": {
@@ -342,6 +397,81 @@
         "at": "2026-09-09T04:31:23.510Z",
         "kind": "observed"
       }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-4ca39a9e",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T05:34:51.442Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-4ca39a9e",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T06:22:23.060Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-c841674b",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T07:11:58.409Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-a5781b46",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T08:42:29.610Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-0-9e7a9563",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T08:42:29.655Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-0-ec0ded1b",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T08:42:29.701Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-5e87ff51",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-09T09:37:49.510Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -368,6 +498,54 @@
         "序列1: 1 件の起動を観測: architect"
       ],
       "at": "2026-09-09T04:31:23.562Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 2 件の起動を観測: architect, architect"
+      ],
+      "at": "2026-09-09T06:22:23.124Z"
+    },
+    "prove": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: tdd-guide"
+      ],
+      "at": "2026-09-09T07:11:58.470Z"
+    },
+    "review": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: code-reviewer"
+      ],
+      "at": "2026-09-09T08:42:29.750Z"
+    },
+    "security": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: security-reviewer"
+      ],
+      "at": "2026-09-09T08:42:29.802Z"
+    },
+    "docs": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: doc-updater"
+      ],
+      "at": "2026-09-09T08:42:29.852Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: verification-loop"
+      ],
+      "at": "2026-09-09T09:37:49.560Z"
     }
   }
 }
