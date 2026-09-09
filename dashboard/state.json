@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-07T10:28:25.239Z",
+  "generated": "2026-09-09T11:27:34.318Z",
   "pipeline": [
     {
       "id": "discover",
@@ -126,7 +126,7 @@
     "No secrets in code; security is reviewed, never assumed."
   ],
   "graph": {
-    "nodeCount": 109,
+    "nodeCount": 120,
     "edgeCount": 33,
     "nodes": [
       {
@@ -782,6 +782,72 @@
         "type": "lesson",
         "label": "印の有無だけを見る門は印を消せば消える",
         "degree": 0
+      },
+      {
+        "id": "abandoned-run-must-ring",
+        "type": "lesson",
+        "label": "見捨てられた走行は機構が名指しする — マージは環の完了ではない",
+        "degree": 0
+      },
+      {
+        "id": "critic-exemption-self-declaration",
+        "type": "lesson",
+        "label": "門は免除の自己申告を信じない — 空の .paradise-source 1個で創造物の掟3法が素通りした。免除の資格は住所(workspace.js)が裏付ける。免除も却下も必ず名指しで出力に残す (第54条)",
+        "degree": 0
+      },
+      {
+        "id": "ring-not-closed-by-merge",
+        "type": "lesson",
+        "label": "マージは環の完了ではない — 実装が main へ入っても走行帳が 5/11 のまま週単位で放置された実例がある。域を健全と断ずる前に node graph/conclave.js audit で実測せよ|check",
+        "degree": 0
+      },
+      {
+        "id": "mutation-author-is-blind-to-own-net",
+        "type": "lesson",
+        "label": "自分で打った変異が全部鳴っても網は証明されない",
+        "degree": 0
+      },
+      {
+        "id": "repair-opens-a-new-surface",
+        "type": "lesson",
+        "label": "修理は次の攻撃面を開く — 差分が塞いだ穴でなく差分が開いた面を撃て",
+        "degree": 0
+      },
+      {
+        "id": "idempotent-key-can-be-preempted",
+        "type": "lesson",
+        "label": "決定的な冪等鍵は先取りできる — 冪等化は先回り毒の面を必ず開く",
+        "degree": 0
+      },
+      {
+        "id": "rework-four-times-is-a-design-debt",
+        "type": "lesson",
+        "label": "四度の差し戻しは実装の弱さでなく設計の空白である",
+        "degree": 0
+      },
+      {
+        "id": "gate-filter",
+        "type": "reform",
+        "label": "門の絞り込みの口 — 自己診断を名指しで走らせる。449本を20.7秒(前: 449本を358.8秒)。第56条を生んだ",
+        "degree": 0
+      },
+      {
+        "id": "selection-must-run",
+        "type": "lesson",
+        "label": "選んだ門を走らせない走行は測定ではない。matched=green+red の恒等式を、選別を行う関数の外側で検めよ|check",
+        "degree": 0
+      },
+      {
+        "id": "warden-outside-selection",
+        "type": "lesson",
+        "label": "門番が絞り込みの対象なら門番ではない。機構を見張る門は、その機構が選び落とせない位置に置け|check",
+        "degree": 0
+      },
+      {
+        "id": "artifact-name-is-machine-contract",
+        "type": "lesson",
+        "label": "相の名(discover)と成果物の名(findings.md)は別物。critic は名前で探すので、成果物の名は機械に合わせよ|findings",
+        "degree": 0
       }
     ],
     "edges": [
@@ -958,7 +1024,8 @@
       "run": 3,
       "creation": 7,
       "verdict": 1,
-      "lesson": 75
+      "lesson": 85,
+      "reform": 1
     }
   },
   "lessons": [
@@ -1336,6 +1403,56 @@
       "id": "epoch-marker-needs-a-timestamp",
       "label": "印の有無だけを見る門は印を消せば消える",
       "check": "移行のための恩赦(epoch なしは unobservable)は、印を消しただけの走行にも同じ恩赦を与えた。導入時刻を engine の中に持ち created と比べれば legacy と門の回避を機械で分けられる。恩赦は移行のためであって回避のためではない|applies:paradise-internal|kind:mechanism"
+    },
+    {
+      "id": "abandoned-run-must-ring",
+      "label": "見捨てられた走行は機構が名指しする — マージは環の完了ではない",
+      "check": "走行帳が domains ratified < 全数 のまま一定期間無音なら engine が名指しせよ (conclave.js audit / runAbandonment)。実測: reform-claude-md-diet は 4/6 のまま 6.9日 放置され実装だけ PR #23 でマージされ 95 コミット何も鳴らなかった。相を見る phaseSilence は running の dispatchedAt しか読まないので、pending のまま忘れられた走行には構造的に映らない — 走行そのものを見る別の目が要る。閾値は STALE/SILENT と別物で 1 箇所にだけ置き、実測(閉じた走行 5 本の全事象間隔 173 件 max=110.4分)を越える境に据える。時刻を読めない走行帳は 0 で埋めず null のまま名指しせよ (第16条)。また reform の走行帳が創造物の倉に迷い込む流出は strayCreations の逆向きであり workspace.strayRuns が見る — 混入は履歴を汚すだけだが流出は審査そのものを迂回する|check|applies:paradise-internal"
+    },
+    {
+      "id": "critic-exemption-self-declaration",
+      "label": "門は免除の自己申告を信じない — 空の .paradise-source 1個で創造物の掟3法が素通りした。免除の資格は住所(workspace.js)が裏付ける。免除も却下も必ず名指しで出力に残す (第54条)",
+      "check": "門は免除の自己申告を信じない — 空の .paradise-source 1個で創造物の掟3法が素通りした。免除の資格は住所(workspace.js)が裏付ける。免除も却下も必ず名指しで出力に残す (第54条)|applies:paradise"
+    },
+    {
+      "id": "ring-not-closed-by-merge",
+      "label": "マージは環の完了ではない — 実装が main へ入っても走行帳が 5/11 のまま週単位で放置された実例がある。域を健全と断ずる前に node graph/conclave.js audit で実測せよ|check",
+      "check": "マージは環の完了ではない — 実装が main へ入っても走行帳が 5/11 のまま週単位で放置された実例がある。域を健全と断ずる前に node graph/conclave.js audit で実測せよ|check|applies:paradise"
+    },
+    {
+      "id": "mutation-author-is-blind-to-own-net",
+      "label": "自分で打った変異が全部鳴っても網は証明されない",
+      "check": "自分で打った変異が全部鳴っても網は証明されない — 変異を設計した者と門を設計した者が同じなら、変異は門の想像の外を撃たない。この環では prove1 が24門で『無音ゼロ』と報告した直後に review が別の8件の無音を見つけ、prove2 が『無音ゼロ』と報告した直後に review-2 が別の39変異で14件の無音を見つけた。二度連続で同じ形で裏切られている。ゆえに prove の主張は『無音ゼロ』ではなく『私が打ったN種の範囲で無音ゼロ』と述べ、網の証明は必ず別の者が別の軸(層・経路・呼び手)で撃つまで保留せよ|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "repair-opens-a-new-surface",
+      "label": "修理は次の攻撃面を開く — 差分が塞いだ穴でなく差分が開いた面を撃て",
+      "check": "修理は次の攻撃面を開く — 差分が塞いだ穴でなく、差分が新しく可能にしたことを撃て。この環では二度連鎖した: S-2(無制限再帰)の修理が P-1(読めなかった行を0件と偽る)を生み、冪等化そのものが F-1(先回り毒 — main には存在しない穴)を生んだ。どちらも修理の直後の相では見つからず、次の差し戻しで初めて出た。build の後の security/review は『この差分は何を新しく可能にしたか』を専用の節として先に問い、main と HEAD を切り分けて『本改革が作った穴か』を毎回名指せ|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "idempotent-key-can-be-preempted",
+      "label": "決定的な冪等鍵は先取りできる — 冪等化は先回り毒の面を必ず開く",
+      "check": "決定的な冪等鍵は先取りできる。冪等性の成立条件として鍵の材料から ts を外すと、鍵は誰でも事前に計算でき『同じ観測は二度刻まない』が『先に名乗った者が勝つ』に化ける。攻撃者は要らない — 狂った時計と古い台帳のマージが同じ形で現れる。設計段階で『鍵を先取りされたら何が起きるか』を問い、書き手は skip する前に既存行を検め(走行開始より前に住むか/未来に住むか/秤が書かない鍵を持つか)、正当な観測は必ず追記した上で先回りとして名乗れ。監査は誰も書かない場合に備えて独立に suspect を数えること|applies:gauge"
+    },
+    {
+      "id": "rework-four-times-is-a-design-debt",
+      "label": "四度の差し戻しは実装の弱さでなく設計の空白である",
+      "check": "四度の差し戻しは実装の弱さでなく設計の空白である。この環の差し戻し4件のうち3件(無音の門・修理が生んだ病・先回り毒)は、design.md が『網をどう設計するか』と『この設計が新しく開く面』を一節も持たなかったことに帰する。設計相は FR ごとに(1)この設計が新しく可能にすること(2)網を誰がどの軸で撃つか(3)自作の変異では届かない層 を明示せよ。設計に一時間払わずに差し戻しで十時間払った|applies:paradise-internal|kind:conduct"
+    },
+    {
+      "id": "selection-must-run",
+      "label": "選んだ門を走らせない走行は測定ではない。matched=green+red の恒等式を、選別を行う関数の外側で検めよ|check",
+      "check": "選んだ門を走らせない走行は測定ではない。matched=green+red の恒等式を、選別を行う関数の外側で検めよ|check|applies:paradise-internal"
+    },
+    {
+      "id": "warden-outside-selection",
+      "label": "門番が絞り込みの対象なら門番ではない。機構を見張る門は、その機構が選び落とせない位置に置け|check",
+      "check": "門番が絞り込みの対象なら門番ではない。機構を見張る門は、その機構が選び落とせない位置に置け|check|applies:paradise-internal"
+    },
+    {
+      "id": "artifact-name-is-machine-contract",
+      "label": "相の名(discover)と成果物の名(findings.md)は別物。critic は名前で探すので、成果物の名は機械に合わせよ|findings",
+      "check": "相の名(discover)と成果物の名(findings.md)は別物。critic は名前で探すので、成果物の名は機械に合わせよ|findings|applies:paradise-internal"
     }
   ],
   "creations": [
@@ -1353,18 +1470,6 @@
     },
     {
       "name": "pomodoro",
-      "files": 10,
-      "verdict": "SHIP",
-      "hasFindings": true
-    },
-    {
-      "name": "reform-claude-md-diet",
-      "files": 7,
-      "verdict": null,
-      "hasFindings": true
-    },
-    {
-      "name": "reform-eval-gauge",
       "files": 10,
       "verdict": "SHIP",
       "hasFindings": true

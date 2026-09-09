@@ -16,11 +16,76 @@ const ENGINE = path.join(DIR, '..', 'graph', 'graph-engine.js');
 const KG = path.join(DIR, '..', 'graph', 'kg.js');
 const engine = require(path.join(DIR, '..', 'graph', 'graph-engine.js'));
 
+// >>> gate-filter: 絞り込み塊 ここから  (AC-16 の門がこの対を読む — 対を消すな)
+/**
+ * 門の絞り込みの口 (reform/gate-filter)。**CLI 引数のみ。環境変数は一つも読まない。**
+ * graph/census.js:90 は自己診断を素で呼び env を丸ごと継承する。env で受ければ
+ * census が絞り込み後の数を README に持ち込む(第22条 / requirements FR-02)。
+ * この塊に環境変数の読み取りを書き足したら AC-16 の門が赤くなる。それは誤検知ではない。
+ */
+const GATE = (() => {
+  const argv = process.argv.slice(2);
+  const inc = [], exc = [];
+  let list = false;
+  const die = (msg) => { process.stderr.write(msg + '\n'); process.exit(2); };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--gate-list') { list = true; continue; }
+    if (a === '--gate' || a === '--gate-not') {
+      const v = argv[i + 1];
+      if (v === undefined || v === '' || /^--/.test(v)) {
+        die(`Paradise gate-filter: ${a} requires a pattern`);
+      }
+      (a === '--gate' ? inc : exc).push(v);
+      i++; continue;
+    }
+    die(`Paradise gate-filter: unknown flag ${a}`);
+  }
+  // パターンは走行開始時に 1 度だけコンパイルする (AC-22: 451 回のコンパイルは代を払う)
+  const comp = (arr) => arr.map((p) => {
+    try { return new RegExp(p); }
+    catch (e) { die(`Paradise gate-filter: invalid pattern ${p}: ${e.message}`); }
+  });
+  const INC = comp(inc), EXC = comp(exc);
+  const SAY = process.stdout.write.bind(process.stdout);
+  return {
+    list,
+    active: INC.length > 0 || EXC.length > 0 || list,
+    total: 0,      // 登録された門の総数 (= 分母)
+    matched: 0,    // 絞り込みを通った門の数 (= 分子)
+    say(line) { SAY(line + '\n'); },   // console.log が黙らされても届く口
+    wants(name) {
+      if (INC.length && !INC.some((re) => re.test(name))) return false;
+      if (EXC.some((re) => re.test(name))) return false;
+      return true;
+    },
+  };
+})();
+// --gate-list は名だけを並べる。節見出し(console.log)は構造ではないので黙らせる。
+// ここより後の 33 個の console.log を一つも書き換えないための一行である (NFR-04)。
+const SAY = process.stdout.write.bind(process.stdout);
+if (GATE.list) console.log = () => {};
+
 let pass = 0, fail = 0;
 function test(name, fn) {
+  /**
+   * **`typeof GATE` で守る理由(build 相の実測。設計の見落としだった)。**
+   * 4907 行の門「test() の失敗が必ず数に載る」は、この関数の**ソースを抜き出して
+   * `node -e` の子プロセスで走らせる**。子には `let pass=0,fail=0;` しか無いので、
+   * `GATE` を裸で参照すると `ReferenceError` で門が落ちる —— 実測で落ちた。
+   * その門は「集計行が嘘をつかないこと」を守る門の根であり、緩めてはならない。
+   * ゆえに絞り込みの側が退く。**絞り込みが無い世界でも test() は単体で正しく数える。**
+   */
+  if (typeof GATE !== 'undefined') {
+    GATE.total++;
+    if (GATE.active && !GATE.wants(name)) return;
+    GATE.matched++;
+    if (GATE.list) { GATE.say(name); return; }          // fn を呼ばない
+  }
   try { fn(); console.log('  \u2713 ' + name); pass++; }
   catch (e) { console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; }
 }
+// <<< gate-filter: 絞り込み塊 ここまで  (AC-16 の門がこの対を読む — 対を消すな)
 
 // --- Graph engine ---
 console.log('Graph engine:');
@@ -8211,8 +8276,231 @@ test('abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (
   assert.ok(rep.pass >= 11, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
 });
 
+// --- gate-filter: 絞り込みの口が掟を破らないことを、自己診断が自分で見張る (第16条 / 第22条) ---
+console.log('\n門の絞り込み (gate-filter / 第22条):');
+test('gate-filter: 絞り込みは環境変数を読まない', () => {
+  // 第22条: census.js:90 は自己診断を素で呼び env を丸ごと継承する。
+  // ゆえに絞り込みが env を読めば、census が絞り込み後の数を README に持ち込む。
+  // マーカーの完全形をこの門の本文に書かない — 自分自身が偽のマーカーにならないため。
+  const MS = '// >>>' + ' gate-filter: 絞り込み塊 ここから';
+  const ME = '// <<<' + ' gate-filter: 絞り込み塊 ここまで';
+  const src = fs.readFileSync(__filename, 'utf8');
+  const at = (m) => {
+    const re = new RegExp('^' + m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gm');
+    return [...src.matchAll(re)];
+  };
+  const ss = at(MS), ee = at(ME);
+  assert.strictEqual(ss.length, 1, `開始マーカーが ${ss.length} 個ある — 塊の境が曖昧では門にならない`);
+  assert.strictEqual(ee.length, 1, `終了マーカーが ${ee.length} 個ある — 同上`);
+  assert.ok(ss[0].index < ee[0].index, '絞り込み塊のマーカーが前後逆になっている');
+  const block = src.slice(ss[0].index, ee[0].index);
+  // 塊が痩せていないことを確かめる — 空の塊なら env が 0 件なのは当たり前で、門ではない (第16条)
+  assert.ok(/function test\(name, fn\)/.test(block), '絞り込み塊が test() を含んでいない — マーカーが縮んだ');
+  assert.ok(/--gate-list/.test(block), '絞り込み塊が引数解釈を含んでいない — マーカーが縮んだ');
+  assert.ok(block.length > 400, `絞り込み塊が ${block.length} 字しか無い — 実質を持たない塊は門にならない`);
+  // 本題
+  const hits = block.match(/process\.env/g) || [];
+  assert.strictEqual(hits.length, 0,
+    `絞り込み塊が process.env を ${hits.length} 箇所読んでいる — census が env を継承する以上これは第22条違反`);
+});
+test('gate-filter: census は自己診断を素で呼ぶ', () => {
+  // graph/census.js:90 が自己診断を起こす唯一の呼び口。引数配列はスクリプトパス 1 個のみ。
+  // 将来ここに '--gate' が足されたら、census が測る数は「全走の数」でなくなる (第22条)。
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'census.js'), 'utf8');
+  const calls = [...src.matchAll(/execFileSync\(\s*process\.execPath\s*,\s*\[([\s\S]*?)\]\s*,/g)];
+  assert.strictEqual(calls.length, 1,
+    `census.js の自己診断呼び口が ${calls.length} 箇所ある — 一箇所を見張っても意味が無い`);
+  const argsSrc = calls[0][1];
+  assert.ok(/paradise\.test\.js/.test(argsSrc), `census.js の呼び口が paradise.test.js を指していない: ${argsSrc}`);
+  // トップレベルのカンマを数える = 引数の個数。入れ子の path.join(...) のカンマを数えないため。
+  let depth = 0, arity = argsSrc.trim() ? 1 : 0;
+  for (const ch of argsSrc) {
+    if (ch === '(' || ch === '[' || ch === '{') depth++;
+    else if (ch === ')' || ch === ']' || ch === '}') depth--;
+    else if (ch === ',' && depth === 0) arity++;
+  }
+  assert.strictEqual(arity, 1,
+    `census.js が自己診断に ${arity} 個の引数を渡している — 絞り込みが census に漏れ込んでいる (第22条): ${argsSrc}`);
+});
+
+// ── 絞り込みの口が自分の掟を守っていることを、自己診断が毎回撃って確かめる ──
+/**
+ * **verify 相の裁定(談判 2)。** review §1.1 が実証したとおり、22 本の AC のうち
+ * 常駐する門は AC-16/AC-17 の 2 本しか無く、`GATE.matched === 0 ? 2` を `? 0` に
+ * 変える **1 文字の変異**で全走は緑のまま通った。**鳴らない門は門ではない(第16条)。**
+ * ゆえに AC-11 / AC-13 / AC-14 をここで常駐の門に昇格させる。
+ *
+ * 手口は 4919 行の門(`門ヘルパー: test() の失敗が必ず数に載る`)と同じ ——
+ * **自分自身を子プロセスで撃つ**。この場の集計 (pass/fail) を汚さずに済む。
+ *
+ * **再帰しないこと**が要である: 子に渡す `--gate` は
+ * `^gate-filter: census は自己診断を素で呼ぶ$`(前置と後置で錨を打った 1 本)か、
+ * どの門にも当たらない `zzz-no-such-gate-zzz` のみ。ここで足す 3 本の名は
+ * いずれもその錨に当たらないので、**子の中で子が生まれることは無い**。
+ * 実測: 子 1 回あたり 0.07 秒。3 本で 0.3 秒未満 (NFR-01 に影響しない)。
+ */
+const gateRun = (...args) =>
+  require('child_process').spawnSync(process.execPath, [__filename, ...args],
+    { encoding: 'utf8' });
+// 子に渡す錨。軽い門 1 本(census.js のソースを読むだけ)を名指しで撃つ。
+const GATE_ONE = '^gate-filter: census は自己診断を素で呼ぶ$';
+
+test('gate-filter: マッチ 0 件は緑ではない — exit 2 で鳴る (AC-11 / 第16条)', () => {
+  // 業界既定 (node:test / Jest / Mocha / Vitest の 4/4) は exit 0。楽園はここで袂を分かつ。
+  // 「0 本走って成功」を成功と読ませない —— 緑の意味を守る門である。
+  const r = gateRun('--gate', 'zzz-no-such-gate-zzz');
+  assert.strictEqual(r.status, 2,
+    `マッチ 0 件の exit が ${r.status} — 0 本しか走らなかった走行が緑になっている (第16条)`);
+  assert.match(r.stdout, /0 of \d+ gates matched — nothing was measured/,
+    `0 件の名乗りが変わった: ${String(r.stdout).trim().split('\n').pop()}`);
+  // `passed` の語が出ないこと = census.js:57 の保険経路にも読まれないこと
+  assert.strictEqual(String(r.stdout).split('\n').filter((l) => /passed/.test(l)).length, 0,
+    '0 件走行が passed を名乗った — census がこれを拾う');
+});
+
+test('gate-filter: 絞り込んだ走行は Paradise self-test: を名乗らない (AC-13 / 第22条)', () => {
+  // census.js:55 が読む名乗り。局所走行の 1 本が README の 451 に化けるのを塞ぐ主門。
+  const r = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(r.status, 0,
+    `門 1 本の走行が exit ${r.status}: ${String(r.stderr).slice(0, 200)}`);
+  assert.strictEqual((String(r.stdout).match(/Paradise self-test/g) || []).length, 0,
+    '絞り込み走行が Paradise self-test: を名乗った — census が局所の数を全走の数として読む');
+});
+
+test('gate-filter: 絞り込み走行の最終行は census / tribunal の双方に読まれない (AC-14 / 第22条)', () => {
+  // 三者の読み口を全部塞いでいることを一度に撃つ。
+  // census.js:55 (名乗り) / census.js:57 (保険 matchAll) / tribunal.yml:307,308 (passed|failed)
+  const r = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(r.status, 0,
+    `門 1 本の走行が exit ${r.status}: ${String(r.stderr).slice(0, 200)}`);
+  const last = String(r.stdout).trim().split('\n').pop();
+  assert.ok(/gates matched/.test(last),
+    `最終行が総括行でない — 警告行が総括行の後ろに回った可能性がある: ${last}`);
+  for (const [re, who] of [
+    [/Paradise self-test:\s*\d+ passed, \d+ failed/, 'census.js:55'],
+    [/\d+ passed, \d+ failed/,                       'census.js:57 (保険)'],
+    [/\d+ passed/,                                   'tribunal.yml:307'],
+    [/\d+ failed/,                                   'tribunal.yml:308'],
+  ]) {
+    assert.strictEqual(re.test(last), false,
+      `絞り込み走行の最終行が ${who} に読まれる: ${last}`);
+  }
+});
+
+/**
+ * ══ reflect 相 F-1 / F-2 / F-3 の門 ══
+ *
+ * reflect は「門を足した。ではその門自身は誰が見張るのか」と問い、**誰も見張っていない**
+ * ことを実測で示した。上の 3 本(AC-11/13/14)は子プロセスの**名乗り**を検めるが、
+ * **子が実際に門を走らせたか**を一度も検めていない。ゆえに:
+ *
+ *   `if (GATE.list)` → `if (GATE.active)` の **1 行**で絞り込み走行は `fn()` を呼ばなくなり、
+ *   `5 of 454 gates matched — 0 green, 0 red` / exit 0 が成立した(F-1・致命)。
+ *   常駐の門番は**自分自身も絞り込まれる**ので、この変異を永久に捕まえられない(F-3)。
+ *
+ * 処置は report ブロックの後ろに置いた**恒等式の錠**(`matched === green + red`)である。
+ * 錠は `test()` を通らないので `--gate` / `--gate-not` では消せない。
+ * ここではその錠が**在ること**と**効くこと**を、全走のたびに検める。
+ */
+test('gate-filter: 名指した門を走らせない走行は測定ではない — 数が閉じる (reflect F-1/F-2)', () => {
+  // ① 健全時: 恒等式が成り立ち、緑で返る
+  const ok = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(ok.status, 0, `健全な絞り込み走行が exit ${ok.status}`);
+  const m = String(ok.stdout).match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
+  assert.ok(m, `総括行が読めない: ${String(ok.stdout).trim().split('\n').pop()}`);
+  assert.strictEqual(Number(m[1]), Number(m[2]) + Number(m[3]),
+    `matched が green+red と一致しない: ${m[0]}`);
+  assert.ok(!/数が閉じない/.test(ok.stdout), '健全な走行で錠が鳴った — 偽陽性である');
+
+  // ② 錠が実在し、絞り込みの外に立っていること(F-3: --gate では消せない位置)
+  const src = fs.readFileSync(__filename, 'utf8');
+  const lock = src.match(/if \(GATE\.active && !GATE\.list && GATE\.matched !== pass \+ fail\)/);
+  assert.ok(lock, '恒等式の錠が消えている — F-1 の致命の穴が再び開く');
+  const testDefEnd = src.indexOf('// <<<' + ' gate-filter: 絞り込み塊 ここまで');
+  assert.ok(testDefEnd > 0 && lock.index > testDefEnd,
+    '錠が絞り込み塊の内側に移った — 錠は test() の外に無ければ --gate で消せてしまう');
+
+  // ③ **効くこと**を故障注入で撃つ。自分の写しを壊して子プロセスで走らせる
+  //    (実ファイルは触らない —— 門が門を壊してはならない)
+  //    **写しは `tests/` の中に置く。** `__dirname` から engine を require するので、
+  //    tmpdir に置くと読み込みの時点で落ち(exit 1)、錠の効きを測れない —— 実測で踏んだ。
+  const mut = path.join(DIR, `.paradise-f1-probe-${process.pid}.js`);
+  try {
+    const broken = src.replace('if (GATE.list) { GATE.say(name); return; }',
+                               'if (GATE.active) { GATE.list && GATE.say(name); return; }');
+    assert.notStrictEqual(broken, src, '故障注入が当たらなかった — 変異点の形が変わった');
+    fs.writeFileSync(mut, broken);
+    const r = require('child_process').spawnSync(process.execPath, [mut, '--gate', GATE_ONE],
+      { encoding: 'utf8' });
+    assert.strictEqual(r.status, 2,
+      `門を一本も走らせない走行が exit ${r.status} で通った — 錠が効いていない (F-1): `
+      + `${String(r.stdout).trim().split('\n').slice(-2).join(' / ')}${String(r.stderr).slice(0, 200)}`);
+    assert.match(String(r.stdout), /数が閉じない/,
+      '数が閉じないことを名乗っていない — 黙って落ちる門は理由を伝えない (第16条)');
+  } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
+});
+
 // --- report ---
-console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
+// 名乗りは三者に消費される契約である (census.js:55 / tribunal.yml:306 / 人間)。
+// 局所走行は決して `Paradise self-test:` を名乗らない。`passed` / `failed` の語も
+// 一切用いない —— census.js:57 の保険経路(matchAll)まで塞ぐため (requirements FR-05)。
+if (!GATE.active) {
+  console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
+} else if (GATE.matched === 0) {
+  SAY(`Paradise gate list: 0 of ${GATE.total} gates matched — nothing was measured\n`);
+} else if (GATE.list) {
+  SAY(GATE.matched === GATE.total
+    ? `Paradise gate list: ${GATE.total} gates\n`
+    : `Paradise gate list: ${GATE.matched} of ${GATE.total} gates matched\n`);
+} else {
+  /**
+   * **絞り込み走行は門の依存を保証しない(security 相 D-2 の実測)。**
+   * `test()` は絞り込みで `return` するので前段の `fn()` が呼ばれない。
+   * 共有の `kgRoot` / `ccRoot` に前段が書いた行を読む門(kg 系 3 本・lessons 1 本)は、
+   * 単独で撃つと**全走では緑なのに赤くなる**。実測で確定済み:
+   *   `--gate 'links nodes and shows neighbors'` → 0 green, 1 red
+   *   前段 `remembers and queries a node` を足す → 2 green, 0 red
+   * **偽の赤は道具への信頼を壊す。** 黙って返さず、走行のたびに口で名乗る。
+   *
+   * **この一行は総括行より「前」に置く(AC-14 の契約)。** `tribunal.yml:306` は
+   * `tail -1` で最終行を読む —— 警告を後ろに置けば総括行が最後でなくなる。
+   * 語彙も `passed` / `failed` を避ける(`census.js:57` の保険経路を塞ぐため)。
+   */
+  SAY('Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない。'
+    + '共有状態を前段の門に頼る門は単独走行で偽の赤を出しうる (security D-2)\n');
+  SAY(`Paradise gate-filter: ${GATE.matched} of ${GATE.total} gates matched — ${pass} green, ${fail} red\n`);
+}
+
+/**
+ * ══ 数が閉じることを走行が自分で検める(reflect 相 F-1 / F-2 の処置)══
+ *
+ * **reflect が見つけた致命の穴**: `if (GATE.list)` を `if (GATE.active)` に変える
+ * **1 行**で、絞り込み走行は門の本体 `fn()` を一度も呼ばなくなる。実測:
+ *
+ *     Paradise gate-filter: 5 of 454 gates matched — 0 green, 0 red   (exit 0)
+ *
+ * **5 本「一致した」と名乗りながら 1 本も走っていない。** そして常駐の門番 5 本は
+ * **自分自身も絞り込みの対象**なので、実行されずに黙る —— 門番が門番であることを
+ * やめる変異を、門番自身は決して捕まえられない。
+ *
+ * ゆえに **`test()` の外に、絞り込み機構から独立した最後の錠を置く**。
+ * これは `test()` を通らないので `--gate` でも `--gate-not` でも消せない。
+ * **絞り込みが自分を絞り込んで逃げる道を、構造として塞ぐ**(第56条 (a)(b) の草案)。
+ *
+ * 恒等式: **matched = green + red**。「名指したが走らせなかった」は測定ではなく叙述である。
+ * `--gate-list` は fn を呼ばないと**宣言している**ので、この錠の対象外(緑と名乗らないため)。
+ */
+if (GATE.active && !GATE.list && GATE.matched !== pass + fail) {
+  SAY('Paradise gate-filter: 数が閉じない — '
+    + `matched=${GATE.matched} だが green+red=${pass + fail}。`
+    + '名指した門を走らせていない走行は、測定ではない (第16条 / reflect F-1・F-2)\n');
+  try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
+  try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}
+  process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
+}
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
 try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}
-process.exit(fail === 0 ? 0 : 1);
+process.exit(!GATE.active ? (fail === 0 ? 0 : 1)
+  : GATE.matched === 0 ? 2
+  : GATE.list ? 0
+  : (fail === 0 ? 0 : 1));
