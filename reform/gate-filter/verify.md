@@ -413,7 +413,8 @@ review が「格が違う」と述べたもの ——**楽園が自分につい�
 
 - `ae569ab332232a60b6fa948c150f51ac8507fc12` — 新門 3 本(451→454)
 - `d2f90dab3ccc226e75357ad5815308c5b78738ea` — NFR-01 改訂 + verify.md 草稿
-- `957c7d2cfd4356acaafd11b36c600a31f3e724ff` — 全走実測 + AC 表 + census fix (README 451→454)
+- `5850b59389238bfb654221d317942a121848542c` — 全走実測 + AC 表 + census fix (README 451→454)
+- (この節の SHA を書き直す最終 commit が 1 本続く)
 
 ---
 
