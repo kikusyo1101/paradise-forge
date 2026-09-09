@@ -8323,6 +8323,70 @@ test('gate-filter: census は自己診断を素で呼ぶ', () => {
     `census.js が自己診断に ${arity} 個の引数を渡している — 絞り込みが census に漏れ込んでいる (第22条): ${argsSrc}`);
 });
 
+// ── 絞り込みの口が自分の掟を守っていることを、自己診断が毎回撃って確かめる ──
+/**
+ * **verify 相の裁定(談判 2)。** review §1.1 が実証したとおり、22 本の AC のうち
+ * 常駐する門は AC-16/AC-17 の 2 本しか無く、`GATE.matched === 0 ? 2` を `? 0` に
+ * 変える **1 文字の変異**で全走は緑のまま通った。**鳴らない門は門ではない(第16条)。**
+ * ゆえに AC-11 / AC-13 / AC-14 をここで常駐の門に昇格させる。
+ *
+ * 手口は 4919 行の門(`門ヘルパー: test() の失敗が必ず数に載る`)と同じ ——
+ * **自分自身を子プロセスで撃つ**。この場の集計 (pass/fail) を汚さずに済む。
+ *
+ * **再帰しないこと**が要である: 子に渡す `--gate` は
+ * `^gate-filter: census は自己診断を素で呼ぶ$`(前置と後置で錨を打った 1 本)か、
+ * どの門にも当たらない `zzz-no-such-gate-zzz` のみ。ここで足す 3 本の名は
+ * いずれもその錨に当たらないので、**子の中で子が生まれることは無い**。
+ * 実測: 子 1 回あたり 0.07 秒。3 本で 0.3 秒未満 (NFR-01 に影響しない)。
+ */
+const gateRun = (...args) =>
+  require('child_process').spawnSync(process.execPath, [__filename, ...args],
+    { encoding: 'utf8' });
+// 子に渡す錨。軽い門 1 本(census.js のソースを読むだけ)を名指しで撃つ。
+const GATE_ONE = '^gate-filter: census は自己診断を素で呼ぶ$';
+
+test('gate-filter: マッチ 0 件は緑ではない — exit 2 で鳴る (AC-11 / 第16条)', () => {
+  // 業界既定 (node:test / Jest / Mocha / Vitest の 4/4) は exit 0。楽園はここで袂を分かつ。
+  // 「0 本走って成功」を成功と読ませない —— 緑の意味を守る門である。
+  const r = gateRun('--gate', 'zzz-no-such-gate-zzz');
+  assert.strictEqual(r.status, 2,
+    `マッチ 0 件の exit が ${r.status} — 0 本しか走らなかった走行が緑になっている (第16条)`);
+  assert.match(r.stdout, /0 of \d+ gates matched — nothing was measured/,
+    `0 件の名乗りが変わった: ${String(r.stdout).trim().split('\n').pop()}`);
+  // `passed` の語が出ないこと = census.js:57 の保険経路にも読まれないこと
+  assert.strictEqual(String(r.stdout).split('\n').filter((l) => /passed/.test(l)).length, 0,
+    '0 件走行が passed を名乗った — census がこれを拾う');
+});
+
+test('gate-filter: 絞り込んだ走行は Paradise self-test: を名乗らない (AC-13 / 第22条)', () => {
+  // census.js:55 が読む名乗り。局所走行の 1 本が README の 451 に化けるのを塞ぐ主門。
+  const r = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(r.status, 0,
+    `門 1 本の走行が exit ${r.status}: ${String(r.stderr).slice(0, 200)}`);
+  assert.strictEqual((String(r.stdout).match(/Paradise self-test/g) || []).length, 0,
+    '絞り込み走行が Paradise self-test: を名乗った — census が局所の数を全走の数として読む');
+});
+
+test('gate-filter: 絞り込み走行の最終行は census / tribunal の双方に読まれない (AC-14 / 第22条)', () => {
+  // 三者の読み口を全部塞いでいることを一度に撃つ。
+  // census.js:55 (名乗り) / census.js:57 (保険 matchAll) / tribunal.yml:307,308 (passed|failed)
+  const r = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(r.status, 0,
+    `門 1 本の走行が exit ${r.status}: ${String(r.stderr).slice(0, 200)}`);
+  const last = String(r.stdout).trim().split('\n').pop();
+  assert.ok(/gates matched/.test(last),
+    `最終行が総括行でない — 警告行が総括行の後ろに回った可能性がある: ${last}`);
+  for (const [re, who] of [
+    [/Paradise self-test:\s*\d+ passed, \d+ failed/, 'census.js:55'],
+    [/\d+ passed, \d+ failed/,                       'census.js:57 (保険)'],
+    [/\d+ passed/,                                   'tribunal.yml:307'],
+    [/\d+ failed/,                                   'tribunal.yml:308'],
+  ]) {
+    assert.strictEqual(re.test(last), false,
+      `絞り込み走行の最終行が ${who} に読まれる: ${last}`);
+  }
+});
+
 // --- report ---
 // 名乗りは三者に消費される契約である (census.js:55 / tribunal.yml:306 / 人間)。
 // 局所走行は決して `Paradise self-test:` を名乗らない。`passed` / `failed` の語も
@@ -8336,6 +8400,21 @@ if (!GATE.active) {
     ? `Paradise gate list: ${GATE.total} gates\n`
     : `Paradise gate list: ${GATE.matched} of ${GATE.total} gates matched\n`);
 } else {
+  /**
+   * **絞り込み走行は門の依存を保証しない(security 相 D-2 の実測)。**
+   * `test()` は絞り込みで `return` するので前段の `fn()` が呼ばれない。
+   * 共有の `kgRoot` / `ccRoot` に前段が書いた行を読む門(kg 系 3 本・lessons 1 本)は、
+   * 単独で撃つと**全走では緑なのに赤くなる**。実測で確定済み:
+   *   `--gate 'links nodes and shows neighbors'` → 0 green, 1 red
+   *   前段 `remembers and queries a node` を足す → 2 green, 0 red
+   * **偽の赤は道具への信頼を壊す。** 黙って返さず、走行のたびに口で名乗る。
+   *
+   * **この一行は総括行より「前」に置く(AC-14 の契約)。** `tribunal.yml:306` は
+   * `tail -1` で最終行を読む —— 警告を後ろに置けば総括行が最後でなくなる。
+   * 語彙も `passed` / `failed` を避ける(`census.js:57` の保険経路を塞ぐため)。
+   */
+  SAY('Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない。'
+    + '共有状態を前段の門に頼る門は単独走行で偽の赤を出しうる (security D-2)\n');
   SAY(`Paradise gate-filter: ${GATE.matched} of ${GATE.total} gates matched — ${pass} green, ${fail} red\n`);
 }
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
