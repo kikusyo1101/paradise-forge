@@ -8387,6 +8387,59 @@ test('gate-filter: 絞り込み走行の最終行は census / tribunal の双方
   }
 });
 
+/**
+ * ══ reflect 相 F-1 / F-2 / F-3 の門 ══
+ *
+ * reflect は「門を足した。ではその門自身は誰が見張るのか」と問い、**誰も見張っていない**
+ * ことを実測で示した。上の 3 本(AC-11/13/14)は子プロセスの**名乗り**を検めるが、
+ * **子が実際に門を走らせたか**を一度も検めていない。ゆえに:
+ *
+ *   `if (GATE.list)` → `if (GATE.active)` の **1 行**で絞り込み走行は `fn()` を呼ばなくなり、
+ *   `5 of 454 gates matched — 0 green, 0 red` / exit 0 が成立した(F-1・致命)。
+ *   常駐の門番は**自分自身も絞り込まれる**ので、この変異を永久に捕まえられない(F-3)。
+ *
+ * 処置は report ブロックの後ろに置いた**恒等式の錠**(`matched === green + red`)である。
+ * 錠は `test()` を通らないので `--gate` / `--gate-not` では消せない。
+ * ここではその錠が**在ること**と**効くこと**を、全走のたびに検める。
+ */
+test('gate-filter: 名指した門を走らせない走行は測定ではない — 数が閉じる (reflect F-1/F-2)', () => {
+  // ① 健全時: 恒等式が成り立ち、緑で返る
+  const ok = gateRun('--gate', GATE_ONE);
+  assert.strictEqual(ok.status, 0, `健全な絞り込み走行が exit ${ok.status}`);
+  const m = String(ok.stdout).match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
+  assert.ok(m, `総括行が読めない: ${String(ok.stdout).trim().split('\n').pop()}`);
+  assert.strictEqual(Number(m[1]), Number(m[2]) + Number(m[3]),
+    `matched が green+red と一致しない: ${m[0]}`);
+  assert.ok(!/数が閉じない/.test(ok.stdout), '健全な走行で錠が鳴った — 偽陽性である');
+
+  // ② 錠が実在し、絞り込みの外に立っていること(F-3: --gate では消せない位置)
+  const src = fs.readFileSync(__filename, 'utf8');
+  const lock = src.match(/if \(GATE\.active && !GATE\.list && GATE\.matched !== pass \+ fail\)/);
+  assert.ok(lock, '恒等式の錠が消えている — F-1 の致命の穴が再び開く');
+  const testDefEnd = src.indexOf('// <<<' + ' gate-filter: 絞り込み塊 ここまで');
+  assert.ok(testDefEnd > 0 && lock.index > testDefEnd,
+    '錠が絞り込み塊の内側に移った — 錠は test() の外に無ければ --gate で消せてしまう');
+
+  // ③ **効くこと**を故障注入で撃つ。自分の写しを壊して子プロセスで走らせる
+  //    (実ファイルは触らない —— 門が門を壊してはならない)
+  //    **写しは `tests/` の中に置く。** `__dirname` から engine を require するので、
+  //    tmpdir に置くと読み込みの時点で落ち(exit 1)、錠の効きを測れない —— 実測で踏んだ。
+  const mut = path.join(DIR, `.paradise-f1-probe-${process.pid}.js`);
+  try {
+    const broken = src.replace('if (GATE.list) { GATE.say(name); return; }',
+                               'if (GATE.active) { GATE.list && GATE.say(name); return; }');
+    assert.notStrictEqual(broken, src, '故障注入が当たらなかった — 変異点の形が変わった');
+    fs.writeFileSync(mut, broken);
+    const r = require('child_process').spawnSync(process.execPath, [mut, '--gate', GATE_ONE],
+      { encoding: 'utf8' });
+    assert.strictEqual(r.status, 2,
+      `門を一本も走らせない走行が exit ${r.status} で通った — 錠が効いていない (F-1): `
+      + `${String(r.stdout).trim().split('\n').slice(-2).join(' / ')}${String(r.stderr).slice(0, 200)}`);
+    assert.match(String(r.stdout), /数が閉じない/,
+      '数が閉じないことを名乗っていない — 黙って落ちる門は理由を伝えない (第16条)');
+  } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
+});
+
 // --- report ---
 // 名乗りは三者に消費される契約である (census.js:55 / tribunal.yml:306 / 人間)。
 // 局所走行は決して `Paradise self-test:` を名乗らない。`passed` / `failed` の語も
@@ -8416,6 +8469,34 @@ if (!GATE.active) {
   SAY('Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない。'
     + '共有状態を前段の門に頼る門は単独走行で偽の赤を出しうる (security D-2)\n');
   SAY(`Paradise gate-filter: ${GATE.matched} of ${GATE.total} gates matched — ${pass} green, ${fail} red\n`);
+}
+
+/**
+ * ══ 数が閉じることを走行が自分で検める(reflect 相 F-1 / F-2 の処置)══
+ *
+ * **reflect が見つけた致命の穴**: `if (GATE.list)` を `if (GATE.active)` に変える
+ * **1 行**で、絞り込み走行は門の本体 `fn()` を一度も呼ばなくなる。実測:
+ *
+ *     Paradise gate-filter: 5 of 454 gates matched — 0 green, 0 red   (exit 0)
+ *
+ * **5 本「一致した」と名乗りながら 1 本も走っていない。** そして常駐の門番 5 本は
+ * **自分自身も絞り込みの対象**なので、実行されずに黙る —— 門番が門番であることを
+ * やめる変異を、門番自身は決して捕まえられない。
+ *
+ * ゆえに **`test()` の外に、絞り込み機構から独立した最後の錠を置く**。
+ * これは `test()` を通らないので `--gate` でも `--gate-not` でも消せない。
+ * **絞り込みが自分を絞り込んで逃げる道を、構造として塞ぐ**(第56条 (a)(b) の草案)。
+ *
+ * 恒等式: **matched = green + red**。「名指したが走らせなかった」は測定ではなく叙述である。
+ * `--gate-list` は fn を呼ばないと**宣言している**ので、この錠の対象外(緑と名乗らないため)。
+ */
+if (GATE.active && !GATE.list && GATE.matched !== pass + fail) {
+  SAY('Paradise gate-filter: 数が閉じない — '
+    + `matched=${GATE.matched} だが green+red=${pass + fail}。`
+    + '名指した門を走らせていない走行は、測定ではない (第16条 / reflect F-1・F-2)\n');
+  try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
+  try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}
+  process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
 }
 try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
 try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}
