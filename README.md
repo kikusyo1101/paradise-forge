@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 451/451 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 454/454 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -143,6 +143,32 @@ orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract�
 clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework・中断からの再開）・synod（計画サイクル）・
 domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）・
 gauge（走行の採点と**台帳の冪等性**・指紋/畳み/監査・故障注入で門が鳴ることまで・第38条・第55条）。
+
+### 門を絞る（開発中の一本を撃つとき）
+```bash
+node tests/paradise.test.js --gate '<正規表現>'      # 当たった門だけ走らせる
+node tests/paradise.test.js --gate-not '<正規表現>'  # 当たった門を除く（**除外が勝つ**）
+node tests/paradise.test.js --gate-list             # 名を並べるだけ（fn を呼ばない・0.08秒）
+```
+同じフラグを重ねれば **OR**。`--gate` と `--gate-not` が同じ門に当たれば除外が勝つ。
+**環境変数は一つも無い** — census が絞り込み後の数を README に持ち込まないため（第22条）。
+撃つ名は `--gate-list` で見てから組む。
+
+**最も実用的な一行**（重い Atlas 2 本だけを除く。6 分が 20 秒台になる）:
+```bash
+node tests/paradise.test.js \
+  --gate-not 'atlas: 全ての道が図になる' --gate-not 'atlas: 門は己の残骸で落ちない'
+```
+
+**exit**: `0` 緑 / `1` 赤 / **`2` 測れなかった**。
+**マッチ 0 件は 2 である** — 業界の既定（何も走らなければ 0）と袂を分かつ。
+打ち間違えた正規表現が「緑」を名乗るくらいなら、測れなかったと叫ぶ方がよい。
+不正な正規表現・未知のフラグ・値の欠落も 2。
+
+**限界（隠さない）**: 絞り込み走行は**門の依存を保証しない**。共有状態を前段の門に
+頼る門は、単独で撃つと全走では緑なのに赤くなる（実装が走行のたびに警告を名乗る）。
+偽の赤を見たら前段の門を `--gate` に足して撃ち直せ。
+**「緑」の根拠になるのは引数無しの全走だけである。CI に絞り込みを持ち込むな。**
 
 ---
 
