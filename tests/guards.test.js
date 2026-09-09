@@ -599,6 +599,91 @@ test('the law IS the machinery on the real machine — permissions present, no d
     + '\n      → node graph/apply-guards.js apply');
 });
 
+// ─────────────────────────────────────────────────────────────────────
+console.log('\nUnconditional BLOCK (修理が開いた面 — 第四の職責 / 第57条):');
+
+// 実測された欠陥の再現。この群は `npm run dev` だけを止めるつもりで書かれた。
+// 修復前は matcher が死んでいたので何も止めなかった。修復が matcher を生かし、
+// 条件は `if` に載らず、ハンドラも tool_input を読まない —— 結果、全 Bash が止まった。
+const DEV_SERVER_GROUP = {
+  matcher: 'tool == "Bash" && tool_input.command matches "(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)"',
+  hooks: [{ type: 'command', command: "node -e \"console.error('[Hook] BLOCKED: Dev server must run in tmux');process.exit(1)\"" }],
+  description: 'Block dev servers outside tmux',
+};
+
+test('repairGroup refuses to widen a BLOCK whose condition cannot be carried', () => {
+  const r = G.repairGroup(DEV_SERVER_GROUP);
+  assert.strictEqual(r.changed, false, '条件を運べない BLOCK を修復してはならない');
+  assert.ok(/refused/.test(r.note), `拒否の理由が note に残っていない: ${r.note}`);
+  assert.ok(/never reads tool_input/.test(r.note), '前提を検めた事実が note に残っていない');
+});
+
+test('a repaired-but-widened BLOCK is detected as unconditional', () => {
+  // 修復が既に済んでしまった形 — これが実機に配備されていた。
+  const widened = { ...DEV_SERVER_GROUP, matcher: 'Bash|PowerShell' };
+  assert.strictEqual(G.isUnconditionalBlock(widened), true);
+});
+
+test('a handler that reads tool_input is NOT an unconditional block', () => {
+  const conditional = {
+    matcher: 'Write',
+    hooks: [{ type: 'command', command: "node -e \"process.stdin.on('end',()=>{const i=JSON.parse(d);if(/x/.test(i.tool_input.file_path))process.exit(1)})\"" }],
+  };
+  assert.strictEqual(G.isUnconditionalBlock(conditional), false,
+    'スクリプト側で条件を持つ門を無条件と呼んではならない');
+});
+
+test('a notify-only handler is never removed', () => {
+  const notify = {
+    matcher: 'Bash|PowerShell',
+    hooks: [{ type: 'command', command: "node -e \"console.error('reminder')\"" }],
+  };
+  assert.strictEqual(G.isUnconditionalBlock(notify), false, '止めない門を外してはならない');
+});
+
+test('a dead matcher is not an unconditional block (a dead gate stops nothing)', () => {
+  assert.strictEqual(G.isUnconditionalBlock(DEV_SERVER_GROUP), false);
+});
+
+test('buildDesired removes a deployed unconditional BLOCK', () => {
+  const settings = { hooks: { PreToolUse: [{ ...DEV_SERVER_GROUP, matcher: 'Bash|PowerShell' }] } };
+  const { next, changes } = G.buildDesired(settings);
+  assert.strictEqual(next.hooks.PreToolUse.length, 0, '無条件 BLOCK が残っている');
+  assert.ok(changes.some(c => c.kind === 'unconditional-block'), '外したことが changes に出ていない');
+});
+
+test('buildDesired removes a forbidden hook by declared name', () => {
+  const mdBlocker = {
+    matcher: 'Write',
+    hooks: [{ type: 'command', command: "node -e \"process.stdin.on('end',()=>{const i=JSON.parse(d);console.error('BLOCKED: Unnecessary documentation file creation');process.exit(1)})\"" }],
+    description: 'Block creation of random .md files',
+  };
+  const { next, changes } = G.buildDesired({ hooks: { PreToolUse: [mdBlocker] } });
+  assert.strictEqual(next.hooks.PreToolUse.length, 0, '禁じられた強制が残っている');
+  const c = changes.find(x => x.kind === 'forbidden-hook');
+  assert.ok(c, '外したことが changes に出ていない');
+  assert.ok(c.note && c.note.length > 10, '理由が空の除去は、直しようがない除去である');
+});
+
+test('every FORBIDDEN_HOOKS entry carries a reason', () => {
+  assert.ok(G.FORBIDDEN_HOOKS.length > 0);
+  for (const f of G.FORBIDDEN_HOOKS) {
+    assert.ok(f.event && f.match && f.reason, `理由なき禁止: ${JSON.stringify(f)}`);
+  }
+});
+
+test('the real machine enforces no unconditional BLOCK', () => {
+  if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
+  const s = G.readSettings(G.SETTINGS);
+  const bad = [];
+  for (const [event, groups] of Object.entries((s && s.hooks) || {})) {
+    if (!Array.isArray(groups)) continue;
+    groups.forEach(g => { if (G.isUnconditionalBlock(g)) bad.push(`${event}: ${g.matcher}`); });
+  }
+  assert.deepStrictEqual(bad, [],
+    `無条件に止める門が実機に配備されている:\n        ${bad.join('\n        ')}`);
+});
+
 // --- report ---
 try { fs.rmSync(TMP, { recursive: true, force: true }); } catch {}
 console.log(`\nParadise guards self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));
