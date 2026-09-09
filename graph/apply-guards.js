@@ -77,6 +77,87 @@ const KNOWN_TOOLS = [
   'Bash', 'PowerShell', 'Edit', 'Write', 'Read', 'Glob', 'Grep',
   'Task', 'WebFetch', 'WebSearch', 'NotebookEdit', 'TodoWrite',
 ];
+// ─────────────────────────────────────────────────────────────────────
+// 無条件 BLOCK の抑止 (第四の職責 / 憲法 第57条)
+// ─────────────────────────────────────────────────────────────────────
+
+/** ハンドラが「止める」側か — 非ゼロ終了を書いているか。 */
+function handlerBlocks(command) {
+  const c = command == null ? '' : String(command);
+  // `\bexit\s+[1-9]` では足りなかった: 通知だけの門が
+  // `console.error('hint: run exit 1 to stop')` と書いていると BLOCK と誤認する。
+  // 誤認した門は黙って外される —— **無実の門を消す修理**は、直した門より重い。
+  // ゆえにシェルの `exit` は **文の境**(行頭 / `;` / `&&` / `||`)で始まるものだけを見る。
+  return /process\.exit\(\s*[1-9]/.test(c) || /(^|[;&|\n{])\s*exit\s+[1-9]/.test(c);
+}
+
+/**
+ * ハンドラが自分で条件を持っているか。
+ *
+ * PreToolUse のハンドラは stdin から tool_input を読んで初めて「どの呼び出しか」
+ * を知りうる。その両方を欠く命令は、matcher に当たった **全て** を止める。
+ * ゆえにこの述語は「条件はスクリプト側に残る」という前提を **検める** ためにある。
+ * 前提を宣言して検めない engine は、宣言した通りに壊れる。
+ */
+function handlerCarriesCondition(command) {
+  const c = command == null ? '' : String(command);
+  return /process\.stdin/.test(c) && /tool_input/.test(c);
+}
+
+/**
+ * その hook group は「当たった全てを無条件に止める」か。
+ * 生きた matcher × 止めるハンドラ × `if` 無し × スクリプト側の条件も無し。
+ */
+/**
+ * 非ゼロ終了が **ツール呼び出しそのものを止める** event。
+ *
+ * `tool_input` はツール事象にしか存在しない。ゆえに SessionStart / Stop /
+ * SessionEnd のハンドラは `handlerCarriesCondition` を **原理的に満たせない**。
+ * 除去をこの一覧に閉じなければ、非ツール系の門は「条件を持てない」という
+ * ただそれだけの理由で全て無条件 BLOCK と裁かれ、黙って消える。
+ * 実測: SessionStart / Stop の門が除去対象になっていた。
+ */
+const TOOL_GATE_EVENTS = ['PreToolUse'];
+
+function isUnconditionalBlock(group) {
+  if (!group || typeof group !== 'object') return false;
+  if (classify(group.matcher).status !== 'live') return false;  // 死んだ門は何も止めない
+  const hs = Array.isArray(group.hooks) ? group.hooks : [];
+  if (!hs.length) return false;
+  return hs.some(h => h && typeof h === 'object' && !h.if
+    && handlerBlocks(h.command) && !handlerCarriesCondition(h.command));
+}
+
+/**
+ * グローバルに置いてはならない強制。
+ *
+ * 実測: `~/.claude/settings.json` の Write フックは README/CLAUDE/AGENTS/
+ * CONTRIBUTING 以外の `.md` `.txt` 生成を **全プロジェクトで** 止めていた。
+ * これは「仕事の規約」であって「人の既定」ではない。グローバルの強制は
+ * プロジェクト側から外せないので、`docs/adr/*.md` を持つ他所のリポジトリを
+ * 開いた瞬間、そのリポジトリは何も悪くないのにこの機でだけ動かなくなる。
+ * 規約はリポジトリと共に配られるべきであり、機に貼り付けてはならない。
+ *
+ * `match` はハンドラ命令に含まれる印。名指しで消すためだけに使う。
+ */
+const FORBIDDEN_HOOKS = [
+  {
+    event: 'PreToolUse',
+    match: 'Unnecessary documentation file creation',
+    reason: '仕事の規約をグローバルで強制していた。他所の OSS を開くとそのリポジトリが壊れる。規約はプロジェクトへ。',
+  },
+];
+
+/** その group が禁じられた強制か。該当すれば理由を返す。 */
+function forbiddenReason(event, group) {
+  const hs = (group && Array.isArray(group.hooks)) ? group.hooks : [];
+  for (const f of FORBIDDEN_HOOKS) {
+    if (f.event !== event) continue;
+    if (hs.some(h => h && typeof h === 'object' && String(h.command || '').includes(f.match))) return f.reason;
+  }
+  return null;
+}
+
 
 /**
  * 掟。ここが唯一の出典であり、settings.json はその写しにすぎない。
@@ -256,6 +337,27 @@ function repairGroup(group) {
 
   const conds = extractConditions(matcher);
   const rule = conditionToIf(tools, conds, matcher);
+
+  // 条件を `if` に運べず、ハンドラも tool_input を読まず、しかも止めるハンドラ —
+  // このとき matcher を生かす修復は「条件付きの死んだ門」を
+  // 「無条件の生きた BLOCK」に変える。**修理が新しい攻撃面を開く**の実例であり、
+  // 実測された: dev-server 門は `npm run dev` だけを止めるつもりで書かれ、
+  // 修復後は全ての Bash/PowerShell を止める形になっていた。
+  // 死んだ門は何も止めない(安全側)。生きた無条件 BLOCK は全案件を壊す(危険側)。
+  // ゆえに、運べないと分かったときは **修復しない**。
+  if (conds.length && !rule) {
+    const hs = Array.isArray(group.hooks) ? group.hooks : [];
+    const widens = hs.some(h => h && typeof h === 'object'
+      && handlerBlocks(h.command) && !handlerCarriesCondition(h.command));
+    if (widens) {
+      const fields = conds.map(x => x.field).join(', ');
+      return { group, changed: false,
+        note: c.status + ': refused — condition (' + fields + ') cannot be carried to `if` '
+            + 'and the handler never reads tool_input; repairing would widen a BLOCK to every '
+            + toolsToMatcher(tools) + ' call' };
+    }
+  }
+
   const out = { ...group, matcher: next };
   if (rule) {
     out.hooks = (Array.isArray(group.hooks) ? group.hooks : []).map(h =>
@@ -536,6 +638,33 @@ function buildDesired(settings) {
       });
     }
   }
+  // (b2) 既に配備されてしまった無条件 BLOCK と、禁じられた強制を外す。
+  //      修復を拒むだけでは、**既に広げられた門**は settings.json に残り続ける。
+  //      塞いだ穴でなく、開いてしまった面を撃つ。
+  if (hooks && typeof hooks === 'object') {
+    for (const [event, groups] of Object.entries(hooks)) {
+      if (!Array.isArray(groups)) continue;
+      const kept = [];
+      groups.forEach((g, i) => {
+        const why = forbiddenReason(event, g);
+        if (why) {
+          changes.push({ kind: 'forbidden-hook', event, index: i,
+            matcher: String(g && g.matcher), description: (g && g.description) || '', note: why });
+          return;
+        }
+        if (TOOL_GATE_EVENTS.includes(event) && isUnconditionalBlock(g)) {
+          changes.push({ kind: 'unconditional-block', event, index: i,
+            matcher: String(g && g.matcher), description: (g && g.description) || '',
+            note: 'removed — blocks every ' + String(g && g.matcher)
+                + ' call unconditionally (no `if`, handler never reads tool_input)' });
+          return;
+        }
+        kept.push(g);
+      });
+      hooks[event] = kept;
+    }
+  }
+
   // (c) env の健全性 — 門が鳴っても走れなければ同じこと
   if (next.env && typeof next.env === 'object' && !Array.isArray(next.env)) {
     const r = repairEnv(next.env);
@@ -673,6 +802,12 @@ if (require.main === module) {
     for (const c of d.changes) {
       if (c.kind === 'permissions') console.log(`     🔴 permissions — ${c.note}  ⇒ deny ${c.counts.deny} / ask ${c.counts.ask} / allow ${c.counts.allow}`);
       else if (c.kind === 'env') console.log(`     🔴 env.${c.key} — ${c.note}`);
+      else if (c.kind === 'unconditional-block' || c.kind === 'forbidden-hook') {
+        const tag = c.kind === 'forbidden-hook' ? '禁じられた強制' : '無条件 BLOCK';
+        console.log(`     🔴 ${c.event}[${c.index}] ${tag} を外す — matcher: ${c.matcher}`);
+        if (c.description) console.log(`          「${c.description}」`);
+        console.log(`          理由: ${c.note}`);
+      }
       else console.log(`     🔴 ${c.event}[${c.index}] ${c.note}\n          from: ${c.from}`);
     }
     console.log(`     → node graph/apply-guards.js apply`);
@@ -702,6 +837,8 @@ module.exports = {
   POLICY, KNOWN_TOOLS, SETTINGS, HOOK_HEALTH_CAVEAT,
   classify, diagnose, diagnoseSettings,
   extractTools, extractConditions, toolsToMatcher, conditionToIf, repairGroup,
+  handlerBlocks, handlerCarriesCondition, isUnconditionalBlock,
+  FORBIDDEN_HOOKS, forbiddenReason, TOOL_GATE_EVENTS,
   envDrift, repairEnv, hookHealth, commandExe, splitPathList, resolvesIn,
   readSettings, permissionsMatch, buildDesired, diff, apply, verify,
 };
