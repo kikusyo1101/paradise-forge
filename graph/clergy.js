@@ -585,9 +585,14 @@ function orgChart() {
  * 手心を加えない — そちらは今まで通り、異名が一つでも住めば赤くなる。
  */
 const GATE_DEBRIS = /^verdict\.md$|^verdict-report\.json$/;
-function isGateDebris(p) {
-  // ルート直下の残骸のみ。倉の奥に同名の版管理下の散文が在れば、それは成果物である。
-  return path.dirname(path.resolve(p)) === ROOT && GATE_DEBRIS.test(path.basename(p));
+/**
+ * 掃過の起点 `base` の**直下**の残骸だけを除外する。
+ * 起点は `--root` で差し替わりうる (第58条(c) / L-27) —— 複製の直下に置かれた
+ * 残骸も、現物の直下と同じく門自身の作業場である。既定は現物の根。
+ */
+function isGateDebris(p, base) {
+  // 起点直下の残骸のみ。倉の奥に同名の版管理下の散文が在れば、それは成果物である。
+  return path.dirname(path.resolve(p)) === path.resolve(base || ROOT) && GATE_DEBRIS.test(path.basename(p));
 }
 
 function main() {
@@ -652,6 +657,21 @@ function main() {
     // 散文に異名が住んでいないか裁く。CI はこれで名の揺れを止める。
     // .yml も散文である — CI の段名に異名が住めば、神は毎回それを読む。
     // 門が見ない拡張子は、門が無いのと同じ (第21条)。
+    //
+    // `--root <dir>` は掃過の起点を差し替える (第58条(c) / L-27)。
+    // **なぜ要るか**: 「異名を仕込めば鳴る」ことを証すには現物を汚すしか無かった。
+    // 実測でその窓を捕らえた —— `[tick 8] DIRTY(TRACKED): M README.md`。
+    // 復元しても窓は開き、その間に別のプロセスが汚染された README を読んで
+    // **偽の赤**を出す。ゆえに**故障注入は複製に対して行う**。
+    // 掃過の起点を引数で受ければ、門の本体(歩き方・除外・名指し)は一行も変わらない ——
+    // 複製で撃った緑/赤が、そのまま現物での挙動の証拠になる (第29条: 派生は真実の写し)。
+    // 既定は現物である。**引数を渡さない CI の呼び方は一切変わらない。**
+    const ri = process.argv.indexOf('--root');
+    const base = ri >= 0 ? path.resolve(process.argv[ri + 1] || '') : ROOT;
+    if (ri >= 0 && !fs.existsSync(base)) {
+      console.error(`lexicon-check --root: ${base} が無い — 在らぬ場所を掃いて緑を出さない (第37条)`);
+      process.exit(2);
+    }
     const exts = ['.md', '.js', '.json', '.yml', '.yaml'];
     const skip = /node_modules|[\\/]\.git[\\/]|dashboard[\\/]state\.|graph[\\/]lessons\.json|[\\/]reform[\\/]|paradise-kg/;
     const docs = [];
@@ -659,12 +679,12 @@ function main() {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
         if (skip.test(p)) continue;
-        if (isGateDebris(p)) continue;
+        if (isGateDebris(p, base)) continue;
         if (e.isDirectory()) { if (e.name !== '.git' && e.name !== 'node_modules') walk(p); continue; }
         if (!exts.includes(path.extname(e.name))) continue;
-        docs.push({ file: path.relative(ROOT, p), text: fs.readFileSync(p, 'utf8') });
+        docs.push({ file: path.relative(base, p), text: fs.readFileSync(p, 'utf8') });
       }
-    })(ROOT);
+    })(base);
     const findings = lexiconCheck(docs);
     console.log('═══ 🕮  LEXICON CHECK (第41条) ═══');
     if (!findings.length) console.log(`  ✓ ${docs.length} 文書に異名なし — 名は一つの出所に従っている`);

@@ -1,0 +1,755 @@
+#!/usr/bin/env node
+/**
+ * PARADISE :: abode — 楽園自身の住処を知る唯一の場所 (憲法 第58条)
+ *
+ * 第30条は**作られる物**の住所を一箇所に集めた —— `graph/workspace.js` ただ一つが
+ * 創造物の倉を知る。だが**作る物自身**の住所は、誰も守っていなかった。
+ * 実測(改革前): `os.homedir()` は生産コードの **14 ファイル / 16 箇所**に散らばり、
+ * `check-agents.js` と `pulse.js` は env の逃げ道を**一つも持たなかった**。
+ *
+ *   $ USERPROFILE=<sentinel> CLAUDE_HOME=<別の住処> PARADISE_AGENTS=<別の住処> node <probe>
+ *   check-agents.skipped -> true   ok -> true      ← 測らずに緑を返している
+ *
+ * env を四本立てても engine は本物のホームを見ていた。散らばった住所は、
+ * 倉を移した瞬間に嘘になる。ゆえに第30条の形を**作る側へ折り返す**:
+ * 住所を作れる場所を一つに絞り、門がソースを走査して**行を名指す**。
+ *
+ * この器はもう一つの職務を持つ —— **輸出の関門**である。
+ * 神託:「グローバルには私が直接追加を依頼したものだけ入れる」。
+ * ゆえにグローバルへ書く engine は `globalWrite()` を通り、宛先は
+ * `graph/abode.json`(神が名指した台帳)に載っていなければならない。
+ * **この engine は台帳へ書く口を持たない** —— 持てば、裁かれる側が裁きの
+ * 範囲を決めることになる(第54条(d))。
+ *
+ * CLI:
+ *   node graph/abode.js resolve [--json]     住所を印字 (由来つき)
+ *   node graph/abode.js path <key>           単一の住所を印字 (スクリプトから引く口)
+ *   node graph/abode.js check [--count] [--ledger] [--exclusion] [--all]
+ *                                            違反の検出。旗が無ければ --all
+ *   node graph/abode.js exports [--external] [--verify <id>]
+ *                                            台帳の印字と、照合の道の提示
+ *   node graph/abode.js migrate --plan | --verify     (第4段 / work-4 で実装)
+ *   node graph/abode.js retreat --plan | --verify     (第6段 / work-6 で実装)
+ *
+ * exit code は三値。**2 を 0 に混ぜてはならない**(第37条: 不在は通過ではない):
+ *   0 = 検めて、違反が無かった
+ *   1 = 検めて、違反が在った
+ *   2 = 検められなかった (前提が無い / 引数が不正 / この段では未実装)
+ *   3 = 想定外の例外 (バグ)
+ *
+ * ⚠️ **この段階(work-0)では既定は `global` である。** 器と台帳と門を建てるのが
+ *    第0段の職務であり、既定の反転(`DEFAULT_MODE = 'repo'`)は第4段の仕事である。
+ *    ゆえに `check --count` は今なお赤い —— 生産コードの付け替え(第1段)が
+ *    済んでいないからである。**赤いことが正しい。緩めて緑にしてはならない。**
+ */
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
+
+const REPO_ROOT = path.resolve(__dirname, '..');
+const LEDGER = path.join(__dirname, 'abode.json');   // domains.js:29 と同形 — engine の隣にデータが住む
+
+/** @typedef {'repo'|'global'} Mode */
+
+/** 値域はこの 2 値のみ。他の文字列は黙って既定へ落とさず、exit 2 で拒む。 */
+const MODES = new Set(['repo', 'global']);
+
+/**
+ * 既定の住処。**この一行が段階を表す。**
+ * 第0〜3段 = 'global'(神の日常を 1 バイトも変えない) / 第4段以降 = 'repo'。
+ * 反転が 1 行の差分であることを PR の可読性の要件とする(design §1.3)。
+ */
+const DEFAULT_MODE = 'global';
+
+/** 個別 env は `PARADISE_ABODE` より強い。既存の門と CI がこれで隔離しているため。 */
+const OVERRIDE_ENV = [
+  { env: 'CLAUDE_HOME', key: 'abode', why: 'overlay.json:deploy_target.path_env' },
+  { env: 'PARADISE_SETTINGS', key: 'settings', why: 'guards の門が実機を差し替える口' },
+  { env: 'PARADISE_AGENTS', key: 'agents', why: 'check-agents / apply-models の隔離' },
+  { env: 'PARADISE_KG', key: 'kg', why: 'tests/paradise.test.js:154 が本番 KG を守る口' },
+  { env: 'PARADISE_DAILY_LEDGER', key: 'dailyLedger', why: 'daily-guard の台帳の隔離' },
+];
+
+/** `pathFor` が答えられる鍵。ここに無い鍵は黙って undefined を返さず throw する(第16条)。 */
+const KEYS = [
+  'abode', 'settings', 'agents', 'commands', 'rules', 'skills',
+  'claudeMd', 'kg', 'dailyLedger', 'creationsAbode', 'home',
+];
+
+/** 「検められなかった」を表す誤り。CLI はこれを exit 2 に写す。 */
+function unmeasurable(msg) {
+  const e = new Error(msg);
+  e.exitCode = 2;
+  return e;
+}
+
+/**
+ * ホームを答える。**この関数だけが os.homedir() を呼ぶ。**
+ * 順序に意味がある: 試験は USERPROFILE / HOME を差し替えて器を隔離する
+ * (実測: check-agents は env を四本立てても os.homedir() を見ていた — その逆をやる)。
+ */
+function home(env) {
+  return (env && (env.USERPROFILE || env.HOME)) || os.homedir();
+}
+
+/**
+ * 楽園自身の住処を解決する。
+ * @param {{env?:object, repoRoot?:string}} [opts]
+ * @returns {{mode:Mode, source:'env'|'default', abode:string, settings:string,
+ *   agents:string, commands:string, rules:string, skills:string, claudeMd:string,
+ *   kg:string, dailyLedger:string, creationsAbode:string, home:string,
+ *   overrides:{env:string,key:string,value:string}[],
+ *   exists:{abode:boolean, settings:boolean, agents:boolean, kg:boolean}}}
+ */
+function resolve(opts = {}) {
+  const repoRoot = opts.repoRoot || REPO_ROOT;
+  const env = opts.env || process.env;
+  const raw = String(env.PARADISE_ABODE || '').trim();
+  if (raw && !MODES.has(raw)) {
+    throw unmeasurable(
+      `PARADISE_ABODE の値域は ${[...MODES].join('|')} である: got ${JSON.stringify(raw)} — ` +
+      '黙って既定へ落とせば、住所を取り違えたまま緑を出す(第16条)');
+  }
+  const mode = raw || DEFAULT_MODE;
+  const source = raw ? 'env' : 'default';
+  const h = home(env);
+
+  // 素の住所。個別 env はこの後に重ねる —— 順序が優先順位である。
+  const base = mode === 'repo' ? path.join(repoRoot, '.claude') : path.join(h, '.claude');
+  const out = {
+    mode, source, home: h,
+    abode: base,
+    /**
+     * KG は mode=repo のとき配備の木の中ではなく `<repo>/graph/kg-store` に住む。
+     * 配備物(`.claude/`)は「いつ消えても建て直せる産物」であり(第19条b)、
+     * 記憶をそこに置けば、建て直しが記憶を消す。
+     */
+    kg: mode === 'repo' ? path.join(repoRoot, 'graph', 'kg-store') : path.join(base, 'paradise-kg'),
+  };
+  const rebase = () => {
+    out.settings = path.join(out.abode, 'settings.json');
+    out.agents = path.join(out.abode, 'agents');
+    out.commands = path.join(out.abode, 'commands');
+    out.rules = path.join(out.abode, 'rules');
+    out.skills = path.join(out.abode, 'skills');
+    out.claudeMd = path.join(out.abode, 'CLAUDE.md');
+    out.dailyLedger = path.join(out.abode, 'paradise-daily.json');
+  };
+  rebase();
+
+  const overrides = [];
+  for (const o of OVERRIDE_ENV) {
+    const v = String(env[o.env] || '').trim();
+    if (!v) continue;
+    const value = path.resolve(v);
+    if (o.key === 'abode') { out.abode = value; rebase(); }
+    else out[o.key] = value;
+    overrides.push({ env: o.env, key: o.key, value });
+  }
+  // CLAUDE_HOME で abode を差し替えた後に個別 env をもう一度重ねる —
+  // でなければ rebase() が PARADISE_SETTINGS の指定を上書きしてしまう。
+  for (const o of overrides) if (o.key !== 'abode') out[o.key] = o.value;
+  out.overrides = overrides;
+
+  // 兄弟倉の住処。住所を知るのは workspace.js だけである(第30条)。
+  out.creationsAbode = path.join(workspace.resolve({ repoRoot, env }).root, '.claude');
+
+  out.exists = {
+    abode: isDir(out.abode),
+    settings: isFile(out.settings),
+    agents: isDir(out.agents),
+    kg: isDir(out.kg),
+  };
+  return out;
+}
+
+function isDir(p) { try { return fs.statSync(p).isDirectory(); } catch { return false; } }
+function isFile(p) { try { return fs.statSync(p).isFile(); } catch { return false; } }
+function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } }
+
+/** 単一の住所を引く薄い口。未知の鍵は throw する(黙って undefined を返さない — 第16条)。 */
+function pathFor(key, opts) {
+  if (!KEYS.includes(key)) {
+    throw unmeasurable(`未知の住所の鍵: ${JSON.stringify(key)} — 引ける鍵は ${KEYS.join(' / ')}`);
+  }
+  return resolve(opts)[key];
+}
+
+/** @returns {Mode} */
+function mode(opts) { return resolve(opts).mode; }
+
+// ══════════════════════════════════════════════════════════════════════
+// 台帳 — 神が名指した輸出だけがグローバルへ出る (第58条(b))
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 台帳を読む。**読むだけ。書く口は存在しない**(第54条(d) / AC-56)。
+ * @param {{file?:string}} [opts] file は試験が偽の台帳を差すための口。
+ *   `globalWrite()` はこの口を持たない —— 呼び手が台帳を差し替えられれば関門ではない。
+ * @returns {{exports:object[], external:object[], closed:object[], path:string}}
+ */
+function ledger(opts = {}) {
+  const file = opts.file || LEDGER;
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { throw unmeasurable(`台帳を読めない: ${file} — ${e.message}`); }
+  return {
+    exports: Array.isArray(raw.exports) ? raw.exports : [],
+    external: Array.isArray(raw.external) ? raw.external : [],
+    closed: Array.isArray(raw.closed) ? raw.closed : [],
+    path: file,
+  };
+}
+
+/**
+ * 「書いた」ふりを退ける語。第54条の先例(空のマーカー 1 個で三法が素通り)を
+ * 台帳で再演させない —— **在ることは資格ではない**。
+ */
+const PLACEHOLDER_RE = /^(TODO|TBD|FIXME|XXX|N\/?A|-+|\?+|後で|未定|なし)$/i;
+/** 「なぜグローバルでなければならないか」は一文では書けない。 */
+const REASON_MIN = 40;
+
+const KINDS = {
+  exports: new Set(['settings-key', 'deploy-tree', 'file']),
+  external: new Set(['external-asset']),
+};
+const SCOPES = new Set(['machine', 'sibling-worktree', 'user']);
+const REQUIRED = {
+  exports: ['id', 'target', 'kind', 'writer', 'reason', 'scope', 'ordainedBy', 'ordainedOn', 'ordainedVia', 'verify'],
+  external: ['id', 'target', 'kind', 'reason', 'scope', 'ordainedBy', 'ordainedOn', 'ordainedVia', 'verify'],
+};
+
+/**
+ * 一つのエントリの実質を検める。
+ * @returns {{id:string, field:string, why:string}[]}
+ */
+function validateEntry(e, i, kind, repoRoot = REPO_ROOT) {
+  const F = [];
+  const ent = e && typeof e === 'object' ? e : {};
+  const say = (field, why) => F.push({ id: ent.id || `<${kind}[${i}] に id が無い>`, field, why });
+
+  // (a) 空 — trim して空、または型が string でない
+  for (const k of REQUIRED[kind]) {
+    const v = ent[k];
+    if (typeof v !== 'string' || !v.trim()) say(k, `${k} が空`);
+  }
+  // (b) プレースホルダ — 「書いた」ふりを退ける
+  for (const k of ['target', 'reason', 'ordainedVia', 'verify']) {
+    if (typeof ent[k] === 'string' && PLACEHOLDER_RE.test(ent[k].trim())) {
+      say(k, `${k} がプレースホルダ: ${ent[k]}`);
+    }
+  }
+  // (c) 実質 — reason が短すぎるのはプレースホルダの変装である
+  if (typeof ent.reason === 'string' && ent.reason.trim() && ent.reason.trim().length < REASON_MIN) {
+    say('reason', `reason が ${ent.reason.trim().length} 字 — なぜ楽園内で足りないかを ${REASON_MIN} 字以上で述べよ`);
+  }
+  // (d) 日付 — 「読める」だけでなく「実在の日付」かつ「未来でない」。
+  //     new Date('2026-02-31') は 3/3 に化ける。ゆえに往復で照合する。
+  if (typeof ent.ordainedOn === 'string' && ent.ordainedOn.trim()) {
+    const s = ent.ordainedOn.trim();
+    // `new Date('2026-13-01')` は Invalid Date になり toISOString() が投げる。
+    // **門が例外で落ちれば、それは「検めた」ことにならない**(第16条)。
+    let ok = false;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const d = new Date(s + 'T00:00:00Z');
+      ok = !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+      if (ok && d > new Date()) { say('ordainedOn', `ordainedOn が未来: ${s}`); }
+    }
+    if (!ok) say('ordainedOn', `ordainedOn が日付として読めない: ${JSON.stringify(s)}`);
+  } else if (typeof ent.ordainedOn === 'string') {
+    say('ordainedOn', 'ordainedOn が日付として読めない: ""');
+  }
+  // (e) 列挙値
+  if (!KINDS[kind].has(ent.kind)) say('kind', `未知の kind: ${ent.kind}`);
+  if (!SCOPES.has(ent.scope)) say('scope', `未知の scope: ${ent.scope}`);
+  if (ent.ordainedBy !== 'god') say('ordainedBy', `ordainedBy が god でない: ${ent.ordainedBy}`);
+  // (f) id の形
+  if (typeof ent.id === 'string' && ent.id.trim()) {
+    const re = kind === 'exports' ? /^EX-\d+$/ : /^EXT-\d+$/;
+    if (!re.test(ent.id.trim())) say('id', `id の形が ${re} に合わない: ${ent.id}`);
+  }
+  // (g) writer — 実在しないファイルを writer に書けば、誰も書けない輸出になる
+  if (kind === 'exports') {
+    if (typeof ent.writer === 'string' && ent.writer.trim() &&
+        !fs.existsSync(path.join(repoRoot, ent.writer))) {
+      say('writer', `writer が実在しない: ${ent.writer}`);
+    }
+  } else if ('writer' in ent) {
+    say('writer', '外部資産に writer を書いてはならない — 楽園は読むだけである');
+  }
+  return F;
+}
+
+/**
+ * 台帳の実質を検める(第二段)。**在ることを資格と認めない**(第54条(b))。
+ * @returns {{id:string, field:string, why:string}[]}
+ */
+function validateLedger(led, repoRoot = REPO_ROOT) {
+  const L = led || ledger();
+  const F = [];
+  for (const kind of ['exports', 'external']) {
+    const rows = Array.isArray(L[kind]) ? L[kind] : [];
+    const seen = new Map();
+    rows.forEach((e, i) => {
+      F.push(...validateEntry(e, i, kind, repoRoot));
+      const id = e && typeof e.id === 'string' ? e.id.trim() : '';
+      if (!id) return;
+      if (seen.has(id)) F.push({ id, field: 'id', why: `id が重複している (${kind}[${seen.get(id)}] と ${kind}[${i}])` });
+      else seen.set(id, i);
+    });
+  }
+  /**
+   * `closed[]` にも根拠を要求する。根拠の無い「閉じた」は自己申告であり、
+   * 第54条(b) が退ける —— 次に誰かが同じ問いを持ち出したとき、
+   * 機械が「実測の上で不要と裁定した」と答えられなければ台帳の意味が無い。
+   */
+  (Array.isArray(L.closed) ? L.closed : []).forEach((c, i) => {
+    const ent = c && typeof c === 'object' ? c : {};
+    const say = (field, why) => F.push({ id: ent.id || `<closed[${i}] に id が無い>`, field, why });
+    for (const k of ['id', 'subject', 'question', 'verdict', 'evidence', 'closedOn', 'closedBy', 'closedVia']) {
+      if (typeof ent[k] !== 'string' || !ent[k].trim()) say(k, `${k} が空`);
+    }
+    if (typeof ent.evidence === 'string' && ent.evidence.trim() && PLACEHOLDER_RE.test(ent.evidence.trim())) {
+      say('evidence', `evidence がプレースホルダ: ${ent.evidence}`);
+    }
+  });
+  return F;
+}
+
+/** id で輸出を引く。無ければ null。 */
+function exportFor(id) {
+  const L = ledger();
+  return L.exports.find(e => e && e.id === id) || L.external.find(e => e && e.id === id) || null;
+}
+
+/** 宛先(target 文字列)で輸出を引く。無ければ null。 */
+function exportForTarget(target) {
+  const t = String(target || '').trim();
+  if (!t) return null;
+  return ledger().exports.find(e => e && String(e.target || '').trim() === t) || null;
+}
+
+/**
+ * 呼び手を**実測**する。呼び手が「私は apply-guards です」と名乗る旗は受け付けない
+ * (第54条(a): 資格は名乗りではなく住所が決める)。
+ *
+ * `Error.prepareStackTrace` を**この場で自分の物に差し替える**ので、呼び手が
+ * 事前に細工した prepareStackTrace は届かない(試験で撃っている)。
+ * @returns {string|null} repo 相対の道。測れなければ null
+ */
+function callerModule() {
+  const prev = Error.prepareStackTrace;
+  try {
+    Error.prepareStackTrace = (_, frames) => frames;
+    const err = new Error();
+    Error.captureStackTrace(err, callerModule);
+    const frames = err.stack;
+    if (!Array.isArray(frames)) return null;
+    for (const f of frames) {
+      const file = f && f.getFileName && f.getFileName();
+      if (!file || !file.endsWith('.js')) continue;
+      const abs = path.resolve(file);
+      if (abs === __filename) continue;                       // 自分自身は飛ばす
+      if (!abs.startsWith(REPO_ROOT + path.sep)) continue;     // node 内部・倉の外を飛ばす
+      return path.relative(REPO_ROOT, abs).split(path.sep).join('/');
+    }
+  } catch { return null; }
+  finally { Error.prepareStackTrace = prev; }
+  return null;
+}
+
+/**
+ * **輸出の関門。グローバルへ書く engine は必ずここを通る。**
+ *
+ * 台帳に無い宛先、実質を欠いたエントリ、呼び手の食い違い —— どれか一つでも
+ * 当たれば throw し、`write()` は**一度も呼ばれない**(1 バイトも書かない)。
+ * 通した輸出は必ず標準出力へ名乗る(第54条(c): 黙って通した輸出は 0 件)。
+ *
+ * ⚠️ **この関門は mode を一切見ない。** `PARADISE_ABODE=global` は
+ *    「既定の住所が外を向く」だけであって、「台帳を迂回する」意味を持たない(AC-55)。
+ *    mode で輸出を分岐させる実装は `check` が静的に禁じる。
+ *
+ * @param {string} target
+ * @param {() => any} write   実際の書き込みを行う関数
+ * @throws {Error} 台帳に無い / 実質が無い / writer 不一致 / 呼び手が測れない
+ */
+function globalWrite(target, write) {
+  const e = exportForTarget(target);
+  if (!e) {
+    throw new Error(`${target} は台帳に無い輸出である — graph/abode.json に神の名指しが要る (AC-23)`);
+  }
+  const bad = validateEntry(e, 0, 'exports');
+  if (bad.length) {
+    throw new Error(`${e.id} の台帳エントリに実質が無い — ` +
+      bad.map(f => `${f.field}: ${f.why}`).join(' / ') + ' (第54条(b))');
+  }
+  const caller = callerModule();
+  if (caller !== e.writer) {
+    // **「測れなかった」を「一致した」と読んではならない**(第37条)。
+    throw new Error(`${e.id} の writer は ${e.writer} — 呼び手は ${caller === null ? '(測れず)' : caller} (AC-26)`);
+  }
+  if (typeof write !== 'function') {
+    throw unmeasurable(`${e.id}: 書き込みの関数が渡されていない — 関門は書く者を包んで初めて関門である`);
+  }
+  const r = write();
+  console.log(`[輸出 ${e.id}] ${e.target} ← ${e.writer}`);
+  return r;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 第一段: 住所 — ソースを走査して、住所を作る場所を一つに絞る (第58条(a))
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 住所を作る行の形。`workspace.js:106-109` の `HARDCODE_PATTERNS` と同じ流儀 ——
+ * **形を一本しか持たない門は意味を見逃す**(第19条の再発を防ぐため複数持つ)。
+ */
+const HOMEDIR_PATTERNS = [
+  { re: /\bos\.homedir\s*\(/, why: 'os.homedir() の直接呼び出し' },
+  { re: /\bprocess\.env\.(USERPROFILE|HOMEPATH)\b/, why: 'ホームを env から直に読んでいる' },
+  { re: /['"`]~\/\.claude/, why: "文字列リテラルの '~/.claude'" },
+  { re: /path\.(join|resolve)\s*\([^)]*['"`]\.claude['"`]/, why: "path.join/resolve の引数の '.claude'" },
+  { re: /\bCLAUDE_CONFIG_DIR\b/, why: 'CLAUDE_CONFIG_DIR は方式C — 採らないと裁定済み' },
+];
+
+/**
+ * 除外は **1 ファイルのみ**。理由: 住所を作ることがこのファイルの職務だからである。
+ * 除外を広げてはならない —— 広げた瞬間、この門は自分の穴を自分で開ける。
+ *
+ * `workspace.js:111-117` は除外を**コード内に明示**した(「除外を暗黙にすると、
+ * 除外したこと自体が見えなくなる」)。だが第54条は**明示だけでは足りない**ことを
+ * 教えている —— 空の `.paradise-source` は「明示された除外の条件」を満たしていた。
+ * ゆえに四重の錠を掛ける(`exclusionAudit()` が全て検める)。
+ */
+const HOMEDIR_EXCLUDE_FILES = new Set(['abode.js']);
+/** 錠1 の固定値。増やすなら憲法を改めよ(第58条(a))。 */
+const HOMEDIR_EXCLUDE_MAX = 1;
+/** 錠3 の上限。住所を作る場所が器の中で分裂したら、それも散らばりである。 */
+const ABODE_HOMEDIR_MAX = 1;
+/** 錠2 — 除外は名前ではなく**実質**が与える。この輸出を欠けば除外は与えない。 */
+const EXCLUSION_EVIDENCE = ['function resolve', 'function pathFor', 'function globalWrite', 'module.exports'];
+
+/** 走査対象のファイル(repo 相対の道)。graph は 1 階層、tools は再帰。 */
+function scanTargets(repoRoot = REPO_ROOT) {
+  const out = [];
+  let names = [];
+  try { names = fs.readdirSync(path.join(repoRoot, 'graph')); } catch { names = []; }
+  for (const n of names.sort()) if (n.endsWith('.js')) out.push('graph/' + n);
+  const walk = (rel, depth) => {
+    if (depth > 4) return;
+    let ents = [];
+    try { ents = fs.readdirSync(path.join(repoRoot, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of ents.sort((a, b) => a.name.localeCompare(b.name))) {
+      const r = rel + '/' + e.name;
+      if (e.isDirectory()) walk(r, depth + 1);
+      else if (e.name.endsWith('.js')) out.push(r);
+    }
+  };
+  walk('tools', 0);
+  return out;
+}
+
+/**
+ * ソースから**註釈と文字列の中身**を落として、走るコードだけを残す。
+ *
+ * この器は「散らばった住所」という病を裁く門であり、裁くために病の名を
+ * 註釈にも診断文にも書く(`why: 'os.homedir() の直接呼び出し'` のように)。
+ * 素朴に数えれば、**病を説明した文字列そのものが違反として数えられる** ——
+ * `workspace.js:136-137` が「註釈は道を説明してよい」と裁いたのと同じ形が、
+ * 文字列にも要る。
+ *
+ * **行ごとに処理する。** ファイル全体を一本の走査で舐めると、正規表現リテラルの
+ * 中の引用符(`/['"`]~\/\.claude/` — この engine が実際に持っている)を
+ * 文字列の始まりと読み違え、そこから先の全行が同期を失う(実測でそうなった)。
+ * 行で切れば、読み違えの被害はその 1 行に閉じる。**門の誤りは局所であれ。**
+ */
+function codeOnly(src) {
+  const out = [];
+  let inBlock = false;
+  for (const raw of src.split('\n')) {
+    let line = raw, keep = '';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i], d = line[i + 1];
+      if (inBlock) { if (c === '*' && d === '/') { inBlock = false; i++; } continue; }
+      if (c === '/' && d === '/') break;                       // 行註釈 — 以降は捨てる
+      if (c === '/' && d === '*') { inBlock = true; i++; continue; }
+      if (c === '"' || c === "'" || c === '`') {                // 文字列 — 中身を捨てて空にする
+        i++;
+        while (i < line.length && line[i] !== c) { if (line[i] === '\\') i++; i++; }
+        keep += c + c;
+        continue;
+      }
+      keep += c;
+    }
+    out.push(keep);
+  }
+  return out.join('\n');
+}
+
+/**
+ * 除外の裏付けを検める(四重の錠)。**除外を適用したなら必ず口で名乗る**(第54条(c))。
+ * @returns {{files:string[], size:number, sizeOk:boolean, granted:boolean,
+ *   missing:string[], homedirCount:number, countOk:boolean, ok:boolean, why:string[]}}
+ */
+function exclusionAudit(repoRoot = REPO_ROOT) {
+  const files = [...HOMEDIR_EXCLUDE_FILES];
+  const why = [];
+  // 錠1 — 除外リストの長さを門が固定する
+  const sizeOk = files.length <= HOMEDIR_EXCLUDE_MAX && files.length >= 1;
+  if (!sizeOk) {
+    why.push(`住所の除外リストが ${files.length} 件になっている: ${files.join(', ')} — ` +
+      '除外は abode.js ただ一つである。増やすなら憲法を改めよ (第54条(d))');
+  }
+  // 錠2 — 除外されるファイルの中身を、門が実測で検める
+  const src = read(path.join(repoRoot, 'graph', 'abode.js'));
+  const missing = EXCLUSION_EVIDENCE.filter(n => !src.includes(n));
+  const granted = src.length > 0 && missing.length === 0;
+  if (!granted) {
+    why.push(`graph/abode.js は住所の器の資格を欠く (${missing.join(' / ') || 'ファイルが読めない'}) — ` +
+      '除外は名前ではなく実質が与える (第54条(a))');
+  }
+  /**
+   * 錠3 — 除外の中でも上限を置く。走るコードの中の呼び出しだけを数える
+   * (`codeOnly()` が註釈と文字列を落とす)。
+   */
+  const homedirCount = (codeOnly(src).match(/\bos\.homedir\s*\(/g) || []).length;
+  const countOk = !granted || homedirCount === ABODE_HOMEDIR_MAX;
+  if (!countOk) {
+    why.push(`graph/abode.js の中に os.homedir() が ${homedirCount} 箇所ある — ` +
+      `住所を作る場所が器の中で分裂している (上限 ${ABODE_HOMEDIR_MAX})`);
+  }
+  return { files, size: files.length, sizeOk, granted, missing, homedirCount, countOk, ok: sizeOk && granted && countOk, why };
+}
+
+/** 除外を与えてよい道か。名前だけを真似た `tools/abode.js` には与えない。 */
+function isExcluded(rel, audit) {
+  if (!audit.granted) return false;                       // 錠2: 資格の無い除外は与えない
+  if (!audit.sizeOk) return false;                        // 錠1: 水増しされた除外は全て無効
+  return [...HOMEDIR_EXCLUDE_FILES].some(f => rel === 'graph/' + f);
+}
+
+/**
+ * 生産コード中の住所の直書きを走査する(第一段)。**必ず行を名指す** ——
+ * 名指ししない門は、赤くなっても直せない。
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
+function homedirRefs(repoRoot = REPO_ROOT) {
+  const audit = exclusionAudit(repoRoot);
+  const out = [];
+  for (const rel of scanTargets(repoRoot)) {
+    if (isExcluded(rel, audit)) continue;
+    const src = read(path.join(repoRoot, rel));
+    if (!src) continue;
+    src.split('\n').forEach((line, i) => {
+      const t = line.trim();
+      // 註釈は道を説明してよい。咎めるのは実際に走るコードの中の住所だけ。
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+      for (const p of HOMEDIR_PATTERNS) {
+        if (p.re.test(line)) { out.push({ file: rel, line: i + 1, text: t.slice(0, 100), why: p.why }); return; }
+      }
+    });
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 第三段の静的側 — 器が己に課す禁則 (AC-55 / AC-56)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * `abode.js` 自身のソースを検める。
+ *  (1) 台帳へ**書く**口を持っていないか(第54条(d) / AC-56)
+ *  (2) `globalWrite` が mode を見て輸出を分岐していないか(AC-55)
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
+function selfAudit(repoRoot = REPO_ROOT) {
+  const rel = 'graph/abode.js';
+  const src = read(path.join(repoRoot, rel));
+  const out = [];
+  if (!src) return out;
+  const lines = src.split('\n');
+
+  // (1) 台帳へ書く口。engine が台帳を育てられるなら、それは自己申告である。
+  const WRITE_RES = [
+    { re: /(writeFileSync|appendFileSync|createWriteStream)\s*\(\s*LEDGER\b/, why: '台帳へ書く口を engine が持ってはならない (第54条(d))' },
+    { re: /(writeFileSync|appendFileSync)\s*\([^)]*abode\.json/, why: '台帳へ書く口を engine が持ってはならない (第54条(d))' },
+    { re: /['"`]add-export['"`]|function\s+addExport\b/, why: '台帳へ追記する口を engine が持ってはならない (第54条(d))' },
+  ];
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+    for (const w of WRITE_RES) {
+      if (w.re.test(line)) { out.push({ file: rel, line: i + 1, text: t.slice(0, 100), why: w.why }); return; }
+    }
+  });
+
+  // (2) globalWrite が mode を参照していないか。関数の本体だけを切り出して見る ——
+  //     ファイル全体を見れば resolve() の mode に当たって永久に赤くなる。
+  const start = lines.findIndex(l => /^function globalWrite\s*\(/.test(l));
+  if (start >= 0) {
+    let depth = 0, end = start;
+    for (let i = start; i < lines.length; i++) {
+      depth += (lines[i].match(/\{/g) || []).length - (lines[i].match(/\}/g) || []).length;
+      if (i > start && depth <= 0) { end = i; break; }
+      end = i;
+    }
+    for (let i = start; i <= end; i++) {
+      const t = lines[i].trim();
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
+      if (/\bmode\s*\(|\.mode\b|DEFAULT_MODE\b/.test(lines[i])) {
+        out.push({ file: rel, line: i + 1, text: t.slice(0, 100),
+          why: 'globalWrite が mode を見ている — global は「台帳を迂回する」意味を持たない (AC-55)' });
+      }
+    }
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// check — 三段構えを束ねる
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * @param {{repoRoot?:string, count?:boolean, ledger?:boolean, exclusion?:boolean}} [opts]
+ * @returns {{ok:boolean, exclusion:object, homedir:object[], ledger:object[], self:object[]}}
+ */
+function check(opts = {}) {
+  const repoRoot = opts.repoRoot || REPO_ROOT;
+  const all = !(opts.count || opts.ledger || opts.exclusion);
+  const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [], ok: true };
+  if (all || opts.count || opts.exclusion) r.homedir = homedirRefs(repoRoot);
+  if (all || opts.ledger) {
+    r.ledger = validateLedger(ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {}), repoRoot);
+    r.self = selfAudit(repoRoot);
+  }
+  r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0;
+  return r;
+}
+
+// ── CLI ───────────────────────────────────────────────────────────────
+
+function printResolve(rest) {
+  const r = resolve();
+  if (rest.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return 0; }
+  console.log(`mode=${r.mode} (source=${r.source})`);
+  for (const k of KEYS) console.log(`  ${k.padEnd(15)} ${r[k]}`);
+  for (const o of r.overrides) console.log(`  · 個別 env が上書き: ${o.env} → ${o.key} = ${o.value}`);
+  console.log(`  exists: abode=${r.exists.abode} settings=${r.exists.settings} agents=${r.exists.agents} kg=${r.exists.kg}`);
+  return 0;
+}
+
+function printExports(rest) {
+  const L = ledger();
+  const wantExternal = rest.includes('--external');
+  const vi = rest.indexOf('--verify');
+  if (vi >= 0) {
+    const id = rest[vi + 1];
+    if (!id) throw unmeasurable('--verify には id が要る: node graph/abode.js exports --verify EX-1');
+    const e = exportFor(id);
+    if (!e) { console.log(`✗ ${id} は台帳に無い`); return 1; }
+    console.log(`${e.id}  ${e.target}`);
+    console.log(`  照合の道: ${e.verify}`);
+    // **自動照合はこの段では実装していない。** 「検められなかった」を 0 で返せば、
+    // この器は自分が診断している病そのものになる(第37条)。
+    throw unmeasurable(`${id} の自動照合は第3段 (work-3 / AC-27) で実装する — 上の道を自分で走らせよ`);
+  }
+  const rows = wantExternal ? L.external : L.exports;
+  const kindJa = wantExternal ? '外部資産 (楽園は読むだけ)' : '輸出 (神が名指した宛先)';
+  console.log(`═══ 📜 ABODE LEDGER — ${kindJa} ═══`);
+  console.log(`  台帳: ${path.relative(REPO_ROOT, L.path).split(path.sep).join('/')}  件数 ${rows.length}`);
+  for (const e of rows) {
+    console.log('');
+    console.log(`  ${e.id}  ${e.target}`);
+    console.log(`     kind   : ${e.kind}   scope: ${e.scope}`);
+    if (!wantExternal) console.log(`     writer : ${e.writer}`);
+    console.log(`     名指し : ${e.ordainedBy} / ${e.ordainedOn} / ${e.ordainedVia}`);
+    console.log(`     reason : ${e.reason}`);
+    console.log(`     verify : ${e.verify}`);
+  }
+  if (!wantExternal && L.closed.length) {
+    console.log('');
+    console.log(`  ── 閉じた問い (${L.closed.length} 件) ── 散文に書けば腐る。台帳に残せば機械が答えを持つ`);
+    for (const c of L.closed) {
+      console.log(`  ${c.id}  ${c.subject}`);
+      console.log(`     裁定 : ${c.verdict} (${c.closedOn} / ${c.closedBy})`);
+      console.log(`     根拠 : ${c.evidence}`);
+    }
+  }
+  console.log('═══════════════════════════════════════');
+  return 0;
+}
+
+function printCheck(rest) {
+  const r = check({
+    count: rest.includes('--count'),
+    ledger: rest.includes('--ledger'),
+    exclusion: rest.includes('--exclusion'),
+  });
+  console.log('═══ 🏠 ABODE CHECK (第58条) ═══');
+  // **除外を適用したなら必ず口で名乗る**(第54条(c))。この行が出ない check は、
+  // 除外を黙って適用している。
+  console.log(`  · 除外 ${r.exclusion.size} 件: ${r.exclusion.files.map(f => 'graph/' + f).join(', ')} ` +
+    `(住所を作るのが職務 / 資格の裏付け: ${r.exclusion.granted ? EXCLUSION_EVIDENCE.join('+') + ' を輸出している' : '無し'} ` +
+    `/ homedir 呼び出し ${r.exclusion.homedirCount} 箇所)`);
+  for (const w of r.exclusion.why) console.log(`  ✗ ${w}`);
+  if (r.homedir.length) {
+    console.log(`✗ 楽園の住所を直に作っている engine (${r.homedir.length} 件) — abode.js を通せ`);
+    for (const h of r.homedir) {
+      console.log(`  ${h.file}:${h.line}  ${h.text}`);
+      console.log(`     ${h.why}`);
+    }
+  }
+  if (r.ledger.length) {
+    console.log(`✗ 台帳の実質が無い (${r.ledger.length} 件)`);
+    for (const f of r.ledger) console.log(`  ${String(f.id).padEnd(6)} ${String(f.field).padEnd(12)}: ${f.why}`);
+    console.log('  → 台帳は在ることが資格ではない (第54条(b))');
+  }
+  if (r.self.length) {
+    console.log(`✗ 器が己に課した禁則を破っている (${r.self.length} 件)`);
+    for (const s of r.self) console.log(`  ${s.file}:${s.line}  ${s.text}\n     ${s.why}`);
+  }
+  if (r.ok) console.log('  ✓ 住所は abode.js に集まり、台帳は実質を持ち、器は台帳へ書く口を持たない');
+  console.log('═══════════════════════════════');
+  return r.ok ? 0 : 1;
+}
+
+function main(argv) {
+  const [cmd, ...rest] = argv;
+  if (cmd === 'resolve') return printResolve(rest);
+  if (cmd === 'path') {
+    const key = rest[0];
+    if (!key) throw unmeasurable(`path には鍵が要る: ${KEYS.join(' / ')}`);
+    console.log(pathFor(key));
+    return 0;
+  }
+  if (cmd === 'check') return printCheck(rest);
+  if (cmd === 'exports') return printExports(rest);
+  if (cmd === 'migrate' || cmd === 'retreat') {
+    // **未実装を 0 で返さない。** 「検められなかった」は exit 2 である(第37条)。
+    const when = cmd === 'migrate' ? '第4段 (work-4)' : '第6段 (work-6)';
+    throw unmeasurable(`${cmd} は ${when} で実装する — この段の abode.js は住所と台帳と門だけを持つ`);
+  }
+  throw unmeasurable('usage: abode.js resolve [--json] | path <key> | check [--count|--ledger|--exclusion] | ' +
+    'exports [--external|--verify <id>] | migrate --plan|--verify | retreat --plan|--verify');
+}
+
+if (require.main === module) {
+  let code = 3;
+  try { code = main(process.argv.slice(2)); }
+  catch (e) {
+    console.error(`✗ ${e.message}`);
+    code = typeof e.exitCode === 'number' ? e.exitCode : 3;
+  }
+  process.exit(code);
+}
+
+module.exports = {
+  resolve, pathFor, mode, home, ledger, validateLedger, validateEntry,
+  exportFor, exportForTarget, globalWrite, callerModule,
+  homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
+  REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS,
+  HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
+  ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,
+};

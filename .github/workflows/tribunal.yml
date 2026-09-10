@@ -122,6 +122,9 @@ jobs:
       - name: 🔢 Census — 楽園が己について語る数が真実か (第22条)
         run: node graph/census.js check
 
+      - name: 🔒 Hermetic — 門が己の測る対象を汚していないか (第58条(c))
+        run: node graph/hermetic.js check
+
       - name: 📄 Derived — 生成物の中身を前提にした検査がないか (第29条)
         run: node graph/derived.js check
 
@@ -143,6 +146,11 @@ jobs:
         # engine の一覧は写経しない。ディスクを走査し、内の辺(require)と
         # 外の辺(門・命令・神官・掟・試験・器物・散文・機構)を実測する。
         run: node graph/wiring.js check
+
+      - name: 🏠 Abode — 住処の器と輸出の台帳 (第58条)
+        run: |
+          node tests/abode.test.js
+          node graph/abode.js check --ledger
 
       # ── ダッシュボードの門 G-01〜G-10 (第22条 / 第50条) ──
       # **門が見ていない機能は、壊れても鳴らない。**

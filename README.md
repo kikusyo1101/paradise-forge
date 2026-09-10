@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 455/455 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 462/462 pass
 ```
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
@@ -226,6 +226,8 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
 | `graph/atlas.js` | **楽園の自画像**。位階・道・環・結線を JSON IR に写し、取り込んだ `archify` に描かせる。6主題 (hierarchy/conclave/dispatch/dag/run/wiring)。交差ゼロが不能なら測って standard を名乗る(第47条) |
 | `graph/wiring.js` | **機構の結線**。engine が engine を require する内の辺と、門・命令・神官・掟・試験・器物・散文・機構が名を呼ぶ外の辺を実測する。孤児(呼ぶ者の居ない engine)と宙吊り(存在しない engine への参照)を裁く(第44条・第48条) |
+| `graph/hermetic.js` | **門の密閉性**。`tests/*.js` を走査し、`ROOT`/`DIR`/`__dirname` 起点の**版管理下**ファイルへの `writeFileSync`/`appendFileSync`/`rmSync`/`unlinkSync` を**行番号で名指す**。除外は「複製(mkdtemp/cpSync 配下)に書いていること」だけ —— **`finally` の復元は除外ではない。復元しても窓は開く**。この門は自分自身にも掛かり、除外の名簿は空である(第58条(c)・第54条(d)) |
+| `graph/abode.js` | **楽園自身の住処を知る唯一の器**。`os.homedir()` も `~/.claude` も `CLAUDE_CONFIG_DIR` も、この engine の外に現れてはならない — 門がソースを走査し**行を名指す**。加えて**輸出の関門**: グローバルへ書く engine は `globalWrite()` を通り、宛先は `graph/abode.json`(神が名指した台帳)に載っていなければ通らない。呼び手は名乗りではなく stack から**実測**する。**engine は台帳へ書く口を持たない**(第58条・第54条(d)) |
 | `graph/pulse.js` | **楽園の断面 (snapshot)**。数・門の合否・走行・台帳・記憶を 1 個の JSON に写す唯一の engine。画面はここしか見ない — 突合点が 1 つだから門が 1 式で書ける(第22条・第16条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |

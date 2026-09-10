@@ -26,10 +26,39 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const LEDGER = path.join(__dirname, 'domains.json');
 
-function load() {
-  const raw = JSON.parse(fs.readFileSync(LEDGER, 'utf8'));
+/**
+ * 台帳の住所。既定は `graph/domains.json` —— **だが env で仮倉へ振り替えられる**。
+ *
+ * ⚠️ **なぜ振替の口が要るか**(第58条(c) / L-28)。
+ * 楽園の自己診断は「宣言を消したら分野の門が鳴る」ことを故障注入で撃つ。
+ * その注入先が**版管理下の `graph/domains.json` 現物**だった。15ms 標本で窓を捕らえた:
+ *
+ *     [tick 12] DIRTY(TRACKED):  M graph/domains.json
+ *
+ * `finally` で書き戻してはいる。**だが復元しても窓は開く。**
+ * その間に別のプロセスが同じ台帳を読めば、**汚染された台帳を見て偽の赤を出す**。
+ * 実測で三通りの答えが返った(design.md §5.4.1)。**測定が測定を壊すなら、その数は測定ではない。**
+ *
+ * ゆえに `workspace.js` が `PARADISE_CREATIONS` で創造物の倉を振り替えるのと**同じ形**で、
+ * 台帳の住所も振り替えられるようにする。門は仮倉を汚し、現物には指一本触れない。
+ *
+ * 住所は**呼ばれた時に**解決する(`ledgerPath()`)。読み込み時に固めると、
+ * 同一プロセス内で env を立てても効かない —— 門ヘルパーが使えなくなる。
+ */
+const DEFAULT_LEDGER = path.join(__dirname, 'domains.json');
+function ledgerPath(env) {
+  const raw = ((env || process.env).PARADISE_DOMAINS_LEDGER || '').trim();
+  return raw ? path.resolve(raw) : DEFAULT_LEDGER;
+}
+/**
+ * 後方互換の名。**呼ばれた時の env を映す**ので、`domainsT.LEDGER` と書いた
+ * 既存の呼び手はそのまま仮倉を指す(古い写しが現物を掴み続けない)。
+ */
+const LEDGER_DESC = { get: () => ledgerPath(), enumerable: true };
+
+function load(env) {
+  const raw = JSON.parse(fs.readFileSync(ledgerPath(env), 'utf8'));
   return { domains: raw.domains || {}, agents: raw.agents || {} };
 }
 
@@ -170,4 +199,6 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { load, classify, serves, domainsOf, check, LEDGER };
+module.exports = { load, classify, serves, domainsOf, check, ledgerPath, DEFAULT_LEDGER };
+// `LEDGER` は定数ではなく**その時の住所**である。env の振替を無視する写しを作らせない。
+Object.defineProperty(module.exports, 'LEDGER', LEDGER_DESC);

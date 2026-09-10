@@ -39,7 +39,35 @@ const forge = require('./forge.js');
 const wiring = require('./wiring.js');
 
 const ROOT = path.resolve(__dirname, '..');
-const ARCHIFY = path.join(ROOT, 'overlay', 'vendor', 'archify', 'bin', 'archify.mjs');
+
+/**
+ * 描画器の住所。既定は取り込んだ写し —— **だが env で複製へ振り替えられる**
+ * (第58条(c) / L-28。`domains.js` の `PARADISE_DOMAINS_LEDGER` /
+ *  `ordain.js` の `PARADISE_ORDAIN_ROOT` と同型)。
+ *
+ * ⚠️ **なぜ振替の口が要るか。** 楽園の自己診断は「描画器の壊れ方を分類する」ことを
+ * 故障注入で撃つ。その注入先が**版管理下の描画器そのもの**だった。15ms 標本が窓を捕らえた:
+ *
+ *     [tick 17571] DIRTY(TRACKED):  M overlay/vendor/archify/bin/archify.mjs
+ *
+ * `finally` で書き戻してはいる。**だが復元しても窓は開く。**
+ * その窓に別のプロセスが同じ描画器を起動すれば、stub を本物と思って図を描く。
+ *
+ * 住所は**呼ばれた時に**解決する(`archifyPath()`)。読み込み時に固めると、
+ * 同一プロセス内で env を立てても効かない —— 門ヘルパーが使えなくなる。
+ * **判定則も分類も一行も変わらない。変わるのは「描画器が何処か」だけである。**
+ */
+const DEFAULT_ARCHIFY = path.join(ROOT, 'overlay', 'vendor', 'archify', 'bin', 'archify.mjs');
+function archifyPath() {
+  const raw = (process.env.PARADISE_ARCHIFY || '').trim();
+  return raw ? path.resolve(raw) : DEFAULT_ARCHIFY;
+}
+/**
+ * 後方互換の名。**呼ばれた時の env を映す**ので、`atlas.ARCHIFY` と書いた
+ * 既存の呼び手はそのまま複製を指す(古い写しが現物を掴み続けない)。
+ */
+const ARCHIFY_DESC = { get: () => archifyPath(), enumerable: true };
+
 const OUTDIR = path.join(ROOT, 'dashboard', 'atlas');
 // 動きの検器 (第50条)。CJS からは呼べない ESM なので、門は子として走らせる。
 const PROBE = path.join(ROOT, 'graph', 'motion-probe.mjs');
@@ -1171,9 +1199,10 @@ function buildIr(subject, opts = {}) {
  * (第20条)。上流の更新チェッカーは取り込み時に削いであるが、環境変数でも塞ぐ。
  */
 function archify(args) {
+  const bin = archifyPath();                       // **呼ばれた時に**解決する
   try {
-    return execFileSync(process.execPath, [ARCHIFY, ...args], {
-      cwd: path.dirname(path.dirname(ARCHIFY)),
+    return execFileSync(process.execPath, [bin, ...args], {
+      cwd: path.dirname(path.dirname(bin)),
       encoding: 'utf8',
       env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1' },
     });
@@ -1217,9 +1246,10 @@ function archify(args) {
 const FIRST_SCREEN_KINDS = Object.freeze(['fits', 'overflow', 'unreadable', 'skipped', 'inconclusive']);
 
 function firstScreenOnce(htmlPath) {
+  const bin = archifyPath();                       // **呼ばれた時に**解決する
   try {
-    const raw = execFileSync(process.execPath, [ARCHIFY, 'visual-check', htmlPath, '--json'], {
-      cwd: path.dirname(path.dirname(ARCHIFY)), encoding: 'utf8',
+    const raw = execFileSync(process.execPath, [bin, 'visual-check', htmlPath, '--json'], {
+      cwd: path.dirname(path.dirname(bin)), encoding: 'utf8',
       env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1' },
     });
     return { ok: true, kind: 'fits', overflow: 0, unreadable: 0, receipt: JSON.parse(raw) };
@@ -1465,4 +1495,7 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, ARCHIFY, firstScreen, FIRST_SCREEN_KINDS };
+module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, archifyPath, DEFAULT_ARCHIFY, firstScreen, FIRST_SCREEN_KINDS };
+// `ARCHIFY` は**呼ばれた時の env を映す**取得子である(定数ではない)。
+// 定数のまま輸出すると、門ヘルパーが env を立てても古い写しが現物を掴み続ける。
+Object.defineProperty(module.exports, 'ARCHIFY', ARCHIFY_DESC);

@@ -46,18 +46,33 @@ const readRoot = f => {
  * 第22条違反を叫んだ。**嘘をついていたのは README ではなく数え方だった。**
  *
  * 総括は「先頭」でも「末尾」でもなく `Paradise self-test:` と名乗る行である。
- * 名前で狙えば、子テストが何本増えても、順序が変わっても壊れない。
- * 名乗りが見つからないときだけ、最後の一致に落ちる(版が変わった場合の保険)。
  *
- * @returns {{passed:number, failed:number}|null} 読めなければ null(= 測れなかった)
+ * ⚠️ **保険経路を持ってはならない**(第58条(d) / L-26)。
+ *
+ * かつてここには「名乗りが見つからないときは最後の一致に落ちる」保険が在った。
+ * その一行が実際に嘘を吐いた —— 実測(design.md §5.4.3):
+ *
+ *     完走出力               -> {"passed":455,"via":"named"}
+ *     途中で死んだ出力(340行) -> {"passed":16, "via":"fallback(last child line)"}
+ *     途中で死んだ出力(650行) -> {"passed":11, "via":"fallback(last child line)"}
+ *
+ * `16` の正体は `dashboard-run-panel: 16 passed, 0 failed` という**子テストの集計行**
+ * である。**打ち切られた走行の途中の数が「楽園のテスト総数」として README に
+ * 書かれかけた。** 保険が守ろうとした「版が変わった場合」は、
+ * `tests/paradise.test.js` の門「絞り込んだ走行は `Paradise self-test:` を名乗らない」
+ * (AC-13) が既に**名乗りの契約を機械で守っている**。
+ * **契約が門で守られている以上、保険は嘘の温床でしかない。**
+ *
+ * ゆえに名乗りが無ければ `null` を返す —— **測れなかったと表明する**(第37条)。
+ * 呼び手は `measurable()` が偽になってその主張を裁かず、`fix()` も書き換えない。
+ * **不在は通過ではない。だが不在は「0」でも「部分値」でもない。**
+ *
+ * @returns {{passed:number, failed:number}|null} 名乗りが無ければ null(= 測れなかった)
  */
 function summaryOf(out) {
   const named = String(out).match(/Paradise self-test:\s*([0-9]+) passed, ([0-9]+) failed/);
-  if (named) return { passed: +named[1], failed: +named[2] };
-  const all = [...String(out).matchAll(/([0-9]+) passed, ([0-9]+) failed/g)];
-  if (!all.length) return null;
-  const last = all[all.length - 1];
-  return { passed: +last[1], failed: +last[2] };
+  if (!named) return null;
+  return { passed: +named[1], failed: +named[2] };
 }
 
 /** 楽園の真の数を測る。推測は一つも無い — 全て実ファイル/実行結果から。 */
@@ -290,6 +305,26 @@ function check(opts = {}) {
     const f = evaluateClaim(readRoot(cl.file), cl);
     if (f) findings.push(f);
   }
+  /**
+   * **測れなかったことを、黙って緑にしてはならない**(第37条 / 第58条(d))。
+   *
+   * `summaryOf` の保険経路を殺した(L-26)ので、自己診断が打ち切られたり
+   * 名乗らずに終わったりすれば `c.tests` は `null` になる。
+   * `measurable()` は偽を返し、その主張は**裁かれない** —— ここまでは正しい。
+   * だが「裁かなかった」を「緑」と呼べば、それは
+   * `check-agents` の `skipped=true ok=true` と同じ形である(第16条)。
+   *
+   * ゆえに **自己診断を回すと言って回した走行で測れなかったなら、赤を出す。**
+   * `--no-tests` は「回さない」と名乗った走行なので、ここには掛からない
+   * (第58条(e): 不在を skip と呼んでよいのは、外を向いていると名乗ったときだけ)。
+   */
+  if (opts.runTests !== false && c.tests === null) {
+    findings.push({ file: 'tests/paradise.test.js', kind: 'unmeasured',
+      label: '自己診断の総括', claimed: null, actual: '(測れなかった)',
+      note: '自己診断が `Paradise self-test: N passed, M failed` を名乗らずに終わった — ' +
+            '打ち切られたか、絞り込み走行だったか、落ちた。**部分の値で埋めない**(第37条)。' +
+            '数を README へ書き戻すには、素の全走を最後まで走らせよ' });
+  }
   findings.push(...dietChecks());
   return { ok: findings.length === 0, census: c, findings };
 }
@@ -394,7 +429,7 @@ function fix(opts = {}) {
   };
   const fixed = [], failed = [];
   for (const f of res.findings) {
-    if (f.kind !== 'stale') continue;              // malformed / diet / missing は fix の領分ではない
+    if (f.kind !== 'stale') continue;              // malformed / diet / missing / unmeasured は fix の領分ではない
     const cl = f.claim || f;                       // 書き換えは常に原本の claim で行う (実測値は配列のまま)
     try {
       byFile.set(f.file, applyClaim(readOf(f.file), cl));
@@ -413,7 +448,15 @@ function fix(opts = {}) {
     const v = evaluateClaim(readRoot(cl.file), cl);
     if (v) unresolved.push(v);
   }
-  return { edited: [...byFile.keys()].filter(f => fixed.some(x => x.file === f)), fixed, failed, unresolved };
+  /**
+   * **測れなかった値で README を上書きしてはならない**(第58条(d) / L-26)。
+   *
+   * `measurable()` が偽の主張は上のどの環にも入らないので、**書き換えは起きない** ——
+   * これは既存の設計が正しく守っている。だが `fix` が黙って「nothing to fix」と
+   * 報じれば、教主は「数は真実だ」と読む。**測れなかったことは口で名乗る**(第54条(c))。
+   */
+  const unmeasured = res.findings.filter(f => f.kind === 'unmeasured');
+  return { edited: [...byFile.keys()].filter(f => fixed.some(x => x.file === f)), fixed, failed, unresolved, unmeasured };
 }
 
 if (require.main === module) {
@@ -447,6 +490,7 @@ if (require.main === module) {
     for (const f of res.findings) {
       if (f.kind === 'missing') console.log(`  ⚠️  ${f.label}: claim not found in ${f.file} (実測 ${f.actual})`);
       else if (f.kind === 'malformed') console.log(`  🔴 ${f.label}: 主張の形が壊れている — ${f.claimed} / ${f.actual}  (${f.file})\n       ${f.note}`);
+      else if (f.kind === 'unmeasured') console.log(`  🔴 ${f.label}: **測れなかった** — 部分の値で埋めない (第37条 / 第58条(d))\n       ${f.note}`);
       else console.log(`  🔴 ${f.label}: doc says ${f.claimed}, reality is ${f.actual}  (${f.file})`);
     }
     console.log('═══════════════════════════════');
@@ -456,9 +500,14 @@ if (require.main === module) {
     const r = fix({ runTests: !noTests });
     for (const f of r.fixed) console.log(`  ✏️  ${f.label}: ${f.claimed} → ${f.actual}`);
     for (const f of r.failed) console.log(`  🔴 ${f.label}: 書き換えできなかった — ${f.error}`);
+    // 測れなかったことは必ず口で名乗る — 黙って「nothing to fix」と言えば嘘になる (第54条(c))
+    for (const f of r.unmeasured) {
+      console.log(`  🔴 ${f.label}: **測れなかったので書き戻さない** (第37条 / 第58条(d))`);
+      console.log(`       ${f.note}`);
+    }
     console.log(r.edited.length ? `updated: ${r.edited.join(', ')}` : 'nothing to fix');
     // 直したつもりを許さない — 書いた後に裁き直して残った赤は、そのまま落とす
-    if (r.unresolved.length || r.failed.length) {
+    if (r.unresolved.length || r.failed.length || r.unmeasured.length) {
       for (const f of r.unresolved) console.log(`  🔴 未解決 ${f.label}: doc says ${f.claimed}, reality is ${f.actual}  (${f.file})`);
       console.log('  ✗ fix は文書を真実にできなかった — 上の主張を直せ (第22条)');
       process.exit(1);

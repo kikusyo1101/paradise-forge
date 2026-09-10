@@ -2626,13 +2626,233 @@ test('census: 総括は位置ではなく名前で読む — 子テストの集�
     census.summaryOf('child: 3 passed, 0 failed\nParadise self-test: 287 passed, 1 failed\n'),
     { passed: 287, failed: 1 });
 
-  // 名乗りが無い版でも壊れない — 最後の一致に落ちる
-  assert.deepStrictEqual(census.summaryOf('a: 1 passed, 0 failed\nb: 9 passed, 2 failed\n'),
-    { passed: 9, failed: 2 }, '名乗りが無いときは最後の一致に落ちるべき');
-
   // 読めなければ null。0 で埋めてはならない(第16条: 判定不能は緑ではない)
   assert.strictEqual(census.summaryOf('何も無い'), null,
     '読めなかったときに 0 を返すと「テスト0件で全部通った」と嘘をつく');
+});
+
+test('census: 名乗りが無ければ null — 保険経路は死んでいる (第58条(d) / L-26)', () => {
+  /**
+   * **かつてこの門は逆を要求していた** ——「名乗りが無いときは最後の一致に落ちるべき」。
+   * その保険が実際に嘘を吐いた(design.md §5.4.3 の実測):
+   *
+   *     完走出力               -> {"passed":455,"via":"named"}
+   *     途中で死んだ出力(340行) -> {"passed":16, "via":"fallback(last child line)"}
+   *     途中で死んだ出力(650行) -> {"passed":11, "via":"fallback(last child line)"}
+   *
+   * `16` の正体は `dashboard-run-panel: 16 passed, 0 failed` という**子の集計行**である。
+   * **打ち切られた走行の途中の数が「楽園のテスト総数」として README に書かれかけた。**
+   *
+   * 門を消したのではない。**契約を書き換えて、逆向きに撃つ**(第36条: 門は分ける)。
+   * 名乗りの契約は AC-13 の門(「絞り込んだ走行は Paradise self-test: を名乗らない」)が
+   * 機械で守っている。守られた契約に保険は要らない —— 保険は嘘の温床でしかない。
+   */
+  const census = require('../graph/census.js');
+
+  // 🔴 子の集計行しか無い出力は「測れなかった」。**部分の値で埋めない**
+  assert.strictEqual(census.summaryOf('a: 1 passed, 0 failed\nb: 9 passed, 2 failed\n'), null,
+    '保険経路が生きている — 子テストの集計を楽園の総数として返している (第58条(d))');
+  // 実測された嘘そのものを撃つ: 打ち切られた出力の末尾は子の集計行である
+  assert.strictEqual(census.summaryOf(
+    ['dashboard-states: 12 passed, 0 failed', 'dashboard-run-panel: 16 passed, 0 failed'].join('\n')), null,
+    '打ち切られた走行の 16 を「楽園のテスト総数」として返した — 実測された事故の再発');
+  // 保険経路の綴りそのものが engine から消えていること(復活を機械で塞ぐ)
+  const src = fs.readFileSync(path.join(__dirname, '..', 'graph', 'census.js'), 'utf8');
+  const body = src.slice(src.indexOf('function summaryOf'), src.indexOf('function census'));
+  assert.ok(!/matchAll/.test(body),
+    'summaryOf に全一致の走査が戻っている — 保険経路の復活は治した病の再発である');
+
+  // 🟢 **逆の門**: 名乗りが在れば正しく読む(狭めすぎて何も読めなくしていない)
+  assert.deepStrictEqual(census.summaryOf(
+    'child: 3 passed, 0 failed\nParadise self-test: 455 passed, 0 failed\n'),
+    { passed: 455, failed: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
+
+  // 呼び手は null を「測れなかった」として扱い、**緑を返さない**(第37条)
+  const res = census.check({ runTests: true, testTimeoutMs: 1 });   // 必ず打ち切られる
+  assert.strictEqual(res.census.tests, null, '打ち切られた走行から部分値を拾っている');
+  assert.strictEqual(res.ok, false, '測れなかったのに緑を返した — 不在は通過ではない (第37条)');
+  assert.ok(res.findings.some(f => f.kind === 'unmeasured'),
+    '「測れなかった」を名乗る所見が無い — 黙って裁かないのは skip と同じ形である (第16条)');
+
+  // `--no-tests` は「回さない」と名乗った走行なので、この赤には掛からない(第58条(e))
+  assert.ok(!census.check({ runTests: false }).findings.some(f => f.kind === 'unmeasured'),
+    '回さないと名乗った走行まで赤にした — 名乗った skip は数えられてよい');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// HERMETIC — 門は己の測る対象を汚さない (第58条(c))
+//
+// **これが最も大事な門である。** 今回 L-26/27/28 を直しても、将来誰かが
+// 同じ病を再び埋める。だから**密閉性を機械が見張る**。
+//
+// ⚠️ **この門は自分自身にも掛かる。** `graph/hermetic.js` は `tests/*.js` を
+// 走査するので、ここに書く回帰試験も走査対象である。
+// **裁かれる側が裁きの範囲を決めてはならない**(第54条(d))。
+// ゆえに下の試験はすべて `mkdtempSync` の複製の中でしか書かない。
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n密閉性 (第58条(c)):');
+const hermetic = require(path.join(DIR, '..', 'graph', 'hermetic.js'));
+
+/** 走査対象になる作り物の試験ファイルを、仮倉の `tests/` に建てる。 */
+function hermeticFixture(body) {
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-hermetic-'));
+  fs.mkdirSync(path.join(box, 'tests'), { recursive: true });
+  const f = path.join(box, 'tests', 'probe.test.js');
+  fs.writeFileSync(f, body);
+  // 起点を複製に差し替えて走査する。**判定則は一行も変わらない** —— 変わるのは
+  // 「倉の根が何処か」だけである(`clergy.js lexicon-check --root` と同型)。
+  return { box, file: f, scan: () => hermetic.scanFile(f, { root: box }) };
+}
+
+test('hermetic: 版管理下への書き込みを行番号で名指す — 復元は除外ではない (第58条(c))', () => {
+  // **故障注入**: `ROOT` 起点の版管理下ファイルへ書き、`finally` で完璧に復元する。
+  // 旧来「正しい作法」とされた形そのものである。**それでも赤でなければならない** ——
+  // 復元しても窓は開き、その窓で別のプロセスが汚染を読む(実測: reality is 16/16)。
+  const fx = hermeticFixture([
+    "const path = require('path');",
+    "const ROOT = path.join(__dirname, '..');",
+    "const victim = path.join(ROOT, 'README.md');",
+    "const orig = fs.readFileSync(victim, 'utf8');",
+    "try { fs.writeFileSync(victim, orig + 'poison'); }",
+    "finally { fs.writeFileSync(victim, orig); }",   // ← 完璧な復元。それでも赤
+    "const tmp = fs.mkdtempSync('x');",
+    "fs.writeFileSync(path.join(tmp, 'ok.md'), 'safe');",   // ← 複製。緑
+  ].join('\n'));
+  try {
+    const r = fx.scan();
+    const at = (ln) => r.hits.find(h => h.line === ln);
+    assert.strictEqual(at(5).origin, 'repo', '版管理下への書き込みを倉起点と判じていない');
+    assert.strictEqual(at(5).rel, 'README.md', '何処へ書くかを名指していない — 名指さぬ門は直し方を教えない');
+    assert.strictEqual(at(6).origin, 'repo',
+      'finally の復元を除外にしている — **復元しても窓は開く**(第58条(c))');
+    assert.strictEqual(at(8).origin, 'sandbox', '複製への書き込みまで咎めた — 狼少年の門は誰も見なくなる');
+  } finally { fs.rmSync(fx.box, { recursive: true, force: true }); }
+});
+
+test('hermetic: 仕込めば赤・外せば緑 — 門が本当に鳴る (第21条 壊して鳴らす)', () => {
+  /**
+   * 緑になるだけの門は門ではない。**版管理下の実在のファイル**へ書く行を
+   * 作り物の試験に仕込み、門が名指しで鳴ることと、仕込みを外せば緑に戻ることを撃つ。
+   */
+  const tracked = hermetic.trackedSet();
+  assert.ok(tracked.has('README.md') && tracked.has('graph/domains.json'),
+    'git が版管理の一覧を答えない — 門の土台が測れていない (第37条)');
+
+  const poisoned = [
+    "const path = require('path');",
+    "const ROOT = path.join(__dirname, '..');",
+    "fs.writeFileSync(path.join(ROOT, 'graph', 'domains.json'), '{}');",
+  ].join('\n');
+  const clean = [
+    "const path = require('path');",
+    "const box = fs.mkdtempSync('paradise-');",
+    "fs.writeFileSync(path.join(box, 'domains.json'), '{}');",
+  ].join('\n');
+
+  const judge = (body) => {
+    const fx = hermeticFixture(body);
+    try {
+      return fx.scan().hits.filter(h => h.origin === 'repo' && h.rel !== null && tracked.has(h.rel));
+    } finally { fs.rmSync(fx.box, { recursive: true, force: true }); }
+  };
+
+  const red = judge(poisoned);
+  assert.strictEqual(red.length, 1, `仕込んだのに鳴らない — 門が死んでいる: ${JSON.stringify(red)}`);
+  assert.strictEqual(red[0].rel, 'graph/domains.json', '汚す先を名指していない');
+  assert.strictEqual(red[0].line, 3, '行を名指していない — 名指さぬ門は直し方を教えない');
+  assert.strictEqual(judge(clean).length, 0, '仕込みを外しても赤のまま — 偽陽性の門はやがて外される');
+});
+
+test('hermetic: 除外の名簿は空である — 裁かれる側が範囲を決めない (第54条(d))', () => {
+  assert.deepStrictEqual([...hermetic.EXEMPT], [],
+    '除外が生えている — 除外が一つでも増えたら、それは条の改正である (第54条(d))');
+  // 走査は `tests/` の**全ての** .js。自分自身も、この回帰試験も対象である
+  const scanned = hermetic.listFiles().map(f => path.basename(f));
+  assert.ok(scanned.includes('paradise.test.js'),
+    '自己診断そのものが走査対象から外れている — 門が己を裁いていない');
+  for (const f of fs.readdirSync(DIR).filter(n => n.endsWith('.js'))) {
+    assert.ok(scanned.includes(f), `${f} が走査から漏れている — 漏れた場所に病が住む`);
+  }
+  // 「既知の未修」は免除ではない。**口で名乗り、縮むことしかできない台帳**である
+  const r = hermetic.audit();
+  for (const k of r.knownOpen) {
+    assert.ok(hermetic.KNOWN_OPEN.some(x => x.file === k.file && x.arg === k.arg),
+      `台帳に無い箇所が未修として通った: ${k.file}:${k.line}`);
+    assert.ok(k.owner && k.note, '未修の持ち主と理由を名乗っていない (第54条(c))');
+  }
+  // 台帳の行が鳴らなくなったら赤 — 直ったのに残る台帳は、次の病を黙って庇う
+  for (const k of hermetic.KNOWN_OPEN) {
+    assert.ok(r.knownOpen.some(x => x.file === k.file && x.arg === k.arg),
+      `既知の未修 ${k.file}:${k.arg} が鳴らない — 直ったなら台帳から外せ (第54条(d))`);
+  }
+});
+
+test('hermetic: 字句器は見落としを隠さない — 潰した位置を全て申告する (第21条)', () => {
+  /**
+   * 実測した罠が二度あった:
+   *   ① `Array.from` がサロゲート対で添字をずらし、引数の切り出しが 3 文字ずれた
+   *   ② 正規表現リテラル `/['"]/ ` の中の `'` を文字列の開始と読み、
+   *      `fs.writeFileSync(domainsT.LEDGER, …)` が**影から消えて門が見落とした**
+   * どちらも「静かに見落とす」形である。**静かに見落とす門は緑を出す門より悪い。**
+   * ゆえに engine は潰した位置を `masked` として全て申告し、ここが現物で検める。
+   */
+  const r = hermetic.audit();
+  /**
+   * **engine の自己申告を、原本の生の文字で検める**(第27条)。
+   * engine は「何が潰したか」(`by`)と「その構文が何処から始まったか」(`spanFrom`)を
+   * 名乗る。呼び手は **その位置の 1 文字を読むだけ**で主張の真偽が判る ——
+   * 註釈なら `/`、文字列なら `'` `"` `` ` ``。これは engine の字句器を一切借りない検算である。
+   * `by` が null(= 何にも潰されていないのに影から消えた)なら、字句器が壊れている。
+   */
+  const OPENERS = { 'line-comment': '/', 'block-comment': '/', regex: '/', string: /["']/, template: '`' };
+  const srcOf = new Map();
+  for (const m of r.masked) {
+    assert.ok(m.by, `影から消えたのに理由を名乗れない — 字句器が壊れている: ${m.file}:${m.line}  ${m.text}`);
+    assert.ok(Object.prototype.hasOwnProperty.call(OPENERS, m.by),
+      `知らない潰し方を名乗った: ${m.by} (${m.file}:${m.line})`);
+    if (!srcOf.has(m.file)) srcOf.set(m.file, fs.readFileSync(path.join(DIR, '..', m.file), 'utf8'));
+    const ch = srcOf.get(m.file)[m.spanFrom];
+    const want = OPENERS[m.by];
+    assert.ok(typeof want === 'string' ? ch === want : want.test(ch),
+      `${m.by} と名乗ったが ${m.file}:${m.line} の起点 ${m.spanFrom} は ${JSON.stringify(ch)} — ` +
+      `字句器が実コードを潰して黙っている(静かに見落とす門は緑を出す門より悪い)`);
+    assert.ok(m.spanFrom <= m.at, '潰した範囲が書き込みの後ろから始まっている — 申告が辻褄を欠く');
+  }
+  // ②の回帰そのもの: 正規表現リテラルの後ろの書き込みが見えること
+  const fx = hermeticFixture([
+    "const path = require('path');",
+    "const ROOT = path.join(__dirname, '..');",
+    "const q = /['\\\"]/;",                     // ← ここで字句器が転ぶと下の行が消える
+    "fs.writeFileSync(path.join(ROOT, 'README.md'), 'x');",
+  ].join('\n'));
+  try {
+    const hits = fx.scan().hits;
+    assert.strictEqual(hits.length, 1,
+      '正規表現リテラルの後ろの書き込みを見落とした — 実測された見落としの再発');
+    assert.strictEqual(hits[0].rel, 'README.md');
+  } finally { fs.rmSync(fx.box, { recursive: true, force: true }); }
+});
+
+test('hermetic: 楽園の門は今この瞬間、版管理下の現物を汚していない (第58条(c))', () => {
+  /**
+   * **これが常駐の門である。** 上の 4 本は engine の判定則を撃つが、
+   * 「今の `tests/` が実際に密閉か」は誰も撃っていなかった。
+   * 判定則が正しくても、明日誰かが版管理下へ書く一行を足せば病は戻る。
+   * 実測 82ms —— 全走に載せて惜しくない代である。
+   */
+  const r = hermetic.audit();
+  assert.ok(r.gitAnswered,
+    'git が版管理の一覧を答えない — 密閉かどうかを測れていない (第37条: 測れないは緑ではない)');
+  assert.deepStrictEqual(r.violations.map(v => `${v.file}:${v.line} ${v.obj}.${v.fn}(${v.arg})`), [],
+    '門が走行中に版管理下の現物を書き換える。**復元は除外ではない — 復元しても窓は開く。**\n' +
+    '  その窓に別のプロセスが同じ現物を読めば、汚染を見て偽の赤を出す(実測: reality is 16/16)。\n' +
+    '  故障注入は複製 (mkdtempSync / cpSync 配下) に対して行え');
+});
+
+test('hermetic: 門は CI に配線されている — 配線されぬ門は飾りである (第21条)', () => {
+  const ci = fs.readFileSync(path.join(DIR, '..', '.github', 'workflows', 'tribunal.yml'), 'utf8');
+  assert.ok(/hermetic\.js check/.test(ci),
+    'hermetic の門が tribunal に配線されていない — 走らない門は無いのと同じ');
 });
 
 // --- workspace: 創造物は楽園の外に住む (第30条) ---
@@ -6106,46 +6326,76 @@ test('lexicon: 門は己の作業場の残骸で鳴らないが、版管理下�
   // ゆえに**故障注入で両側を測る**。緑になるだけの門は門ではない (第21条 壊して鳴らす):
   //   A. 残骸を置いても緑であること     — 再発すれば赤になる
   //   B. 版管理下の散文に異名を仕込めば赤 — 緩めすぎれば緑のままになる
+  //
+  // ⚠️ **注入先は現物ではなく複製である**(第58条(c) / L-27)。
+  // かつてここは版管理下の `README.md` を直に書き換え、`finally` で戻していた。
+  // **復元しても窓は開く。** 15ms 標本が実際にその窓を捕らえた:
+  //     [tick 8] DIRTY(TRACKED):  M README.md
+  // その間に別のプロセスが README を読めば汚染を見て偽の赤を出す —— 実測で
+  // `🔴 README.md:372 異名→「神官」` が出た。**測定が測定を壊すなら、その数は測定ではない。**
+  //
+  // 複製で撃っても**門の本体は一行も変わらない** —— `--root` は掃過の起点を渡すだけで、
+  // 歩き方・除外・名指しは同じ道を通る(第29条: 派生は真実の写し)。
+  // 複製は**版管理下の散文をそのまま写す**ので、門は今までどおり現実の散文を歩く。
   const ROOT = path.join(__dirname, '..');
-  const run = () => require('child_process').spawnSync(process.execPath,
-    [path.join(ROOT, 'graph', 'clergy.js'), 'lexicon-check'], { encoding: 'utf8', cwd: ROOT });
+  const CLERGY = path.join(ROOT, 'graph', 'clergy.js');
+  const runIn = (base) => require('child_process').spawnSync(process.execPath,
+    [CLERGY, 'lexicon-check', '--root', base], { encoding: 'utf8', cwd: ROOT });
 
   // 門が拾ってはならぬ残骸の名は engine が唯一の出所として持つ (散文に写経しない)
   assert.strictEqual(typeof clergy.isGateDebris, 'function',
     'engine が「己の残骸か」を判ずる述語を公開していること — 試験が名前を写経すれば必ず食い違う');
 
-  const debris = [path.join(ROOT, 'verdict.md'), path.join(ROOT, 'verdict-report.json')];
-  for (const d of debris)
-    assert.ok(clergy.isGateDebris(d), `${path.basename(d)} は門自身の一時産物である`);
-  // 倉の奥の同名は成果物である — 除外はルート直下の残骸に限る
-  assert.ok(!clergy.isGateDebris(path.join(ROOT, 'docs', 'verdict.md')),
-    '除外は門の作業場だけ — 成果物の住処に触れてはならない (gate-own-debris)');
-
-  const made = [];
-  // 実際に CI が書くのと同じ中身 — 教訓 canonical-lexicon-41 は異名を本文に含む
-  const debrisText = '審査の裁定\n位階 priest の異名は ' + ['司', '祭'].join('') + ' である\n';
-  // 版管理下の実在の散文に異名を仕込む。作り物のファイルではなく**現物**を汚す —
-  // 門が現物を歩いていることまで含めて測るため (第21条: 門は現物を見て裁く)。
-  const victim = path.join(ROOT, 'README.md');
-  const victimOrig = fs.readFileSync(victim, 'utf8');
+  const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-lexicon-'));
+  // 走行前の現物の指紋。門が終わったとき、これと一致していなければ窓を開けている。
+  const realReadmeHash = require('crypto').createHash('sha256')
+    .update(fs.readFileSync(path.join(ROOT, 'README.md'))).digest('hex');
   try {
-    for (const d of debris) { fs.writeFileSync(d, debrisText); made.push(d); }
+    // **現物の散文をそのまま複製へ写す** — 門が歩く対象は現実と同じ中身である
+    for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
+      if (e.name === '.git' || e.name === 'node_modules' || e.name === 'reform') continue;
+      fs.cpSync(path.join(ROOT, e.name), path.join(sandbox, e.name), { recursive: true });
+    }
+    const victim = path.join(sandbox, 'README.md');
+    assert.ok(fs.existsSync(victim), '複製に README.md が写っていない — 撃つ的が無い');
+
+    const debris = [path.join(sandbox, 'verdict.md'), path.join(sandbox, 'verdict-report.json')];
+    for (const d of debris)
+      assert.ok(clergy.isGateDebris(d, sandbox), `${path.basename(d)} は門自身の一時産物である`);
+    // 倉の奥の同名は成果物である — 除外はルート直下の残骸に限る
+    assert.ok(!clergy.isGateDebris(path.join(sandbox, 'docs', 'verdict.md'), sandbox),
+      '除外は門の作業場だけ — 成果物の住処に触れてはならない (gate-own-debris)');
+    // 既定の起点(現物の根)でも同じ判定が下る — `--root` は判定則を変えていない
+    assert.ok(clergy.isGateDebris(path.join(ROOT, 'verdict.md')),
+      '起点を渡さない呼び方で判定が変わった — 既定の挙動を壊してはならない');
+
+    // 実際に CI が書くのと同じ中身 — 教訓 canonical-lexicon-41 は異名を本文に含む
+    const debrisText = '審査の裁定\n位階 priest の異名は ' + ['司', '祭'].join('') + ' である\n';
+    for (const d of debris) fs.writeFileSync(d, debrisText);
+
     // A: 残骸が在っても門は緑
-    const withDebris = run();
+    const withDebris = runIn(sandbox);
     assert.strictEqual(withDebris.status, 0,
       '門が己の作業場の残骸で鳴っている — gate-own-debris の再発:\n' + (withDebris.stdout || ''));
     assert.ok(/異名なし/.test(withDebris.stdout), '残骸下でも掃過は清潔と報告されること: ' + withDebris.stdout);
 
-    // B: 版管理下の散文を汚せば門は鳴る。鳴らねば除外が広すぎる
-    fs.writeFileSync(victim, victimOrig + '\n' + debrisText);
-    const withPoison = run();
+    // B: 版管理下の散文(の写し)を汚せば門は鳴る。鳴らねば除外が広すぎる
+    fs.writeFileSync(victim, fs.readFileSync(victim, 'utf8') + '\n' + debrisText);
+    const withPoison = runIn(sandbox);
     assert.strictEqual(withPoison.status, 1,
       '版管理下の散文に異名を仕込んでも鳴らない — 除外が広すぎて門が死んでいる:\n' + (withPoison.stdout || ''));
     assert.ok(/README\.md/.test(withPoison.stdout),
       '門は汚された現物を名指しすること: ' + withPoison.stdout);
+
+    // 🔒 **現物は 1 バイトも動いていない**(第58条(c))。窓そのものを開けなかったことを証す。
+    // **前後の指紋を比べる** —— 素の `git status` は他の走行の作業まで拾い、
+    // 己の測定に他人の汚れが混ざる(まさにこの門が治している病である)。
+    const now = require('crypto').createHash('sha256')
+      .update(fs.readFileSync(path.join(ROOT, 'README.md'))).digest('hex');
+    assert.strictEqual(now, realReadmeHash,
+      '門が版管理下の README.md を汚した — 復元は除外ではない、窓が開くこと自体が病である (第58条(c))');
   } finally {
-    fs.writeFileSync(victim, victimOrig);
-    for (const d of made) { try { fs.unlinkSync(d); } catch {} }
+    fs.rmSync(sandbox, { recursive: true, force: true });
   }
 });
 
@@ -6729,6 +6979,106 @@ const ordainT = require(path.join(DIR, '..', 'graph', 'ordain.js'));
 const gaugeT = require(path.join(DIR, '..', 'graph', 'gauge.js'));
 const clergyT = require(path.join(DIR, '..', 'graph', 'clergy.js'));
 
+/**
+ * 分野台帳の**仮倉**。門は現物 (`graph/domains.json`) に指一本触れない (第58条(c) / L-28)。
+ *
+ * ⚠️ 実測された事故: 故障注入が版管理下の `graph/domains.json` を書き換えていた。
+ * `finally` で書き戻してはいたが、**復元しても窓は開く** —— 15ms 標本が捕らえた:
+ *
+ *     [tick 12] DIRTY(TRACKED):  M graph/domains.json
+ *
+ * その窓に別のプロセスが同じ台帳を読み、汚染を見て偽の赤を出した。
+ * 同じ命令が、同時に走ると別の答えを返す。**測定が測定を壊すなら、その数は測定ではない。**
+ *
+ * 形は `withGaugeSandbox` と同型である —— **外側の env を尊重しない**。
+ * 尊重すれば、外で env が立っている機で門がまるごと実台帳を相手に走る (第55条 i)。
+ * 台帳の中身は**現物の写し**なので、門は今までどおり現実の台帳の形を歩く。
+ */
+function withDomainsSandbox(fn) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-domains-'));
+  const copy = path.join(tmp, 'domains.json');
+  fs.writeFileSync(copy, fs.readFileSync(domainsT.DEFAULT_LEDGER));
+  const prevEnv = process.env.PARADISE_DOMAINS_LEDGER;
+  process.env.PARADISE_DOMAINS_LEDGER = copy;       // `prev || copy` にするな (第55条 i)
+  const flush = () => {
+    for (const n of ['domains.js', 'forge.js', 'check-agents.js', 'ordain.js']) {
+      try { delete require.cache[require.resolve(path.join(DIR, '..', 'graph', n))]; } catch {}
+    }
+  };
+  flush();
+  try {
+    return fn(copy, tmp);
+  } finally {
+    if (prevEnv === undefined) delete process.env.PARADISE_DOMAINS_LEDGER;
+    else process.env.PARADISE_DOMAINS_LEDGER = prevEnv;
+    flush();
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/** 仮倉を継いだ子プロセス用の env(門が起動する engine も同じ台帳を見る)。 */
+const domainsEnv = () => ({ ...process.env });
+
+/**
+ * 鍛造の**仮倉**。`--write` の実経路を通しても、現物は 1 バイトも動かない (第58条(c))。
+ *
+ * ⚠️ 実測された窓(15ms 標本):
+ *     [tick 3] DIRTY(TRACKED):  M graph/clergy.js
+ *     [tick 3] DIRTY(TRACKED):  M overlay/overlay.json
+ *     [tick 3] UNTRACKED: ?? overlay/agents/orphan-probe.md
+ * `finally` で戻していた。**だが復元しても窓は開く** —— その間に別のプロセスが
+ * `clergy.js` を読めば、居ないはずの神官を見る。
+ *
+ * 複製には**現物の `overlay/` と `graph/` をそのまま写す**ので、鍛造器は今までどおり
+ * 現実の位階・現実の overlay を相手に走る(第29条: 派生は真実の写し)。
+ * `withGaugeSandbox` / `withDomainsSandbox` と同型 —— **外側の env を尊重しない**。
+ */
+function withOrdainSandbox(fn) {
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-ordain-'));
+  const REPO = path.join(DIR, '..');
+  for (const rel of ['overlay', 'graph']) {
+    fs.cpSync(path.join(REPO, rel), path.join(box, rel), { recursive: true });
+  }
+  const prevRoot = process.env.PARADISE_ORDAIN_ROOT;
+  const prevLedger = process.env.PARADISE_DOMAINS_LEDGER;
+  process.env.PARADISE_ORDAIN_ROOT = box;                                  // `prev || box` にするな
+  process.env.PARADISE_DOMAINS_LEDGER = path.join(box, 'graph', 'domains.json');
+  const flush = () => {
+    for (const n of ['ordain.js', 'clergy.js', 'domains.js', 'forge.js', 'check-agents.js']) {
+      try { delete require.cache[require.resolve(path.join(REPO, 'graph', n))]; } catch {}
+      try { delete require.cache[require.resolve(path.join(box, 'graph', n))]; } catch {}
+    }
+  };
+  flush();
+  try {
+    return fn({
+      box,
+      ordain: require(path.join(REPO, 'graph', 'ordain.js')),
+      clergyJs: path.join(box, 'graph', 'clergy.js'),
+      overlayJson: path.join(box, 'overlay', 'overlay.json'),
+      agentsDir: path.join(box, 'overlay', 'agents'),
+      domainsJson: path.join(box, 'graph', 'domains.json'),
+      flush,
+    });
+  } finally {
+    if (prevRoot === undefined) delete process.env.PARADISE_ORDAIN_ROOT; else process.env.PARADISE_ORDAIN_ROOT = prevRoot;
+    if (prevLedger === undefined) delete process.env.PARADISE_DOMAINS_LEDGER; else process.env.PARADISE_DOMAINS_LEDGER = prevLedger;
+    flush();
+    try { fs.rmSync(box, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/** 現物が動いていないことを指紋で証す。素の git status は他の走行の汚れを拾う。 */
+function repoFingerprint() {
+  const REPO = path.join(DIR, '..');
+  const h = require('crypto').createHash('sha256');
+  for (const rel of ['graph/clergy.js', 'graph/domains.json', 'overlay/overlay.json']) {
+    h.update(fs.readFileSync(path.join(REPO, rel)));
+  }
+  h.update(fs.readdirSync(path.join(REPO, 'overlay', 'agents')).sort().join(','));
+  return h.digest('hex');
+}
+
 /** 紀元の印を持つ run を作る(実物の道から)。 */
 function epochRun(scale) {
   const dag = forgeT.buildDag('序列の門を試す', scale || 'quick');
@@ -7071,27 +7421,33 @@ test('役者の居ない仕事は道に入れない (第49条)', () => {
 test('第52条: 実在だけでは足りない — 二つの門が違う答えを出す (AC-C7)', () => {
   // `check-agents` は「名指しされた者が居るか」、`domains` は「居る者が何を担えるか」。
   // **同じ入力に二つの門が違う答えを出すことが正しい**(第36条: 門は消すのではなく分ける)。
-  const led = JSON.parse(fs.readFileSync(domainsT.LEDGER, 'utf8'));
-  const backup = JSON.stringify(led);
-  const victim = 'architect';
-  assert.ok(led.agents[victim], '前提が変わった');
-  delete led.agents[victim];
-  fs.writeFileSync(domainsT.LEDGER, JSON.stringify(led, null, 2));
-  try {
+  //
+  // ⚠️ **故障注入は仮倉に対して行う**(第58条(c) / L-28)。以前はここが版管理下の
+  // `graph/domains.json` を書き換えており、その窓に別のプロセスが読めば偽の赤が出た。
+  // 復元は除外ではない —— 窓が開くこと自体が病である。
+  withDomainsSandbox((ledger) => {
+    const led = JSON.parse(fs.readFileSync(ledger, 'utf8'));
+    const victim = 'architect';
+    assert.ok(led.agents[victim], '前提が変わった');
+    delete led.agents[victim];
+    fs.writeFileSync(ledger, JSON.stringify(led, null, 2));
     // 実在の門は緑のまま(実在は満たされている)
     let caCode = 0;
-    try { execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'check-agents.js')], { encoding: 'utf8' }); }
+    try { execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'check-agents.js')],
+      { encoding: 'utf8', env: domainsEnv() }); }
     catch (e) { caCode = e.status; }
     assert.strictEqual(caCode, 0, '宣言を消したら実在の門まで鳴った — 二つの門が同じ問いを見ている');
     // 分野の門は赤になり、欠けた名を名指しする
     let dCode = 0, dOut = '';
-    try { dOut = execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'domains.js'), 'check'], { encoding: 'utf8' }); }
+    try { dOut = execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'domains.js'), 'check'],
+      { encoding: 'utf8', env: domainsEnv() }); }
     catch (e) { dCode = e.status; dOut = String(e.stdout || ''); }
     assert.strictEqual(dCode, 1, '宣言を消したのに分野の門が緑 — 門が仕事をしていない');
     assert.ok(dOut.includes(victim), '欠けた agent 名を名指ししていない');
-  } finally {
-    fs.writeFileSync(domainsT.LEDGER, backup);
-  }
+  });
+  // **現物は 1 バイトも動いていない** —— 門が己の測る対象を汚さなかったことを、その場で証す
+  const real = JSON.parse(fs.readFileSync(domainsT.DEFAULT_LEDGER, 'utf8'));
+  assert.ok(real.agents.architect, '版管理下の台帳が汚れたまま残っている (第58条(c))');
 });
 
 test('鍛造器は原本に書き、配備器だけが実機に書く (第29条)', () => {
@@ -7185,55 +7541,45 @@ test('atlas: 測定できなかったことを「溢れた」と呼ばない (�
 // **鍛造器が門を壊していた。** 経路の試験では決して見えない欠陥である。
 // ══════════════════════════════════════════════════════════════════════
 test('鍛造器が実際に産んだ役者は既存の発令を乗っ取らない (AC-D4 / AC-D7)', () => {
-  const OV = path.join(DIR, '..', 'overlay');
-  const files = {
-    clergy: path.join(DIR, '..', 'graph', 'clergy.js'),
-    domains: path.join(DIR, '..', 'graph', 'domains.json'),
-    overlay: path.join(OV, 'overlay.json'),
-  };
-  const backup = {};
-  for (const [k, f] of Object.entries(files)) backup[k] = fs.readFileSync(f, 'utf8');
+  // ⚠️ **`--write` の実経路を、複製の上で通す**(第58条(c))。
+  // 以前はここが版管理下の `graph/clergy.js` / `overlay/overlay.json` を書き換えて
+  // `finally` で戻していた。**復元しても窓は開く** —— 15ms 標本が捕らえた:
+  //     [tick 3] DIRTY(TRACKED):  M graph/clergy.js
+  // その窓で別のプロセスが位階を読めば、居ないはずの神官を見る。
+  const fingerprint = repoFingerprint();
   const probe = 'video-producer-probe';
-  const md = path.join(OV, 'agents', probe + '.md');
+  const cardinal = 'construction';
 
   // 乗っ取りを検出できる前提: 対象の枢機卿は既に神官を擁し、
   // その神官が PHASE_LEAD 経由でなく筆頭として発令を受けている相が在る。
-  const before = require(path.join(DIR, '..', 'graph', 'check-agents.js'));
-  const cardinal = 'construction';
   const priestsBefore = [...(clergyT.COLLEGE[cardinal].priests || [])];
   assert.ok(priestsBefore.length >= 1, '前提が変わった');
-  assert.strictEqual(before.misroutedPhases().length, 0, '鍛造の前から misrouted が在る — 基線が汚れている');
+  assert.strictEqual(require(path.join(DIR, '..', 'graph', 'check-agents.js')).misroutedPhases().length, 0,
+    '鍛造の前から misrouted が在る — 基線が汚れている');
 
-  try {
-    // **実際に産ませる。** dry-run ではない。
-    const r = ordainT.forge({ name: probe, domain: 'video', cardinal, rank: 'priest', write: true });
+  withOrdainSandbox((sb) => {
+    // **実際に産ませる。** dry-run ではない。ただし書く先は複製である。
+    const r = sb.ordain.forge({ name: probe, domain: 'video', cardinal, rank: 'priest', write: true });
     assert.strictEqual(r.ok, true, `鍛造が失敗した: ${(r.errors || []).join(' / ')}`);
+    const md = path.join(sb.agentsDir, probe + '.md');
     assert.ok(fs.existsSync(md), '原本(overlay/agents)に定義が産まれていない');
 
-    // 台帳を読み直す(engine は require キャッシュを持つので落とす)
-    for (const f of Object.values(files)) delete require.cache[require.resolve(f)];
-    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'check-agents.js'))];
-    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'forge.js'))];
-    const ca = require(path.join(DIR, '..', 'graph', 'check-agents.js'));
-
     // 🔴 **本件の核心** — 産まれた役者が筆頭に立てば、宣言と発令が食い違う
+    const ca = require(sb.clergyJs.replace('clergy.js', 'check-agents.js'));
     const mis = ca.misroutedPhases();
     assert.strictEqual(mis.length, 0,
       `鍛造した役者が既存の発令を横取りした: ${mis.map(m => `${m.phase}(宣言 ${m.declared} → 発令 ${m.dispatched})`).join(' / ')}\n` +
       `  名を priests の先頭に挿せば、その者が枢機卿の筆頭になる (clergy.js の c.priests[0] フォールバック)`);
 
     // 産まれた役者は末席に立つ。既存の並びは一つも動かない。
-    const cl = require(files.clergy);
-    const ps = cl.COLLEGE[cardinal].priests;
+    const ps = require(sb.clergyJs).COLLEGE[cardinal].priests;
     assert.strictEqual(ps[ps.length - 1], probe, '産まれた役者が末席に立っていない');
     assert.deepStrictEqual(ps.slice(0, -1), priestsBefore,
       '既存の神官の並びが動いた — 鍛造は役者を増やす行為であって、指揮系統を組み替える行為ではない');
 
-    // 分野の門は緑(宣言を持って産まれる)。実在の門は「未配備」を名指しする
-    // —— 配備器だけが実機に書く(第29条)ので、これは正しい赤である。
-    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'domains.js'))];
-    const dm = require(path.join(DIR, '..', 'graph', 'domains.js'));
-    assert.strictEqual(dm.check().ok, true, '産まれた役者が分野の門を鳴らした');
+    // 分野の門は緑(宣言を持って産まれる)
+    assert.strictEqual(require(path.join(DIR, '..', 'graph', 'domains.js')).check().ok, true,
+      '産まれた役者が分野の門を鳴らした');
 
     // frontmatter は位階の方針から生成される(方針違反が構造的に起きない)
     const text = fs.readFileSync(md, 'utf8');
@@ -7242,14 +7588,11 @@ test('鍛造器が実際に産んだ役者は既存の発令を乗っ取らな�
     // construction は信徒を擁するので、産まれた神官は起動の権能を要する
     assert.ok(text.includes(clergyT.SPAWN_TOOL),
       `信徒を擁する枢機卿の神官なのに ${clergyT.SPAWN_TOOL} が無い — apply-spawn verify が後で鳴る`);
-  } finally {
-    for (const [k, f] of Object.entries(files)) fs.writeFileSync(f, backup[k]);
-    fs.rmSync(md, { force: true });
-    for (const f of Object.values(files)) delete require.cache[require.resolve(f)];
-    for (const n of ['check-agents.js', 'forge.js', 'domains.js']) {
-      try { delete require.cache[require.resolve(path.join(DIR, '..', 'graph', n))]; } catch {}
-    }
-  }
+  });
+
+  // 🔒 **現物は 1 バイトも動いていない**(第58条(c))
+  assert.strictEqual(repoFingerprint(), fingerprint,
+    '鍛造が版管理下の位階・台帳・overlay を汚した — 復元は除外ではない、窓が開くこと自体が病である');
 });
 
 // ══════════════════════════════════════════════════════════════════════
@@ -7286,11 +7629,30 @@ test('atlas: 描画器の実行時故障を「溢れた」と呼ばない — �
   // receipt で分類が下る**ことを撃つ。旧実装はこの4通りをすべて reason=`"fail"`
   // に畳み、呼び手が溢れの文言を接ぎ木していた。
   const atlasMod = require(path.join(DIR, '..', 'graph', 'atlas.js'));
-  const ARCHIFY = atlasMod.ARCHIFY;
   const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-rt-'));
-  const original = fs.readFileSync(ARCHIFY);
+  /**
+   * 🔒 **故障注入は複製の描画器に対して行う**(第58条(c))。
+   *
+   * かつてこの試験は**版管理下の現物** `overlay/vendor/archify/bin/archify.mjs` を
+   * stub で上書きし、`finally` で書き戻していた。**復元しても窓は開く。**
+   * 15ms 標本が窓を捕らえた:
+   *
+   *     [tick 17571] DIRTY(TRACKED):  M overlay/vendor/archify/bin/archify.mjs
+   *
+   * その窓に別のプロセスが図を描けば、stub を本物の描画器と思って走る。
+   * `atlas.js` が `PARADISE_ARCHIFY` で住所を受けるので、複製へ振り替える。
+   * **故障注入の意図は一切変わらない — 変わるのは「stub を何処に書くか」だけである。**
+   *
+   * 描画器は `cwd: dirname(dirname(bin))` で起動されるので、複製も `<箱>/bin/` に置く。
+   */
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'atlas-archify-'));
+  const ARCHIFY = path.join(box, 'bin', 'archify.mjs');
+  fs.mkdirSync(path.dirname(ARCHIFY), { recursive: true });
+  const prevArchify = process.env.PARADISE_ARCHIFY;
   try {
+    // 図そのものは**本物の描画器**で描く(振替は故障注入の直前に立てる)
     const html = atlasMod.draw('run', { outdir }).html;
+    process.env.PARADISE_ARCHIFY = ARCHIFY;         // `prev || ARCHIFY` にするな (第55条 i)
     const stub = (body) => fs.writeFileSync(ARCHIFY,
       `process.stdout.write(${JSON.stringify(JSON.stringify(body))}); process.exit(1);\n`);
 
@@ -7349,7 +7711,10 @@ test('atlas: 描画器の実行時故障を「溢れた」と呼ばない — �
     assert.strictEqual(stubborn.ok, false, '再試行しても駄目なのに緑 — 判定不能は緑ではない (第16条)');
     assert.strictEqual(stubborn.retried, true, '再試行した証跡が無い');
   } finally {
-    fs.writeFileSync(ARCHIFY, original);
+    // 複製を捨てる。**現物は 1 バイトも動いていないので、書き戻すものが無い。**
+    if (prevArchify === undefined) delete process.env.PARADISE_ARCHIFY;
+    else process.env.PARADISE_ARCHIFY = prevArchify;
+    fs.rmSync(box, { recursive: true, force: true });
     fs.rmSync(outdir, { recursive: true, force: true });
   }
 });
@@ -7682,52 +8047,50 @@ test('S-3 [MEDIUM]: 途中で落ちた鍛造は孤児を残さない — 全か�
   // 実測(security-report S-3): `writeCollege` が落ちた後も
   // `overlay/agents/protopwn.md` と `overlay.json` の own.agents が残り、
   // **次の `deploy --write` で実機へ配備される孤児**になった。
-  const OV = path.join(DIR, '..', 'overlay');
-  const files = {
-    clergy: path.join(DIR, '..', 'graph', 'clergy.js'),
-    domains: path.join(DIR, '..', 'graph', 'domains.json'),
-    overlay: path.join(OV, 'overlay.json'),
-  };
-  const before = {};
-  for (const [k, f] of Object.entries(files)) before[k] = fs.readFileSync(f, 'utf8');
+  //
+  // ⚠️ **注入も巻き戻しも複製の上で起きる**(第58条(c))。以前はここが版管理下の
+  // `graph/clergy.js` / `overlay/overlay.json` を実際に書き換えていた。
+  // 復元は除外ではない —— 窓が開くこと自体が病である。
+  const fingerprint = repoFingerprint();
   const probe = 'orphan-probe';
-  const md = path.join(OV, 'agents', probe + '.md');
-  const agentsBefore = fs.readdirSync(path.join(OV, 'agents')).sort().join(',');
 
-  // **故障注入**: 最後の段(domains.json への書き込み)だけを失敗させる。
-  const realWrite = fs.writeFileSync;
-  let injected = 0;
-  fs.writeFileSync = function (p, ...rest) {
-    if (String(p).replace(/\\/g, '/').endsWith('graph/domains.json')) { injected++; throw new Error('注入した故障: domains.json を書けない'); }
-    return realWrite.call(fs, p, ...rest);
-  };
-  let threw = null;
-  try {
-    ordainT.forge({ name: probe, domain: 'video', cardinal: 'construction', rank: 'priest', write: true });
-  } catch (e) { threw = e; }
-  finally { fs.writeFileSync = realWrite; }
+  withOrdainSandbox((sb) => {
+    const files = { clergy: sb.clergyJs, domains: sb.domainsJson, overlay: sb.overlayJson };
+    const before = {};
+    for (const [k, f] of Object.entries(files)) before[k] = fs.readFileSync(f, 'utf8');
+    const md = path.join(sb.agentsDir, probe + '.md');
+    const agentsBefore = fs.readdirSync(sb.agentsDir).sort().join(',');
 
-  try {
+    // **故障注入**: 最後の段(domains.json への書き込み)だけを失敗させる。
+    const realWrite = fs.writeFileSync;
+    let injected = 0;
+    fs.writeFileSync = function (p, ...rest) {
+      if (String(p).replace(/\\/g, '/').endsWith('graph/domains.json')) { injected++; throw new Error('注入した故障: domains.json を書けない'); }
+      return realWrite.call(fs, p, ...rest);
+    };
+    let threw = null;
+    try {
+      sb.ordain.forge({ name: probe, domain: 'video', cardinal: 'construction', rank: 'priest', write: true });
+    } catch (e) { threw = e; }
+    finally { fs.writeFileSync = realWrite; }
+
     assert.ok(injected > 0, '故障が注入されていない — 前提(書き込みの順序)が変わった');
     assert.ok(threw, '途中で落ちたのに forge が成功を返した');
     assert.ok(/巻き戻した/.test(threw.message), `巻き戻しを名乗っていない: ${threw.message}`);
     // 🔴 本件の核心 — **半端な状態が1バイトも残っていない**
     assert.ok(!fs.existsSync(md), '孤児の定義が残っている — 次の deploy で実機へ配備される');
-    assert.strictEqual(fs.readdirSync(path.join(OV, 'agents')).sort().join(','), agentsBefore,
+    assert.strictEqual(fs.readdirSync(sb.agentsDir).sort().join(','), agentsBefore,
       'overlay/agents の顔ぶれが変わった');
     for (const [k, f] of Object.entries(files)) {
       assert.strictEqual(fs.readFileSync(f, 'utf8'), before[k], `${k} が巻き戻っていない`);
     }
     assert.ok(!before.overlay.includes(probe) && !fs.readFileSync(files.overlay, 'utf8').includes(probe),
       'overlay.json の own.agents に孤児が載ったままである');
-  } finally {
-    for (const [k, f] of Object.entries(files)) fs.writeFileSync(f, before[k]);
-    fs.rmSync(md, { force: true });
-    for (const f of Object.values(files)) { try { delete require.cache[require.resolve(f)]; } catch {} }
-    for (const n of ['check-agents.js', 'forge.js', 'domains.js', 'clergy.js']) {
-      try { delete require.cache[require.resolve(path.join(DIR, '..', 'graph', n))]; } catch {}
-    }
-  }
+  });
+
+  // 🔒 **現物は 1 バイトも動いていない**(第58条(c))
+  assert.strictEqual(repoFingerprint(), fingerprint,
+    '故障注入が版管理下の位階・台帳・overlay を汚した — 復元しても窓は開く');
 });
 
 test('S-4 [MEDIUM]: 巨大な未追跡ファイルで measure が死なない — 上限で足切りする', () => {
@@ -7818,18 +8181,18 @@ test('M-3: --scale を明示したら admit は**その道の名簿**を裁く',
 
   // **故障注入**: full にだけ載る役者から分野宣言を奪う。
   // 旧実装は quick の名簿しか見ないので、この毒に気づかず緑を出した。
-  const backup = fs.readFileSync(domainsT.LEDGER, 'utf8');
-  try {
-    const led = JSON.parse(backup);
+  //
+  // ⚠️ **注入先は仮倉である**(第58条(c) / L-28)。以前はここが版管理下の
+  // `graph/domains.json` を書き換えていた。復元は除外ではない — 窓が開く。
+  withDomainsSandbox((ledger) => {
+    const led = JSON.parse(fs.readFileSync(ledger, 'utf8'));
     const dom = domainsT.classify(wish, led);
     const victim = extra.find(a => (led.agents[a] || []).includes(dom.id));
     assert.ok(victim, `full にだけ載る役者で ${dom.id} を担う者が居ない — 前提が変わった`);
     led.agents[victim] = (led.agents[victim] || []).filter(d => d !== dom.id);
-    fs.writeFileSync(domainsT.LEDGER, JSON.stringify(led, null, 2) + '\n');
+    fs.writeFileSync(ledger, JSON.stringify(led, null, 2) + '\n');
 
-    // 名簿を読み直させる
-    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'domains.js'))];
-    delete require.cache[require.resolve(path.join(DIR, '..', 'graph', 'forge.js'))];
+    // 名簿を読み直させる(仮倉の env は既に立っている)
     const F = require(path.join(DIR, '..', 'graph', 'forge.js'));
 
     // 🔴 --scale full は拒まれねばならない(その道に不適合の役者が居る)
@@ -7844,21 +8207,20 @@ test('M-3: --scale を明示したら admit は**その道の名簿**を裁く',
       assert.strictEqual(F.admit(wish).ok, true, '選定された道まで巻き添えで赤にした — 偽陽性である');
     }
 
-    // 器も同じ答えを返す
+    // 器も同じ答えを返す(子も仮倉を継ぐ)
     let code = 0;
     try {
       execFileSync(process.execPath, [path.join(DIR, '..', 'graph', 'forge.js'), 'plan', wish, '--scale', 'full'],
-        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: domainsEnv() });
     } catch (e) { code = e.status; }
     assert.strictEqual(code, 1, '器が --scale full を通した — 環と器が割れている');
-  } finally {
-    fs.writeFileSync(domainsT.LEDGER, backup);
-    for (const n of ['domains.js', 'forge.js', 'check-agents.js']) {
-      try { delete require.cache[require.resolve(path.join(DIR, '..', 'graph', n))]; } catch {}
-    }
-  }
+  });
 
-  // **修復後は緑**: 台帳を戻せば full も通る
+  // **現物は 1 バイトも動いていない**(第58条(c))
+  assert.ok(JSON.parse(fs.readFileSync(domainsT.DEFAULT_LEDGER, 'utf8')).agents,
+    '版管理下の台帳が壊れた — 門が己の測る対象を汚した');
+
+  // **修復後は緑**: 仮倉を畳めば full も通る
   const F2 = require(path.join(DIR, '..', 'graph', 'forge.js'));
   assert.strictEqual(F2.admit(wish, 'full').ok, true, '健全な台帳で full が通らない');
   assert.strictEqual(F2.admit(wish, 'full').scale, 'full', '明示した道を裁いていない');
