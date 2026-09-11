@@ -24,12 +24,14 @@
  *   conclave.js convene <dag.json> --run <conclave.json>   # build the nested run
  *   conclave.js next --run <conclave.json>                 # next domain OR next phase-wave within the active domain
  *   conclave.js done <phaseId> --run <conclave.json> --artifact <path>
+ *   conclave.js beat <phaseId> --run <conclave.json> --evidence <path> --note "<何が着地したか>"
  *   conclave.js ratify <cardinal> --run <conclave.json> [--reject --from <phase>]
  *   conclave.js status --run <conclave.json>
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const engine = require('./graph-engine.js');
 const clergy = require('./clergy.js');
 /**
@@ -152,7 +154,23 @@ function runAbandonment(run, at = Date.now()) {
   for (const d of ds) for (const p of (d.phases || [])) if (p && p.dispatchedAt) stamps.push(Date.parse(p.dispatchedAt));
   const valid = stamps.filter(n => !Number.isNaN(n));
   const lastBeat = valid.length ? Math.max(...valid) : null;
-  const base = { ratified, total, closed, lastBeat: lastBeat === null ? null : new Date(lastBeat).toISOString() };
+  /**
+   * **鼓動を数える (第53条 / 錬4)。**
+   *
+   * 鼓動は状態を一切変えない —— ゆえに `ratified/total` だけを見る目には映らない。
+   * だが「この環はまだ誰かが回している」の**唯一の証拠**がそこに在る。
+   * `audit` に **黙って緑を渡さない** ために、最後の鼓動が何を携えていたかを運ぶ。
+   * **進んでいると名乗る走行は、何を以て進んだのかを言わねばならない。**
+   */
+  const bs = beatsOf(run);
+  const lastProof = bs.length ? bs[bs.length - 1] : null;
+  const base = {
+    ratified, total, closed, lastBeat: lastBeat === null ? null : new Date(lastBeat).toISOString(),
+    beats: bs.length,
+    lastProof: lastProof
+      ? { ts: lastProof.ts || null, phase: lastProof.phase || null, evidence: lastProof.evidence, note: lastProof.note || null }
+      : null,
+  };
   if (closed) return { state: 'closed', abandoned: false, idleMs: lastBeat === null ? null : at - lastBeat, ...base };
   if (lastBeat === null) {
     // **ゼロで埋めない。** 判定できないことを名指しして返す (第16条)。
@@ -201,7 +219,20 @@ function auditBoard(rep) {
     if (l.state === 'abandoned') note = `  🔴 環が閉じぬまま ${d(l.idleMs)} 無音 [>${Math.round(rep.abandonedMs / 60000)}分] — 閉じるか畳むかを決めよ`;
     else if (l.state === 'unknown') note = '  ⚠ 時刻を一つも読めない走行帳 — 判定不能(ゼロで埋めない: 第16条)';
     else if (l.state === 'unreadable') note = `  ⚠ 走行帳が読めない: ${l.error}`;
+    /**
+     * **黙って緑に落とさない (第53条 / 第54条(c))。**
+     * 鼓動を持つ未完の走行は「進んでいる」と名乗る。だが名乗りだけでは免除にならない ——
+     * **最後の鼓動が何を携えていたかを、証拠の住所ごと語らせる。**
+     * 免除は記録されて初めて例外である(第54条(c) をそのまま鼓動へ向ける)。
+     */
+    else if (l.state === 'active' && l.beats) {
+      note = `  ▶ 鼓動 ${l.beats} 回 — 進んでいる(最後の鼓動 ${d(l.idleMs)} 前)`;
+    }
     lines.push(`${g} [${l.where}] ${l.slug}  domains ${n}${note}`);
+    if (l.state === 'active' && l.lastProof) {
+      lines.push(`      ⟡ 証拠: ${l.lastProof.evidence}${l.lastProof.phase ? ` (相 ${l.lastProof.phase})` : ''}`);
+      if (l.lastProof.note) lines.push(`        「${l.lastProof.note}」`);
+    }
   }
   lines.push('═'.repeat(56),
     `見捨てられた走行: ${rep.abandoned.length} / 判定不能: ${rep.unknown.length + rep.unreadable.length} / 全 ${rep.ledgers.length}`);
@@ -522,6 +553,134 @@ function markDone(run, id, artifactPath, opts = {}) {
   return v;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 第53条 — 鼓動 (beat): 段が着地したという **真の進捗** を走行帳に刻む口
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 鼓動の註釈が「本物か」を判ずる (錬5)。
+ *
+ * 空・短すぎる・プレースホルダは鼓動ではない。**何が着地したかを言えない鼓動は、
+ * 門を黙らせるためだけの操作である。** 第16条の作法をそのまま註釈へ向ける ——
+ * 名前が在ることは中身が在ることではない。
+ */
+const BEAT_NOTE_MIN = 8;
+const BEAT_PLACEHOLDER = /^(?:todo|tbd|wip|fixme|n\/?a|none|later|後で|あとで|未定|なし|仮|-+|—+|ー+|\.+|\?+)$/i;
+function validateBeatNote(note) {
+  const s = typeof note === 'string' ? note.trim() : '';
+  if (!s) return { ok: false, why: '註釈が空である — 何が着地したかを言わない鼓動は記録ではない (錬5)' };
+  if (BEAT_PLACEHOLDER.test(s)) return { ok: false, why: `註釈がプレースホルダである: "${s}" — 名前は中身ではない (第16条 / 錬5)` };
+  if (s.length < BEAT_NOTE_MIN) return { ok: false, why: `註釈が短すぎる (${s.length} < ${BEAT_NOTE_MIN}) — 何が着地したかを述べよ (錬5)` };
+  return { ok: true, note: s };
+}
+
+/** 証拠の住所を走行帳の中で **一意に比べられる形** へ正規化する(倉の中は相対・POSIX)。 */
+function normalizeEvidence(p, repoRoot) {
+  const root = repoRoot || path.dirname(__dirname);
+  const abs = path.isAbsolute(p) ? p : path.join(root, p);
+  const rel = path.relative(root, abs);
+  const inside = rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+  return { abs, key: (inside ? rel : abs).split(path.sep).join('/'), inside };
+}
+
+/**
+ * 走行帳に刻まれた鼓動を全て読む。**読み手は一箇所** —— audit も beat の錬2 も
+ * dashboard もこの関数だけを読む(二つ書けば必ず食い違う: 第41条)。
+ */
+function beatsOf(run) {
+  return ((run && run.history) || []).filter(h => h && h.event === 'beat' && h.evidence);
+}
+
+/**
+ * 鼓動を刻む (第53条)。
+ *
+ * ── なぜこの口が要るか (実測された欠陥) ──────────────────────────────
+ * `reform/sovereign-abode` は build 相 1 本を **8 本の仕事 (work-0〜7)** に分けた
+ * 改革であり、各段が別々の PR として神のマージを待つ。**環は現に回っている** ——
+ * work-0〜3 の四段が着地し、三本の証拠(build-1/2/3-evidence.md)が倉に在る。
+ * にもかかわらず走行帳の最後の事象は `dispatch build` のままであり、第53条の門は
+ * 1483 分の無音として正しく赤を鳴らした。**門は正しい。欠けていたのは口である。**
+ *
+ * `done` は使えない —— work-4〜7 が残る相を done にするのは第27条違反。
+ * `resume` も違う —— 走者は死んでいない。**進捗そのものを記す語が機構に無かった。**
+ *
+ * ── これが「門を黙らせる道具」にならないための五つの錬 ────────────────
+ *   錬1 証拠が実在せねばならない。空(空白のみを含む)も拒む   → exit 2
+ *       (第54条: 在ることは資格ではない / 第16条: 名は中身ではない)
+ *   錬2 同じ証拠で二度は鼓動できない。**これが無ければ古い 1 ファイルを毎日
+ *       指すだけで永久に門を黙らせられる。** 住所でも中身の sha256 でも拒む
+ *       —— 写して名を変えた証拠は、同じ証拠である              → exit 1
+ *   錬3 `running` でない相には鼓動が無い(pending は走っておらず、done は終わっている) → exit 1
+ *   錬4 **鼓動は status を一切変えない。** 相も domain も動かさない。
+ *       done にも ratified にもできない —— 記録するだけの語である
+ *   錬5 註釈が空・短すぎる・プレースホルダなら拒む            → exit 2
+ *
+ * 刻むのは **「今記録した」という真実だけ** である。過去の刻を騙らない(第22条)。
+ *
+ * @param {object} run 走行帳
+ * @param {string} id 相 id
+ * @param {{evidence:string, note:string, repoRoot?:string, now?:Function}} opts
+ * @returns {{ok:true, phase:string, evidence:string, note:string, ts:string, sha256:string, beats:number}}
+ * @throws {Error} `.exitCode` を携える(2 = 引数/証拠の不備・1 = 走行帳の状態が許さない)
+ */
+function beat(run, id, opts = {}) {
+  const fail = (code, msg) => { const e = new Error(msg); e.exitCode = code; throw e; };
+  const p = allPhases(run).get(id);
+  if (!p) fail(2, `unknown phase: ${id}`);
+
+  // ── 錬5: 註釈 ──────────────────────────────────────────────────────
+  const nv = validateBeatNote(opts.note);
+  if (!nv.ok) fail(2, `鼓動を刻めない: ${nv.why}\n  相 "${id}" — 何が着地したかを述べよ。`);
+
+  // ── 錬1: 証拠の実在と中身 ───────────────────────────────────────────
+  if (!opts.evidence || typeof opts.evidence !== 'string') {
+    fail(2, `鼓動には証拠が要る: --evidence <path>\n  証拠を携えない鼓動は、門を黙らせる操作でしかない (第53条)。`);
+  }
+  const ev = normalizeEvidence(opts.evidence, opts.repoRoot);
+  let st;
+  try { st = fs.statSync(ev.abs); } catch {
+    fail(2, `証拠が実在しない: ${opts.evidence}\n  相 "${id}" に鼓動は刻めない —— 名乗った証拠が無い(第22条 / 錬1)。\n  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。`);
+  }
+  if (st.isDirectory()) fail(2, `証拠が束である(ディレクトリ): ${opts.evidence}\n  鼓動は一つの実物を名指す (錬1)。`);
+  if (st.size === 0) fail(2, `証拠が空である: ${opts.evidence} (0 バイト)\n  **在ることは資格ではない**(第54条 / 第16条 / 錬1)。`);
+  const raw = fs.readFileSync(ev.abs);
+  if (st.size < 4 * 1024 * 1024 && raw.toString('utf8').trim() === '') {
+    fail(2, `証拠が空白しか含まない: ${opts.evidence} (${st.size} バイト)\n  中身を持たぬ証拠は証拠ではない(第16条 / 錬1)。`);
+  }
+  const sha256 = crypto.createHash('sha256').update(raw).digest('hex');
+
+  // ── 錬2: 同じ証拠で二度は鼓動できない ────────────────────────────────
+  const prior = beatsOf(run);
+  const dupPath = prior.find(h => h.evidence === ev.key);
+  if (dupPath) {
+    fail(1, `この証拠は既に鼓動に使われている: ${ev.key}\n` +
+            `  前の鼓動: ${dupPath.ts} (相 ${dupPath.phase || '?'}) — 「${dupPath.note || ''}」\n` +
+            `  **同じ証拠を指し続ければ、門は永久に黙る。** 新しい着地には新しい証拠を携えよ (錬2)。`);
+  }
+  const dupHash = prior.find(h => h.sha256 && h.sha256 === sha256);
+  if (dupHash) {
+    fail(1, `この証拠は中身が既出である (sha256 ${sha256.slice(0, 12)}…): ${ev.key}\n` +
+            `  同一の中身が ${dupHash.ts} に ${dupHash.evidence} として鼓動に使われた。\n` +
+            `  **写して名を変えた証拠は、同じ証拠である** (錬2 / 第16条)。`);
+  }
+
+  // ── 錬3: 走っていない相に鼓動は無い ──────────────────────────────────
+  if (p.status !== 'running') {
+    fail(1, `相 "${id}" は running ではない (${p.status}) — 鼓動を刻めない (錬3)。\n` +
+            `  pending の相はまだ走っておらず、done の相は既に終わっている。\n` +
+            `  進捗を記せるのは、今まさに走っている相だけである。`);
+  }
+
+  // ── 錬4: **status を一切変えない。** 記録するだけである ────────────────
+  const nowFn = opts.now || now;
+  const ts = nowFn();
+  run.history.push({
+    ts, event: 'beat', phase: id, evidence: ev.key, sha256, bytes: st.size, note: nv.note,
+    detail: `${id} ⟡ ${ev.key} — ${nv.note}`,
+  });
+  return { ok: true, phase: id, evidence: ev.key, note: nv.note, ts, sha256, bytes: st.size, beats: prior.length + 1 };
+}
+
 /**
  * ratify(): the review class blesses a domain, or rejects it.
  * On reject the named phase + its downstream reset — ACROSS domains, because a
@@ -627,6 +786,31 @@ function main() {
       console.error(e.message);
       process.exit(1);
     }
+  } else if (cmd === 'beat') {
+    /**
+     * 第53条の鼓動。**証拠を携えた進捗だけを刻む。**
+     * 錬が throw したら `save` に到達しない —— 拒んだのに台帳だけ進む形を構造で禁ずる
+     * (`done` と同じ作法)。exit 2 = 証拠/註釈の不備、exit 1 = 走行帳の状態が許さない。
+     */
+    need(); const run = load(rp);
+    try {
+      const before = JSON.stringify(run.domains);
+      const res = beat(run, pos[0], {
+        evidence: typeof f.evidence === 'string' ? f.evidence : undefined,
+        note: typeof f.note === 'string' ? f.note : undefined,
+      });
+      // 錬4 を engine の外でも撃つ: 鼓動が状態を動かしていないことを保存前に検める。
+      if (JSON.stringify(run.domains) !== before) {
+        console.error('鼓動が状態を書き換えた — 錬4 違反。保存しない。');
+        process.exit(1);
+      }
+      save(rp, run);
+      console.log(JSON.stringify(res, null, 2));
+      console.log('\n' + statusBoard(run));
+    } catch (e) {
+      console.error(e.message);
+      process.exit(e.exitCode || 1);
+    }
   } else if (cmd === 'resume') {
     // 第51条: 中断した走者の残骸を環へ戻す。
     need(); const run = load(rp);
@@ -700,9 +884,10 @@ function main() {
     else console.log(auditBoard(rep));
     const bad = rep.abandoned.length + rep.unknown.length + rep.unreadable.length;
     process.exit(bad === 0 ? 0 : 1);
-  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json] | audit [--json]'); process.exit(2); }
+  } else { console.error('commands: convene <dag> --run f | next --run f [--reclaim] | done <id> --run f --artifact p [--tier 1|2|3] | beat <id> --run f --evidence p --note "…" | resume [<id>] --run f [--force] [--stale-ms n] | ratify <cardinal> --run f [--reject --from id] | status --run f [--json] | audit [--json]'); process.exit(2); }
 }
 if (require.main === module) main();
 module.exports = { convene, next, markRunning, markDone, resume, ratify, activeDomain, allPhases, statusBoard, phaseSilence,
   runAbandonment, auditRuns, auditBoard,
+  beat, beatsOf, validateBeatNote, normalizeEvidence, BEAT_NOTE_MIN,
   MAX_DOMAIN_REWORK, MAX_PHASE_RESUME, STALE_MS, SILENT_MS, ABANDONED_MS };

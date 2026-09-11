@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 470 本
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 471 本
 ```
 > 語るのは**門の総数**であって「通った数」ではない。第3段以降、門は住処や兄弟倉の
 > 不在を**名乗って**飛ばす(第58条(e))ので、`passed` は測る機械の資産で変わる ——

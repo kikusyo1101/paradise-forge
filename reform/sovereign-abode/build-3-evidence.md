@@ -666,3 +666,251 @@ $ node graph/apply-guards.js verify
 6. **mode=repo の `counts.skills` / `counts.kgNodes` は null である。** これは欠陥では
    なく事実である(deploy は skills を配備せず、KG の移設は第4段)。
    design §3.3 の裁定どおり **0 で埋めず null + errors** を返している。
+
+---
+
+## 13. 【追記】CI の赤 — 第53条の門が鳴った。門を一切緩めずに直した(第59条の誕生)
+
+第3段のマージ待ちの間に CI が赤くなった。**自己診断は緑である**(460 passed, 0 failed, 10 skipped)。
+落ちていたのは `tribunal.yml` の「🔁 Conclave audit — 見捨てられた走行が居ないか (第53条)」だけだった。
+
+### 13.1 赤の生出力(before)
+
+```
+$ node graph/conclave.js audit
+CONCLAVE AUDIT — 見捨てられた走行 (第53条)
+════════════════════════════════════════════════════════
+✓ [paradise] claude-md-diet  domains 6/6
+✓ [paradise] conclave-resume  domains 6/6
+✓ [paradise] dashboard-living-gate  domains 6/6
+✓ [paradise] eval-gauge  domains 6/6
+✓ [paradise] gate-filter  domains 6/6
+✓ [paradise] gauge-ledger-idempotent  domains 6/6
+✓ [paradise] pontiff-office  domains 6/6
+🔴 [paradise] sovereign-abode  domains 3/6  🔴 環が閉じぬまま 1512分 無音 [>1440分] — 閉じるか畳むかを決めよ
+✓ [creations] coin  domains 6/6
+✓ [creations] habit  domains 6/6
+✓ [creations] tenbin  domains 6/6
+════════════════════════════════════════════════════════
+見捨てられた走行: 1 / 判定不能: 0 / 全 11
+EXIT=1
+```
+
+### 13.2 真因 — **門は正しい。欠けていたのは口である**
+
+走行帳の実態:
+
+| 事実 | 値 |
+|---|---|
+| domains | discovery / requirements / architecture = ratified、construction = active |
+| build 相 | `status=running`、`dispatchedAt=2026-09-10T15:01:26.628Z` きり |
+| history の最終事象 | 同刻の `dispatch build` |
+
+**だが現実には環は回っている。** 設計 §7 は build を work-0〜7 の **8 本**へ割って
+おり、既に四段が着地している(work-0 = PR #45 / work-1 = #46 / work-2 = #47 /
+work-3 = この #48)。証拠は倉に三本実在する。
+
+第53条の境 `ABANDONED_MS = 24時間` は、**閉じた走行 5 本の事象間隔 173 件
+(max 110.4分)** から導かれた。その校正には【**複数の PR に跨がり、神のマージを
+待つ改革**】という形が含まれていなかった。この形では一つの `build` 相が数日走るのが
+正常であり、**その間に段が着地したという真の鼓動を記録する口が engine に無かった**。
+
+第53条(a) は「閉じるか、畳むか」の二択を明文で置いたが、実測はその**外**を暴いた ——
+**閉じてもおらず、畳んでもおらず、見捨てられてもいない走行**である。
+
+既存の語では記せない:
+
+- `done build` → **第27条違反**。work-4〜7 が残っているのに終わったことにする嘘。
+- `resume build` → 違う。走者は死んでいない。
+- `ABANDONED_MS` を伸ばす / 例外リストで名指し除外 / `|| true` / CI から audit を外す
+  → **すべて第57条違反**(修理は掟を広げてはならない)。直した門より広い門が開く。
+
+### 13.3 直し方 — engine に `beat`(鼓動)の口を建てた
+
+```
+node graph/conclave.js beat <phase-id> --run <path> --evidence <repo相対パス> --note "<何が着地したか>"
+```
+
+**鼓動は記録であって進行ではない。** そして、これが「門を黙らせる道具」に
+ならないよう五つの錬を掛けた。
+
+| 錬 | 内容 | 拒否時の exit |
+|---|---|---|
+| 錬1 | 証拠が実在せねばならない。**0 バイトも空白だけも拒む**(第54条: 在ることは資格ではない / 第16条)。ディレクトリも拒む | 2 |
+| 錬2 | **同じ証拠で二度は鼓動できない。** 住所でも中身の sha256 でも拒む —— **写して名を変えた証拠は同じ証拠である**。これが無ければ古い一枚を毎日指すだけで門を永久に黙らせられる | 1 |
+| 錬3 | `running` でない相に鼓動は無い(pending は走っておらず、done は終わっている) | 1 |
+| 錬4 | **status を一切変えない。** 相も domain も動かさない。done にも ratified にもできない | — |
+| 錬5 | 註釈が空・短すぎる(8字未満)・プレースホルダ(TODO/後で/- 等)なら拒む | 2 |
+
+刻むのは **「今記録した」という真実だけ**である。過去の ts を騙る挿入はしていない。
+
+かつ `audit` を**強めた**: 鼓動を持つ未完の走行は「進んでいる」と名乗り、
+**最後の鼓動が何を携えていたか(証拠の住所と註釈)を印字する**。
+黙って緑にはしない —— 免除は記録されて初めて例外である(第54条(c))。
+
+### 13.4 五つの錬を実地で撃った生出力
+
+```
+$ R='C:/Users/kikus/Documents/workspace/paradise/reform/sovereign-abode/conclave.json'
+$ md5sum "$R"   # 拒否の前
+df86e6a06197edef2d130ea3adafce51
+
+錬1 実在せぬ証拠      → EXIT=2
+錬1 空の証拠          → EXIT=2
+錬2 同じ証拠で二度目  → EXIT=1
+錬5 プレースホルダ註釈 → EXIT=2
+錬3 pending の相      → EXIT=1
+
+$ md5sum "$R"   # 拒否の後 — **1 バイトも変わっていない**
+df86e6a06197edef2d130ea3adafce51
+```
+
+錬が throw したら `save` に到達しない —— **拒んだのに台帳だけ進む形を構造で禁じた**
+(`done` と同じ作法)。それぞれの言い分:
+
+```
+$ node graph/conclave.js beat build --run "$R" --evidence reform/sovereign-abode/build-1-evidence.md --note '同じ証拠で門を黙らせようとする'
+この証拠は既に鼓動に使われている: reform/sovereign-abode/build-1-evidence.md
+  前の鼓動: 2026-09-11T16:21:05.071Z (相 build) — 「第1段 work-1 着地: os.homedir() 16箇所を abode.js の器へ通した (PR #46 MERGED)」
+  **同じ証拠を指し続ければ、門は永久に黙る。** 新しい着地には新しい証拠を携えよ (錬2)。
+
+$ node graph/conclave.js beat build --run "$R" --evidence reform/sovereign-abode/build-9-evidence.md --note '存在しない証拠で鼓動する'
+証拠が実在しない: reform/sovereign-abode/build-9-evidence.md
+  相 "build" に鼓動は刻めない —— 名乗った証拠が無い(第22条 / 錬1)。
+  実物を確かめてから記録せよ(第27条は記録する者自身にも向く)。
+
+$ node graph/conclave.js beat build --run "$R" --evidence reform/sovereign-abode/design.md --note 'TODO'
+鼓動を刻めない: 註釈がプレースホルダである: "TODO" — 名前は中身ではない (第16条 / 錬5)
+  相 "build" — 何が着地したかを述べよ。
+
+$ node graph/conclave.js beat prove --run "$R" --evidence reform/sovereign-abode/design.md --note 'pending の相に鼓動を打つ'
+相 "prove" は running ではない (pending) — 鼓動を刻めない (錬3)。
+  pending の相はまだ走っておらず、done の相は既に終わっている。
+  進捗を記せるのは、今まさに走っている相だけである。
+```
+
+### 13.5 実際に環を回した — 三段の着地を実在の証拠で刻んだ
+
+```
+$ node graph/conclave.js beat build --run "$R" --evidence reform/sovereign-abode/build-1-evidence.md \
+    --note '第1段 work-1 着地: os.homedir() 16箇所を abode.js の器へ通した (PR #46 MERGED)'
+{
+  "ok": true,
+  "phase": "build",
+  "evidence": "reform/sovereign-abode/build-1-evidence.md",
+  "note": "第1段 work-1 着地: os.homedir() 16箇所を abode.js の器へ通した (PR #46 MERGED)",
+  "ts": "2026-09-11T16:21:05.071Z",
+  "sha256": "abbfee1fb9a9b8055273892e93c35c05a7a16eaee56bf7218754a19fc964bee0",
+  "bytes": 19659,
+  "beats": 1
+}
+```
+
+同じ形で build-2-evidence.md(sha256 `a0e77100efa5…` / 10843 B)、
+build-3-evidence.md(sha256 `462c950ed3ad…` / 35971 B)も刻んだ。
+**錬2 により各々別の証拠なので通る。三本とも exit 0。**
+
+刻んだ後の走行帳の実態 — **状態は 1 ミリも動いていない**:
+
+```
+$ node -e "const j=require('<run>');const b=j.history.filter(h=>h.event==='beat');
+           console.log('鼓動',b.length,'件 / domains',j.domains.map(d=>d.status).join(','),'/ build相',j.domains[3].phases[0].status)"
+鼓動 3 件 / domains ratified,ratified,ratified,active,pending,pending / build相 running
+```
+
+**build は running のまま。domains は 3/6 のまま。** work-4〜7 は終わっていない ——
+終わっていないものを終わったことにはしていない(第27条)。
+
+### 13.6 緑の生出力(after)
+
+```
+$ node graph/conclave.js audit
+CONCLAVE AUDIT — 見捨てられた走行 (第53条)
+════════════════════════════════════════════════════════
+✓ [paradise] claude-md-diet  domains 6/6
+✓ [paradise] conclave-resume  domains 6/6
+✓ [paradise] dashboard-living-gate  domains 6/6
+✓ [paradise] eval-gauge  domains 6/6
+✓ [paradise] gate-filter  domains 6/6
+✓ [paradise] gauge-ledger-idempotent  domains 6/6
+✓ [paradise] pontiff-office  domains 6/6
+▶ [paradise] sovereign-abode  domains 3/6  ▶ 鼓動 3 回 — 進んでいる(最後の鼓動 0分 前)
+      ⟡ 証拠: reform/sovereign-abode/build-3-evidence.md (相 build)
+        「第3段 work-3 着地: 見張りの建て替え — 黙って緑に落ちる門を根絶し skip() を移植 (PR #48 OPEN)」
+✓ [creations] coin  domains 6/6
+✓ [creations] habit  domains 6/6
+✓ [creations] tenbin  domains 6/6
+════════════════════════════════════════════════════════
+見捨てられた走行: 0 / 判定不能: 0 / 全 11
+EXIT=0
+```
+
+**黙って緑になっていない。** 進んでいることを、証拠の住所と註釈ごと語っている。
+
+### 13.7 新設した門(両向きに撃つ)
+
+`tests/abandoned-run.test.js` に **C 節 9 本**を新設した。既存の A/B 節と同じ
+砂場(tmpdir)の作法を踏む —— 実在の系には触れない。`paradise.test.js` は既に
+この走行を `require` で呼んでいるので、CI からも自動で撃たれる。
+
+| 門 | 撃つもの |
+|---|---|
+| C-1 [錬1・故障注入] | 実在しない / 0 バイト / 空白だけ / ディレクトリ の証拠を拒む。**拒否が history を伸ばさない**ことも撃つ |
+| C-2 [錬2・故障注入] | 同じ住所で二度目を拒む。**写して名を変えた証拠**(同 sha256)も拒む。かつ**別の証拠なら通る**(壁ではなく門であること: 第36条) |
+| C-3 [錬3] | pending / done / 存在しない相に鼓動を刻めない |
+| C-4 [錬4] | `JSON.stringify(run.domains)` の**完全一致**で status 不変を撃つ。`closed` も動かない |
+| C-5 [錬5] | 空・空白・TODO・todo・後で・`-`・`——`・WIP・n/a・短い を全て拒み、**真っ当な註釈は通る** |
+| C-6 [故障注入] | 鼓動前は `abandoned`、鼓動後は `active`。かつ **`ABANDONED_MS` を越えればまた `abandoned`**(永久の免罪符ではない) |
+| **C-7 [逆の門・第21条]** | **鼓動の無い未完の走行は今まで通り赤い。** 口を建てたことで門を殺していないことの証明 |
+| C-8 [第54条(c)] | 鼓動を持つ走行が `audit` の画面で**証拠の住所と註釈を印字する**(黙って緑にしない) |
+| C-9 | CLI が実在し、錬が throw したら**走行帳ファイルが 1 バイトも変わらない** |
+
+`tests/paradise.test.js` にも二本足した:
+
+- `abandoned-run` の本数下限を 11 → **20** に引き上げ、かつ **C-1〜C-8 の名を
+  ソースで実在確認**(数だけ見れば C を消して別の 9 本を足しても緑になる)。
+- `第53条: 鼓動 (beat) の口と五つの錬が engine に実在する` ——
+  **第57条を構造で撃つ門**である: `ABANDONED_MS === 24時間`、
+  註釈を剥いだ実行部に `sovereign-abode` の名指しが無い、`audit` に `|| true` が無い、
+  `const bad = rep.abandoned.length + rep.unknown.length + rep.unreadable.length`
+  の式が生きている(**鼓動が exit を握っていない**)。
+
+### 13.8 憲法 — **第59条を足した**
+
+足すべきと判断した。理由: **第53条(a) は「閉じるか、畳むか」の二択を明文で置いて
+おり、`beat` はその二択の外に第三の答え(証拠を以て走っていると示す)を作る。**
+既存条文の射程内ではなく、条文の前提そのものを拡張する変更である。かつ、鼓動は
+放置すれば第53条を無効化しうる道具なので、**その錬を条文に固定しなければ、
+次の者が錬を外して緑を買える**。
+
+```
+$ node graph/codex.js index --write
+✍️  CONSTITUTION.INDEX.md を建てた (5151 B)
+$ node graph/codex.js check
+═══════ 📖 CODEX CHECK ═══════
+  ✓ 索引は本文と一致している (59 条)
+══════════════════════════════
+```
+
+### 13.9 正直な申告(この節について)
+
+1. **`beat` の `--evidence` は「その証拠がその段のものか」を判定していない。**
+   実在・非空・未使用・sha256 の一意性は機械が見るが、**証拠の中身が本当にその段の
+   着地を語っているかは人が読むしかない。** 機械が読めない部分を機械が読んだ
+   ふりはしていない(第16条)。第三者の審査は PR の diff で行われる前提である。
+2. **鼓動の sha256 は「中身の一意性」しか保証しない。** ファイルに 1 文字足せば
+   別の sha256 になり、**新しい住所に写して 1 文字足せば**錬2 を抜けられる。
+   同一ファイルを育てて毎日指すことは**住所判定が拒む**が、この経路は残る。
+   **完全には塞げないと正直に書く。** 塞ぐには「証拠が版管理下で新規追加された
+   ことを git に問う」錬が要り、それは砂場の門(tmpdir は git 下に無い)と
+   両立しないので、この改修では採らなかった。
+3. **この節を追記したことで、`build-3-evidence.md` の実 sha256 は走行帳に刻まれた
+   `462c950ed3ad…` と食い違う。** 走行帳は**刻んだ瞬間に測った値**を記録しており、
+   それは真実である(過去を書き換えない)。だが「走行帳の sha256 と現在のファイルを
+   照合する門」は**存在しない**。作れば、証拠を育てるたびに赤くなる。
+   現状は照合しないことを選んだ —— **無いものを在るように書かない。**
+4. **`beats` は `runAbandonment` の判定式そのものは変えていない。** 鼓動は
+   `history` の一事象なので、既存の「最後の事象からの経過」に自然に乗る。
+   ゆえに `ABANDONED_MS` の意味も、閉じた走行の扱いも、判定不能の扱いも不変である。
+5. **`auditBoard` の `active` 行は鼓動が無いと従来どおり無印である。** 鼓動を
+   持たない `active` な走行(閾値内に普通に動いている走行)の見た目は変えていない。

@@ -8965,7 +8965,42 @@ test('abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (
   const rep = require(path.join(DIR, 'abandoned-run.test.js'));
   assert.strictEqual(rep.fail, 0,
     `abandoned-run が ${rep.fail} 件落ちた: ${(rep.failures || []).join(' / ')}`);
-  assert.ok(rep.pass >= 11, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
+  assert.ok(rep.pass >= 20, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
+  // 鼓動 (beat) の節が生きていること。**口を建てた同じ変更で門を広げる** (第21条(c))。
+  // 数だけ見れば、C の 9 本を消して別の 9 本を足しても緑になる —— 名で撃つ。
+  const gsrc = fs.readFileSync(path.join(DIR, 'abandoned-run.test.js'), 'utf8');
+  for (const k of ['C-1 [錬1', 'C-2 [錬2', 'C-3 [錬3', 'C-4 [錬4', 'C-5 [錬5', 'C-6 [故障注入]', 'C-7 [逆の門', 'C-8 [第54条']) {
+    assert.ok(gsrc.includes(k), `鼓動の門 ${k}…] が消えた — 錬が一つ死んでいる`);
+  }
+});
+
+test('第53条: 鼓動 (beat) の口と五つの錬が engine に実在する', () => {
+  // 口そのものの実在。呼べない口は無いのと同じである (第21条)。
+  assert.strictEqual(typeof conclave.beat, 'function', '鼓動の口が無い');
+  assert.strictEqual(typeof conclave.beatsOf, 'function', '鼓動を読む口が一箇所に無い');
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'conclave.js'), 'utf8');
+  // **判定は一箇所に住む** — 二つ書けば必ず食い違う (第41条)
+  assert.strictEqual((src.match(/^function beat\(/gm) || []).length, 1, '鼓動の判定が二箇所に住んでいる');
+  assert.strictEqual((src.match(/^function beatsOf\(/gm) || []).length, 1, '鼓動の読み手が二箇所に住んでいる');
+  // audit も鼓動の読み手を通す(自前で history を漁らない)
+  assert.ok(/const bs = beatsOf\(run\)/.test(src), 'runAbandonment が beatsOf を通していない — 別集計は必ず食い違う');
+  // CLI に口が開いている
+  assert.ok(/cmd === 'beat'/.test(src), 'CLI に beat の口が無い');
+  assert.ok(/beat <id> --run f --evidence p --note/.test(src), 'usage が beat を案内していない');
+
+  /**
+   * **第57条: 修理は掟を広げてはならない。**
+   * 鼓動の口は「門を黙らせる別経路」になりうる。ゆえに、緩めていないことを
+   * **コードで**撃つ —— 註釈は診立てを語るので、註釈を剥いだ本体だけを見る。
+   */
+  assert.strictEqual(conclave.ABANDONED_MS, 24 * 60 * 60 * 1000, '鼓動の口を建てるついでに境を伸ばした (第57条)');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/sovereign-abode/.test(code),
+    'engine の実行部が特定の走行を名指ししている — 例外リストは門ではない (第57条)');
+  assert.ok(!/\|\|\s*true/.test(code.slice(code.indexOf("cmd === 'audit'"))), 'audit が無条件に緑を返す経路を持っている');
+  // 鼓動は exit を握らない。audit の可否は今まで通り abandoned/unknown/unreadable だけが決める。
+  assert.ok(/const bad = rep\.abandoned\.length \+ rep\.unknown\.length \+ rep\.unreadable\.length/.test(code),
+    'audit の可否の式が書き換わった — 鼓動が exit を握ってはならない');
 });
 
 // --- gate-filter: 絞り込みの口が掟を破らないことを、自己診断が自分で見張る (第16条 / 第22条) ---
