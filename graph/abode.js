@@ -64,7 +64,7 @@ const MODES = new Set(['repo', 'global']);
  * 第0〜3段 = 'global'(神の日常を 1 バイトも変えない) / 第4段以降 = 'repo'。
  * 反転が 1 行の差分であることを PR の可読性の要件とする(design §1.3)。
  */
-const DEFAULT_MODE = 'global';
+const DEFAULT_MODE = 'repo';
 
 /** 個別 env は `PARADISE_ABODE` より強い。既存の門と CI がこれで隔離しているため。 */
 const OVERRIDE_ENV = [
