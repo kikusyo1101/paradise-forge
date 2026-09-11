@@ -66,7 +66,27 @@ const GATE = (() => {
 const SAY = process.stdout.write.bind(process.stdout);
 if (GATE.list) console.log = () => {};
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
+/**
+ * **検められなかったことを、口で名乗る**(第37条 / 第58条(e))。
+ *
+ * 改革前、この走行には skip の概念が無かった。ゆえに前提を欠く門は
+ * `if (!fs.existsSync(p)) return;` と**黙って早期に return** し、
+ * **緑として集計に載っていた** —— 門が死んでも `N skipped` にすら現れない。
+ * `graph/abode.js check --silent-green` がこの形を 12 件名指した(設計 L-5〜L-17)。
+ *
+ * 先例は `tests/guards.test.js:30` の `skip()` である。同じ形をここへ移した。
+ *
+ * ⚠️ **この関数は絞り込み塊の内側に住む。** 塊は環境変数を一つも読めない
+ * (門「gate-filter: 絞り込みは環境変数を読まない」/ 第22条)。skip の理由は
+ * **必ず引数で受け取る** —— 環境を読んで理由を組み立ててはならない。
+ *
+ * ⚠️ **その禁則は註釈にも及ぶ。** 門は塊の中の綴りを数えるのであって、
+ * 構文木を歩かない —— **禁じられた綴りをこの docblock に書けば、それだけで赤になる。**
+ * 実測で踏んだ(build-3-evidence.md §9)。門と同じ流儀で、綴りを書かずに名を呼ぶ
+ * (門自身も `'// >>>' + ' gate-filter…'` と分けて書き、偽のマーカーになるのを避けている)。
+ */
+function skip(why) { const e = new Error(why); e.__skip = true; throw e; }
 function test(name, fn) {
   /**
    * **`typeof GATE` で守る理由(build 相の実測。設計の見落としだった)。**
@@ -75,6 +95,7 @@ function test(name, fn) {
    * `GATE` を裸で参照すると `ReferenceError` で門が落ちる —— 実測で落ちた。
    * その門は「集計行が嘘をつかないこと」を守る門の根であり、緩めてはならない。
    * ゆえに絞り込みの側が退く。**絞り込みが無い世界でも test() は単体で正しく数える。**
+   * 同じ理由で `skipped` も `typeof` で守る(子には宣言が無い)。
    */
   if (typeof GATE !== 'undefined') {
     GATE.total++;
@@ -83,9 +104,34 @@ function test(name, fn) {
     if (GATE.list) { GATE.say(name); return; }          // fn を呼ばない
   }
   try { fn(); console.log('  \u2713 ' + name); pass++; }
-  catch (e) { console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; }
+  catch (e) {
+    if (e && e.__skip) {
+      console.log('  \u00b7 ' + name + '  (skipped: ' + e.message + ')');
+      if (typeof skipped !== 'undefined') skipped++;
+      return;
+    }
+    console.log('  \u2717 ' + name + '\n      ' + e.message); fail++;
+  }
 }
 // <<< gate-filter: 絞り込み塊 ここまで  (AC-16 の門がこの対を読む — 対を消すな)
+
+/**
+ * engine が返した `skipped` を**理由つきの skip** に写す。
+ *
+ * 第58条(e) 以降、engine 側の `skipped` は真偽値ではなく**理由の文字列**である
+ * (`deploy.js:195` / `check-agents.js:234`)。ゆえに門は理由をそのまま名乗れる。
+ * まだ真偽値を返す engine のために `note` へ落ち、どちらも無ければ「理由を述べない
+ * engine が居る」と名乗る —— **黙った skip は黙った return と同じである。**
+ *
+ * ⚠️ mode による裁きは engine が既に持っている(`mode==='repo'` なら skip せず赤)。
+ * ここで mode を読み直せば、住所の解決が二本になる(work-1 が踏んだ罠)。
+ */
+function skipReason(r, fallback) {
+  // **`if (…) return x;` の形で書かない。** その形は `--silent-green` が咎める形そのもの
+  // であり、門が己の裁く形を自分で使えば、いつか除外を作る羽目になる(第54条(d))。
+  const said = [r.skipped, r.note].find(v => typeof v === 'string' && v.trim());
+  return said ? said.trim() : fallback + ' (engine が理由を述べていない)';
+}
 
 // --- Graph engine ---
 console.log('Graph engine:');
@@ -1437,7 +1483,7 @@ test('every phase in every forge scale names an agent that actually exists', () 
   // engine 化した check-agents.js で同じ検査を行う。
   const ca = require('../graph/check-agents.js');
   const res = ca.check();
-  if (res.skipped) return; // ハーネス未配置の環境では検査しない
+  if (res.skipped) skip(skipReason(res, 'check-agents が神官の住処を検められない'));
   assert.deepStrictEqual(res.missing, [], 'forge.js must not name a priest that does not exist');
 });
 
@@ -1743,7 +1789,7 @@ test('deploy: every deployed file has a declared source', () => {
 
 test('deploy: the deployed tree matches its declared sources', () => {
   const r = deploy.check();
-  if (r.skipped) return; // ハーネス未配置の環境では検査対象が無い
+  if (r.skipped) skip(skipReason(r, 'deploy が配備物を検められない'));
   assert.deepStrictEqual(r.drift.map(d => `${d.kind}/${d.file}: ${d.why}`), [],
     '~/.claude is a product — a difference here means someone edited the product instead of the source');
 });
@@ -1793,7 +1839,10 @@ test('deploy: line endings alone are not drift, but real edits are', () => {
   fs.rmSync(d, { recursive: true, force: true });
 });
 
-test('deploy: paradise-owned files come from the repository, not from ~/.claude', () => {
+// **門の名は中身を語れ**(設計 L-20)。この門は配備先を一度も見ない ——
+// 見るのは「楽園が所有する配備物の出所が overlay/ であること」だけである。
+// 名が `~/.claude` を指していると、住処が移った日に「この門は古い」と誤読される。
+test('deploy: paradise-owned files come from overlay/, not from the deploy target', () => {
   // 楽園固有のものが配備先にしか無いと、clone した環境で再現できない。
   const p = deploy.plan();
   const owned = p.steps.filter(s => s.relation === 'own');
@@ -1992,6 +2041,49 @@ test('census: the paradise measures itself from the artifacts, not from prose (A
   assert.ok(c.articles >= 22, `constitution must have >= 22 articles, measured ${c.articles}`);
   assert.ok(c.engines > 0, 'engines are counted from disk');
   assert.ok(c.vendorFiles > 0, 'vendored files are counted from disk');
+});
+
+test('census: README が語るテスト数は測る機械で変わらない — 門の総数である (第58条(e) / 第22条)', () => {
+  /**
+   * **実測された事故** (PR #48 / CI 赤):
+   *
+   *     神の機械 : Paradise self-test: 469 passed, 0 failed
+   *     CI (裸)  : Paradise self-test: 459 passed, 0 failed, 10 skipped
+   *     → 🔴 README テスト数: doc says 469/469, reality is 459/459
+   *
+   * 第3段で `skip()` が本物になった瞬間、`passed` は**測る機械の資産に依存する数**に
+   * なった。CI にはハーネスも兄弟倉も hermes の cron 台帳も無く、10 門はそれを
+   * **名乗って**飛ばす —— どちらの走行も嘘をついていない。嘘をついていたのは
+   * 「passed は楽園の性質である」という主張の側だった。
+   *
+   * ゆえに README が語る数は **門の総数 = passed + failed + skipped** でなければならぬ。
+   * この門は、飛ばした門の数が動いても主張の値が動かないことを直に撃つ。
+   */
+  const census = require('../graph/census.js');
+  const claimFor = (tests) => census.claims({ tests, vendor: {}, vendorFiles: 0 })
+    .find(x => /README テスト数/.test(x.label));
+
+  const 神の機械 = claimFor({ passed: 469, failed: 0, skipped: 0 });
+  const CIの裸 = claimFor({ passed: 459, failed: 0, skipped: 10 });
+  const 赤が在る = claimFor({ passed: 465, failed: 4, skipped: 0 });
+
+  assert.deepStrictEqual(census.expectedOf(神の機械), [469]);
+  assert.deepStrictEqual(census.expectedOf(CIの裸), [469],
+    '飛ばした門を数えていない — README の数が測る機械で変わる (第58条(e))');
+  assert.deepStrictEqual(census.expectedOf(赤が在る), [469],
+    '赤が出ると総数が減る — 門の総数は結果で変わらない');
+
+  // 捕捉群と語る数が揃っている(fix が取り残して嘘を書けない形である)
+  assert.strictEqual(census.groupCount(神の機械.re), 1);
+  // 測れなかったときは null —— 0 や部分値で埋めない(第16条)
+  assert.strictEqual(census.measurable(claimFor(null)), false,
+    '測れなかった走行から数を捻り出している');
+  // README に主張が実在すること(消えた主張は検められない)
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  assert.ok(神の機械.re.test(readme), 'README からテスト数の主張が消えている');
+  // **旧い形が残っていないこと** — `N/M pass` は機械依存の数を語る形である
+  assert.ok(!/paradise\.test\.js\s+#\s*\d+\/\d+ pass/.test(readme),
+    'README に旧い N/M pass が残っている — 通った数は測る機械で変わる (第58条(e))');
 });
 
 test('census: a stale number in the documents is a failing gate (Art.22)', () => {
@@ -2277,7 +2369,7 @@ test('hierarchy: every cardinal has an actor, not just a label (Art.25)', () => 
 test('hierarchy: believers have bodies, not merely names (Art.25)', () => {
   const ca = require('../graph/check-agents.js');
   const r = ca.hierarchyIntegrity();
-  if (r.skipped) return;                     // ハーネス未配置の環境では検めない
+  if (r.skipped) skip(skipReason(r, '階層の実体を検められない'));
   const missing = r.findings.filter(f => f.code === 'BELIEVER_MISSING');
   assert.strictEqual(missing.length, 0,
     `every believer needs a body: ${missing.map(f => f.believer).join(', ')}`);
@@ -2288,7 +2380,7 @@ test('hierarchy: a priest with believers can actually dispatch them (Art.25)', (
   // 「allowedTools に Agent(Task) が無いと起動は黙って拒否される」
   const ca = require('../graph/check-agents.js');
   const r = ca.hierarchyIntegrity();
-  if (r.skipped) return;
+  if (r.skipped) skip(skipReason(r, '階層の実体を検められない'));
   const blocked = r.findings.filter(f => f.code === 'PRIEST_CANNOT_SPAWN');
   assert.strictEqual(blocked.length, 0,
     `these priests govern believers but cannot spawn: ${blocked.map(f => f.priest).join(', ')}`);
@@ -2302,7 +2394,7 @@ test('hierarchy: the gate fires when a believer loses its body (Art.25)', () => 
   try {
     clergy.COLLEGE.discovery.believers = [...saved, 'ghost-believer-xyz'];
     const r = ca.hierarchyIntegrity();
-    if (r.skipped) return;
+    if (r.skipped) skip(skipReason(r, '階層の実体を検められない'));
     assert.ok(r.findings.some(f => f.code === 'BELIEVER_MISSING' && f.believer === 'ghost-believer-xyz'),
       'a believer with no body must be named by the gate');
   } finally {
@@ -2731,13 +2823,24 @@ test('census: 総括は位置ではなく名前で読む — 子テストの集�
     'Paradise self-test: 288 passed, 0 failed',
     '',
   ].join('\n');
-  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0 },
+  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0, skipped: 0 },
     '子テストの集計行を総括と取り違えている — 先頭ではなく名乗りで狙え');
 
   // 赤があっても総括を読む
   assert.deepStrictEqual(
     census.summaryOf('child: 3 passed, 0 failed\nParadise self-test: 287 passed, 1 failed\n'),
-    { passed: 287, failed: 1 });
+    { passed: 287, failed: 1, skipped: 0 });
+
+  /**
+   * **飛ばした門も読む**(第58条(e) の帰結)。第3段で `skip()` が本物になり、
+   * 名乗りの行は `, N skipped` を伴うようになった。これを読み落とすと、
+   * 楽園の門の総数が**測る機械の資産で変わる数**になる(CI の裸の機械では
+   * ハーネス不在で 10 門が飛ぶ)。総数 = passed + failed + skipped である。
+   */
+  assert.deepStrictEqual(
+    census.summaryOf('Paradise self-test: 459 passed, 0 failed, 10 skipped\n'),
+    { passed: 459, failed: 0, skipped: 10 },
+    '飛ばした門を読み落とした — 門の総数が機械依存の数になる (第58条(e))');
 
   // 読めなければ null。0 で埋めてはならない(第16条: 判定不能は緑ではない)
   assert.strictEqual(census.summaryOf('何も無い'), null,
@@ -2778,7 +2881,7 @@ test('census: 名乗りが無ければ null — 保険経路は死んでいる (
   // 🟢 **逆の門**: 名乗りが在れば正しく読む(狭めすぎて何も読めなくしていない)
   assert.deepStrictEqual(census.summaryOf(
     'child: 3 passed, 0 failed\nParadise self-test: 455 passed, 0 failed\n'),
-    { passed: 455, failed: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
+    { passed: 455, failed: 0, skipped: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
 
   // 呼び手は null を「測れなかった」として扱い、**緑を返さない**(第37条)
   const res = census.check({ runTests: true, testTimeoutMs: 1 });   // 必ず打ち切られる
@@ -3295,7 +3398,9 @@ test('gauge: 実在の run-state を採点できる — coin は habit より健
   const root = require(path.join(DIR, '..', 'graph', 'workspace.js')).resolve();
   const coinF = path.join(root.root, 'coin', 'conclave.json');
   const habitF = path.join(root.root, 'habit', 'conclave.json');
-  if (!fs.existsSync(coinF) || !fs.existsSync(habitF)) return; // 他マシンでは沈黙 (第20条)
+  // 兄弟倉に素材が無い機では**名乗って**退く。黙って return すれば、
+  // この門が一度も実物を採点していないことに誰も気づけない(第37条 / AC-43)。
+  if (!fs.existsSync(coinF) || !fs.existsSync(habitF)) skip(`兄弟倉に coin/habit の走行帳が無い: ${root.root}`);
   const coin = gauge.score(JSON.parse(fs.readFileSync(coinF, 'utf8')));
   const habit = gauge.score(JSON.parse(fs.readFileSync(habitF, 'utf8')));
   assert.ok(coin.score > habit.score, `coin ${coin.score} > habit ${habit.score} — 差し戻し3回の走行が同点なら秤は嘘`);
@@ -5255,19 +5360,29 @@ test('門ヘルパー: test() の失敗が必ず数に載る — 集計行が嘘
    * 集計行 `N passed, 0 failed` は census が README に写す数であり、
    * **数え方が嘘をつけば全ての門の緑が無意味になる**。ここは門の根である。
    * 実物の `test` を撃つと集計が汚れるので、同じ本文を子プロセスで走らせて撃つ。
+   *
+   * 第3段で `skip()` を移植した(設計 L-5〜L-17)。**skip が fail を食う**変異は
+   * この門の射程そのものなので、子で三態(緑・赤・skip)を同時に撃つ。
    */
   const src = fs.readFileSync(path.join(DIR, 'paradise.test.js'), 'utf8');
   const m = src.match(/function test\(name, fn\) \{[\s\S]*?\n\}/);
   assert.ok(m, 'test() の定義が見つからない — 門の形が変わった');
   assert.ok(/fail\+\+/.test(m[0]), '失敗を数える一行が消えている — 集計行が永久に 0 failed になる');
   assert.ok(/pass\+\+/.test(m[0]), '成功を数える一行が消えている');
+  assert.ok(/skipped\+\+/.test(m[0]), 'skip を数える一行が消えている — 名乗った skip が集計から消える (第37条)');
+  const skipDef = src.match(/function skip\(why\) \{[^\n]*\}/);
+  assert.ok(skipDef, 'skip() の定義が見つからない — 黙った return へ戻る道が開く');
   const res = require('child_process').spawnSync(process.execPath, ['-e',
-    `let pass=0,fail=0;\n${m[0]}\ntest('x',()=>{throw new Error('BOOM')});` +
-    `test('y',()=>{});console.log(JSON.stringify({pass,fail}));`], { encoding: 'utf8' });
+    `let pass=0,fail=0,skipped=0;\n${skipDef[0]}\n${m[0]}\ntest('x',()=>{throw new Error('BOOM')});` +
+    `test('y',()=>{});test('z',()=>{skip('前提が無い')});console.log(JSON.stringify({pass,fail,skipped}));`],
+    { encoding: 'utf8' });
   assert.strictEqual(res.status, 0, `test() の抜き出しが走らない: ${res.stderr.slice(0, 200)}`);
   const got = JSON.parse(String(res.stdout).trim().split('\n').pop());
-  assert.deepStrictEqual(got, { pass: 1, fail: 1 },
-    `失敗が集計に載らない — 「0 failed」が構造的に嘘になる: ${JSON.stringify(got)}`);
+  assert.deepStrictEqual(got, { pass: 1, fail: 1, skipped: 1 },
+    `三態が集計に正しく載らない — 「0 failed」が構造的に嘘になる: ${JSON.stringify(got)}`);
+  // **skip は赤を食わない。** skip() が fail を握り潰す実装なら、ここが鳴る。
+  assert.ok(/\(skipped: /.test(String(res.stdout)),
+    'skip が理由を名乗っていない — 黙った skip は黙った return と同じである');
 });
 
 // ── AC-8a/8b/8c: 掃除の手順を仮倉で模擬する(実台帳は一行も触らない) ──
@@ -5937,7 +6052,7 @@ test('gauge: ledger の出力が畳んだ件数を名乗る (NFR-1)', () => {
 test('gauge: 門は実台帳を一行も書き換えない (AC-9c / 第30条)', () => {
   const ws = require(WORKSPACE_JS);
   const real = path.join(ws.resolve().root, 'gauge-ledger.jsonl');
-  if (!fs.existsSync(real)) return;   // 倉が無い機では沈黙 (第20条)
+  if (!fs.existsSync(real)) skip(`兄弟倉に gauge-ledger.jsonl が無い: ${real}`);
   const digest = (p) => require('crypto').createHash('sha256')
     .update(fs.readFileSync(p)).digest('hex');
   const before = digest(real);
@@ -6527,12 +6642,18 @@ test('watchdog: 監視スクリプトは正典に住み、配備された実物�
 
   // 配備先があるなら、正典と同じ中身であること (第29条: 派生は真実の写し)
   // 改行コードは git の autocrlf が勝手に変える — 門は綴りでなく実質を裁く (第42条)。
-  const deployed = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'scripts', 'paradise-catchup.py');
-  if (fs.existsSync(deployed)) {
-    const norm = (s) => s.split(String.fromCharCode(13)).join('');
-    assert.strictEqual(norm(fs.readFileSync(deployed, 'utf8')), norm(src),
-      '配備された監視スクリプトが正典と食い違っている — どちらが真実か誰も知らなくなる');
+  //
+  // **住所は台帳が知っている**(EXT-2 / 第58条(b))。門が自分で `os.homedir()` を
+  // 組み立てれば、engine と門で住所が割れる(設計 L-2 が実証した病と同型)。
+  // 不在は**名乗って** skip する —— 黙って通れば、この門が配備物を一度も
+  // 照合していないことに誰も気づけない(第37条 / 設計 L-6)。
+  const deployed = require(path.join(DIR, '..', 'graph', 'abode.js')).exportRealPath('EXT-2');
+  if (!deployed || !fs.existsSync(deployed)) {
+    skip(`EXT-2 未配備: ${deployed || '(台帳が住所を解けない)'} — 正典の側は上で検め終えている`);
   }
+  const norm = (t) => t.split(String.fromCharCode(13)).join('');
+  assert.strictEqual(norm(fs.readFileSync(deployed, 'utf8')), norm(src),
+    '配備された監視スクリプトが正典と食い違っている — どちらが真実か誰も知らなくなる');
 });
 
 test('tools: 呼ぶ者の居ない道具は住み続けない (第44条)', () => {
@@ -6604,8 +6725,24 @@ test('conclave: 道は reform の住所を知っている (第23条 / 第30条)'
 
 test('conclave: 配備された道は正典と一致する (第29条)', () => {
   const canon = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'commands', 'conclave.md'), 'utf8');
-  const deployed = path.join(os.homedir(), '.claude', 'commands', 'conclave.md');
-  if (!fs.existsSync(deployed)) return;      // 未配備なら問わない
+  /**
+   * **住所は解決器が答える**(第58条(a))。門が `os.homedir()` で住所を再計算すれば、
+   * engine が `<repo>/.claude` を見ているのに門は `~/.claude` を見る —— 二つの住所が
+   * 割れた瞬間に偽の赤/偽の緑が出る(設計 L-2 / L-5)。
+   *
+   * かつ**不在の裁きは mode が決める**(第58条(e)):
+   *   mode=repo   → `<repo>/.claude` は git 追跡の派生物。不在は**派生物の欠損**であり赤。
+   *   mode=global → 外を向いた住処はこの機の資産。**名乗って** skip してよい。
+   * 住所と mode は**一度の解決から**採る(二度引けば答えが割れる — work-1 の教訓)。
+   */
+  const site = require(path.join(DIR, '..', 'graph', 'abode.js')).resolve();
+  const deployed = path.join(site.commands, 'conclave.md');
+  if (!fs.existsSync(deployed)) {
+    assert.notStrictEqual(site.mode, 'repo',
+      `リポジトリ内の住処に配備された道が無い: ${deployed} — ` +
+      '派生物の欠損である。node graph/deploy.js --write で建て直せ (第58条(e))');
+    skip(`mode=${site.mode} (source=${site.source}) で未配備: ${deployed}`);
+  }
   const norm = (t) => t.split(String.fromCharCode(13)).join('');
   assert.strictEqual(norm(fs.readFileSync(deployed, 'utf8')), norm(canon),
     '配備された /conclave が正典と食い違っている — 歩く者は古い道を歩く (deploy.js を走らせよ)');
@@ -6646,13 +6783,16 @@ test('cron: 日次の発火は道を写経せず、道を指す (第46条)', () 
   // 実測された病: 日次 cron が /conclave の 67 行の劣化コピーを抱え、
   // synod / convene / ratify / tribunal / delegate のいずれも持たなかった。
   // 写経は本物から遅れて腐り、劣化した影が本物の顔で走る。
-  const jobs = path.join(os.homedir(), 'AppData', 'Local', 'hermes', 'cron', 'jobs.json');
-  if (!fs.existsSync(jobs)) return;          // ハーネス不在の環境では問わない
+  // 住所は台帳が知っている(EXT-1 / 第58条(b))。門が自分で組み立てない。
+  const jobs = require(path.join(DIR, '..', 'graph', 'abode.js')).exportRealPath('EXT-1');
+  if (!jobs || !fs.existsSync(jobs)) {
+    skip(`EXT-1 不在: ${jobs || '(台帳が住所を解けない)'} — この機に cron 台帳が無い`);
+  }
 
   const raw = JSON.parse(fs.readFileSync(jobs, 'utf8'));
   const list = Array.isArray(raw) ? raw : (raw.jobs || Object.values(raw));
   const prompts = list.filter(j => j && typeof j.prompt === 'string');
-  if (!prompts.length) return;               // ジョブ未登録なら問わない
+  if (!prompts.length) skip(`EXT-1 にジョブが一件も登録されていない: ${jobs}`);
 
   // 日次改善のジョブは daily-guard を握る者として名指しで探す。
   // 見つからないことを「通過」にしてはならない — 不在は通過ではない (第37条)。
@@ -8825,7 +8965,42 @@ test('abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (
   const rep = require(path.join(DIR, 'abandoned-run.test.js'));
   assert.strictEqual(rep.fail, 0,
     `abandoned-run が ${rep.fail} 件落ちた: ${(rep.failures || []).join(' / ')}`);
-  assert.ok(rep.pass >= 11, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
+  assert.ok(rep.pass >= 20, `abandoned-run が ${rep.pass} 件しか検査していない — 門が痩せた`);
+  // 鼓動 (beat) の節が生きていること。**口を建てた同じ変更で門を広げる** (第21条(c))。
+  // 数だけ見れば、C の 9 本を消して別の 9 本を足しても緑になる —— 名で撃つ。
+  const gsrc = fs.readFileSync(path.join(DIR, 'abandoned-run.test.js'), 'utf8');
+  for (const k of ['C-1 [錬1', 'C-2 [錬2', 'C-3 [錬3', 'C-4 [錬4', 'C-5 [錬5', 'C-6 [故障注入]', 'C-7 [逆の門', 'C-8 [第54条']) {
+    assert.ok(gsrc.includes(k), `鼓動の門 ${k}…] が消えた — 錬が一つ死んでいる`);
+  }
+});
+
+test('第53条: 鼓動 (beat) の口と五つの錬が engine に実在する', () => {
+  // 口そのものの実在。呼べない口は無いのと同じである (第21条)。
+  assert.strictEqual(typeof conclave.beat, 'function', '鼓動の口が無い');
+  assert.strictEqual(typeof conclave.beatsOf, 'function', '鼓動を読む口が一箇所に無い');
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'conclave.js'), 'utf8');
+  // **判定は一箇所に住む** — 二つ書けば必ず食い違う (第41条)
+  assert.strictEqual((src.match(/^function beat\(/gm) || []).length, 1, '鼓動の判定が二箇所に住んでいる');
+  assert.strictEqual((src.match(/^function beatsOf\(/gm) || []).length, 1, '鼓動の読み手が二箇所に住んでいる');
+  // audit も鼓動の読み手を通す(自前で history を漁らない)
+  assert.ok(/const bs = beatsOf\(run\)/.test(src), 'runAbandonment が beatsOf を通していない — 別集計は必ず食い違う');
+  // CLI に口が開いている
+  assert.ok(/cmd === 'beat'/.test(src), 'CLI に beat の口が無い');
+  assert.ok(/beat <id> --run f --evidence p --note/.test(src), 'usage が beat を案内していない');
+
+  /**
+   * **第57条: 修理は掟を広げてはならない。**
+   * 鼓動の口は「門を黙らせる別経路」になりうる。ゆえに、緩めていないことを
+   * **コードで**撃つ —— 註釈は診立てを語るので、註釈を剥いだ本体だけを見る。
+   */
+  assert.strictEqual(conclave.ABANDONED_MS, 24 * 60 * 60 * 1000, '鼓動の口を建てるついでに境を伸ばした (第57条)');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/sovereign-abode/.test(code),
+    'engine の実行部が特定の走行を名指ししている — 例外リストは門ではない (第57条)');
+  assert.ok(!/\|\|\s*true/.test(code.slice(code.indexOf("cmd === 'audit'"))), 'audit が無条件に緑を返す経路を持っている');
+  // 鼓動は exit を握らない。audit の可否は今まで通り abandoned/unknown/unreadable だけが決める。
+  assert.ok(/const bad = rep\.abandoned\.length \+ rep\.unknown\.length \+ rep\.unreadable\.length/.test(code),
+    'audit の可否の式が書き換わった — 鼓動が exit を握ってはならない');
 });
 
 // --- gate-filter: 絞り込みの口が掟を破らないことを、自己診断が自分で見張る (第16条 / 第22条) ---
@@ -8958,15 +9133,15 @@ test('gate-filter: 名指した門を走らせない走行は測定ではない 
   // ① 健全時: 恒等式が成り立ち、緑で返る
   const ok = gateRun('--gate', GATE_ONE);
   assert.strictEqual(ok.status, 0, `健全な絞り込み走行が exit ${ok.status}`);
-  const m = String(ok.stdout).match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
+  const m = String(ok.stdout).match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red(?:, (\d+) skipped)?/);
   assert.ok(m, `総括行が読めない: ${String(ok.stdout).trim().split('\n').pop()}`);
-  assert.strictEqual(Number(m[1]), Number(m[2]) + Number(m[3]),
-    `matched が green+red と一致しない: ${m[0]}`);
+  assert.strictEqual(Number(m[1]), Number(m[2]) + Number(m[3]) + Number(m[4] || 0),
+    `matched が green+red+skipped と一致しない: ${m[0]}`);
   assert.ok(!/数が閉じない/.test(ok.stdout), '健全な走行で錠が鳴った — 偽陽性である');
 
   // ② 錠が実在し、絞り込みの外に立っていること(F-3: --gate では消せない位置)
   const src = fs.readFileSync(__filename, 'utf8');
-  const lock = src.match(/if \(GATE\.active && !GATE\.list && GATE\.matched !== pass \+ fail\)/);
+  const lock = src.match(/if \(GATE\.active && !GATE\.list && GATE\.matched !== pass \+ fail \+ skipped\)/);
   assert.ok(lock, '恒等式の錠が消えている — F-1 の致命の穴が再び開く');
   const testDefEnd = src.indexOf('// <<<' + ' gate-filter: 絞り込み塊 ここまで');
   assert.ok(testDefEnd > 0 && lock.index > testDefEnd,
@@ -8996,8 +9171,12 @@ test('gate-filter: 名指した門を走らせない走行は測定ではない 
 // 名乗りは三者に消費される契約である (census.js:55 / tribunal.yml:306 / 人間)。
 // 局所走行は決して `Paradise self-test:` を名乗らない。`passed` / `failed` の語も
 // 一切用いない —— census.js:57 の保険経路(matchAll)まで塞ぐため (requirements FR-05)。
+//
+// **`N skipped` は skip が在るときだけ名乗る**(`guards.test.js` と同形)。
+// 0 件のときに `, 0 skipped` を足せば、README の主張の綴りが変わる版と変わらない版が
+// 生まれる —— 契約の綴りは一つでなければならない。
 if (!GATE.active) {
-  console.log(`\nParadise self-test: ${pass} passed, ${fail} failed`);
+  console.log(`\nParadise self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));
 } else if (GATE.matched === 0) {
   SAY(`Paradise gate list: 0 of ${GATE.total} gates matched — nothing was measured\n`);
 } else if (GATE.list) {
@@ -9020,7 +9199,8 @@ if (!GATE.active) {
    */
   SAY('Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない。'
     + '共有状態を前段の門に頼る門は単独走行で偽の赤を出しうる (security D-2)\n');
-  SAY(`Paradise gate-filter: ${GATE.matched} of ${GATE.total} gates matched — ${pass} green, ${fail} red\n`);
+  SAY(`Paradise gate-filter: ${GATE.matched} of ${GATE.total} gates matched — ${pass} green, ${fail} red`
+    + (skipped ? `, ${skipped} skipped` : '') + '\n');
 }
 
 /**
@@ -9039,12 +9219,17 @@ if (!GATE.active) {
  * これは `test()` を通らないので `--gate` でも `--gate-not` でも消せない。
  * **絞り込みが自分を絞り込んで逃げる道を、構造として塞ぐ**(第56条 (a)(b) の草案)。
  *
- * 恒等式: **matched = green + red**。「名指したが走らせなかった」は測定ではなく叙述である。
+ * 恒等式: **matched = green + red + skipped**。「名指したが走らせなかった」は測定ではなく叙述である。
  * `--gate-list` は fn を呼ばないと**宣言している**ので、この錠の対象外(緑と名乗らないため)。
+ *
+ * ⚠️ **`skipped` を右辺に足したのは緩めたのではない。** skip は `fn()` を**呼んだ上で**
+ * 「前提が無い」と口で名乗った門であり、`· <名> (skipped: <理由>)` として出力に現れる。
+ * 沈黙とは違う。恒等式が守るのは「名指した門の行方が全て説明されること」であって、
+ * 「全てが緑であること」ではない。**呼ばれずに消えた門だけが、ここで捕まる。**
  */
-if (GATE.active && !GATE.list && GATE.matched !== pass + fail) {
+if (GATE.active && !GATE.list && GATE.matched !== pass + fail + skipped) {
   SAY('Paradise gate-filter: 数が閉じない — '
-    + `matched=${GATE.matched} だが green+red=${pass + fail}。`
+    + `matched=${GATE.matched} だが green+red+skipped=${pass + fail + skipped}。`
     + '名指した門を走らせていない走行は、測定ではない (第16条 / reflect F-1・F-2)\n');
   try { fs.rmSync(kgRoot, { recursive: true, force: true }); } catch {}
   try { fs.rmSync(ccRoot, { recursive: true, force: true }); } catch {}

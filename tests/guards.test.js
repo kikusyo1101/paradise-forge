@@ -29,6 +29,41 @@ function test(name, fn) {
 }
 function skip(why) { const e = new Error(why); e.__skip = true; throw e; }
 
+/**
+ * **不在を skip と呼んでよいのは、外を向いていると名乗ったときだけである**
+ * (憲法 第58条(e) / AC-41)。
+ *
+ * かつてこの走行の 4 門は `if (!fs.existsSync(G.SETTINGS)) skip(…)` と書いていた。
+ * 住処が**神のマシンの資産**だった間はそれで正しかった —— 実測でも
+ * `PARADISE_SETTINGS=/nonexistent` を立てれば `60 passed, 4 skipped` に落ちた。
+ *
+ * だが `<repo>/.claude/settings.json` は **git 追跡の派生物**である(AC-14)。
+ * clone すれば必ず在る。在るべき物が無いのは「ハーネス不在」ではなく
+ * **派生物の欠損**であり、それを skip と呼べば、配備が丸ごと消えても
+ * この 4 門は緑を出し続ける(第37条)。
+ *
+ * ゆえに:
+ *   mode=repo   → **赤**。直す命令まで名指す。
+ *   mode=global → 理由を名乗って skip(`N skipped` に数えられる)。
+ *
+ * ⚠️ 住所と mode は**一度の解決から**採る。二度引けば「mode は repo と答えたのに
+ * 住所は global」という割れ方をする(work-1 が check-agents で踏んだ罠)。
+ * ただし `PARADISE_SETTINGS` を立てた走行では `G.SETTINGS` がそれを指すので、
+ * **実際に読む道**(`G.SETTINGS`)で存否を裁く —— 門は engine が見る物を見る。
+ */
+function requireSettings() {
+  // **`if (…) return x;` の形で書かない。** それは `--silent-green` が咎める形そのもの
+  // であり、門が己の裁く形を使えば、いつか除外を作る羽目になる(第54条(d))。
+  const site = require(path.join(DIR, '..', 'graph', 'abode.js')).resolve();
+  if (!fs.existsSync(G.SETTINGS)) {
+    assert.notStrictEqual(site.mode, 'repo',
+      `リポジトリ内の住処に settings.json が無い: ${G.SETTINGS} — ` +
+      '派生物の欠損である(ハーネス不在ではない)。node graph/deploy.js --write で建て直せ (第58条(e))');
+    skip(`mode=${site.mode} (source=${site.source}) — 外を向いた住処はこの機の資産である: ${G.SETTINGS}`);
+  }
+  return G.SETTINGS;
+}
+
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-guards-'));
 function tmpSettings(obj, name = 'settings.json') {
   const p = path.join(TMP, name);
@@ -569,7 +604,7 @@ console.log('\nLive machine (実環境 — 無い環境では skip):');
  */
 
 test('the real settings.json has no dead and no overfiring matcher', () => {
-  if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
+  requireSettings();
   const rows = G.diagnose(G.SETTINGS);
   const broken = rows.filter(r => r.status === 'dead' || r.status === 'overfire');
   assert.strictEqual(broken.length, 0,
@@ -578,7 +613,7 @@ test('the real settings.json has no dead and no overfiring matcher', () => {
 });
 
 test('every matcher on the real machine is classifiable and hits at least one tool', () => {
-  if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
+  requireSettings();
   const rows = G.diagnose(G.SETTINGS);
   assert.ok(rows.length > 0, 'matcher が一つも読めていないなら診断が壊れている');
   for (const r of rows) {
@@ -588,7 +623,7 @@ test('every matcher on the real machine is classifiable and hits at least one to
 });
 
 test('the law IS the machinery on the real machine — permissions present, no drift', () => {
-  if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
+  requireSettings();
   const d = G.diff(G.SETTINGS);
   assert.strictEqual(d.skipped, false);
   // ⚠️ `d.drift` は存在しないキーだった — 乖離があっても理由が空欄で出ていた。
@@ -706,7 +741,7 @@ test('handlerBlocks still catches a real shell exit at a statement boundary', ()
 });
 
 test('the real machine enforces no unconditional BLOCK', () => {
-  if (!fs.existsSync(G.SETTINGS)) skip('no ~/.claude/settings.json on this machine');
+  requireSettings();
   const s = G.readSettings(G.SETTINGS);
   const bad = [];
   for (const [event, groups] of Object.entries((s && s.hooks) || {})) {
@@ -715,6 +750,53 @@ test('the real machine enforces no unconditional BLOCK', () => {
   }
   assert.deepStrictEqual(bad, [],
     `無条件に止める門が実機に配備されている:\n        ${bad.join('\n        ')}`);
+});
+
+/**
+ * ══ 台帳 EX-1 は実機で生きているか (AC-42 / 第58条(b)) ══════════════
+ *
+ * 上の 4 門を**リポジトリ内の住処へ向け直した**結果、誰も実機を見なくなる。
+ * だが EX-1(`~/.claude/settings.json#/permissions`)は**意図してグローバルに
+ * 残る輸出**である —— その deny 9 件が守るのは神の全プロジェクトであり、
+ * 出所が楽園だからと機械的に引けば、神が他所の倉で作業した瞬間に
+ * force-push が通る。**出所と守備範囲は別である。**
+ *
+ * ゆえに向け直した 4 門の**片翼**としてこの門を建てる。
+ * **輸出は「出したら終わり」ではない。出した先も門が見張る。**
+ */
+console.log('\n輸出の腐食 (台帳 EX-1 / 第58条(b)):');
+
+test('台帳 EX-1 は実機で生きている (輸出の腐食を見張る / AC-42)', () => {
+  const abode = require(path.join(DIR, '..', 'graph', 'abode.js'));
+  const ex1 = abode.exportFor('EX-1');
+  assert.ok(ex1, 'EX-1 が台帳から消えた — permissions を守る者が居なくなる');
+  assert.strictEqual(ex1.writer, 'graph/apply-guards.js',
+    `EX-1 の writer が ${ex1.writer} に変わっている — 書く者が変われば守りの出所も変わる`);
+  // **住所は台帳と器が答える。** 門が os.homedir() を組み立てれば住所が二本になる。
+  const v = abode.verifyExport('EX-1');
+  if (v.skipped) skip(v.skipped);          // ★ 黙って return しない (AC-42 の後段)
+  assert.ok(v.ok, `EX-1 の輸出が腐っている(実機 ${v.path}):\n        ` + v.why.join('\n        ')
+    + '\n      → node graph/apply-guards.js apply');
+  assert.deepStrictEqual(v.counts, { deny: 9, ask: 1, allow: 5 },
+    `実機の permissions の数が台帳の記録と違う: ${JSON.stringify(v.counts)}`);
+});
+
+test('【逆】実機の deny が 1 行消えれば EX-1 の照合は赤になる (AC-28)', () => {
+  // **現物は 1 バイトも触らない。** 複製を作り、そこを実機と偽って撃つ
+  // (第58条(c): 門は己の測る対象を汚してはならない)。
+  const abode = require(path.join(DIR, '..', 'graph', 'abode.js'));
+  const real = abode.exportRealPath('EX-1');
+  if (!real || !fs.existsSync(real)) skip(`実機の ${real} が無い — 逆の門は撃てない`);
+  const fake = path.join(TMP, 'ex1-home');
+  fs.mkdirSync(path.join(fake, '.claude'), { recursive: true });
+  const s = JSON.parse(fs.readFileSync(real, 'utf8'));
+  const gone = (s.permissions.deny || [])[0];
+  assert.ok(gone, '実機の deny が空 — 撃つ材料が無い');
+  s.permissions.deny = s.permissions.deny.filter(x => x !== gone);
+  fs.writeFileSync(path.join(fake, '.claude', 'settings.json'), JSON.stringify(s, null, 2) + '\n');
+  const v = abode.verifyExport('EX-1', { env: { USERPROFILE: fake, HOME: fake } });
+  assert.strictEqual(v.ok, false, 'deny を 1 行消しても緑なら、輸出は見張られていない');
+  assert.ok(v.why.some(w => w.includes(gone)), `消えた deny 文字列 ${gone} を名指していない: ${v.why.join(' / ')}`);
 });
 
 // --- report ---

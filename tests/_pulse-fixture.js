@@ -22,24 +22,39 @@ function stop() { if (shared) { shared.close(); shared = null; } }
 
 /** 小さな assert 群。フレームワークを持ち込まない (外部依存ゼロ) */
 function makeHarness(label) {
-  let pass = 0, fail = 0;
+  let pass = 0, fail = 0, skipped = 0;
   const failures = [];
+  /**
+   * **検められなかったことを、口で名乗る**(第37条 / 第58条(e))。
+   * 先例は `tests/guards.test.js:30`。黙って早期に `return` する門は
+   * `N skipped` にすら数えられず、門が死んだことに誰も気づけない
+   * (`node graph/abode.js check --silent-green` がその形を名指す)。
+   */
+  function settle(name, e) {
+    if (e && e.__skip) { console.log('  \u00b7 ' + name + '  (skipped: ' + e.message + ')'); skipped++; return; }
+    console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; failures.push(name);
+  }
   function test(name, fn) {
     try {
       const r = fn();
-      if (r && typeof r.then === 'function') return r.then(() => { console.log('  \u2713 ' + name); pass++; },
-        (e) => { console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; failures.push(name); });
+      if (r && typeof r.then === 'function') {
+        return r.then(() => { console.log('  \u2713 ' + name); pass++; }, (e) => settle(name, e));
+      }
       console.log('  \u2713 ' + name); pass++;
     } catch (e) {
-      console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; failures.push(name);
+      settle(name, e);
     }
   }
   function report() {
-    console.log(`${label}: ${pass} passed, ${fail} failed`);
-    return { pass, fail, failures };
+    // `N skipped` は skip が在るときだけ名乗る(綴りの契約を一つに保つ)。
+    console.log(`${label}: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));
+    return { pass, fail, skipped, failures };
   }
-  return { test, report, counts: () => ({ pass, fail }) };
+  return { test, skip, report, counts: () => ({ pass, fail, skipped }) };
 }
+
+/** 前提を欠く門が**理由を名乗って**退く口。`throw` なので呼び手の行で止まる。 */
+function skip(why) { const e = new Error(why); e.__skip = true; throw e; }
 
 /** http GET を約束で包む。子プロセスは産まない */
 function get(port, pathname, opts = {}) {
@@ -101,4 +116,4 @@ function synthRunFile() {
   return { file, cleanup: () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} } };
 }
 
-module.exports = { ROOT, server, stop, makeHarness, get, siblingPresent, synthRunFile };
+module.exports = { ROOT, server, stop, makeHarness, skip, get, siblingPresent, synthRunFile };

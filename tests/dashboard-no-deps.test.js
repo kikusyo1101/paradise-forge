@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
-const { ROOT, makeHarness } = require('./_pulse-fixture.js');
+const { ROOT, makeHarness, skip } = require('./_pulse-fixture.js');
 
 const H = makeHarness('dashboard-no-deps');
 const { test } = H;
@@ -54,19 +54,41 @@ test('AC-06a: pulse.js は census を一切呼ばない(G-07)', () => {
   assert.deepStrictEqual(calls, [], 'census.js を require している — 実測 120,072ms が同期経路に入る');
 });
 
-test('AC-17d: pulse.js は ~/.claude 配下へ書かない(読むだけ)', () => {
-  const writes = pulseSrc.match(/writeFile|appendFile|mkdirSync|rmSync/g) || [];
-  // unlink は自分が作った一時ファイルの後始末であり、~/.claude ではない
-  for (const line of pulseSrc.split('\n')) {
-    if (!/writeFile|appendFile|mkdir/.test(line)) continue;
-    assert.ok(!/\.claude/.test(line), '~/.claude へ書く行が在る: ' + line.trim());
-  }
-  assert.ok(writes.length >= 0);
+test('AC-17d: pulse.js は住処の配下へ書かない(読むだけ)', () => {
+  /**
+   * **かつてこの門は文字列 `.claude` を探していた**(設計 L-18)。
+   * 住所が `abode.js` へ集まった結果、`claudeDir()` から `.claude` の literal が
+   * 消え、**門は構文上は通り続けるが何も見ていない**状態になった ——
+   * 静かな緑の最悪形である(門が死んでも誰も気づかない)。
+   *
+   * ゆえに主張を**住所ベース**に改める: 書き込みの行が、住処へ至る式
+   * (`claudeDir(` / `abode.` / `.claude`)を含まないことを検める。
+   * **綴りではなく、どこへ書くかを裁く。**
+   */
+  const WRITERS = /writeFile|appendFile|mkdirSync|rmSync|unlinkSync|createWriteStream/;
+  const ABODE_EXPR = /claudeDir\s*\(|\babode\s*\.|\.claude/;
+  const lines = pulseSrc.split('\n');
+  const offenders = [];
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;  // 註釈は道を説明してよい
+    if (!WRITERS.test(line)) return;
+    if (ABODE_EXPR.test(line)) offenders.push(`${i + 1}: ${t}`);
+  });
+  assert.deepStrictEqual(offenders, [],
+    '住処の配下へ書く行が在る(pulse は読む器である):\n  ' + offenders.join('\n  '));
+  // **門が痩せていないことを検める。** 書き込みの行が 1 本も無いなら、この門は
+  // 何も見ていないのと同じである(第16条: 0 件の主張は門ではない)。
+  const writes = lines.filter(l => WRITERS.test(l) && !/^\s*(\/\/|\*)/.test(l));
+  assert.ok(writes.length > 0,
+    'pulse.js に書き込みの行が一つも無い — 門が空振りしている。走査の形が腐った可能性が高い');
 });
 
 test('AC-10b: package.json が無いか、dependencies が 0 件', () => {
   const p = path.join(ROOT, 'package.json');
-  if (!fs.existsSync(p)) return;
+  // 楽園に package.json は無い(外部依存ゼロ)。不在は**名乗って** skip する ——
+  // 黙って通れば、将来 package.json が生えた日にこの門が生きているか誰も知らない。
+  if (!fs.existsSync(p)) skip(`package.json が無い: ${p} — 依存ゼロの証は他の門が握る`);
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   assert.strictEqual(Object.keys(pkg.dependencies || {}).length, 0, 'npm 依存が在る');
 });

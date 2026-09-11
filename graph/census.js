@@ -70,9 +70,27 @@ const readRoot = f => {
  * @returns {{passed:number, failed:number}|null} 名乗りが無ければ null(= 測れなかった)
  */
 function summaryOf(out) {
-  const named = String(out).match(/Paradise self-test:\s*([0-9]+) passed, ([0-9]+) failed/);
+  /**
+   * **`skipped` を読まねばならない理由**(第58条(e) の帰結):
+   *
+   * 第3段で `skip()` が本物になった。門は不在を名乗って飛ばすようになり、
+   * その結果 **`passed` は測る機械の資産に依存する数になった**:
+   *
+   *     神の機械 : Paradise self-test: 469 passed, 0 failed
+   *     CI (裸)  : Paradise self-test: 459 passed, 0 failed, 10 skipped
+   *
+   * 同じ版の楽園が、機械によって別の数を名乗る。**`passed` は楽園の性質ではない。**
+   * 楽園の性質は **門の総数**であり、それは `passed + failed + skipped` である
+   * (上の二つの走行はどちらも 469 —— 機械が変わっても動かない)。
+   *
+   * ゆえにここは三つ全部を読む。`, N skipped` は**在るときだけ**付く任意の節なので、
+   * 不在を 0 と読む —— これは「測れなかったものを 0 で埋める」のではない。
+   * **名乗りの行そのものは読めている**(= 測れている)。飛ばした門が 0 件だっただけである。
+   */
+  const named = String(out).match(
+    /Paradise self-test:\s*([0-9]+) passed, ([0-9]+) failed(?:, ([0-9]+) skipped)?/);
   if (!named) return null;
-  return { passed: +named[1], failed: +named[2] };
+  return { passed: +named[1], failed: +named[2], skipped: +(named[3] || 0) };
 }
 
 /** 楽園の真の数を測る。推測は一つも無い — 全て実ファイル/実行結果から。 */
@@ -270,18 +288,30 @@ function claims(c) {
     // 数は census が数え、dashboard が神に見せる。CLAUDE.md への数値の再侵入は
     // dietChecks() が裁く (方針転換に門を追従させる — 第36条)。
     /**
-     * README の「N/M pass」は **数を二つ語っている**。
-     * 旧実装は分母を `\d+` と捨てており、fix() が分子だけ書き換えて
-     * `336/335` という新たな嘘を残した。語る数は残らず捕捉する。
-     * 分母 = 走った総数 = passed + failed (緑なら分子と等しい)。
+     * **README が語ってよいのは「門の総数」であって「通った数」ではない**
+     * (第58条(e) の帰結 / CI が実測で捕らえた事故)。
      *
-     * **語る数の個数 (arity) は、測れたかどうかで変わってはならない。**
-     * 測れなければ null を並べる —— measurable() が偽になって裁かれず、
-     * それでも「この主張は数を二つ語る」という形は保たれる。
-     * (arity が測定の成否で揺れると、捕捉群との突合門が測定モードで嘘の赤を出す)
+     * かつてここは `N/M pass` の二つの数 —— 分子 `passed` / 分母 `passed+failed` ——
+     * を語らせていた。第3段で `skip()` が本物になるまでは、それで正しかった。
+     * 飛ばす門が一つも無かったので `passed` は版の性質だったのである。
+     *
+     * **実測された事故** (PR #48 / CI 赤):
+     *
+     *     神の機械 : Paradise self-test: 469 passed, 0 failed
+     *     CI (裸)  : Paradise self-test: 459 passed, 0 failed, 10 skipped
+     *     → 🔴 README テスト数: doc says 469/469, reality is 459/459
+     *
+     * **どちらの走行も嘘をついていない。** CI に無いのはハーネス・兄弟倉・hermes の
+     * cron 台帳であり、10 門はそれを**名乗って**飛ばした。嘘をついていたのは
+     * 「`passed` は楽園の性質である」という README の前提の方である。
+     *
+     * 機械が変わっても動かない数は **門の総数 = passed + failed + skipped**
+     * (上の二つの走行はどちらも 469)。ゆえに語らせるのはこれ一つにする。
+     * **数を減らすのは主張を弱めるためではない** —— 機械依存の数を散文に書かせない
+     * ためである。飛ばした門の中身は走行の出力が名指しで語る(第37条)。
      */
-    { file: 'README.md', re: /paradise\.test\.js\s+#\s*(\d+)\/(\d+) pass/,
-      actual: [c.tests ? c.tests.passed : null, c.tests ? c.tests.passed + c.tests.failed : null],
+    { file: 'README.md', re: /paradise\.test\.js\s+#\s*門 (\d+) 本/,
+      actual: c.tests ? c.tests.passed + c.tests.failed + c.tests.skipped : null,
       label: 'README テスト数' },
     { file: 'README.md', re: /取り込んだもの（(\d+)ファイル/,     actual: c.vendorFiles,             label: 'README vendor 総ファイル数' },
     { file: 'README.md', re: /`agents (\d+)`/,                   actual: c.vendor.agents,           label: 'README vendor agents' },

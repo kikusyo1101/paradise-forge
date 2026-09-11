@@ -317,6 +317,36 @@
       "ts": "2026-09-10T15:01:26.628Z",
       "event": "dispatch",
       "detail": "build"
+    },
+    {
+      "ts": "2026-09-11T16:21:05.071Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-1-evidence.md",
+      "sha256": "abbfee1fb9a9b8055273892e93c35c05a7a16eaee56bf7218754a19fc964bee0",
+      "bytes": 19659,
+      "note": "第1段 work-1 着地: os.homedir() 16箇所を abode.js の器へ通した (PR #46 MERGED)",
+      "detail": "build ⟡ reform/sovereign-abode/build-1-evidence.md — 第1段 work-1 着地: os.homedir() 16箇所を abode.js の器へ通した (PR #46 MERGED)"
+    },
+    {
+      "ts": "2026-09-11T16:21:05.126Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-2-evidence.md",
+      "sha256": "a0e77100efa5981b809967b8528aaa286cb3f0fd3dff8d9a88ba2c14833633a3",
+      "bytes": 10843,
+      "note": "第2段 work-2 着地: PARADISE_ABODE=repo の両居 — <repo>/.claude を git 追跡の派生物にした (PR #47 MERGED)",
+      "detail": "build ⟡ reform/sovereign-abode/build-2-evidence.md — 第2段 work-2 着地: PARADISE_ABODE=repo の両居 — <repo>/.claude を git 追跡の派生物にした (PR #47 MERGED)"
+    },
+    {
+      "ts": "2026-09-11T16:21:05.181Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-3-evidence.md",
+      "sha256": "462c950ed3adf47ce37a03c439e120f51decc4474281af85d350db0e5ef002f5",
+      "bytes": 35971,
+      "note": "第3段 work-3 着地: 見張りの建て替え — 黙って緑に落ちる門を根絶し skip() を移植 (PR #48 OPEN)",
+      "detail": "build ⟡ reform/sovereign-abode/build-3-evidence.md — 第3段 work-3 着地: 見張りの建て替え — 黙って緑に落ちる門を根絶し skip() を移植 (PR #48 OPEN)"
     }
   ],
   "spawnTrace": {

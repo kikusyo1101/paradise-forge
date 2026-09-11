@@ -135,8 +135,12 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 469/469 pass
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 471 本
 ```
+> 語るのは**門の総数**であって「通った数」ではない。第3段以降、門は住処や兄弟倉の
+> 不在を**名乗って**飛ばす(第58条(e))ので、`passed` は測る機械の資産で変わる ——
+> 神の機械で `469 passed, 0 failed`、CI の裸の機械で `459 passed, 0 failed, 10 skipped`。
+> **どちらも嘘ではない。** 機械が変わっても動かない数だけを散文に書く(第22条)。
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
 orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・

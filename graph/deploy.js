@@ -173,7 +173,8 @@ function plan() {
 /** 配備物が計画と一致しているか。CI はこれで「手で触られた」を検出する。 */
 function check() {
   const c = up.cfg();
-  const UP = up.upstreamPath(c);
+  // **上流はここでは引かない。** 照合に要るのは「計画」と「配備先」だけである
+  // (設計 L-25 — 上流を引いていた頃、CI では deploy 系 5 門が常に空回りしていた)。
   const HOME = up.claudeHome(c);
   const where = abode.resolve();
 
@@ -190,9 +191,23 @@ function check() {
    * ゆえに skip は mode=global のときだけ。しかも**理由を名乗る** ——
    * `skipped` は真偽値ではなく理由の文字列である。黙って早期に return する門は
    * `N skipped` にすら数えられず、門が死んだことに誰も気づけない。
+   *
+   * ⚠️ **上流の不在は skip の理由にならない**(設計 L-25 / 第19条(d))。
+   * かつてこの条件には `!fs.existsSync(UP)` が含まれており、**配備先が実在するのに
+   * 上流が無いだけで skip していた**。実測(設計 §5.4 / 改革前):
+   *
+   *     $ PARADISE_UPSTREAM=/nonexistent node -e "…deploy.check()…"
+   *     {"skipped":true,"ok":true,"checked":0}   ← 配備先 ~/.claude は実在する
+   *     $ PARADISE_UPSTREAM=/nonexistent node tests/paradise.test.js --gate 'deploy:'
+   *     5 of 455 gates matched — 5 green, 0 red   ← 5 門とも空回りで緑
+   *
+   * **CI(clone 直後)には上流が無い。** ゆえに deploy 系の門は CI で常に空回り
+   * していた。配備は `overlay/` から建つ —— **上流はもはや供給元ではない**(第20条)。
+   * 照合に要るのは「計画」と「配備先」だけであり、`plan()` は上流無しでも
+   * 58 steps を返す(実測)。ゆえに上流を見る必要が無い。
    */
-  if (where.mode === 'global' && (!fs.existsSync(UP) || !fs.existsSync(HOME))) {
-    return { ok: true, skipped: `mode=global (source=${where.source}) かつ ${!fs.existsSync(HOME) ? `配備先 ${HOME}` : `上流 ${UP}`} が無い — 外を向いた住処はこの機の資産であり、無いことは欠陥ではない`,
+  if (where.mode === 'global' && !fs.existsSync(HOME)) {
+    return { ok: true, skipped: `mode=global (source=${where.source}) かつ 配備先 ${HOME} が無い — 外を向いた住処はこの機の資産であり、無いことは欠陥ではない`,
              mode: where.mode, home: HOME, checked: 0, drift: [], transforms: [],
              note: 'no harness on this machine — nothing deployed to verify' };
   }

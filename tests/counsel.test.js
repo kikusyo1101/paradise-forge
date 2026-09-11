@@ -24,10 +24,15 @@ const forge = require(path.join(ROOT, 'graph', 'forge.js'));
 const clergy = require(path.join(ROOT, 'graph', 'clergy.js'));
 const engine = require(path.join(ROOT, 'graph', 'graph-engine.js'));
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
+/** 前提を欠く門が**理由を名乗って**退く口（先例: tests/guards.test.js:30 / 第37条）。 */
+function skip(why) { const e = new Error(why); e.__skip = true; throw e; }
 function test(name, fn) {
   try { fn(); console.log('  \u2713 ' + name); pass++; }
-  catch (e) { console.log('  \u2717 ' + name + '\n      ' + e.message); fail++; }
+  catch (e) {
+    if (e && e.__skip) { console.log('  \u00b7 ' + name + '  (skipped: ' + e.message + ')'); skipped++; return; }
+    console.log('  \u2717 ' + name + '\n      ' + e.message); fail++;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -186,7 +191,8 @@ test('相名の衝突が無い: analyze は requirements のまま、諐問は a
 test('counsel の道が名指す神官は全て clergy に実在する', () => {
   const ca = require(path.join(ROOT, 'graph', 'check-agents.js'));
   const res = ca.check();
-  if (res.skipped) return;   // ハーネス未配置の環境では検査しない
+  // engine が述べた理由をそのまま名乗る。黙った return は N skipped に数えられない。
+  if (res.skipped) skip(typeof res.skipped === 'string' ? res.skipped : (res.note || 'check-agents が検められない'));
   assert.deepStrictEqual(res.missing, [], `宙吊り参照: ${JSON.stringify(res.dangling)}`);
 });
 
@@ -499,5 +505,5 @@ test('指揮系統を跨いだ発令はしない — 表が他家の神官を指
 });
 
 // --- report ---
-console.log(`\nCounsel self-test: ${pass} passed, ${fail} failed`);
+console.log(`\nCounsel self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));
 process.exit(fail === 0 ? 0 : 1);
