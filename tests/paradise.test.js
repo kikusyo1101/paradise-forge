@@ -2043,6 +2043,49 @@ test('census: the paradise measures itself from the artifacts, not from prose (A
   assert.ok(c.vendorFiles > 0, 'vendored files are counted from disk');
 });
 
+test('census: README が語るテスト数は測る機械で変わらない — 門の総数である (第58条(e) / 第22条)', () => {
+  /**
+   * **実測された事故** (PR #48 / CI 赤):
+   *
+   *     神の機械 : Paradise self-test: 469 passed, 0 failed
+   *     CI (裸)  : Paradise self-test: 459 passed, 0 failed, 10 skipped
+   *     → 🔴 README テスト数: doc says 469/469, reality is 459/459
+   *
+   * 第3段で `skip()` が本物になった瞬間、`passed` は**測る機械の資産に依存する数**に
+   * なった。CI にはハーネスも兄弟倉も hermes の cron 台帳も無く、10 門はそれを
+   * **名乗って**飛ばす —— どちらの走行も嘘をついていない。嘘をついていたのは
+   * 「passed は楽園の性質である」という主張の側だった。
+   *
+   * ゆえに README が語る数は **門の総数 = passed + failed + skipped** でなければならぬ。
+   * この門は、飛ばした門の数が動いても主張の値が動かないことを直に撃つ。
+   */
+  const census = require('../graph/census.js');
+  const claimFor = (tests) => census.claims({ tests, vendor: {}, vendorFiles: 0 })
+    .find(x => /README テスト数/.test(x.label));
+
+  const 神の機械 = claimFor({ passed: 469, failed: 0, skipped: 0 });
+  const CIの裸 = claimFor({ passed: 459, failed: 0, skipped: 10 });
+  const 赤が在る = claimFor({ passed: 465, failed: 4, skipped: 0 });
+
+  assert.deepStrictEqual(census.expectedOf(神の機械), [469]);
+  assert.deepStrictEqual(census.expectedOf(CIの裸), [469],
+    '飛ばした門を数えていない — README の数が測る機械で変わる (第58条(e))');
+  assert.deepStrictEqual(census.expectedOf(赤が在る), [469],
+    '赤が出ると総数が減る — 門の総数は結果で変わらない');
+
+  // 捕捉群と語る数が揃っている(fix が取り残して嘘を書けない形である)
+  assert.strictEqual(census.groupCount(神の機械.re), 1);
+  // 測れなかったときは null —— 0 や部分値で埋めない(第16条)
+  assert.strictEqual(census.measurable(claimFor(null)), false,
+    '測れなかった走行から数を捻り出している');
+  // README に主張が実在すること(消えた主張は検められない)
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  assert.ok(神の機械.re.test(readme), 'README からテスト数の主張が消えている');
+  // **旧い形が残っていないこと** — `N/M pass` は機械依存の数を語る形である
+  assert.ok(!/paradise\.test\.js\s+#\s*\d+\/\d+ pass/.test(readme),
+    'README に旧い N/M pass が残っている — 通った数は測る機械で変わる (第58条(e))');
+});
+
 test('census: a stale number in the documents is a failing gate (Art.22)', () => {
   // 門を、わざと壊して試す。腐った数を仕込んで、名指しで捕らえるか。
   // (第39条改正: CLAUDE.md は数値台帳ではなくなった — 数の門は README を裁く)
@@ -2780,13 +2823,24 @@ test('census: 総括は位置ではなく名前で読む — 子テストの集�
     'Paradise self-test: 288 passed, 0 failed',
     '',
   ].join('\n');
-  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0 },
+  assert.deepStrictEqual(census.summaryOf(withChildren), { passed: 288, failed: 0, skipped: 0 },
     '子テストの集計行を総括と取り違えている — 先頭ではなく名乗りで狙え');
 
   // 赤があっても総括を読む
   assert.deepStrictEqual(
     census.summaryOf('child: 3 passed, 0 failed\nParadise self-test: 287 passed, 1 failed\n'),
-    { passed: 287, failed: 1 });
+    { passed: 287, failed: 1, skipped: 0 });
+
+  /**
+   * **飛ばした門も読む**(第58条(e) の帰結)。第3段で `skip()` が本物になり、
+   * 名乗りの行は `, N skipped` を伴うようになった。これを読み落とすと、
+   * 楽園の門の総数が**測る機械の資産で変わる数**になる(CI の裸の機械では
+   * ハーネス不在で 10 門が飛ぶ)。総数 = passed + failed + skipped である。
+   */
+  assert.deepStrictEqual(
+    census.summaryOf('Paradise self-test: 459 passed, 0 failed, 10 skipped\n'),
+    { passed: 459, failed: 0, skipped: 10 },
+    '飛ばした門を読み落とした — 門の総数が機械依存の数になる (第58条(e))');
 
   // 読めなければ null。0 で埋めてはならない(第16条: 判定不能は緑ではない)
   assert.strictEqual(census.summaryOf('何も無い'), null,
@@ -2827,7 +2881,7 @@ test('census: 名乗りが無ければ null — 保険経路は死んでいる (
   // 🟢 **逆の門**: 名乗りが在れば正しく読む(狭めすぎて何も読めなくしていない)
   assert.deepStrictEqual(census.summaryOf(
     'child: 3 passed, 0 failed\nParadise self-test: 455 passed, 0 failed\n'),
-    { passed: 455, failed: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
+    { passed: 455, failed: 0, skipped: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
 
   // 呼び手は null を「測れなかった」として扱い、**緑を返さない**(第37条)
   const res = census.check({ runTests: true, testTimeoutMs: 1 });   // 必ず打ち切られる
