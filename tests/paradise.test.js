@@ -2604,6 +2604,98 @@ test('derived: the gate does NOT cry wolf on fixtures or negations (Art.29)', ()
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 第58条 — 両居 (repo / global) と、配備物を本当に検めているか
+// ══════════════════════════════════════════════════════════════════════
+
+test('abode: 配備の照合は変換を「ファイルまるごと免除」しない (第58条 / AC-7)', () => {
+  // **実測された欠陥**: `check()` は「transform 対象の kind なら差は乖離ではない」として
+  // agents 30 ファイルを丸ごと照合から外していた。配備された cardinal.md の末尾に
+  // 1 バイト足しても `checked: 60` で緑のままだった —— **58 のうち 30 が一度も
+  // 検められていなかった。** 免除はキー単位でなければ、免除ではなく盲点である。
+  const dep = require('../graph/deploy.js');
+  const body = ['---', 'name: cardinal', 'model: opus', 'effort: high', 'tools: Read', '---', '', '本文'].join('\n');
+  const keys = dep.TRANSFORM_KEYS['graph/apply-models.js'].concat(dep.TRANSFORM_KEYS['graph/apply-spawn.js']);
+  // 変換が統べるキーの差 → 落とせば一致する(乖離ではない)
+  const transformed = body.replace('model: opus', 'model: claude-opus-5').replace('effort: high', 'effort: xhigh');
+  assert.strictEqual(dep.stripFrontmatterKeys(body, keys), dep.stripFrontmatterKeys(transformed, keys),
+    '変換が統べるキーの差を乖離と呼べば、配備のたびに赤が出る');
+  // 本文の 1 バイト → 落としても一致しない(乖離である)
+  assert.notStrictEqual(dep.stripFrontmatterKeys(body, keys), dep.stripFrontmatterKeys(body + 'X', keys),
+    '本文の 1 バイトを見逃す照合は、配備物を検めていない');
+  // 変換の管轄外の frontmatter キーも見る
+  assert.notStrictEqual(dep.stripFrontmatterKeys(body, keys),
+    dep.stripFrontmatterKeys(body.replace('name: cardinal', 'name: 別人'), keys),
+    'name の差し替えは変換の管轄外である — 見逃してはならない');
+});
+
+test('abode: 未知の変換 engine に免除を与えない (第54条(d))', () => {
+  // 裁かれる側が裁きの範囲を決めてはならない。名簿に無い engine が transform に
+  // 加われば、その kind は**免除なしで**照合される。
+  const dep = require('../graph/deploy.js');
+  assert.deepStrictEqual(
+    dep.governedKeys('agents', { transform: { agents: { engines: ['graph/apply-models.js'] } } }),
+    ['model', 'effort'], '名簿に在る engine はそのキーだけ免除される');
+  assert.strictEqual(
+    dep.governedKeys('agents', { transform: { agents: { engines: ['graph/newcomer.js'] } } }), null,
+    '知らない engine に免除を与えれば、その kind は永久に検められない');
+});
+
+test('abode: 住処の不在を skip と呼べるのは global を名乗ったときだけ (第58条(e) / AC-8)', () => {
+  // 「派生物の欠損」を「ハーネス不在」と呼び替えれば、配備が丸ごと消えても緑が出る。
+  const src = fs.readFileSync(path.join(DIR, '..', 'graph', 'deploy.js'), 'utf8');
+  assert.ok(/where\.mode === 'global'/.test(src),
+    'skip の条件が mode を見ていない — repo の不在まで黙って通す');
+  assert.ok(/skipped: `mode=global/.test(src),
+    'skip が理由を名乗っていない — 真偽値の skip は「黙って通った」と同義である (第54条(c))');
+});
+
+test('derived: 住処の settings.json は生成元が engine の定数なので中身を検めてよい (第29条 / AC-14)', () => {
+  // 第29条が禁じるのは「**生成元が無い環境で落ちる**検査」である。
+  // この派生物の生成元は apply-guards.POLICY と clergy.RANKS.pontiff —— どちらも
+  // engine の定数なので、clone された全ての環境に必ず在る。ゆえに needs: null。
+  const derived = require('../graph/derived.js');
+  const spec = derived.DERIVED[derived.REPO_SETTINGS_KEY];
+  assert.ok(spec, '<repo>/.claude/settings.json は派生物として宣言されねばならない');
+  assert.strictEqual(spec.needs, null,
+    'needs が非 null なら「生成元が無い環境」が在ることになり、中身を検めれば第29条を破る');
+  assert.ok(/POLICY/.test(spec.from) && /pontiff/.test(spec.from), '生成元を名指していない');
+});
+
+test('derived: 消えた deny 行を名指し、直す命令を示す (AC-15)', () => {
+  // 「件数が違う」だけの診断は、赤くなっても直せない。
+  const derived = require('../graph/derived.js');
+  const { POLICY } = require('../graph/apply-guards.js');
+  const pontiff = require('../graph/clergy.js').RANKS.pontiff;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'derived-settings-'));
+  const f = path.join(tmp, 'settings.json');
+  const good = { model: pontiff.model, effortLevel: pontiff.effort,
+                 permissions: { deny: POLICY.deny.slice(), ask: POLICY.ask.slice(),
+                                allow: POLICY.allow.slice(), defaultMode: POLICY.defaultMode } };
+  try {
+    fs.writeFileSync(f, JSON.stringify(good, null, 2) + '\n');
+    assert.ok(derived.verifyRepoSettings({ file: f }).ok, '写しどおりの settings を赤くしてはならない');
+
+    const gone = good.permissions.deny[2];
+    const bad = JSON.parse(JSON.stringify(good));
+    bad.permissions.deny.splice(2, 1);
+    fs.writeFileSync(f, JSON.stringify(bad, null, 2) + '\n');
+    const r = derived.verifyRepoSettings({ file: f });
+    assert.strictEqual(r.ok, false, 'deny を 1 件消しても緑なら、掟は守られていない');
+    assert.ok(r.findings.some(x => x.why.includes(gone)), `消えた deny 文字列 ${gone} を名指していない`);
+    assert.ok(r.findings.some(x => x.fix === 'node graph/apply-guards.js apply'),
+      '直す命令を示さない診断は、赤くなっても直せない');
+
+    // 教主の座も同じ器が守る
+    const seatBad = JSON.parse(JSON.stringify(good));
+    seatBad.model = 'haiku';
+    fs.writeFileSync(f, JSON.stringify(seatBad, null, 2) + '\n');
+    const r2 = derived.verifyRepoSettings({ file: f });
+    assert.strictEqual(r2.ok, false, '座が宣言と違えば赤である (第31条)');
+    assert.ok(r2.findings.some(x => x.key === 'model'), 'どのキーが食い違うかを名指していない');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
 test('census: 総括は位置ではなく名前で読む — 子テストの集計行に騙されない (第22条 / 第29条)', () => {
   const census = require('../graph/census.js');
   // 実測(2026-09-02): ダッシュボードの門13本を新設したところ、自己診断の出力に

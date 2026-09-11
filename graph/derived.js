@@ -31,6 +31,18 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
 /**
+ * リポジトリ内の住処に住む settings.json の道。**住所を作るのは abode.js だけ**(第58条(a))。
+ *
+ * `PARADISE_ABODE: 'repo'` を**明示して**引く。既定 mode に依らず同じ道を返すのが要点で、
+ * この派生物は「神のマシンの資産」ではなく「**この倉の追跡下のファイル**」だからである。
+ * 個別 env(`PARADISE_SETTINGS` など)も渡さない —— 倉の中の一点を指す道は、
+ * 環境で揺れてはならない。
+ */
+const REPO_SETTINGS_KEY = '.claude/settings.json';
+const repoSettingsPath = () =>
+  require('./abode.js').pathFor('settings', { env: { PARADISE_ABODE: 'repo' } });
+
+/**
  * 楽園の生成物。**engine が書き、人が書かないもの。**
  * `from` は生成元、`by` は生成する命令、`needs` は生成元が要求する環境。
  */
@@ -67,6 +79,35 @@ const DERIVED = {
         + '生成元は普段この機械に無い — 件数や中身を前提にした検査を書かない。'
         + '結線の門(第44条)がこの engine を孤児と裁いたことで、生成物であるのに'
         + '**どこにも宣言が無かった**ことが露見した (第29条)',
+  },
+  /**
+   * `<repo>/.claude/settings.json` — **リポジトリ内の住処の掟と座**(第58条 / AC-14)。
+   *
+   * ⚠️ **第29条との整合。ここは実装で踏み抜きやすい**(design §6.2 が名指しで警告している)。
+   *
+   * 第29条は「生成物の**中身**を前提にした検査を書くな」と命じる。だが AC-15 は
+   * まさに中身を検めることを要求する —— 矛盾ではない。**第29条が禁じているのは
+   * 「生成元が無い環境で落ちる検査」**であって「中身を見ること」そのものではない。
+   * `graph/lessons.json` が罠だったのは生成元(KG)が CI に無いからであり、
+   * `dashboard/state.json` も同じ理由である。ゆえに両者は `needs: 'KG'` を持つ。
+   *
+   * この派生物の生成元は `apply-guards.POLICY` と `clergy.RANKS.pontiff` ——
+   * **どちらも engine の中の定数であり、楽園が clone された全ての環境に必ず在る。**
+   * 依存する外部環境はゼロである。ゆえに `needs: null` で登録し、中身を検める
+   * (`verifyRepoSettings()`)。生成元が常に在る派生物の中身を検めることは、
+   * 第29条が守ろうとした「生成元が無い環境で落ちる」形に**構造的に成り得ない**。
+   *
+   * **なぜ git 追跡するのか**: clone 直後から存在しなければ、住処を向け直す
+   * guards の門は CI で必ず skip に落ちる。skip し続ける門は門ではない(第37条)。
+   */
+  [REPO_SETTINGS_KEY]: {
+    from: 'apply-guards.POLICY (掟) + clergy.RANKS.pontiff (教主の座)',
+    by: 'PARADISE_ABODE=repo node graph/deploy.js --write   (単体なら apply-guards.js apply + apply-seat.js apply)',
+    needs: null,
+    note: 'リポジトリ内の住処の設定。生成元は engine の定数なので**どの環境にも必ず在る** — '
+        + 'ゆえに第29条の罠(生成元が無い環境で落ちる検査)に構造的に成り得ず、中身を検めてよい。'
+        + '並行PRでは衝突しうるが手で解決してはならない — 再生成が正しい。'
+        + '手で編集すれば門が消えた行を名指して鳴る (AC-15)',
   },
 };
 
@@ -121,6 +162,91 @@ function offendingAssertions(testFile) {
   return found;
 }
 
+/**
+ * `<repo>/.claude/settings.json` が生成元の写しであることを検める(AC-14 / AC-15)。
+ *
+ * 検めるのは**この engine が生成元だと宣言した二点だけ**である:
+ *   - `permissions`      ← `apply-guards.POLICY`
+ *   - `model` / `effortLevel` ← `clergy.RANKS.pontiff`
+ * hooks・env・theme その他は楽園の管轄外であり、写しでもないので見ない
+ * (`apply-guards.buildDesired` が「知らない設定を黙って消さない」のと同じ理屈)。
+ *
+ * **不在の扱い**(第37条 / 第58条(e)): この派生物は git 追跡されるので、
+ * 追跡下に在るのに実体が無ければ **赤**である。まだ追跡されていない環境
+ * (この派生物を足す前のブランチ、tarball 展開など)では追跡の有無で分ける ——
+ * 「まだ無い」と「消された」を同じ色で塗れば、どちらも直せない。
+ *
+ * @returns {{ok:boolean, file:string, tracked:boolean, exists:boolean,
+ *            findings:{key:string, why:string, fix:string}[], note:string}}
+ */
+function verifyRepoSettings(opts = {}) {
+  const file = opts.file || repoSettingsPath();
+  const rel = path.relative(ROOT, file).split(path.sep).join('/');
+  const findings = [];
+  const fixGuards = 'node graph/apply-guards.js apply';
+  const fixSeat = 'node graph/apply-seat.js apply';
+
+  let tracked = false;
+  try {
+    tracked = execFileSync('git', ['ls-files', '--error-unmatch', '--', rel],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().length > 0;
+  } catch { tracked = false; }
+
+  const exists = fs.existsSync(file);
+  if (!exists) {
+    if (!tracked) {
+      return { ok: true, file: rel, tracked, exists, findings,
+               note: `${rel} はまだ追跡されていない — この派生物を足す前の作業木である` };
+    }
+    findings.push({ key: '(file)', why: `${rel} は git 追跡された派生物なのに実体が無い`,
+                    fix: 'PARADISE_ABODE=repo node graph/deploy.js --write' });
+    return { ok: false, file: rel, tracked, exists, findings, note: '派生物の欠損' };
+  }
+
+  let cur;
+  try { cur = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) {
+    findings.push({ key: '(json)', why: `${rel} が JSON として読めない: ${e.message}`,
+                    fix: 'PARADISE_ABODE=repo node graph/deploy.js --write' });
+    return { ok: false, file: rel, tracked, exists, findings, note: 'JSON が壊れている' };
+  }
+
+  // ── permissions ← apply-guards.POLICY ────────────────────────────────
+  const { POLICY } = require('./apply-guards.js');
+  const perms = (cur && typeof cur.permissions === 'object' && cur.permissions) || {};
+  for (const key of ['deny', 'ask', 'allow']) {
+    const want = POLICY[key], got = Array.isArray(perms[key]) ? perms[key] : [];
+    // **消えた文字列を名指す。** 「件数が違う」だけの診断は、赤くなっても直せない。
+    for (const v of want) {
+      if (!got.includes(v)) {
+        findings.push({ key: `permissions.${key}`, why: `${v} が写しから消えている`, fix: fixGuards });
+      }
+    }
+    for (const v of got) {
+      if (!want.includes(v)) {
+        findings.push({ key: `permissions.${key}`, why: `${v} は掟に無い — 手で足された行である`, fix: fixGuards });
+      }
+    }
+  }
+  if (perms.defaultMode !== POLICY.defaultMode) {
+    findings.push({ key: 'permissions.defaultMode',
+                    why: `${JSON.stringify(perms.defaultMode)} ⇒ ${JSON.stringify(POLICY.defaultMode)}`, fix: fixGuards });
+  }
+
+  // ── model / effortLevel ← clergy.RANKS.pontiff ───────────────────────
+  const pontiff = require('./clergy.js').RANKS.pontiff;
+  if (cur.model !== pontiff.model) {
+    findings.push({ key: 'model', why: `${JSON.stringify(cur.model ?? null)} ⇒ ${JSON.stringify(pontiff.model)} (教主の座)`, fix: fixSeat });
+  }
+  if (cur.effortLevel !== pontiff.effort) {
+    findings.push({ key: 'effortLevel', why: `${JSON.stringify(cur.effortLevel ?? null)} ⇒ ${JSON.stringify(pontiff.effort)} (教主の座)`, fix: fixSeat });
+  }
+
+  return { ok: findings.length === 0, file: rel, tracked, exists, findings,
+           note: findings.length ? `${findings.length} 件、派生物が生成元と食い違う`
+                                 : `${rel} は生成元の写しである (permissions / model / effortLevel)` };
+}
+
 function check(opts = {}) {
   const testsDir = path.join(ROOT, 'tests');
   let files = [];
@@ -146,12 +272,19 @@ function check(opts = {}) {
       undeclared.push(t);
     }
   }
+  /**
+   * リポジトリ内の住処の settings.json は、生成元が**engine の定数**なので
+   * 中身を検めてよい唯一の派生物である(上の DERIVED 宣言の註釈を見よ)。
+   */
+  const repoSettings = opts.repoSettings === false ? null : verifyRepoSettings(opts.settingsOpts);
+
   return {
-    ok: findings.length === 0 && undeclared.length === 0,
-    findings, undeclared,
+    ok: findings.length === 0 && undeclared.length === 0 && (!repoSettings || repoSettings.ok),
+    findings, undeclared, repoSettings,
     note: findings.length
       ? `${findings.length} test(s) assert on the CONTENT of a derived file — they break where the source does not exist`
-      : (undeclared.length ? `${undeclared.length} derived file(s) not declared` : 'no test depends on derived content'),
+      : (undeclared.length ? `${undeclared.length} derived file(s) not declared`
+      : (repoSettings && !repoSettings.ok ? repoSettings.note : 'no test depends on derived content')),
   };
 }
 
@@ -191,20 +324,34 @@ if (require.main === module) {
   if (cmd === 'check') {
     const res = check();
     console.log('═══════ 📄 DERIVED DEPENDENCY ═══════');
-    if (res.ok) console.log('  ✓ no test asserts on derived content');
+    if (!res.findings.length) console.log('  ✓ no test asserts on derived content');
     for (const f of res.findings) {
       console.log(`  🔴 ${f.file}:${f.line} asserts on ${f.derived}`);
       console.log(`       ${f.code}`);
       console.log(`       → ${DERIVED[f.derived].note}`);
     }
     for (const u of res.undeclared) console.log(`  ⚠️  undeclared derived file: ${u}`);
+    // 生成元が engine の定数である派生物だけは、中身まで検める (第29条 / AC-14)
+    const rs = res.repoSettings;
+    if (rs) {
+      console.log('─────────────────────────────────────');
+      console.log(`  住処の派生物: ${rs.file}  (git 追跡 ${rs.tracked ? 'あり' : 'なし'} / 実体 ${rs.exists ? 'あり' : 'なし'})`);
+      if (rs.ok) console.log(`  ✓ ${rs.note}`);
+      for (const f of rs.findings) {
+        console.log(`  🔴 ${f.key}: ${f.why}`);
+        console.log(`       → ${f.fix}`);
+      }
+    }
     console.log('─────────────────────────────────────');
     console.log(res.note);
     console.log('═════════════════════════════════════');
-    process.exit(res.ok ? 0 : 1);
+    // process.exit() は POSIX で stdout の掃き出しを待たない — CI だけが出力を失う
+    process.exitCode = res.ok ? 0 : 1;
+  } else {
+    console.error('usage: derived.js [list|check|drift]');
+    process.exitCode = 2;
   }
-  console.error('usage: derived.js [list|check|drift]');
-  process.exit(2);
 }
 
-module.exports = { DERIVED, isDerived, offendingAssertions, check, drift };
+module.exports = { DERIVED, isDerived, offendingAssertions, check, drift,
+                   verifyRepoSettings, repoSettingsPath, REPO_SETTINGS_KEY };

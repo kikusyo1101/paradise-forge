@@ -2,9 +2,33 @@
 node_modules/
 *.log
 .DS_Store
-# Knowledge graph store lives in ~/.claude/paradise-kg by default (global),
-# but if PARADISE_KG points into the repo, keep the raw store local:
+# ── 知識グラフの生の倉 (graph/kg-store/) ────────────────────────────────
+#
+# 第2段(両居)の裁定: **この行はこのまま残す。** 移設は第4段の仕事である。
+#
+# `abode.resolve()` は mode=repo のとき KG を `<repo>/graph/kg-store` に置く
+# (配備物 `.claude/` の中ではない —— そこは「いつ消えても建て直せる産物」であり、
+#  記憶を置けば建て直しが記憶を消す。第19条(b))。だが既定 mode はまだ `global` で、
+# 現在の記憶は `~/.claude/paradise-kg` に住んでいる。ここを今 追跡に変えれば、
+# **空の kg-store が追跡され、第4段の移設(`migrate --verify` が行数と sha256 の
+# 集合一致を要求する)が「既に在るファイル」と衝突する。**
+#
+# そして KG の中身はそもそも追跡してはならない: 走行のたびに追記される
+# 「記憶」であって「原本」ではなく、並行PRでは必ず衝突し、手で解決する術が無い。
+# 派生物(`.claude/settings.json`)を追跡する理由 —— clone 直後から存在しないと
+# 門が skip に落ちる —— は KG には当てはまらない。KG が無ければ、KG を読む門は
+# 「測れなかった」と表明すればよい(第16条・第37条)。
+#
+# ゆえに: **第4段で KG がここへ移っても、この行は残る。** 判断済み・変更なし。
 graph/kg-store/
+
+# ── リポジトリ内の住処 (.claude/) は **追跡する** ──────────────────────
+#
+# 敢えて無視しない。`<repo>/.claude/` は `deploy.js --write` が建てる派生物だが、
+# **clone 直後から存在しなければ、住処を検める門は CI で必ず skip に落ちる**
+# (第58条(e) / AC-14)。skip し続ける門は門ではない(第37条)。
+# 手で編集してはならない —— 建て直す命令は一つ:
+#   PARADISE_ABODE=repo node graph/deploy.js --write
 
 # 創造物は別の倉に住む (憲法 第30条) — github.com/kikusyo1101/paradise-creations
 creations/
