@@ -29,12 +29,39 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const ROOT = path.join(__dirname, '..');
-const OVERLAY = path.join(ROOT, 'overlay');
-const AGENTS_DIR = path.join(OVERLAY, 'agents');
-const OVERLAY_JSON = path.join(OVERLAY, 'overlay.json');
-const CLERGY_JS = path.join(__dirname, 'clergy.js');
-const DOMAINS_JSON = path.join(__dirname, 'domains.json');
+/**
+ * 鍛造が**書く先**の根。既定は現物の倉 —— **だが env で複製へ振り替えられる**
+ * (第58条(c) / L-28 と同型)。
+ *
+ * ⚠️ **なぜ振替の口が要るか。** 楽園の自己診断は「途中で落ちた鍛造は孤児を残さない」
+ * ことを故障注入で撃つ。その注入は `--write` の実経路を通るので、走行中に
+ * `overlay/agents/*.md` `overlay/overlay.json` `graph/clergy.js` が**実際に書き換わる**。
+ * 15ms 標本が窓を捕らえた:
+ *
+ *     [tick 3] DIRTY(TRACKED):  M graph/clergy.js
+ *     [tick 3] DIRTY(TRACKED):  M overlay/overlay.json
+ *     [tick 3] UNTRACKED: ?? overlay/agents/orphan-probe.md
+ *
+ * `finally` で戻してはいる。**だが復元しても窓は開く。**
+ * その窓に別のプロセスが `clergy.js` を読めば、居ないはずの神官を見る。
+ *
+ * 住所は**呼ばれた時に**解決する。読み込み時に固めると、同一プロセス内で
+ * env を立てても効かない —— 門ヘルパーが使えなくなる。
+ * **判定則も書き方も一行も変わらない。変わるのは「倉が何処か」だけである。**
+ */
+const DEFAULT_ROOT = path.join(__dirname, '..');
+function forgeRoot() {
+  const raw = (process.env.PARADISE_ORDAIN_ROOT || '').trim();
+  return raw ? path.resolve(raw) : DEFAULT_ROOT;
+}
+const ROOT = DEFAULT_ROOT;                       // 読み取り専用の参照(相対路の算出)はこちら
+const overlayDir  = () => path.join(forgeRoot(), 'overlay');
+const agentsDir   = () => path.join(overlayDir(), 'agents');
+const overlayJson = () => path.join(overlayDir(), 'overlay.json');
+const clergyJs    = () => path.join(forgeRoot(), 'graph', 'clergy.js');
+// 台帳の住所は domains.js だけが知る (第30条の形)。ここで path を組み直せば、
+// `PARADISE_DOMAINS_LEDGER` の振替が鍛造器だけすり抜けて現物を汚す (第58条(c) / L-28)。
+const domainsLedger = () => require('./domains.js').LEDGER;
 
 const clergy = require('./clergy.js');
 const domains = require('./domains.js');
@@ -42,7 +69,7 @@ const domains = require('./domains.js');
 /** 既存の全ての名。**鍛造の時点で衝突を裁く** — 後の門に叱られるのは8工程時代と同じ体験である。 */
 function existingNames() {
   const out = new Set();
-  try { for (const f of fs.readdirSync(AGENTS_DIR)) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, '')); } catch {}
+  try { for (const f of fs.readdirSync(agentsDir())) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, '')); } catch {}
   try {
     const home = process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude');
     for (const f of fs.readdirSync(path.join(home, 'agents'))) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, ''));
@@ -235,7 +262,7 @@ function plan(req) {
   const steps = [];
 
   if (!req.enlist) {
-    steps.push({ kind: 'agent-md', file: path.relative(ROOT, path.join(AGENTS_DIR, req.name + '.md')),
+    steps.push({ kind: 'agent-md', file: path.relative(forgeRoot(), path.join(agentsDir(), req.name + '.md')).split(path.sep).join('/'),
       why: '役者の定義そのもの。原本は overlay に住む (第29条)', content: renderAgent(req, rank) });
     steps.push({ kind: 'overlay-own', file: 'overlay/overlay.json',
       why: `own.agents に "${req.name}.md" を足す — deploy の plan に載せるため` });
@@ -256,12 +283,13 @@ function plan(req) {
 }
 
 function writeAgentMd(step) {
-  fs.mkdirSync(AGENTS_DIR, { recursive: true });
-  fs.writeFileSync(path.join(ROOT, step.file), step.content);
+  fs.mkdirSync(agentsDir(), { recursive: true });
+  // 計画の `file` は**現物の倉からの相対路**(散文に見せるため)。書く先は今の倉である。
+  fs.writeFileSync(path.join(forgeRoot(), step.file), step.content);
 }
 
 function writeOverlayOwn(name) {
-  const raw = fs.readFileSync(OVERLAY_JSON, 'utf8');
+  const raw = fs.readFileSync(overlayJson(), 'utf8');
   const crlf = raw.includes('\r\n');
   const cfg = JSON.parse(raw);
   cfg.own = cfg.own || {};
@@ -270,7 +298,7 @@ function writeOverlayOwn(name) {
   if (!cfg.own.agents.includes(f)) { cfg.own.agents.push(f); cfg.own.agents.sort(); }
   let out = JSON.stringify(cfg, null, 1) + '\n';
   if (crlf) out = out.replace(/\n/g, '\r\n');
-  fs.writeFileSync(OVERLAY_JSON, out);
+  fs.writeFileSync(overlayJson(), out);
 }
 
 /**
@@ -299,7 +327,7 @@ function writeOverlayOwn(name) {
  * 動かす大改修であり、本PRの範囲を超える。本PRは経路が在ることを作る。
  */
 function writeCollege(cardinal, name) {
-  const before = fs.readFileSync(CLERGY_JS, 'utf8');
+  const before = fs.readFileSync(clergyJs(), 'utf8');
   /**
    * **正規表現へ入れる前に守る** (S-2)。`validate()` が綴りを裁くようになったが、
    * この器は `forge()` 以外からも呼ばれうる。`cardinal` に正規表現メタ文字が
@@ -321,22 +349,22 @@ function writeCollege(cardinal, name) {
   // 末席に加える。既存の並びには一切触れない —— 筆頭が動けば発令先が変わる。
   const next = body ? `${m[2].replace(/\s*$/, '')}, '${name}'` : `'${name}'`;
   const after = before.replace(key, `$1${next}$3`);
-  fs.writeFileSync(CLERGY_JS, after);
+  fs.writeFileSync(clergyJs(), after);
   try {
-    delete require.cache[require.resolve(CLERGY_JS)];
-    const reloaded = require(CLERGY_JS);
+    delete require.cache[require.resolve(clergyJs())];
+    const reloaded = require(clergyJs());
     const ps = (reloaded.COLLEGE[cardinal] || {}).priests || [];
     if (!ps.includes(name)) throw new Error('再読込しても名が載っていない');
     if (ps[ps.length - 1] !== name) throw new Error('末席に加わっていない — 筆頭が入れ替われば発令が変わる');
   } catch (e) {
-    fs.writeFileSync(CLERGY_JS, before);          // 壊したなら書き戻す
+    fs.writeFileSync(clergyJs(), before);          // 壊したなら書き戻す
     throw new Error(`clergy.js の書き換えが壊れた — 書き戻した: ${e.message}`);
   }
   return true;
 }
 
 function writeDomains(name, domain) {
-  const raw = fs.readFileSync(DOMAINS_JSON, 'utf8');
+  const raw = fs.readFileSync(domainsLedger(), 'utf8');
   const crlf = raw.includes('\r\n');
   const led = JSON.parse(raw);
   led.agents = led.agents || {};
@@ -345,7 +373,7 @@ function writeDomains(name, domain) {
   led.agents[name] = list;
   let out = JSON.stringify(led, null, 2) + '\n';
   if (crlf) out = out.replace(/\n/g, '\r\n');
-  fs.writeFileSync(DOMAINS_JSON, out);
+  fs.writeFileSync(domainsLedger(), out);
 }
 
 /**
@@ -369,8 +397,8 @@ function forge(req) {
 
   // 触りうる全てのファイルの原本を退避する。存在しなかったものは null で覚える。
   const targets = [
-    path.join(AGENTS_DIR, req.name + '.md'),
-    OVERLAY_JSON, CLERGY_JS, DOMAINS_JSON,
+    path.join(agentsDir(), req.name + '.md'),
+    overlayJson(), clergyJs(), domainsLedger(),
   ];
   const snapshot = new Map();
   for (const f of targets) {
@@ -395,7 +423,7 @@ function forge(req) {
   } catch (e) {
     rollback();
     // require キャッシュも戻す —— 巻き戻したのに古い読み込みが残れば同じ罠である
-    for (const f of [CLERGY_JS, DOMAINS_JSON]) { try { delete require.cache[require.resolve(f)]; } catch {} }
+    for (const f of [clergyJs(), domainsLedger()]) { try { delete require.cache[require.resolve(f)]; } catch {} }
     throw new Error(`鍛造が途中で落ちたので**全て巻き戻した** — 半端な役者を残さない (S-3): ${e.message}`);
   }
   return { ...p, dry: false, written: true };
