@@ -1750,9 +1750,30 @@ test('deploy: the deployed tree matches its declared sources', () => {
 
 test('deploy: check skips cleanly where no harness is installed', () => {
   // ローカルでしか通らない検査は、検査ではなく作者の思い込みである。
+  //
+  // ⚠️ **かつてここは `typeof r.skipped === 'boolean'` しか見ていなかった。**
+  // 型しか見ない検めは、実装が何を返しても永久に緑である —— 第37条の観点では
+  // 既に門ではなかった(設計 L-24)。第58条(e) で `skipped` は真偽値をやめ
+  // **理由を名乗る文字列**になったので、型だけを見る旧い検めは CI で破れた。
+  // 破れたこと自体が「型しか見ていなかった」証拠である。
+  //
+  // ゆえに **mode ごとの期待**を書く。住処の不在を skip と呼んでよいのは
+  // 外を向いていると名乗ったときだけであり(第58条(e))、リポジトリ内の住処で
+  // 配備物が無いのは「ハーネス不在」ではなく「派生物の欠損」= 赤である。
   const r = deploy.check();
-  assert.ok(typeof r.skipped === 'boolean', 'check must state whether it could run at all');
-  assert.ok(r.ok || r.drift.length > 0, 'a failure must name what drifted');
+  assert.ok(r.mode === 'repo' || r.mode === 'global', `check が mode を名乗っていない: ${r.mode}`);
+
+  if (r.skipped) {
+    // skip したなら **理由を名乗れ**。真偽値の skip は「なぜ測れなかったか」を
+    // language から奪う —— 測れなかった走行は、測れなかったと言えねばならない(第16条)。
+    assert.strictEqual(typeof r.skipped, 'string', 'skip は理由を名乗らねばならない(真偽値の skip は第16条違反)');
+    assert.ok(r.skipped.length > 0, 'skip の理由が空である');
+    assert.strictEqual(r.mode, 'global',
+      `mode=${r.mode} で skip した — リポジトリ内の住処の不在は欠陥であって、ハーネス不在ではない(第58条(e))`);
+  } else {
+    // 走れたなら、結果は緑か、**何が乖離したかを名指した赤**でなければならない。
+    assert.ok(r.ok || r.drift.length > 0, 'a failure must name what drifted');
+  }
 });
 
 test('deploy: line endings alone are not drift, but real edits are', () => {
