@@ -406,7 +406,18 @@ function snapshot(opts = {}) {
   counts.commands = guard(errors, 'pulse', 'counts.commands', () => countEntries(claudeDir('commands')), null);
   counts.skills = guard(errors, 'pulse', 'counts.skills', () => countEntries(claudeDir('skills')), null);
 
-  const kgRoot = process.env.PARADISE_KG || claudeDir('paradise-kg');
+  /**
+   * **記憶の住処は `claudeDir` ではなく解決器が答える**(第58条(a) / 設計 L-2)。
+   *
+   * `claudeDir('paradise-kg')` は配備の木の中を指す。だが mode=repo の KG は
+   * `<repo>/graph/kg-store` に住む —— 配備物は「いつ消えても建て直せる産物」で
+   * あり(第19条b)、記憶をそこに置けば**建て直しが記憶を消す**。
+   * かつ `kg.js` / `export-state.js` は既に `abode.pathFor('kg')` を見ている。
+   * ここだけ別の式を使えば、**engine とダッシュボードで住所が割れる** ——
+   * 実測で割れた(mode=repo で門は 121 nodes、断面は null)。
+   * `pathFor('kg')` は `PARADISE_KG` の上書きも内側で吸収する。
+   */
+  const kgRoot = abode.pathFor('kg');
   counts.kgNodes = guard(errors, 'kg', 'counts.kgNodes', () => countJsonl(path.join(kgRoot, 'nodes.jsonl')), null);
   counts.kgEdges = guard(errors, 'kg', 'counts.kgEdges', () => countJsonl(path.join(kgRoot, 'edges.jsonl')), null);
 
@@ -542,7 +553,7 @@ function serve(opts = {}) {
       const root = workspace.resolve().root;
       for (const r of listRuns(root)) out.push(r.path);
     } catch { /* 倉が無くてもサーバは立つ */ }
-    const kgRoot = process.env.PARADISE_KG || claudeDir('paradise-kg');
+    const kgRoot = abode.pathFor('kg');   // 住所は解決器が一本で答える (設計 L-2)
     for (const f of ['nodes.jsonl', 'edges.jsonl']) {
       const p = path.join(kgRoot, f);
       if (fs.existsSync(p)) out.push(p);              // 読むだけ。~/.claude へ書かない (N-4)

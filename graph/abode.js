@@ -24,8 +24,10 @@
  * CLI:
  *   node graph/abode.js resolve [--json]     住所を印字 (由来つき)
  *   node graph/abode.js path <key>           単一の住所を印字 (スクリプトから引く口)
- *   node graph/abode.js check [--count] [--ledger] [--exclusion] [--all]
+ *   node graph/abode.js check [--count] [--ledger] [--exclusion]
+ *                            [--silent-green] [--symmetry] [--hermetic] [--all]
  *                                            違反の検出。旗が無ければ --all
+ *                                            **知らない旗は exit 2** (黙って捨てない)
  *   node graph/abode.js exports [--external] [--verify <id>]
  *                                            台帳の印字と、照合の道の提示
  *   node graph/abode.js migrate --plan | --verify     (第4段 / work-4 で実装)
@@ -398,6 +400,61 @@ function globalWrite(target, write) {
   return r;
 }
 
+/**
+ * 台帳の輸出が指す**実機の道**。`~` はこの器だけが解く(第58条(a))。
+ * 門がこれを使わず自分で `os.homedir()` を呼べば、engine と門で住所が割れる。
+ * @returns {string|null} `~` 起点でない記法(`<creations-root>` 等)は解けないので null
+ */
+function exportRealPath(id, opts) {
+  const e = exportFor(id);
+  if (!e) return null;
+  const p = String(e.target).split('#')[0];
+  if (!p.startsWith('~')) return null;
+  return path.join(home((opts && opts.env) || process.env), p.slice(1).replace(/^[\\/]+/, ''));
+}
+
+/**
+ * 輸出が実機で**生きているか**を照合する(AC-27 / AC-28)。
+ * **輸出は「出したら終わり」ではない。出した先も門が見張る。**
+ *
+ * ⚠️ 照合の道を持たない id に対して 0 を返してはならない —— それは
+ * 「検められなかった」であり exit 2 である(§1.4 / 第37条)。
+ * @returns {{id:string, path:string|null, ok:boolean, skipped:string|null, why:string[], counts:object|null}}
+ */
+function verifyExport(id, opts = {}) {
+  const e = exportFor(id);
+  if (!e) return { id, path: null, ok: false, skipped: null, why: [`${id} は台帳に無い`], counts: null };
+  if (id !== 'EX-1') {
+    throw unmeasurable(`${id} の自動照合はこの器が持たない — 照合の道は「${e.verify}」である。自分で走らせよ`);
+  }
+  const real = exportRealPath(id, opts);
+  const why = [];
+  if (!real || !isFile(real)) {
+    // 実機が無い機(CI)では**名乗って** skip する。黙って緑にしない。
+    return { id, path: real, ok: true, skipped: `実機の ${real} が無い — EX-1 は検めない`, why, counts: null };
+  }
+  // 遅延 require: apply-guards は abode を読む。環になる require は関数の中に置く。
+  const G = require('./apply-guards.js');
+  let s = null;
+  try { s = JSON.parse(fs.readFileSync(real, 'utf8')); }
+  catch (err) { throw unmeasurable(`実機の settings.json を読めない: ${real} — ${err.message}`); }
+  const perms = (s && s.permissions) || null;
+  if (!perms) why.push('実機に permissions が無い — EX-1 の輸出が消えている');
+  else if (!G.permissionsMatch(perms, G.POLICY)) {
+    for (const kind of ['deny', 'ask', 'allow']) {
+      const want = new Set(G.POLICY[kind] || []);
+      const got = new Set(perms[kind] || []);
+      for (const w of want) if (!got.has(w)) why.push(`${kind} から消えている: ${w}`);
+      for (const g of got) if (!want.has(g)) why.push(`${kind} に台帳外の行が在る: ${g}`);
+    }
+    if (!why.length) why.push('permissions が POLICY と食い違う(並び/重複)');
+  }
+  const counts = perms
+    ? { deny: (perms.deny || []).length, ask: (perms.ask || []).length, allow: (perms.allow || []).length }
+    : null;
+  return { id, path: real, ok: why.length === 0, skipped: null, why, counts };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // 第一段: 住所 — ソースを走査して、住所を作る場所を一つに絞る (第58条(a))
 // ══════════════════════════════════════════════════════════════════════
@@ -558,6 +615,106 @@ function homedirRefs(repoRoot = REPO_ROOT) {
 // 第三段の静的側 — 器が己に課す禁則 (AC-55 / AC-56)
 // ══════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════
+// 静かな緑 — 黙って早期に return する門を名指す (第58条(e) / AC-43 / AC-44)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * **黙って早期に return する門は、`N skipped` にすら数えられない。**
+ * 門が死んだことに誰も気づけない(第37条)。
+ *
+ * 実測されたベースライン(design.md §5.2.2 / 本改革の着手時に採り直した):
+ *
+ *     $ grep -nE "existsSync\([^)]*\)\) return" tests/*.js      → 7 hit (うち 1 は文字列)
+ *     $ grep -nE "if \(\w+\.skipped\) return" tests/*.js        → 6 hit
+ *
+ * どちらも「前提が無いので検めなかった」を**緑として集計に載せる**形である。
+ * 処置は `return` を消すことではない —— 検められない走行は実在する。
+ * **口で名乗ること**だけが要件である: `skip('<理由>')`。
+ *
+ * ⚠️ 走査は `codeOnly()` を通す。この門が裁く病の名を、試験は
+ * **変異注入の文字列リテラル**として持つ正当な理由がある
+ * (`tests/paradise.test.js` の E5 変異が実際にそれである)。
+ * 註釈と文字列を落とさなければ、**病を説明した罰**を与えることになる。
+ */
+const SILENT_GREEN_PATTERNS = [
+  { re: /\bexistsSync\s*\(/, why: '住処/派生物の不在で黙って return している' },
+  { re: /\.skipped\b/, why: 'engine が skip を返したことを黙って return で受けている' },
+];
+
+/** 走査対象。`tests/` 直下の .js —— 門も、門を守る門も、等しく掛かる。 */
+function silentGreenTargets(repoRoot = REPO_ROOT) {
+  let names = [];
+  try { names = fs.readdirSync(path.join(repoRoot, 'tests')); } catch { names = []; }
+  return names.sort().filter(n => n.endsWith('.js')).map(n => 'tests/' + n);
+}
+
+/**
+ * 黙った早期 return を名指す。
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
+function silentGreens(repoRoot = REPO_ROOT) {
+  const out = [];
+  for (const rel of silentGreenTargets(repoRoot)) {
+    const raw = read(path.join(repoRoot, rel));
+    if (!raw) continue;
+    const code = codeOnly(raw).split('\n');
+    const orig = raw.split('\n');
+    code.forEach((line, i) => {
+      // `return;` / `return out;` — 値を返す return も、門の本体からの離脱なら同じ病。
+      if (!/\breturn\b[^;]{0,40};/.test(line)) return;
+      if (!/\bif\s*\(/.test(line)) return;                 // 無条件の return は関数の終いである
+      for (const p of SILENT_GREEN_PATTERNS) {
+        if (!p.re.test(line)) continue;
+        out.push({ file: rel, line: i + 1, text: (orig[i] || line).trim().slice(0, 110), why: p.why });
+        return;
+      }
+    });
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 対称性 — 兄弟の engine が同じ口から住所を得ているか (AC-20)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * `apply-models` と `apply-spawn` は同じ物(神官の住処)を見る兄弟である。
+ * 片方が `PARADISE_AGENTS` を見て他方が `CLAUDE_HOME` だけを見ていた頃、
+ * **同じ倉について二つの engine が別の答えを持っていた**(discovery 障害物9)。
+ *
+ * 住所を作れる場所が一つでも、**引き方が二本なら答えは割れる**
+ * (work-1 が check-agents で実測した教訓と同型)。ゆえに式そのものを突き合わせる。
+ */
+const SYMMETRY_PAIR = [
+  { file: 'graph/apply-models.js', re: /\bAGENT_DIR\s*=\s*(.+?);/ },
+  { file: 'graph/apply-spawn.js', re: /\bAGENTS_DIR\s*=\s*(.+?);/ },
+];
+
+/** 式を正規化する。`() =>` の有無と空白は同一性の本質ではない。 */
+function normalizeExpr(s) {
+  return String(s).replace(/^\s*\(\s*\)\s*=>\s*/, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * @returns {{ok:boolean, rows:{file:string, expr:string|null}[], why:string[]}}
+ */
+function symmetryAudit(repoRoot = REPO_ROOT) {
+  const rows = [];
+  const why = [];
+  for (const s of SYMMETRY_PAIR) {
+    const src = codeOnly(read(path.join(repoRoot, s.file)));
+    const m = src.match(s.re);
+    rows.push({ file: s.file, expr: m ? normalizeExpr(m[1]) : null });
+    if (!m) why.push(`${s.file} に神官の住処を決める式が見つからない — 対称性を測れない (第16条)`);
+  }
+  if (rows.every(r => r.expr) && rows[0].expr !== rows[1].expr) {
+    why.push('神官の住処を、兄弟の engine が別の式で引いている (AC-20):\n' +
+      rows.map(r => `      ${r.file}  ${r.expr}`).join('\n'));
+  }
+  return { ok: why.length === 0, rows, why };
+}
+
 /**
  * `abode.js` 自身のソースを検める。
  *  (1) 台帳へ**書く**口を持っていないか(第54条(d) / AC-56)
@@ -612,19 +769,42 @@ function selfAudit(repoRoot = REPO_ROOT) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * @param {{repoRoot?:string, count?:boolean, ledger?:boolean, exclusion?:boolean}} [opts]
- * @returns {{ok:boolean, exclusion:object, homedir:object[], ledger:object[], self:object[]}}
+ * @param {{repoRoot?:string, count?:boolean, ledger?:boolean, exclusion?:boolean,
+ *   silentGreen?:boolean, symmetry?:boolean, hermetic?:boolean}} [opts]
+ * @returns {{ok:boolean, exclusion:object, homedir:object[], ledger:object[], self:object[],
+ *   silentGreen:object[], symmetry:object, hermetic:object|null}}
  */
 function check(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
-  const all = !(opts.count || opts.ledger || opts.exclusion);
-  const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [], ok: true };
+  const all = !(opts.count || opts.ledger || opts.exclusion || opts.silentGreen ||
+                opts.symmetry || opts.hermetic);
+  const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [],
+              silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null, ok: true };
   if (all || opts.count || opts.exclusion) r.homedir = homedirRefs(repoRoot);
   if (all || opts.ledger) {
     r.ledger = validateLedger(ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {}), repoRoot);
     r.self = selfAudit(repoRoot);
   }
-  r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0;
+  if (all || opts.silentGreen) r.silentGreen = silentGreens(repoRoot);
+  if (all || opts.symmetry) r.symmetry = symmetryAudit(repoRoot);
+  /**
+   * 密閉は `graph/hermetic.js` が裁く(work-7 で建った)。**ここで作法を二重に書かない** ——
+   * 同じ問いに二つの答えを持てば、いつか食い違う(第29条)。この旗は委譲の口である。
+   *
+   * ⚠️ `hermetic.js` は**自分の倉**(`ROOT`)しか走査しない。偽の倉(門が作る作り物)に
+   * 対する `--hermetic` は「検められなかった」であって緑ではない。
+   * **黙って飛ばさず、理由を名乗って skip する**(第58条(e) / §1.4)。
+   */
+  if (all || opts.hermetic) {
+    if (path.resolve(repoRoot) !== REPO_ROOT) {
+      r.hermeticSkipped = `--hermetic は楽園の現物の倉でしか測れない (与えられた倉: ${repoRoot}) — ` +
+        'hermetic.js は自分の倉を走査する';
+    } else {
+      r.hermetic = require('./hermetic.js').audit();
+    }
+  }
+  r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0 &&
+         r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok);
   return r;
 }
 
@@ -651,9 +831,15 @@ function printExports(rest) {
     if (!e) { console.log(`✗ ${id} は台帳に無い`); return 1; }
     console.log(`${e.id}  ${e.target}`);
     console.log(`  照合の道: ${e.verify}`);
-    // **自動照合はこの段では実装していない。** 「検められなかった」を 0 で返せば、
-    // この器は自分が診断している病そのものになる(第37条)。
-    throw unmeasurable(`${id} の自動照合は第3段 (work-3 / AC-27) で実装する — 上の道を自分で走らせよ`);
+    const v = verifyExport(id);          // 道を持たない id はここで throw → exit 2
+    if (v.skipped) { console.log(`  · skip: ${v.skipped}`); return 0; }
+    console.log(`  実機: ${v.path}`);
+    if (v.counts) console.log(`  permissions deny ${v.counts.deny} / ask ${v.counts.ask} / allow ${v.counts.allow}`);
+    if (v.ok) { console.log('  ✓ 輸出は実機で生きている — POLICY と完全一致'); return 0; }
+    console.log(`✗ 輸出が腐っている (${v.why.length} 件)`);
+    for (const w of v.why) console.log(`  ${w}`);
+    console.log('  → node graph/apply-guards.js apply');
+    return 1;
   }
   const rows = wantExternal ? L.external : L.exports;
   const kindJa = wantExternal ? '外部資産 (楽園は読むだけ)' : '輸出 (神が名指した宛先)';
@@ -681,12 +867,31 @@ function printExports(rest) {
   return 0;
 }
 
+/**
+ * `check` が知る旗。**知らない旗は黙って捨ててはならない。**
+ *
+ * 実測された病(本改革の第3段の着手時):`abode.js check --silent-green` は
+ * **旗を一つも知らないまま exit 0 を返していた** —— `rest.includes(...)` の三つに
+ * 当たらない旗は捨てられ、「旗が無い」ことにされ、`--all` が走り、緑が出た。
+ * すなわち**検めていないものを「検めて違反が無かった」と答えていた**。
+ * これは第37条の正面違反であり、この器が診断している病そのものである。
+ */
+const CHECK_FLAGS = {
+  '--count': 'count', '--ledger': 'ledger', '--exclusion': 'exclusion',
+  '--silent-green': 'silentGreen', '--symmetry': 'symmetry', '--hermetic': 'hermetic',
+  '--all': 'all',
+};
+
 function printCheck(rest) {
-  const r = check({
-    count: rest.includes('--count'),
-    ledger: rest.includes('--ledger'),
-    exclusion: rest.includes('--exclusion'),
-  });
+  const opts = {};
+  for (const a of rest) {
+    const key = CHECK_FLAGS[a];
+    // **未知の旗は exit 2。** 「検められなかった」を 0 に混ぜない(§1.4)。
+    if (!key) throw unmeasurable(`check の知らない旗: ${a} — 知る旗は ${Object.keys(CHECK_FLAGS).join(' / ')}。` +
+      '知らない旗を黙って捨てて緑を返す門は、測らずに答えている(第37条)');
+    if (key !== 'all') opts[key] = true;
+  }
+  const r = check(opts);
   console.log('═══ 🏠 ABODE CHECK (第58条) ═══');
   // **除外を適用したなら必ず口で名乗る**(第54条(c))。この行が出ない check は、
   // 除外を黙って適用している。
@@ -710,7 +915,24 @@ function printCheck(rest) {
     console.log(`✗ 器が己に課した禁則を破っている (${r.self.length} 件)`);
     for (const s of r.self) console.log(`  ${s.file}:${s.line}  ${s.text}\n     ${s.why}`);
   }
-  if (r.ok) console.log('  ✓ 住所は abode.js に集まり、台帳は実質を持ち、器は台帳へ書く口を持たない');
+  if (r.silentGreen.length) {
+    console.log(`✗ 黙って早期に return する門 (${r.silentGreen.length} 件) — skip() を使え`);
+    for (const s of r.silentGreen) {
+      console.log(`  ${s.file}:${s.line}  ${s.text}`);
+      console.log(`     ${s.why} — 黙った return は N skipped に数えられない (第37条)`);
+    }
+  }
+  for (const w of r.symmetry.why) console.log(`✗ ${w}`);
+  if (r.hermeticSkipped) console.log(`  · skip: ${r.hermeticSkipped}`);
+  if (r.hermetic && !r.hermetic.ok) {
+    console.log(`✗ 門が己の測る対象を汚している (${r.hermetic.violations.length} 件) — 第58条(c)`);
+    for (const h of r.hermetic.violations) console.log(`  ${h.file}:${h.line}  ${h.obj}.${h.fn}(${h.arg})`);
+    console.log('  → 詳しくは node graph/hermetic.js check');
+  }
+  if (r.ok) {
+    console.log('  ✓ 住所は abode.js に集まり、台帳は実質を持ち、器は台帳へ書く口を持たない');
+    console.log('  ✓ 門は黙って緑に落ちず、兄弟の engine は同じ口から住所を得ている');
+  }
   console.log('═══════════════════════════════');
   return r.ok ? 0 : 1;
 }
@@ -731,9 +953,30 @@ function main(argv) {
     const when = cmd === 'migrate' ? '第4段 (work-4)' : '第6段 (work-6)';
     throw unmeasurable(`${cmd} は ${when} で実装する — この段の abode.js は住所と台帳と門だけを持つ`);
   }
-  throw unmeasurable('usage: abode.js resolve [--json] | path <key> | check [--count|--ledger|--exclusion] | ' +
+  throw unmeasurable('usage: abode.js resolve [--json] | path <key> | ' +
+    `check [${Object.keys(CHECK_FLAGS).join('|')}] | ` +
     'exports [--external|--verify <id>] | migrate --plan|--verify | retreat --plan|--verify');
 }
+
+/**
+ * ⚠️ **`module.exports` は CLI 起動より前に置く。**
+ * `verifyExport()` は `apply-guards.js` を遅延 require し、その `apply-guards` は
+ * 先頭で `abode.js` を require する。輸出を CLI 起動の後ろに置くと、
+ * 自分自身が main のとき **まだ空の exports が兄弟に渡り**、
+ * `abode.pathFor is not a function` で落ちる(実測で踏んだ)。
+ * 環になる require では、**輸出は入口より先に立てる**。
+ */
+module.exports = {
+  resolve, pathFor, mode, home, ledger, validateLedger, validateEntry,
+  exportFor, exportForTarget, globalWrite, callerModule,
+  exportRealPath, verifyExport,
+  homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
+  silentGreens, silentGreenTargets, symmetryAudit, codeOnly,
+  REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS, CHECK_FLAGS,
+  HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
+  SILENT_GREEN_PATTERNS, SYMMETRY_PAIR,
+  ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,
+};
 
 if (require.main === module) {
   let code = 3;
@@ -744,12 +987,3 @@ if (require.main === module) {
   }
   process.exit(code);
 }
-
-module.exports = {
-  resolve, pathFor, mode, home, ledger, validateLedger, validateEntry,
-  exportFor, exportForTarget, globalWrite, callerModule,
-  homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
-  REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS,
-  HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
-  ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,
-};

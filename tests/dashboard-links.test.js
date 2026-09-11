@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { ROOT, makeHarness } = require('./_pulse-fixture.js');
+const { ROOT, makeHarness, skip } = require('./_pulse-fixture.js');
 
 const H = makeHarness('dashboard-links');
 const { test } = H;
@@ -86,7 +86,9 @@ test('AC-19d: control.html と atlas 各枚に index への戻りリンクが在
   assert.ok(/href="\.\.\/index\.html"/.test(tpl),
     '生成器に戻りリンクが無い — 生成物を手で直せば次の再生成で消える(第29条)');
   const atlasDir = path.join(DASH, 'atlas');
-  if (!fs.existsSync(atlasDir)) return;    // CI には生成物が無い。不在は違反ではない
+  // atlas は gitignore された生成物で CI には 1 枚も無い。不在は違反ではないが、
+  // **黙って通ってはならない** —— 名乗らぬ skip は集計に現れない(第37条 / AC-43)。
+  if (!fs.existsSync(atlasDir)) skip(`atlas が生成されていない: ${atlasDir} — 生成器の側は上で検めた`);
   for (const f of fs.readdirSync(atlasDir)) {
     if (!f.endsWith('.html') || f.includes('.visual-check.')) continue;
     const src = fs.readFileSync(path.join(atlasDir, f), 'utf8');

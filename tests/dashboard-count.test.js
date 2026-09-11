@@ -88,7 +88,21 @@ test('AC-01g: counts.articles == codex が数える条数', () => {
 });
 
 test('AC-17a/17b: counts.kgNodes / kgEdges == JSONL の解釈できた行数', () => {
-  const kgRoot = process.env.PARADISE_KG || path.join(os.homedir(), '.claude', 'paradise-kg');
+  /**
+   * **門は engine と同じ解決器を使う**(第58条(a) / 設計 L-2 / T1)。
+   *
+   * かつてここは `os.homedir()` で KG の住所を**再計算**していた。engine 側
+   * (`pulse` / `kg.js` / `export-state.js`)は `abode.pathFor('kg')` を見る。
+   * **二つの住所が割れた瞬間に偽の赤が出る** —— 実測で再現した(改革前の HEAD):
+   *
+   *     $ PARADISE_ABODE=repo node tests/dashboard-count.test.js
+   *       ✗ AC-17a/17b: counts.kgNodes / kgEdges == JSONL の解釈できた行数
+   *           kgNodes が割れた  null !== 121
+   *
+   *   門は `~/.claude/paradise-kg`(121 行)を見て、断面は `<repo>/graph/kg-store`
+   *   (第4段で移設する — まだ無い)を見ていた。**門が engine の嘘を追認する形**である。
+   */
+  const kgRoot = require(path.join(ROOT, 'graph', 'abode.js')).pathFor('kg');
   for (const [key, file] of [['kgNodes', 'nodes.jsonl'], ['kgEdges', 'edges.jsonl']]) {
     const p = path.join(kgRoot, file);
     if (!fs.existsSync(p)) { assert.strictEqual(snap.counts[key], null, '不在なら null(0 で埋めない)'); continue; }

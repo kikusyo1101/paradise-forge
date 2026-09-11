@@ -564,6 +564,142 @@ test('旗を立てない check も住所走査を走らせる (--count は既定
 });
 
 // ══════════════════════════════════════════════════════════════════════
+// 6.5 静かな緑 / 旗の作法 (AC-43 / AC-44 / 第37条)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n静かな緑の根絶 (第58条(e)):');
+
+/**
+ * **改革前、この器は知らない旗を黙って捨てて緑を返していた。**
+ * 第3段の着手時に実測した(build-3-evidence.md §0.1):
+ *
+ *     $ node graph/abode.js check --silent-green
+ *       ✓ 住所は abode.js に集まり…
+ *     EXIT=0                 ← --silent-green という旗を一つも知らないまま緑
+ *
+ * `printCheck` は三つの旗しか読まず、当たらない旗は捨て、「旗が無い」ことにして
+ * `--all` を走らせていた。すなわち**検めていないものを「検めて違反が無かった」と
+ * 答えていた** —— 第37条の正面違反であり、この器が診断している病そのものである。
+ */
+test('知らない旗は exit 2 — 黙って捨てて緑を返さない (第37条)', () => {
+  const r = cli(['check', '--no-such-flag']);
+  assert.strictEqual(r.code, 2,
+    `知らない旗が exit ${r.code} — 2(検められなかった)でなければ 0 と混ざる:
+${r.out}`);
+  assert.ok(/知らない旗/.test(r.out), `何が知られなかったかを名乗っていない: ${r.out}`);
+  // 知る旗は**全て**受け取れること(綴りを変えた日に片方だけ落ちるのを防ぐ)
+  for (const flag of Object.keys(abode.CHECK_FLAGS)) {
+    const ok = cli(['check', flag]);
+    assert.notStrictEqual(ok.code, 2, `知る旗 ${flag} が exit 2 で拒まれた:
+${ok.out}`);
+  }
+});
+
+test('check --silent-green は黙った早期 return ゼロを exit 0 で答える (AC-43)', () => {
+  const r = cli(['check', '--silent-green']);
+  assert.strictEqual(r.code, 0,
+    `--silent-green が exit ${r.code} — 黙って緑に落ちる門が残っている:
+${r.out}`);
+  assert.deepStrictEqual(abode.silentGreens(), [],
+    '黙った早期 return が残っている — skip() を使え');
+});
+
+test('【逆】黙った return を 1 行戻せば行を名指して鳴る (AC-44)', () => {
+  // 緑は「撃っても鳴らない」ではなく「撃てば鳴る門が、今は鳴っていない」である。
+  const root = fakeRepo('silent-green', { files: {
+    'tests/rogue.test.js':
+      "const fs = require('fs');\n" +
+      "test('x', () => {\n  if (!fs.existsSync(p)) return;\n  assert.ok(1);\n});\n",
+  } });
+  const hits = abode.silentGreens(root).filter(h => h.file === 'tests/rogue.test.js');
+  assert.strictEqual(hits.length, 1, `黙った return を名指せていない: ${JSON.stringify(hits)}`);
+  assert.strictEqual(hits[0].line, 3, `名指した行がずれている: ${hits[0].line}`);
+  assert.ok(/黙って return/.test(hits[0].why), `理由を述べていない: ${hits[0].why}`);
+});
+
+test('註釈と文字列の中の早期 return は数えない — 病を説明した罰を与えない', () => {
+  // `tests/paradise.test.js` は変異注入のために違反コードを**文字列として**持つ
+  // (E5 変異)。これを咎めれば、門は自分の病名を書けなくなる。
+  const root = fakeRepo('silent-green-quoted', { files: {
+    'tests/doc.test.js':
+      "// if (!fs.existsSync(p)) return;  ← これは註釈である\n" +
+      "const mutate = s => s.replace('  if (!fs.existsSync(root)) return out;\\n', '');\n",
+  } });
+  assert.deepStrictEqual(abode.silentGreens(root).filter(h => h.file === 'tests/doc.test.js'), [],
+    '註釈と文字列の中の疑似コードを咎めている — 病を説明した罰を与えてはならない');
+});
+
+test('check --symmetry は兄弟の engine が同じ口から住所を得ていることを握る (AC-20)', () => {
+  const a = abode.symmetryAudit();
+  assert.strictEqual(a.ok, true, `対称性が破れている:\n${a.why.join('\n')}`);
+  assert.strictEqual(a.rows.length, 2, '突き合わせる兄弟が 2 本でない');
+  for (const row of a.rows) assert.ok(row.expr, `${row.file} の式を読めていない`);
+  assert.strictEqual(a.rows[0].expr, a.rows[1].expr,
+    `apply-models と apply-spawn の式が違う: ${JSON.stringify(a.rows)}`);
+});
+
+test('【逆】兄弟の片方が別の口を使えば --symmetry は鳴る', () => {
+  const root = fakeRepo('asymmetry', { files: {
+    'graph/apply-models.js': "const AGENT_DIR = abode.pathFor('agents');\n",
+    'graph/apply-spawn.js': "const AGENTS_DIR = () => process.env.CLAUDE_HOME + '/agents';\n",
+  } });
+  const a = abode.symmetryAudit(root);
+  assert.strictEqual(a.ok, false, '非対称を見逃した — 同じ倉に二つの答えが在る状態である');
+  assert.ok(a.why.join('\n').includes('AC-20'), `AC を名乗っていない: ${a.why.join(' / ')}`);
+});
+
+test('check --hermetic は hermetic.js へ委譲し、偽の倉では名乗って skip する', () => {
+  const r = cli(['check', '--hermetic']);
+  assert.strictEqual(r.code, 0, `--hermetic が exit ${r.code}:
+${r.out}`);
+  // **作法を二重に書いていないこと**(第29条: 同じ問いに二つの答えを持たない)
+  const src = fs.readFileSync(ABODE_JS, 'utf8');
+  assert.ok(/require\(['"]\.\/hermetic\.js['"]\)/.test(src),
+    'hermetic の判定を abode.js が自前で持っている — 同じ問いの答えが二つになる');
+  // 偽の倉は「検められなかった」。黙って緑にしない(第37条)
+  const root = fakeRepo('hermetic-foreign', {});
+  const far = abode.check({ repoRoot: root, hermetic: true });
+  assert.strictEqual(far.hermetic, null, '偽の倉を自分の倉として走査した');
+  assert.ok(far.hermeticSkipped && /現物の倉/.test(far.hermeticSkipped),
+    `skip を名乗っていない: ${far.hermeticSkipped}`);
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 6.6 輸出の腐食 — 出した先も門が見張る (AC-27 / AC-28)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n輸出の照合 (第58条(b)):');
+
+test('exports --verify EX-1 は実機の permissions を照合する (AC-27)', () => {
+  const v = abode.verifyExport('EX-1');
+  if (v.skipped) {
+    // 実機が無い機(CI)。**名乗って** skip する —— 黙って緑にしない。
+    assert.ok(/EX-1 は検めない/.test(v.skipped), `skip の理由が形を成していない: ${v.skipped}`);
+    return;
+  }
+  assert.strictEqual(v.ok, true, `EX-1 の輸出が腐っている:\n${v.why.join('\n')}`);
+  assert.deepStrictEqual(v.counts, { deny: 9, ask: 1, allow: 5 },
+    `permissions の数が台帳の記録と違う: ${JSON.stringify(v.counts)}`);
+});
+
+test('照合の道を持たない輸出に 0 を返さない — exit 2 である (第37条)', () => {
+  // 「この器では検められない」を緑にすれば、第5段で --creations を作り忘れても
+  // 誰も気づかない。**未実装は緑ではない。**
+  const r = cli(['exports', '--verify', 'EX-2']);
+  assert.strictEqual(r.code, 2, `EX-2 の照合が exit ${r.code} — 未実装を 0 で答えている:
+${r.out}`);
+  assert.ok(/check --creations/.test(r.out), '照合の道を示していない — 赤くなっても進めない');
+});
+
+test('exportRealPath は台帳の ~ を器だけが解く (住所が二本にならない)', () => {
+  const fake = mktmp('ex1-home');
+  const p = abode.exportRealPath('EX-1', { env: { USERPROFILE: fake, HOME: fake } });
+  assert.strictEqual(p, path.join(fake, '.claude', 'settings.json'),
+    `台帳の住所を解けていない: ${p}`);
+  // `<creations-root>` のような解けない記法には null を返す(推測で埋めない — 第16条)
+  assert.strictEqual(abode.exportRealPath('EX-2'), null,
+    '解けない記法を推測で解いている — 住所は推測してはならない');
+});
+
+// ══════════════════════════════════════════════════════════════════════
 // 7. 器が己に課す禁則 (AC-56)
 // ══════════════════════════════════════════════════════════════════════
 console.log('\n器の自制 (第54条(d)):');
