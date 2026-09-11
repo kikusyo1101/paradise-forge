@@ -347,6 +347,16 @@
       "bytes": 35971,
       "note": "第3段 work-3 着地: 見張りの建て替え — 黙って緑に落ちる門を根絶し skip() を移植 (PR #48 OPEN)",
       "detail": "build ⟡ reform/sovereign-abode/build-3-evidence.md — 第3段 work-3 着地: 見張りの建て替え — 黙って緑に落ちる門を根絶し skip() を移植 (PR #48 OPEN)"
+    },
+    {
+      "ts": "2026-09-11T20:32:12.210Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-4-evidence.md",
+      "sha256": "3edfb3f84248670fd73b7a98f7a7f3ee439436c74424e6ab1551f6fa03f181a7",
+      "bytes": 30017,
+      "note": "第4段(work-4)が着地: DEFAULT_MODE を 1 行で repo へ反転し、KG 122節点/33辺/5共変と日次台帳25行を sha256 集合一致で移設。migrate --plan/--verify を実装(--write は持たない)。故障注入で deploy.check が反転先でも赤くなることを実証。素/repo/global の 3 走行とも 471 passed 0 failed。",
+      "detail": "build ⟡ reform/sovereign-abode/build-4-evidence.md — 第4段(work-4)が着地: DEFAULT_MODE を 1 行で repo へ反転し、KG 122節点/33辺/5共変と日次台帳25行を sha256 集合一致で移設。migrate --plan/--verify を実装(--write は持たない)。故障注入で deploy.check が反転先でも赤くなることを実証。素/repo/global の 3 走行とも 471 passed 0 failed。"
     }
   ],
   "spawnTrace": {

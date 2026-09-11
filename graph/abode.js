@@ -30,7 +30,9 @@
  *                                            **知らない旗は exit 2** (黙って捨てない)
  *   node graph/abode.js exports [--external] [--verify <id>]
  *                                            台帳の印字と、照合の道の提示
- *   node graph/abode.js migrate --plan | --verify     (第4段 / work-4 で実装)
+ *   node graph/abode.js migrate --plan | --verify
+ *                                            KG / 日次台帳の移設 (計画と照合のみ)
+ *                                            **--write は存在しない** —— 住所を知る器は書かない
  *   node graph/abode.js retreat --plan | --verify     (第6段 / work-6 で実装)
  *
  * exit code は三値。**2 を 0 に混ぜてはならない**(第37条: 不在は通過ではない):
@@ -39,10 +41,9 @@
  *   2 = 検められなかった (前提が無い / 引数が不正 / この段では未実装)
  *   3 = 想定外の例外 (バグ)
  *
- * ⚠️ **この段階(work-0)では既定は `global` である。** 器と台帳と門を建てるのが
- *    第0段の職務であり、既定の反転(`DEFAULT_MODE = 'repo'`)は第4段の仕事である。
- *    ゆえに `check --count` は今なお赤い —— 生産コードの付け替え(第1段)が
- *    済んでいないからである。**赤いことが正しい。緩めて緑にしてはならない。**
+ * ⚠️ **第4段(work-4)で既定を `repo` へ反転した。** env が無ければ楽園は
+ *    自分の倉の中に住む。外を向かせるのは `PARADISE_ABODE=global` の明示だけである。
+ *    反転は `DEFAULT_MODE` の 1 行である —— 戻すのも 1 行である(design §8 危険2)。
  */
 'use strict';
 const fs = require('fs');
@@ -63,7 +64,7 @@ const MODES = new Set(['repo', 'global']);
  * 第0〜3段 = 'global'(神の日常を 1 バイトも変えない) / 第4段以降 = 'repo'。
  * 反転が 1 行の差分であることを PR の可読性の要件とする(design §1.3)。
  */
-const DEFAULT_MODE = 'global';
+const DEFAULT_MODE = 'repo';
 
 /** 個別 env は `PARADISE_ABODE` より強い。既存の門と CI がこれで隔離しているため。 */
 const OVERRIDE_ENV = [
@@ -808,6 +809,146 @@ function check(opts = {}) {
   return r;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 移設 — KG と日次台帳を「移す」のであって「消す」のではない (AC-9〜AC-12)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 移設の対象。**住所はここで作らない** —— `resolve()` が答えた二つの住処から引く。
+ *
+ * `kind` の別は照合の仕方を決める:
+ *  - `jsonl` … 1 行 1 記憶。**行数**と**各行の sha256 の多重集合**で照合する。
+ *              行の順序は照合の本質ではない(追記の競合で入れ替わりうる)が、
+ *              **重複は数える** —— 同じ記憶が二度在るのは一度在るのと違う。
+ *  - `file`  … 1 本のファイル。空でない行数と**全文の sha256** で照合する。
+ */
+const MIGRATE_TARGETS = [
+  { key: 'kg', name: 'nodes.jsonl', kind: 'jsonl', why: '記憶の節点 (kg.js remember)' },
+  { key: 'kg', name: 'edges.jsonl', kind: 'jsonl', why: '記憶の辺 (kg.js link)' },
+  { key: 'kg', name: 'cochange.jsonl', kind: 'jsonl', why: '共変の観測 (kg.js observe)' },
+  { key: 'dailyLedger', name: null, kind: 'file', why: '第43条の走行権を握る日次台帳' },
+];
+
+function sha256(buf) { return require('crypto').createHash('sha256').update(buf).digest('hex'); }
+
+/**
+ * 一つの現物を測る。**不在は 0 ではない — null である**(第16条 / 第37条)。
+ * @returns {{exists:boolean, lines:number|null, shas:string[]|null, sha:string|null}}
+ */
+function measureFile(p, kind) {
+  let raw;
+  try { raw = fs.readFileSync(p, 'utf8'); }
+  catch { return { exists: false, lines: null, shas: null, sha: null }; }
+  const lines = raw.split('\n').filter(l => l.trim() !== '');
+  return {
+    exists: true,
+    lines: lines.length,
+    // 行末の CR は改行の方言であって中身ではない(deploy.js が既に同じ裁定を持つ)
+    shas: kind === 'jsonl' ? lines.map(l => sha256(l.replace(/\r$/, ''))).sort() : null,
+    sha: sha256(raw.replace(/\r\n/g, '\n')),
+  };
+}
+
+/**
+ * 移設元(外を向いた住処)と移設先(リポジトリ内の住処)を一度に解く。
+ *
+ * ⚠️ **個別 env(`PARADISE_KG` / `PARADISE_DAILY_LEDGER`)は両側に等しく掛かる。**
+ * 掛かれば移設元と移設先が同じ住所になり、照合は「自分と自分を比べて緑」になる。
+ * **それは検めたことにならない**(第37条)。ゆえに住所が同じなら exit 2 で拒む。
+ * @param {{env?:object, repoRoot?:string, from?:object, to?:object}} [opts]
+ */
+function migrateSides(opts = {}) {
+  const env = opts.env || process.env;
+  const base = { repoRoot: opts.repoRoot };
+  const from = opts.from || resolve({ ...base, env: { ...env, PARADISE_ABODE: 'global' } });
+  const to = opts.to || resolve({ ...base, env: { ...env, PARADISE_ABODE: 'repo' } });
+  for (const k of ['kg', 'dailyLedger']) {
+    if (path.resolve(from[k]) === path.resolve(to[k])) {
+      throw unmeasurable(
+        `移設元と移設先の ${k} が同じ住所である: ${from[k]} — ` +
+        '自分と自分を比べれば必ず緑になる。個別 env が両側に掛かっていないか検めよ');
+    }
+  }
+  return { from, to };
+}
+
+/** 移設の一行分の道を組む。 */
+function migrateRows(sides) {
+  return MIGRATE_TARGETS.map(t => {
+    const fromPath = t.name ? path.join(sides.from[t.key], t.name) : sides.from[t.key];
+    const toPath = t.name ? path.join(sides.to[t.key], t.name) : sides.to[t.key];
+    return { file: t.name || path.basename(toPath), kind: t.kind, why: t.why, fromPath, toPath };
+  });
+}
+
+/**
+ * 移設の計画。**印字するだけ。`--write` は存在しない**(§1.5 / 第58条)。
+ * 住所を知る者と、書く者を分ける —— 実際に動かすのは `kg.js` / `daily-guard.js` の
+ * 既存の口、あるいは計画が印字する 1 命令である。
+ * @returns {{from:object, to:object, rows:object[], pending:number}}
+ */
+function migratePlan(opts = {}) {
+  const sides = migrateSides(opts);
+  const rows = migrateRows(sides).map(r => {
+    const a = measureFile(r.fromPath, r.kind);
+    const b = measureFile(r.toPath, r.kind);
+    return {
+      ...r,
+      from: a.lines, to: b.lines,
+      state: !a.exists ? 'no-source' : !b.exists ? 'pending'
+        : (a.lines === b.lines && sameContent(a, b, r.kind)) ? 'done' : 'differs',
+    };
+  });
+  return { from: sides.from, to: sides.to, rows, pending: rows.filter(r => r.state !== 'done').length };
+}
+
+function sameContent(a, b, kind) {
+  if (!a.exists || !b.exists) return false;
+  if (kind === 'jsonl') {
+    if (a.shas.length !== b.shas.length) return false;
+    return a.shas.every((s, i) => s === b.shas[i]);
+  }
+  return a.sha === b.sha;
+}
+
+/**
+ * 移設が完全かを検める(AC-9 / AC-10)。
+ *
+ * **「移した」という自己申告では通らない。** 行数と sha256 の多重集合の両方が
+ * 一致して初めて緑である。片方だけの一致は偶然でありうる。
+ *
+ * @param {{env?:object, repoRoot?:string, from?:object, to?:object}} [opts]
+ * @returns {{ok:boolean, rows:{file:string, from:number|null, to:number|null, sha:boolean|null, why:string|null}[],
+ *            unmeasurable:string[]}}
+ */
+function migrateVerify(opts = {}) {
+  const sides = migrateSides(opts);
+  const unmeasurable = [];
+  const rows = migrateRows(sides).map(r => {
+    const a = measureFile(r.fromPath, r.kind);
+    const b = measureFile(r.toPath, r.kind);
+    const row = { file: r.file, from: a.lines, to: b.lines, sha: null, why: null,
+                  fromPath: r.fromPath, toPath: r.toPath };
+    if (!a.exists) {
+      // **移設元が無ければ、何と照合すればよいか判らない。** 0 と比べて緑にしない。
+      row.why = `移設元が無い: ${r.fromPath} — 照合の基点が無いことは「違反が無い」ではない (第37条)`;
+      unmeasurable.push(`${r.file}: ${row.why}`);
+      return row;
+    }
+    if (!b.exists) {
+      // **移設が済んでいない。これは赤である**(AC-10)。
+      row.sha = false;
+      row.why = `${r.file}: ${a.lines} 期待 / 移設先が無い (${r.toPath})`;
+      return row;
+    }
+    row.sha = sameContent(a, b, r.kind);
+    if (a.lines !== b.lines) row.why = `${r.file}: ${a.lines} 期待 / ${b.lines} 実測 — 行数が一致しない`;
+    else if (!row.sha) row.why = `${r.file}: 行数は ${a.lines} で一致するが sha256 の集合が違う — 中身が別物である`;
+    return row;
+  });
+  return { ok: unmeasurable.length === 0 && rows.every(r => r.sha === true), rows, unmeasurable };
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────
 
 function printResolve(rest) {
@@ -937,6 +1078,80 @@ function printCheck(rest) {
   return r.ok ? 0 : 1;
 }
 
+/**
+ * `migrate` の CLI。**`--write` は存在しない**(§1.5 / 第58条: 住所を知る者と書く者を分ける)。
+ * exit code は §1.4 の三値: 0=検めて違反無し / 1=検めて違反在り / 2=検められなかった。
+ */
+function printMigrate(rest) {
+  const wantPlan = rest.includes('--plan');
+  const wantVerify = rest.includes('--verify');
+  for (const a of rest) {
+    if (a !== '--plan' && a !== '--verify') {
+      throw unmeasurable(`migrate の知らない旗: ${a} — 知る旗は --plan / --verify。` +
+        '**migrate は --write を持たない**: 住所を知る器は書かない(§1.5)。' +
+        '実際に動かすのは kg.js / daily-guard.js の既存の口である');
+    }
+  }
+  if (wantPlan === wantVerify) {
+    throw unmeasurable('migrate には --plan か --verify のどちらか一方が要る — ' +
+      '旗の無い migrate が何をするかは決まっていない(第16条)');
+  }
+
+  if (wantPlan) {
+    const p = migratePlan();
+    console.log('═══ 📦 ABODE MIGRATE — 計画 (印字のみ / --write は存在しない) ═══');
+    console.log(`  移設元 (global): kg=${p.from.kg}`);
+    console.log(`                   daily=${p.from.dailyLedger}`);
+    console.log(`  移設先 (repo)  : kg=${p.to.kg}`);
+    console.log(`                   daily=${p.to.dailyLedger}`);
+    console.log('');
+    const JA = { done: '✓ 移設済み', pending: '→ 未移設', differs: '✗ 中身が食い違う', 'no-source': '· 移設元が無い' };
+    for (const r of p.rows) {
+      console.log(`  ${JA[r.state].padEnd(14)} ${r.file.padEnd(18)} ` +
+        `${r.from === null ? '(元 無し)' : r.from + ' 行'} → ${r.to === null ? '(先 無し)' : r.to + ' 行'}`);
+      console.log(`     ${r.why}`);
+      console.log(`     ${r.fromPath}`);
+      console.log(`     ${r.toPath}`);
+    }
+    console.log('');
+    if (p.pending === 0) {
+      console.log('  ✓ 移設は既に済んでいる — node graph/abode.js migrate --verify で照合せよ');
+    } else {
+      console.log(`  ${p.pending} 件が未了。**この器は書かない。** 実際に動かす命令(写して走らせよ):`);
+      console.log('');
+      for (const r of p.rows) {
+        if (r.state === 'done' || r.state === 'no-source') continue;
+        console.log(`    mkdir -p "${path.dirname(r.toPath)}" && cp "${r.fromPath}" "${r.toPath}"`);
+      }
+      console.log('');
+      console.log('  ⚠️ **元は消さない。** 移設は「写して検める」までであり、');
+      console.log('     神の ~/.claude から元を引き上げるのは第6段(撤収)の仕事である。');
+      console.log('  その後: node graph/abode.js migrate --verify');
+    }
+    console.log('═══════════════════════════════════════');
+    return 0;
+  }
+
+  const v = migrateVerify();
+  console.log('═══ 📦 ABODE MIGRATE — 照合 (AC-9 / AC-10) ═══');
+  for (const r of v.rows) {
+    const mark = r.sha === true ? '✓' : r.sha === false ? '✗' : '·';
+    console.log(`  ${mark} ${r.file.padEnd(18)} ${r.from === null ? '(元 無し)' : r.from + ' 行'} → ` +
+      `${r.to === null ? '(先 無し)' : r.to + ' 行'}  sha256 集合の一致: ${r.sha === null ? '検められず' : r.sha}`);
+    if (r.why) console.log(`     ${r.why}`);
+  }
+  if (v.unmeasurable.length) {
+    // **「検められなかった」を 0 にも 1 にも混ぜない**(§1.4 / 第37条)。
+    console.log(`✗ 検められなかった (${v.unmeasurable.length} 件) — 移設元が無ければ照合の基点が無い`);
+    console.log('═══════════════════════════════════════');
+    return 2;
+  }
+  if (v.ok) console.log('  ✓ 行数と sha256 の集合が一致した — 記憶は移り、失われていない');
+  else console.log('✗ 移設が不完全である — 「移した」という自己申告では通らない (AC-10)');
+  console.log('═══════════════════════════════════════');
+  return v.ok ? 0 : 1;
+}
+
 function main(argv) {
   const [cmd, ...rest] = argv;
   if (cmd === 'resolve') return printResolve(rest);
@@ -948,10 +1163,10 @@ function main(argv) {
   }
   if (cmd === 'check') return printCheck(rest);
   if (cmd === 'exports') return printExports(rest);
-  if (cmd === 'migrate' || cmd === 'retreat') {
+  if (cmd === 'migrate') return printMigrate(rest);
+  if (cmd === 'retreat') {
     // **未実装を 0 で返さない。** 「検められなかった」は exit 2 である(第37条)。
-    const when = cmd === 'migrate' ? '第4段 (work-4)' : '第6段 (work-6)';
-    throw unmeasurable(`${cmd} は ${when} で実装する — この段の abode.js は住所と台帳と門だけを持つ`);
+    throw unmeasurable('retreat は 第6段 (work-6) で実装する — この段の abode.js は撤収の口を持たない');
   }
   throw unmeasurable('usage: abode.js resolve [--json] | path <key> | ' +
     `check [${Object.keys(CHECK_FLAGS).join('|')}] | ` +
@@ -972,7 +1187,8 @@ module.exports = {
   exportRealPath, verifyExport,
   homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
   silentGreens, silentGreenTargets, symmetryAudit, codeOnly,
-  REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS, CHECK_FLAGS,
+  migratePlan, migrateVerify, migrateSides, measureFile,
+  REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS, CHECK_FLAGS, MIGRATE_TARGETS,
   HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
   SILENT_GREEN_PATTERNS, SYMMETRY_PAIR,
   ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,

@@ -100,14 +100,24 @@ test('resolve は全住所と由来を返し、mode は repo|global の 2 値で
   assert.ok(['env', 'default'].includes(r.source), `source が由来を名乗らない: ${r.source}`);
 });
 
-test('この段の既定は global である — 既定の反転は第4段の仕事 (AC-52)', () => {
-  // **神の日常が 1 バイトも変わっていないこと**を、この一行で固定する。
-  // work-4 がここを 'repo' に変える。その差分が 1 行であることが PR の可読性の要件。
-  assert.strictEqual(abode.DEFAULT_MODE, 'global',
-    '第0段で既定を反転させてはならない — 器を建てるのと住所を移すのは別の仕事である');
-  const r = abode.resolve({ env: {} });
-  assert.strictEqual(r.mode, 'global');
-  assert.strictEqual(r.source, 'default');
+test('反転の差分は 1 行である — 段階は定数一つが表す (AC-52 / design §1.3)', () => {
+  /**
+   * **AC-52 の意味はここで変わらない。** 第0段では「反転してはならない」を、
+   * 第4段では「反転は 1 行で表されねばならない」を守る —— どちらも同じ要件、
+   * すなわち**段階が一箇所にだけ住むこと**の両面である。
+   *
+   * ソースを実際に走査して数える。`DEFAULT_MODE` に値を代入する行が 2 本在れば、
+   * 反転は 1 行の差分ではなくなり、design §1.3 が PR の可読性の要件として
+   * 置いた形が壊れる。かつ二箇所が食い違えば、住所は静かに割れる。
+   */
+  const src = fs.readFileSync(ABODE_JS, 'utf8').split('\n');
+  const assigns = src
+    .map((l, i) => ({ i: i + 1, t: l.trim() }))
+    .filter(x => /^const\s+DEFAULT_MODE\s*=/.test(x.t));
+  assert.strictEqual(assigns.length, 1,
+    '既定を決める行が 1 本でない — 段階は一箇所にだけ住まねばならない: ' + JSON.stringify(assigns));
+  assert.ok(/'repo'|"repo"/.test(assigns[0].t),
+    `第4段の既定は repo である: ${assigns[0].t}`);
 });
 
 test('PARADISE_ABODE=repo なら全住所が <repo> 配下で、sentinel は 0 件 (AC-1)', () => {
@@ -169,11 +179,56 @@ test('pathFor は未知の鍵に undefined を返さず throw する', () => {
   assert.throws(() => abode.pathFor('agentz'), /未知の住所の鍵/);
 });
 
-test('未実装の migrate / retreat は exit 2 — 0 で「済んだ」ふりをしない', () => {
-  for (const cmd of ['migrate', 'retreat']) {
-    const r = cli([cmd, '--plan']);
-    assert.strictEqual(r.code, 2, `${cmd} が ${r.code} を返した — 未実装を通過と読ませてはならない`);
+test('第4段の既定は repo である — 素の走行が楽園の内を向く (AC-54)', () => {
+  /**
+   * **この一行が段階を表す。**(design §1.3)
+   * 第0〜3段は `'global'`(神の日常を 1 バイトも変えない)。第4段でここが `'repo'` に
+   * 反転した —— **差分は 1 行**であり、戻すのも 1 行である(design §8 危険2 の退路)。
+   *
+   * ⚠️ この門は「定数が repo であること」だけでは足りない。定数を見て `resolve()` が
+   * 別の答えを返すなら、宣言と実測が割れている(第10条)。ゆえに**両方**を見る。
+   */
+  assert.strictEqual(abode.DEFAULT_MODE, 'repo',
+    '既定が反転していない — 第4段は既定を repo にする段である');
+  const r = abode.resolve({ env: {} });
+  assert.strictEqual(r.mode, 'repo', '定数は repo なのに resolve が別の答えを返した');
+  assert.strictEqual(r.source, 'default', 'env 無しで source が default でない');
+});
+
+test('反転は実測でも効いている — 素の resolve の全住所が <repo> 配下 (AC-54 / work-4 完了条件)', () => {
+  /**
+   * **子プロセスで、env を一つも立てずに撃つ。** 親の process.env を継いだ
+   * `resolve()` は、試験走行が立てた `PARADISE_*` を吸ってしまいうる ——
+   * それでは「素の走行」を測ったことにならない(第58条(c) の同型)。
+   */
+  const clean = { ...process.env };
+  for (const k of Object.keys(clean)) if (/^PARADISE_|^CLAUDE_HOME$/.test(k)) delete clean[k];
+  const r = spawnSync(process.execPath, [ABODE_JS, 'resolve', '--json'],
+    { encoding: 'utf8', cwd: ROOT, env: clean });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.mode, 'repo');
+  assert.strictEqual(j.source, 'default');
+  for (const k of ['abode', 'settings', 'agents', 'commands', 'rules', 'skills', 'claudeMd', 'kg', 'dailyLedger']) {
+    assert.ok(j[k].startsWith(ROOT),
+      `素の走行で ${k} が楽園の外を指している: ${j[k]} — 反転が効いていない (AC-54)`);
   }
+  // `home` は診断専用であり住所ではない。ここだけは外を指してよい(むしろ指すべき)。
+  assert.ok(!j.home.startsWith(path.join(ROOT, '.claude')), 'home が住所に化けている');
+});
+
+test('外を向かせるのは global の明示だけである — 逆向き (AC-54)', () => {
+  const g = abode.resolve({ env: { PARADISE_ABODE: 'global', USERPROFILE: 'C:\\sentinel-home' } });
+  assert.strictEqual(g.mode, 'global');
+  assert.strictEqual(g.source, 'env', '明示したのに source が env でない');
+  assert.ok(!g.abode.startsWith(ROOT), 'global を名乗ったのに楽園の内を向いている');
+  assert.ok(g.kg.includes('paradise-kg'), 'global の KG が配備の木の外の名を持たない');
+});
+
+test('未実装の retreat は exit 2 — 0 で「済んだ」ふりをしない', () => {
+  // migrate は第4段で実装された。retreat は第6段の仕事であり、**今なお exit 2 が正しい**。
+  const r = cli(['retreat', '--plan']);
+  assert.strictEqual(r.code, 2, `retreat が ${r.code} を返した — 未実装を通過と読ませてはならない`);
 });
 
 test('引数を持たない呼び出しは exit 2 で使い方を語る', () => {
@@ -697,6 +752,144 @@ test('exportRealPath は台帳の ~ を器だけが解く (住所が二本にな
   // `<creations-root>` のような解けない記法には null を返す(推測で埋めない — 第16条)
   assert.strictEqual(abode.exportRealPath('EX-2'), null,
     '解けない記法を推測で解いている — 住所は推測してはならない');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 6.5 移設 — 記憶は「移す」のであって「消す」のではない (AC-9 / AC-10 / 第4段)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n移設の照合 (第58条 / AC-9・AC-10):');
+
+/**
+ * 偽の移設元と移設先を建てる。**現物の KG には一行も触らない**(第58条(c))。
+ * `migrateVerify({from,to})` は住処の写しを直に受け取れるので、
+ * env を弄って本物の解決器を騙す必要が無い —— 騙せる門は門ではない。
+ */
+function fakeSides(tag, opts = {}) {
+  const fromKg = mktmp(tag + '-from-kg');
+  const toKg = mktmp(tag + '-to-kg');
+  const fromDaily = path.join(mktmp(tag + '-from-d'), 'paradise-daily.json');
+  const toDaily = path.join(mktmp(tag + '-to-d'), 'paradise-daily.json');
+  const lines = (n, seed) => Array.from({ length: n }, (_, i) => JSON.stringify({ id: seed + i })).join('\n') + '\n';
+  for (const [dir, mult] of [[fromKg, 1], [toKg, opts.toMult === undefined ? 1 : opts.toMult]]) {
+    if (mult === null) continue;                       // null = そのファイルを作らない(未移設)
+    fs.writeFileSync(path.join(dir, 'nodes.jsonl'), lines(opts.nodes === undefined ? 5 : opts.nodes, 'n'));
+    fs.writeFileSync(path.join(dir, 'edges.jsonl'), lines(3, 'e'));
+    fs.writeFileSync(path.join(dir, 'cochange.jsonl'), lines(2, 'c'));
+  }
+  fs.writeFileSync(fromDaily, '{"lastDate":"2026-09-01"}\n');
+  if (opts.toMult !== null) fs.writeFileSync(toDaily, '{"lastDate":"2026-09-01"}\n');
+  return { from: { kg: fromKg, dailyLedger: fromDaily }, to: { kg: toKg, dailyLedger: toDaily },
+           fromKg, toKg, fromDaily, toDaily };
+}
+
+test('移設が完全なら緑 — 行数と sha256 の集合が一致する (AC-9 の正)', () => {
+  const s = fakeSides('mig-ok');
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  assert.strictEqual(v.ok, true, '完全な移設が赤になった: ' + JSON.stringify(v.rows));
+  assert.deepStrictEqual(v.unmeasurable, []);
+  assert.strictEqual(v.rows.length, abode.MIGRATE_TARGETS.length, '対象の数が合わない');
+  for (const r of v.rows) assert.strictEqual(r.sha, true, `${r.file} の sha が立っていない`);
+});
+
+test('【逆】移設先の nodes.jsonl から 1 行削ると赤くなり、数を名指す (AC-10)', () => {
+  // **実際に削る。** 「削ったつもり」の門は、削られたことを検出できない。
+  const s = fakeSides('mig-short');
+  const p = path.join(s.toKg, 'nodes.jsonl');
+  const kept = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean).slice(0, -1);
+  fs.writeFileSync(p, kept.join('\n') + '\n');
+
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  assert.strictEqual(v.ok, false, '移設先が 1 行欠けているのに緑を出した — 記憶が静かに失われる');
+  const row = v.rows.find(r => r.file === 'nodes.jsonl');
+  assert.strictEqual(row.sha, false);
+  assert.strictEqual(row.from, 5);
+  assert.strictEqual(row.to, 4);
+  // **数を名指せ。**「一致しない」だけでは、どちらが欠けたか判らず直せない。
+  assert.ok(/5 期待 \/ 4 実測/.test(row.why), `数を名指していない: ${row.why}`);
+});
+
+test('【逆】移設先が丸ごと無ければ赤 — 「移した」の自己申告では通らない (AC-10)', () => {
+  const s = fakeSides('mig-none', { toMult: null });
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  assert.strictEqual(v.ok, false, '移設が一件も済んでいないのに緑を出した');
+  for (const r of v.rows) {
+    assert.strictEqual(r.sha, false, `${r.file} が不在なのに緑`);
+    assert.ok(/移設先が無い/.test(r.why), `不在を名乗っていない: ${r.why}`);
+  }
+});
+
+test('【逆】行数が同じでも中身が違えば赤 — 数の一致は偶然でありうる (AC-9)', () => {
+  const s = fakeSides('mig-swap');
+  const p = path.join(s.toKg, 'edges.jsonl');
+  const n = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean).length;
+  fs.writeFileSync(p, Array.from({ length: n }, (_, i) => JSON.stringify({ id: 'BOGUS' + i })).join('\n') + '\n');
+
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  assert.strictEqual(v.ok, false, '行数だけ合わせた偽物が通った — 行数は中身の保証ではない');
+  const row = v.rows.find(r => r.file === 'edges.jsonl');
+  assert.strictEqual(row.from, row.to, '前提が崩れている(行数は等しいはず)');
+  assert.strictEqual(row.sha, false);
+  assert.ok(/sha256 の集合が違う/.test(row.why), `中身の違いを名指していない: ${row.why}`);
+});
+
+test('移設元が無いのは「検められなかった」= exit 2 — 0 にも 1 にも混ぜない (第37条 / §1.4)', () => {
+  const s = fakeSides('mig-nosrc');
+  fs.rmSync(path.join(s.fromKg, 'nodes.jsonl'));
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  assert.strictEqual(v.ok, false, '基点が無いのに緑');
+  assert.ok(v.unmeasurable.some(u => /nodes\.jsonl/.test(u)),
+    '検められなかった物を名指していない: ' + JSON.stringify(v.unmeasurable));
+  const row = v.rows.find(r => r.file === 'nodes.jsonl');
+  assert.strictEqual(row.sha, null, '検められなかった行に真偽を付けている(0 と 2 を混ぜている)');
+});
+
+test('【脱法】移設元と移設先が同じ住所なら exit 2 — 自分と自分は比べさせない', () => {
+  // 個別 env が両側に掛かれば、照合は必ず緑になる。**それは検めたことにならない。**
+  const same = mktmp('mig-same');
+  assert.throws(
+    () => abode.migrateVerify({ from: { kg: same, dailyLedger: path.join(same, 'd.json') },
+                                to: { kg: same, dailyLedger: path.join(same, 'd.json') } }),
+    /同じ住所である/,
+    '移設元と移設先が同じでも照合を通した — 自己比較は永久に緑である');
+});
+
+test('migrate は --write を持たない — 住所を知る器は書かない (§1.5 / 第58条)', () => {
+  const r = cli(['migrate', '--write']);
+  assert.strictEqual(r.code, 2, `--write が exit ${r.code} を返した — 存在しない旗を受けている`);
+  assert.ok(/--write を持たない/.test(r.out), '境界を口で語っていない');
+  // ソースにも書く口が無いことを実測で示す(註釈だけの宣言は機構ではない — 第10条)
+  const src = fs.readFileSync(ABODE_JS, 'utf8').split('\n');
+  const start = src.findIndex(l => /^function migratePlan\s*\(/.test(l));
+  const end = src.findIndex(l => /^function migrateVerify\s*\(/.test(l));
+  assert.ok(start >= 0 && end > start);
+  for (let i = start; i <= end; i++) {
+    assert.ok(!/(writeFileSync|appendFileSync|copyFileSync|mkdirSync|rmSync)\s*\(/.test(src[i]),
+      `migrate が書いている: ${i + 1}: ${src[i].trim()}`);
+  }
+});
+
+test('現物の移設は済んでいる — CLI が exit 0 で行数と sha を語る (AC-9 / work-4 完了条件)', () => {
+  /**
+   * **現物を撃つ。** 作り物だけで緑を出す門は、現実が壊れても鳴らない。
+   * ⚠️ ただし移設元(神の `~/.claude/paradise-kg`)が無い機(CI)では
+   * `migrate --verify` は exit 2 を返す —— それが正しい(第37条: 検められなかった)。
+   * ゆえに 0 か 2 のどちらかを要求し、**1(違反在り)だけを赤とする**。
+   * 0 のときは中身まで検め、2 のときは理由を名乗っていることを検める。
+   */
+  const r = cli(['migrate', '--verify']);
+  assert.notStrictEqual(r.code, 1, `現物の移設が不完全である:\n${r.out}`);
+  if (r.code === 0) {
+    assert.ok(/nodes\.jsonl/.test(r.out) && /sha256 集合の一致: true/.test(r.out),
+      `照合の中身を語っていない:\n${r.out}`);
+    const v = abode.migrateVerify();
+    const nodes = v.rows.find(x => x.file === 'nodes.jsonl');
+    assert.strictEqual(nodes.from, nodes.to, '現物の行数が食い違っている');
+    assert.ok(nodes.to > 0, '移設先が空である — 0 行の一致を移設と呼んではならない');
+  } else {
+    assert.strictEqual(r.code, 2, `想定外の exit ${r.code}:\n${r.out}`);
+    assert.ok(/検められなかった/.test(r.out) && /移設元が無い/.test(r.out),
+      `測れなかった理由を名乗っていない:\n${r.out}`);
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════
