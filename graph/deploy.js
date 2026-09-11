@@ -31,6 +31,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const up = require('./upstream.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 function md5(p) { try { return crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'); } catch { return null; } }
 /**
@@ -47,6 +48,53 @@ function contentHash(p) {
 }
 function listMd(dir) {
   try { return fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch { return []; }
+}
+function read(p) { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } }
+
+/**
+ * 変換 engine が**どの frontmatter キーを統べるか**。
+ *
+ * かつて `check()` は「transform 対象の kind なら差は乖離ではない」として
+ * **ファイルまるごと**を照合から外していた。実測(AC-7): 配備された
+ * `agents/cardinal.md` の末尾に 1 バイト足しても `checked: 60` で緑のままだった。
+ * **58 ファイルのうち 30 ファイル(agents 全部)が、実質一度も検められていなかった。**
+ *
+ * 変換が触るのは frontmatter の数キーだけである(第12条のモデルと第25条の権能)。
+ * ゆえに**そのキーだけを落として**比べる。本文の 1 バイトも、変換の管轄外の
+ * frontmatter キーも、これで捕まる。
+ *
+ * ⚠️ **知らない engine は「差を許す」側に倒さない。** 未知の engine が transform に
+ * 加われば、その kind は**免除なしで**照合される(在るべきでない差は赤く出る)。
+ * 免除は名簿に載った変換だけが受ける —— 裁かれる側が裁きの範囲を決めてはならない(第54条(d))。
+ */
+const TRANSFORM_KEYS = {
+  'graph/apply-models.js': ['model', 'effort'],   // 第12条: 位階に応じたモデル
+  'graph/apply-spawn.js': ['tools'],              // 第25条: 下位を擁する者に起動の権能
+};
+
+/** その kind の変換が統べる frontmatter キー。未知の engine が一つでも居れば null(= 免除しない)。 */
+function governedKeys(kind, cfg) {
+  const spec = (cfg.transform || {})[kind];
+  if (!spec) return [];
+  const engines = spec.engines || (spec.engine ? [spec.engine] : []);
+  const keys = [];
+  for (const e of engines) {
+    const k = TRANSFORM_KEYS[e];
+    if (!k) return null;                          // 知らない変換に免除は与えない
+    keys.push(...k);
+  }
+  return keys;
+}
+
+/** frontmatter から指定のキー行だけを落とす。frontmatter が無ければそのまま返す。 */
+function stripFrontmatterKeys(text, keys) {
+  if (!keys.length) return text;
+  const s = String(text).replace(/\r\n/g, '\n');
+  const m = s.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!m) return s;
+  const re = new RegExp('^(' + keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\s*:');
+  const fm = m[1].split('\n').filter(l => !re.test(l)).join('\n');
+  return '---\n' + fm + '\n---\n' + s.slice(m[0].length);
 }
 
 /**
@@ -127,24 +175,63 @@ function check() {
   const c = up.cfg();
   const UP = up.upstreamPath(c);
   const HOME = up.claudeHome(c);
-  // 借り物も配備先も無い環境(CI, clone直後)では検査対象が存在しない。
-  // 「配備されていない」と「配備が壊れている」は別物であり、前者を欠陥と
-  // 呼ぶと、ハーネスを持たない環境で永久に落ちるテストになる。
-  if (!fs.existsSync(UP) || !fs.existsSync(HOME)) {
-    return { ok: true, skipped: true, checked: 0, drift: [], transforms: [],
+  const where = abode.resolve();
+
+  /**
+   * **不在を skip と呼んでよいのは、外を向いていると名乗ったときだけである**
+   * (第58条(e) / AC-8)。
+   *
+   * かつてここは mode を見ずに「配備先が無ければ黙って緑」を返していた。
+   * それで良かったのは、住処が**神のマシンの資産**だった間だけである。
+   * `<repo>/.claude` は git 追跡の**派生物**であり(AC-14)、clone すれば必ず在る。
+   * 在るべき物が無いのは「ハーネス不在」ではなく「**派生物の欠損**」——
+   * それを skip と呼べば、配備が丸ごと消えても門は緑を出し続ける(第37条)。
+   *
+   * ゆえに skip は mode=global のときだけ。しかも**理由を名乗る** ——
+   * `skipped` は真偽値ではなく理由の文字列である。黙って早期に return する門は
+   * `N skipped` にすら数えられず、門が死んだことに誰も気づけない。
+   */
+  if (where.mode === 'global' && (!fs.existsSync(UP) || !fs.existsSync(HOME))) {
+    return { ok: true, skipped: `mode=global (source=${where.source}) かつ ${!fs.existsSync(HOME) ? `配備先 ${HOME}` : `上流 ${UP}`} が無い — 外を向いた住処はこの機の資産であり、無いことは欠陥ではない`,
+             mode: where.mode, home: HOME, checked: 0, drift: [], transforms: [],
              note: 'no harness on this machine — nothing deployed to verify' };
   }
   const p = plan();
   const drift = [];
+  /**
+   * mode=repo で住処そのものが無いなら、**それ自体が乖離である**。
+   * 一つずつ「not deployed」を 58 回並べても真因は伝わらないので、先に名指す。
+   * (上流の不在では止めない —— 配備は vendor から建つ。上流はもはや供給元ではない(第20条)。)
+   */
+  if (!fs.existsSync(HOME)) {
+    drift.push({ kind: 'abode', file: '.claude', from: 'deploy(--write)',
+                 why: `リポジトリ内の住処 ${HOME} が存在しない — 派生物の欠損である。` +
+                      `node graph/deploy.js --write で建て直せ (第58条(e))` });
+  }
   for (const s of p.steps) {
     const a = contentHash(s.src), b = contentHash(s.dst);
     if (a === null) { drift.push({ ...s, why: 'source missing' }); continue; }
     if (b === null) { drift.push({ ...s, why: 'not deployed' }); continue; }
-    if (a !== b) {
-      // transform 対象は変換後に必ず差が出る。乖離ではない。
-      if (p.transforms.includes(s.kind)) continue;
-      drift.push({ ...s, why: 'deployed copy differs from its source' });
+    if (a === b) continue;
+    /**
+     * 差が出た。**変換が統べるキーだけを落として比べ直す。**
+     * ファイルまるごと免除すれば、本文の書き換えは永久に見えない(AC-7)。
+     */
+    if (p.transforms.includes(s.kind)) {
+      const keys = governedKeys(s.kind, c);
+      if (keys === null) {
+        drift.push({ ...s, why: `変換 engine の名簿に無い engine が ${s.kind} を統べている — ` +
+                                 'どのキーが変換の管轄かを deploy.js の TRANSFORM_KEYS に宣言せよ' });
+        continue;
+      }
+      const sa = stripFrontmatterKeys(read(s.src), keys);
+      const sb = stripFrontmatterKeys(read(s.dst), keys);
+      if (sa === sb) continue;                       // 変換の管轄内の差 — 乖離ではない
+      drift.push({ ...s, why: `変換の管轄外(frontmatter の ${keys.join('/')} 以外)で` +
+                               '配備物が出所と食い違う — 手で触られた疑い' });
+      continue;
     }
+    drift.push({ ...s, why: 'deployed copy differs from its source' });
   }
   // 教主の座も配備物である (第31条)。agents だけを見る検査は、最上位を見逃す。
   const seat = require('./apply-seat.js').diff();
@@ -171,13 +258,36 @@ function check() {
                    why: `env.${e.key} が展開されない参照を含む: ${e.detail}` });
     }
   }
-  return { ok: drift.length === 0, skipped: false, drift, checked: p.steps.length + 2, transforms: p.transforms };
+  return { ok: drift.length === 0, skipped: false, mode: where.mode, home: HOME,
+           drift, checked: p.steps.length + 2, transforms: p.transforms };
 }
 
 function write() {
   const p = plan();
   if (p.missing.length) {
     return { ok: false, error: `${p.missing.length} source file(s) missing`, missing: p.missing.map(m => m.src) };
+  }
+  /**
+   * **リポジトリ内の住処では、器そのものも配備物である**(第19条(b) / 第58条)。
+   *
+   * `apply-seat` も `apply-guards` も「settings.json が無ければ何もしない」と
+   * 決めている —— それで正しかったのは、住処が**神のマシンの資産**だった間だけである。
+   * `<repo>/.claude/` は `deploy --write` でいつでも建て直せる産物でなければならず、
+   * 「丸ごと消してから建て直す」が通らない配備は、建て直せる配備ではない。
+   *
+   * ⚠️ **種を撒くのは mode=repo のときだけ。** グローバルの settings.json は神の物であり、
+   * そこに楽園が新しいファイルを作る権能は無い(神託: グローバルには神が名指した物だけ)。
+   * 既に在るものは決して上書きしない —— 空の器を置くのは、器が無いときに限る。
+   */
+  const where = abode.resolve();
+  let seeded = null;
+  if (where.mode === 'repo') {
+    const sf = path.join(p.home, 'settings.json');
+    if (!fs.existsSync(sf)) {
+      fs.mkdirSync(p.home, { recursive: true });
+      fs.writeFileSync(sf, '{}\n');
+      seeded = sf;
+    }
   }
   const done = [];
   for (const s of p.steps) {
@@ -235,34 +345,54 @@ function write() {
            : `deny ${require('./apply-guards.js').POLICY.deny.length} / ask ${require('./apply-guards.js').POLICY.ask.length} / allow ${require('./apply-guards.js').POLICY.allow.length}${g.changed ? ` (更新 ${g.changes.length})` : ''}`;
   } catch (e) { return { ok: false, deployed: done.length, error: `guards: ${e.message}` }; }
 
-  return { ok: true, deployed: done.length, transforms: applied, pontiff_seat: seat, guards, home: p.home };
+  return { ok: true, deployed: done.length, seeded, mode: where.mode,
+           transforms: applied, pontiff_seat: seat, guards, home: p.home };
+}
+
+/**
+ * CLI 本体。**`process.exit()` を使わず `process.exitCode` を返す。**
+ *
+ * POSIX(CI は Ubuntu である)では stdout がパイプのとき `console.log` は
+ * 非同期に掃き出される。`process.exit()` はその掃き出しを待たずにプロセスを
+ * 畳むので、**手元の Windows では絶対に再現しない形で CI だけが出力を失う**。
+ * 値を返して自然に終わらせれば、node が掃き出しを待つ。
+ */
+function main(argv) {
+  const cmd = argv[2];
+  if (cmd === 'check') {
+    const r = check();
+    console.log('═══════ 🏛  DEPLOYMENT CHECK ═══════');
+    // 住処と mode を必ず名乗る。どこを検めたか言わない門は、緑でも証拠にならない。
+    console.log(`mode: ${r.mode || '(不明)'}   target: ${r.home || '(不明)'}`);
+    if (r.skipped) {
+      // **skip は理由を名乗る**(第58条(e))。真偽値の skip は「黙って通った」と同義である。
+      console.log(`  · skipped: ${r.skipped}`);
+      console.log('════════════════════════════════════');
+      return 0;
+    }
+    console.log('checked:', r.checked, ' transforms (diff expected):', r.transforms.join(', ') || 'none');
+    if (r.ok) console.log('  ✓ every deployed file matches its declared source');
+    else for (const d of r.drift.slice(0, 12)) console.log(`  🔴 ${d.kind}/${d.file} — ${d.why} (${d.from})`);
+    console.log('════════════════════════════════════');
+    return r.ok ? 0 : 1;
+  }
+  if (argv.includes('--write')) { console.log(JSON.stringify(write(), null, 2)); return 0; }
+  const p = plan();
+  console.log('═══════ 🏛  DEPLOYMENT PLAN ═══════');
+  console.log('upstream:', p.upstream);
+  console.log('target  :', p.home);
+  console.log('files   :', JSON.stringify(p.counts));
+  console.log('transform after copy:', p.transforms.join(', ') || 'none');
+  if (p.missing.length) for (const m of p.missing) console.log('  🔴 missing source:', m.src);
+  else console.log('  ✓ every source exists');
+  console.log('  (dry run — pass --write to deploy)');
+  console.log('═══════════════════════════════════');
+  return p.missing.length ? 1 : 0;
 }
 
 if (require.main === module) {
-  const cmd = process.argv[2];
-  try {
-    if (cmd === 'check') {
-      const r = check();
-      console.log('═══════ 🏛  DEPLOYMENT CHECK ═══════');
-      console.log('checked:', r.checked, ' transforms (diff expected):', r.transforms.join(', ') || 'none');
-      if (r.ok) console.log('  ✓ every deployed file matches its declared source');
-      else for (const d of r.drift.slice(0, 12)) console.log(`  🔴 ${d.kind}/${d.file} — ${d.why} (${d.from})`);
-      console.log('════════════════════════════════════');
-      process.exit(r.ok ? 0 : 1);
-    }
-    if (process.argv.includes('--write')) { console.log(JSON.stringify(write(), null, 2)); process.exit(0); }
-    const p = plan();
-    console.log('═══════ 🏛  DEPLOYMENT PLAN ═══════');
-    console.log('upstream:', p.upstream);
-    console.log('target  :', p.home);
-    console.log('files   :', JSON.stringify(p.counts));
-    console.log('transform after copy:', p.transforms.join(', ') || 'none');
-    if (p.missing.length) for (const m of p.missing) console.log('  🔴 missing source:', m.src);
-    else console.log('  ✓ every source exists');
-    console.log('  (dry run — pass --write to deploy)');
-    console.log('═══════════════════════════════════');
-    process.exit(p.missing.length ? 1 : 0);
-  } catch (e) { console.error('ERROR: ' + e.message); process.exit(1); }
+  try { process.exitCode = main(process.argv); }
+  catch (e) { console.error('ERROR: ' + e.message); process.exitCode = 1; }
 }
 
-module.exports = { plan, check, write };
+module.exports = { plan, check, write, governedKeys, stripFrontmatterKeys, TRANSFORM_KEYS };

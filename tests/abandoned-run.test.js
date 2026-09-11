@@ -86,7 +86,19 @@ function writeLedger(base, slug, run) {
   return p;
 }
 
-const ago = min => new Date(Date.now() - min * 60 * 1000).toISOString();
+/**
+ * 「いま」から `min` 分だけ遡った刻。
+ *
+ * ⚠️ **基準の刻を渡せる形にしてある。** かつてここは常に `Date.now()` を読んで
+ * いた。門は先に `const at = Date.now()` を採り、その後に `ago(1500)` が**もう一度**
+ * `Date.now()` を読む。二度の読みの間に 1ms でも進めば、
+ * `idleMs = at - (now₂ - 1500分)` は 1500 分を **わずかに下回る**。
+ * ゆえに `assert.ok(dead.idleMs >= 1500分)` が間欠的に破れた —— 実測(別の走者が
+ * 本枝の変更を一切含まない main で撃った): **30 万回中 10 回** 再現。
+ *
+ * 時計を二度読む門は、門ではなく賽である。基準を一度だけ読み、それを配る。
+ */
+const ago = (min, base) => new Date((base === undefined ? Date.now() : base) - min * 60 * 1000).toISOString();
 
 // ══════════════════════════════════════════════════════════════════════════
 // 欠陥A — 見捨てられた走行を名指しする
@@ -120,7 +132,7 @@ test('A-2: 閾値は実測に基づく — 閉じた走行の最長間隔を超�
 test('A-3 [故障注入]: 未完のまま無音の走行を名指しする', () => {
   const at = Date.now();
   // 25時間(1500分)無音・domains 4/6 — 実在した reform-claude-md-diet と同じ形
-  const dead = conclave.runAbandonment(ledger({ total: 6, ratified: 4, lastBeat: ago(1500) }), at);
+  const dead = conclave.runAbandonment(ledger({ total: 6, ratified: 4, lastBeat: ago(1500, at) }), at);
   assert.strictEqual(dead.state, 'abandoned', '25時間無音の未完走行を見逃した — これが実際に起きた欠陥である');
   assert.strictEqual(dead.abandoned, true);
   assert.strictEqual(dead.ratified, 4);
@@ -128,12 +140,12 @@ test('A-3 [故障注入]: 未完のまま無音の走行を名指しする', () 
   assert.ok(dead.idleMs >= 1500 * 60 * 1000, '無音の長さを名指ししていない');
 
   // **偽陽性を出さない**: 同じ 4/6 でも 10 分前に動いていれば active
-  const alive = conclave.runAbandonment(ledger({ total: 6, ratified: 4, lastBeat: ago(10) }), at);
+  const alive = conclave.runAbandonment(ledger({ total: 6, ratified: 4, lastBeat: ago(10, at) }), at);
   assert.strictEqual(alive.state, 'active', '10分前に動いた走行を見捨てられたと呼んだ — 偽陽性である');
   assert.strictEqual(alive.abandoned, false);
 
   // **閉じた環は何日経とうと鳴らない** — 鳴りやまない門は無視される
-  const closed = conclave.runAbandonment(ledger({ total: 6, ratified: 6, lastBeat: ago(99999) }), at);
+  const closed = conclave.runAbandonment(ledger({ total: 6, ratified: 6, lastBeat: ago(99999, at) }), at);
   assert.strictEqual(closed.state, 'closed', '閉じた環を鳴らし続けている');
   assert.strictEqual(closed.abandoned, false);
 });
@@ -141,9 +153,9 @@ test('A-3 [故障注入]: 未完のまま無音の走行を名指しする', () 
 test('A-4: 境の直前/直後で振る舞いが変わる(境が実在する)', () => {
   const at = Date.now();
   const m = conclave.ABANDONED_MS / 60000;
-  assert.strictEqual(conclave.runAbandonment(ledger({ ratified: 1, lastBeat: ago(m - 1) }), at).state, 'active',
+  assert.strictEqual(conclave.runAbandonment(ledger({ ratified: 1, lastBeat: ago(m - 1, at) }), at).state, 'active',
     '境の 1 分手前で既に鳴っている');
-  assert.strictEqual(conclave.runAbandonment(ledger({ ratified: 1, lastBeat: ago(m + 1) }), at).state, 'abandoned',
+  assert.strictEqual(conclave.runAbandonment(ledger({ ratified: 1, lastBeat: ago(m + 1, at) }), at).state, 'abandoned',
     '境を 1 分越えても鳴らない — 境が実装されていない');
 });
 

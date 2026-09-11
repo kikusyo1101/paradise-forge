@@ -152,6 +152,22 @@ jobs:
           node tests/abode.test.js
           node graph/abode.js check --ledger
 
+      # ── 両居 (第2段 / 第58条(e)) ──
+      # `<repo>/.claude/` は git 追跡の**派生物**である。clone 直後から在るので、
+      # ここは skip に落ちてはならない —— 落ちたら「派生物の欠損」であり赤である。
+      # **skip した門は門ではない**(第37条)。
+      - name: 🏠 Abode(repo)— リポジトリ内の住処へ実際に配備できるか (AC-5/6/13)
+        run: |
+          PARADISE_ABODE=repo node graph/deploy.js plan
+          PARADISE_ABODE=repo node graph/deploy.js check
+          PARADISE_ABODE=repo node graph/apply-guards.js verify
+
+      - name: 🏠 Abode(両居)— repo と global の両方で自己診断が緑か (AC-53)
+        # 片方でしか緑にならないなら、それは両居ではない(第20条)。
+        run: |
+          PARADISE_ABODE=repo   node tests/paradise.test.js
+          PARADISE_ABODE=global node tests/paradise.test.js
+
       # ── ダッシュボードの門 G-01〜G-10 (第22条 / 第50条) ──
       # **門が見ていない機能は、壊れても鳴らない。**
       # 改修前、tribunal.yml 全 207 行のうちダッシュボードに触れるのは atlas の 1 行のみで、
