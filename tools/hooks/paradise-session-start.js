@@ -16,21 +16,36 @@
  */
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const { execFileSync } = require('child_process');
 
-/** 楽園の場所は環境変数で上書きできる。絶対パス直書きは他環境を殺す。 */
+/**
+ * 楽園の場所は環境変数で上書きできる。絶対パス直書きは他環境を殺す。
+ *
+ * 二段で解決する: ① `PARADISE_ROOT` ② 自己位置(このファイルは
+ * `<paradise>/tools/hooks/` に置かれる)。**三段目は持たない。**
+ *
+ * かつて三段目は `path.join(os.homedir(), 'Documents', 'workspace', 'paradise')`
+ * だった —— 一台の機械の都合を全ての機械へ当てはめる推測である。
+ * 判定できないものを推測で埋めれば、**別の倉のフックが楽園の記憶を注ぐ**。
+ * 解決できなければ `null` を返し、呼び手は黙って手を引く(第16条 / 第58条(a))。
+ *
+ * ⚠️ ここは `~/.claude` ではなく**楽園リポジトリ自身**の住所であり、
+ *    `abode.js` の職掌(配備の木)とは性質が違う。ゆえに abode へは繋がない
+ *    —— 繋げば循環である(`abode.js` は倉の中に住み、倉の場所を前提にする)。
+ * @returns {string|null}
+ */
 function paradiseRoot() {
   if (process.env.PARADISE_ROOT) return process.env.PARADISE_ROOT;
   // このファイルは <paradise>/tools/hooks/ に置かれる
   const fromHere = path.resolve(__dirname, '..', '..');
   if (fs.existsSync(path.join(fromHere, 'graph', 'kg.js'))) return fromHere;
-  return path.join(os.homedir(), 'Documents', 'workspace', 'paradise');
+  return null;
 }
 
 function main() {
   try {
     const root = paradiseRoot();
+    if (!root) return;                     // 判定不能 — 推測で埋めない (第16条)
     const kg = path.join(root, 'graph', 'kg.js');
     if (!fs.existsSync(kg)) return;
 

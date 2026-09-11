@@ -6631,6 +6631,83 @@ test('atlas: 全ての道が図になる — 描画器が実際に受理する (
   } finally { fs.rmSync(outdir, { recursive: true, force: true }); }
 });
 
+test('atlas: 描画器の子は自らの名乗りを切らない — 出力は最後まで届く (第37条)', () => {
+  // **実測で特定した病** (PR #46 / CI だけが赤): `check-render-output.mjs` は
+  // `console.log(...)` の直後に `process.exit(...)` を呼んでいた。
+  // POSIX (CI の Ubuntu) では stdout がパイプのとき非ブロッキングで開かれ、
+  // パイプ緩衝 (64KiB) を越える分は非同期に掃き出される。`process.exit()` は
+  // それを待たないので、親は **status 0 のまま途中で切れた JSON** を読む。
+  // WSL Ubuntu で版元の写しを 20 回撃った実測: 20 回中 17 回が
+  // "Expected double-quoted property name in JSON at position 219186" —
+  // CI のログと**同じ位置・同じ文言**である。Windows は stdout パイプが
+  // 同期書き込みなので再現せず、「手元は緑、CI だけ赤」になった。
+  //
+  // **この門が守る不変条件**: 図の検査器は、終了を急いで自らの名乗りを切らない。
+  const checker = path.join(DIR, '..', 'overlay', 'vendor', 'archify', 'scripts', 'check-render-output.mjs');
+  const src = fs.readFileSync(checker, 'utf8');
+  // 最後の名乗りの後に `process.exit(` が在ってはならない。`exitCode` で名乗れ。
+  // **註釈は措いて実際の文だけを見る** — 病を説明する文字列が門を落としては、
+  // 門が裁いているのは散文であって振る舞いではない。
+  const tail = src.slice(src.indexOf('const ok = checks.every'))
+    .split('\n')
+    .filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line))
+    .join('\n');
+  assert.ok(tail.length > 0, '検査器の裁定行が見つからない — 門が何を測っているか不明である');
+  assert.ok(!/process\.exit\s*\(/.test(tail),
+    '検査器が名乗りの直後に process.exit() を呼んでいる — POSIX では stdout が' +
+    '掃き出される前にプロセスが死に、親は切れた JSON を読む。' +
+    'Windows では再現しないので、手元の緑は CI の緑を意味しない (第37条)');
+  assert.ok(/process\.exitCode\s*=/.test(tail),
+    '検査器が終了コードを名乗っていない — 壊れた図が緑を出す (治療が病を隠してはならない)');
+});
+
+test('atlas: 出力が限度を越えたことを「JSON の壊れ」と混同しない (第34条)', () => {
+  // 罠だった名乗り: 子の stdout が限度で切られたとき、版元は
+  // 「Could not parse the successful artifact-check receipt」と言った。
+  // これを読んだ者は**図を疑う**。だが図は壊れていない — 緩衝が足りなかっただけである。
+  // 原因を隔てる名乗りは罠である (第34条)。
+  //
+  // **実際に撃つ** (第37条: 撃てない門は門ではない)。`ARCHIFY_MAX_BUFFER_BYTES` で
+  // 限度を 800 バイトまで下げ、限度超過の経路を本当に通す。
+  //
+  // **図は門が自分で用意する**。`dashboard/atlas/` は生成物であり追跡されない
+  // (第29条) ので、そこに在ることを当てにすると、複製や初回の走行で
+  // 「測れない」で落ちる。門は己の題材を己で作る。
+  const bin = atlas.ARCHIFY;
+  const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-test-maxbuf-'));
+  try {
+    atlas.draw('wiring', { profile: 'quick', outdir });
+    const ir = path.join(outdir, 'wiring.architecture.json');
+    assert.ok(fs.existsSync(ir),
+      'wiring の IR を描けなかった — 限度超過の経路を撃てない (第37条: 不在は通過ではない)');
+
+    const out = path.join(outdir, 'limit-probe.html');
+    const res = require('child_process').spawnSync(process.execPath,
+      [bin, 'deliver', 'architecture', ir, out, '--quality', 'standard', '--json'],
+      { encoding: 'utf8',
+        env: { ...process.env, ARCHIFY_UPDATE_CHECK_DISABLED: '1', ARCHIFY_MAX_BUFFER_BYTES: '800' } });
+
+    let receipt;
+    try { receipt = JSON.parse(res.stdout); }
+    catch (e) {
+      assert.fail('限度超過のとき、描画器自身の名乗りまで壊れている: ' + e.message
+        + '\n--- stdout head ---\n' + String(res.stdout).slice(0, 400));
+    }
+
+    assert.strictEqual(receipt.ok, false,
+      '限度を越えたのに緑を出した — 測れていない走行を通過と呼んではならない (第37条)');
+    const codes = (receipt.diagnostics || []).map(d => d.code);
+    assert.ok(codes.includes('delivery/output-exceeded-limit'),
+      '限度超過が「限度超過」と名乗られていない (第34条)。実際の名乗り: '
+      + JSON.stringify(codes) + '\nmessage: ' + receipt.error);
+    assert.ok(!codes.includes('delivery/receipt-invalid'),
+      '限度超過を「JSON が壊れている」と名乗った — 読んだ者は無実の図を疑う (第34条)');
+    assert.ok(/not a broken diagram|was not judged/.test(receipt.error || ''),
+      '名乗りが「図は裁いていない」と言っていない — 読んだ者は図を疑い続ける (第34条)。'
+      + '実際: ' + receipt.error);
+  } finally { fs.rmSync(outdir, { recursive: true, force: true }); }
+});
+
 test('atlas: 交差を隠さない — 平面化不能なら standard を名乗り理由を書く (第47条)', () => {
   // full の道は建造2相が品質3相すべてに掛かるので、層化しても交差が残る。
   // それを showcase と偽れば、図は「綺麗だが嘘」になる。

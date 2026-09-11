@@ -11,10 +11,18 @@
  *   node tools/wire-paradise-hooks.js --remove # 取り外す
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const abode = require('../graph/abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const SETTINGS = process.env.CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
+/**
+ * ⚠️ この道具は**撤収の対象**である(design §3.5 / R-8)。
+ *    hooks 6 件が `settings.json` から引かれれば存在理由そのものが消える。
+ *    廃止は第6段(work-6)の仕事であり、その順序は
+ *    ①overlay.json の $note → ③ファイル削除 → ②免除の解除 である
+ *    (②を先にやれば `paradise.test.js:6467` が赤くなる — 門を先に緩めない)。
+ *    第1段では住所だけを付け替え、道具の生死には手を触れない。
+ */
+const SETTINGS = process.env.CLAUDE_SETTINGS || abode.pathFor('settings');
 const ROOT = path.resolve(__dirname, '..');
 const HOOK = path.join(ROOT, 'tools', 'hooks', 'paradise-session-start.js').replace(/\\/g, '/');
 const MARK = 'paradise-session-start.js';

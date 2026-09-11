@@ -25,10 +25,10 @@
  */
 'use strict';
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const ROOT = process.env.PARADISE_KG || path.join(os.homedir(), '.claude', 'paradise-kg');
+const ROOT = process.env.PARADISE_KG || abode.pathFor('kg');
 const NODES = path.join(ROOT, 'nodes.jsonl');
 const EDGES = path.join(ROOT, 'edges.jsonl');
 const COCHANGE = path.join(ROOT, 'cochange.jsonl');

@@ -47,13 +47,79 @@ function rendererPath(type) {
   return path.join(skillRoot, 'renderers', type, `render-${type}.mjs`);
 }
 
+// 楽園による改修 (第20条 / 第34条: 罠を残さない)
+//
+// **なぜ明示するか**: `spawnSync` の `maxBuffer` 既定は 1MiB である。描画器の
+// 検査器 (`check-render-output.mjs`) は図が密になるほど出力が伸びる — 実測で
+// connections 54 → 66 のとき 159,335 → 231,442 文字に伸びた。1MiB は今の図なら
+// 余裕があるが、「余裕がある」を根拠なく既定値に預けるのは第34条の罠である。
+//
+// **32MiB の根拠**: 実測で最大の図 (wiring, connections 66) が 231KiB。
+// 図の出力は辺数にほぼ比例して伸びる (54辺→159KiB, 66辺→231KiB ≒ 1辺あたり 6KiB)。
+// 32MiB は現状の約 140 倍 — 辺が 5,000 本を越えるまで当たらない。それだけ育った図は
+// 「大きすぎる」と別の門が先に裁くべきであって、緩衝の事故で裁かれてはならない。
+//
+// **env で下げられるのは門のためである** (第37条: 撃てない門は門ではない)。
+// 「限度超過を JSON の壊れと混同しない」ことを裁く門は、**実際に限度を越えさせ**
+// なければ何も測れない。32MiB を本当に生む図を作るのは現実的でないので、門は
+// この env で限度を数百バイトまで下げて経路を撃つ。上げる方向には使わない。
+const RUN_NODE_MAX_BUFFER = (() => {
+  const raw = Number.parseInt(process.env.ARCHIFY_MAX_BUFFER_BYTES || '', 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 32 * 1024 * 1024;
+})();
+
 function runNode(args, options = {}) {
   return spawnSync(process.execPath, args, {
     cwd: options.cwd || process.cwd(),
     encoding: 'utf8',
     stdio: options.stdio || 'inherit',
+    maxBuffer: options.maxBuffer ?? RUN_NODE_MAX_BUFFER,
     env: options.env ? { ...process.env, ...options.env } : process.env,
   });
+}
+
+// 出力が限度を越えて切られたのか、本当に JSON が壊れているのかを**区別して名乗る**。
+//
+// 第34条: 原因を隔てる名乗りは罠である。「JSON が壊れている」と言われた者は図を疑い、
+// 図は壊れていないので何も見つからない。切られたのなら**切られたと名乗れ**。
+//
+// `spawnSync` は `maxBuffer` を越えると `status: null` と `error.code === 'ENOBUFS'`
+// を返す (実測: node v24 Windows / v22 Linux とも同じ)。この印が在れば、JSON の
+// 解析失敗は**結果**であって原因ではない。
+function describeChildOutputFailure(result, parseError) {
+  const limit = result?.error?.code === 'ENOBUFS' || result?.error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER';
+  if (limit) {
+    return {
+      code: 'delivery/output-exceeded-limit',
+      message: 'The artifact checker produced more output than the harness accepts;'
+        + ` its receipt was cut off at ${result.stdout ? result.stdout.length : 0} characters.`
+        + ' The diagram itself was not judged — this is a harness limit, not a broken diagram.',
+      evidence: {
+        reason: 'child stdout exceeded maxBuffer',
+        systemCode: result.error.code,
+        bytesReceived: result.stdout ? Buffer.byteLength(result.stdout) : 0,
+        maxBuffer: RUN_NODE_MAX_BUFFER,
+      },
+    };
+  }
+  // 限度の印が無いのに末尾で壊れている = 子が掃き出しを待たずに終わった疑い。
+  // これも「図が壊れている」ではない。切られた、と名乗る。
+  const stdout = typeof result?.stdout === 'string' ? result.stdout : '';
+  const looksTruncated = stdout.length > 0 && !/[\]}]\s*$/.test(stdout);
+  if (looksTruncated) {
+    return {
+      code: 'delivery/receipt-truncated',
+      message: 'The artifact-check receipt ended mid-value, so the checker\'s output was cut off'
+        + ` after ${stdout.length} characters rather than being invalid JSON.`
+        + ' The diagram itself was not judged.',
+      evidence: { reason: parseError.message, bytesReceived: Buffer.byteLength(stdout), truncated: true },
+    };
+  }
+  return {
+    code: 'delivery/receipt-invalid',
+    message: `Could not parse the successful artifact-check receipt: ${parseError.message}`,
+    evidence: { reason: parseError.message, bytesReceived: Buffer.byteLength(stdout) },
+  };
 }
 
 function extractQualityArgs(args) {
@@ -908,6 +974,32 @@ async function commandDeliver(args) {
     const check = runNode([path.join(skillRoot, 'scripts/check-render-output.mjs'), candidatePath], {
       stdio: 'pipe',
     });
+    // **限度超過は「図が壊れた」ではない** (第34条)。`maxBuffer` を越えると
+    // `spawnSync` は `status: null` を返すので、素直に書くとこの下の
+    // `check.status !== 0` に落ちて「Final artifact check failed」— つまり
+    // **図のせいにされる**。判定は下せていないのだから、図を裁いてはならない。
+    // status を見る前に、出力が切られていないかを先に問う。
+    if (check.error || (typeof check.stdout === 'string' && check.stdout.length > 0 && !/[\]}]\s*$/.test(check.stdout))) {
+      const cut = describeChildOutputFailure(check, new Error('child output ended before a complete receipt'));
+      if (cut.code !== 'delivery/receipt-invalid') {
+        if (check.stderr) process.stderr.write(check.stderr);
+        reportDeliveryFailure({
+          json,
+          stage: 'receipt',
+          type,
+          input: inputPath,
+          output: outputPath,
+          error: cut.message,
+          diagnostics: [diagnostic({
+            code: cut.code,
+            message: cut.message,
+            subject: { output: outputPath },
+            evidence: cut.evidence,
+          })],
+        });
+        return;
+      }
+    }
     if (check.status !== 0) {
       if (check.stderr) process.stderr.write(check.stderr);
       let checker;
@@ -935,19 +1027,20 @@ async function commandDeliver(args) {
     try {
       result = JSON.parse(check.stdout);
     } catch (error) {
-      const message = `Could not parse the successful artifact-check receipt: ${error.message}`;
+      // 第34条: 「JSON が壊れている」と名乗るな — 切られたのか壊れたのかを区別せよ。
+      const classified = describeChildOutputFailure(check, error);
       reportDeliveryFailure({
         json,
         stage: 'receipt',
         type,
         input: inputPath,
         output: outputPath,
-        error: message,
+        error: classified.message,
         diagnostics: [diagnostic({
-          code: 'delivery/receipt-invalid',
-          message,
+          code: classified.code,
+          message: classified.message,
           subject: { output: outputPath },
-          evidence: { reason: error.message },
+          evidence: classified.evidence,
         })],
       });
       return;

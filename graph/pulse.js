@@ -49,6 +49,7 @@ const spawnTrace = require('./spawn-trace.js');
 const dailyGuard = require('./daily-guard.js');
 const lessons = require('./lessons.js');
 const codex = require('./codex.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 const ROOT = path.join(__dirname, '..');
 const GRAPH = __dirname;
@@ -317,7 +318,16 @@ function countJsonl(file) {
   return n;
 }
 
-function claudeDir(...seg) { return path.join(os.homedir(), '.claude', ...seg); }
+/**
+ * 配備の木の中の道。**この 1 関数が pulse の 5 箇所(agents / commands / skills /
+ * kg / SSE 監視)の全ての住所を決める。**
+ *
+ * ⚠️ `dashboard-no-deps.test.js:57` の門は「書き込み行に文字列 `.claude` が
+ *    現れない」ことを見ている。付け替えで literal が消えるので、あの門は
+ *    **構文上は通り続けるが意味を失う**(L-18)。門の建て替えは第3段(work-3)の
+ *    仕事であり、ここで門を書き換えることはしない —— 門を先に緩めない。
+ */
+function claudeDir(...seg) { return path.join(abode.pathFor('abode'), ...seg); }
 const countEntries = (dir) => fs.readdirSync(dir).length;
 
 function buildAtlas(errors) {

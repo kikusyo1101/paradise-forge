@@ -23,12 +23,11 @@
  */
 'use strict';
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const clergy = require('./clergy.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const SETTINGS = process.env.PARADISE_SETTINGS ||
-  path.join(process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude'), 'settings.json');
+const SETTINGS = process.env.PARADISE_SETTINGS || abode.pathFor('settings');
 
 /**
  * 無人運転(cron)の座。教主の座とは別に固定する。

@@ -19,10 +19,10 @@
  * 責めるのではなく、存在すべきものが欠けていないかだけを見る。
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const forge = require('./forge.js');
 const clergy = require('./clergy.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 /** engine 側の疑似エージェント（~/.claude に実体を持たない） */
 const PSEUDO = new Set(['verification-loop']);
@@ -103,7 +103,7 @@ function ungovernedPhases() {
  *   ③ 宣言した深さが実行基盤の上限内か   — 越えれば黙って実行に落ちる
  */
 function hierarchyIntegrity(agentsDir) {
-  const dir = agentsDir || path.join(os.homedir(), '.claude', 'agents');
+  const dir = agentsDir || abode.pathFor('agents');
   let files;
   try { files = fs.readdirSync(dir).filter(f => f.endsWith('.md')); } catch {
     return { skipped: true, findings: [] };
@@ -202,15 +202,37 @@ function installedAgents(dir) {
 }
 
 function check(agentsDir, opts) {
-  const dir = agentsDir || path.join(os.homedir(), '.claude', 'agents');
+  /**
+   * 引数で明示された道(試験の作り物)と、**解決器が答えた住所**を区別する。
+   * これが第36条の「門は消すのではなく分ける」の適用である:
+   *   - 明示された道の不在は従来どおり skip(`paradise.test.js:1459` が符号化している)
+   *   - 解決器が答えた住所で、しかも住処が倉の内側(mode=repo)なら、
+   *     神官の不在は「ハーネス不在」ではなく**派生物の欠損**である(第58条(e))
+   * ⚠️ 第1段(work-1)の既定は `global` なので、下の repo 分岐はまだ一度も走らない。
+   *    既定の反転は第4段の仕事であり、その時この分岐が初めて牙を持つ。
+   */
+  const explicit = !!agentsDir;
+  /**
+   * 住所と mode を**一度の解決から**採る。二度呼べば、`opts.env` を差した
+   * 呼び手に対して「mode は repo と答えたのに住所は global」という割れ方をする
+   * —— 住所を作れる場所が一つでも、**引き方が二本なら答えは割れる**。
+   */
+  const site = abode.resolve(opts);
+  const dir = agentsDir || site.agents;
   const map = referenceMap(opts);
   const need = [...map.keys()].sort();
   const sources = {};
   for (const [a, s] of map) sources[a] = [...s].sort();
   const have = installedAgents(dir);
   if (!have || have.size === 0) {
+    if (!explicit && site.mode === 'repo') {
+      return { ok: false, skipped: false, dir, need, sources,
+               missing: need, dangling: need.map(a => ({ agent: a, namedBy: sources[a] })),
+               ungoverned: [], misrouted: [], hierarchy: [],
+               note: `リポジトリ内の住処に神官が一体も居ない: ${dir} — node graph/deploy.js --write で建てよ` };
+    }
     return { ok: true, skipped: true, dir, need, sources, missing: [], dangling: [],
-             note: 'no harness at this path — nothing to verify' };
+             note: `no harness at this path — nothing to verify (mode=${site.mode})` };
   }
   const missing = need.filter(a => !have.has(a));
   // 宙吊り参照 = 欠けている神官 × それを名指した出所

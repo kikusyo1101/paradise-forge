@@ -26,7 +26,7 @@
  "deploy_target": {
   "path_env": "CLAUDE_HOME",
   "default_path": "~/.claude",
-  "$note": "配備先は成果物であって原本ではない。いつ消えても再生成できること。"
+  "$note": "配備先は成果物であって原本ではない。いつ消えても再生成できること。⚠️ 住所の権威は graph/abode.js に移った (第58条(a) / work-1)。この default_path はもう読まれない — upstream.claudeHome() は abode.pathFor('abode') を返す。path_env の CLAUDE_HOME は abode の個別 env として生き続ける。読まれない宣言を放置すれば、次の者がそれを真実だと読む。"
  },
  "kinds": [
   "agents",

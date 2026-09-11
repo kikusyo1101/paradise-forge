@@ -17,9 +17,9 @@
  *   vendor.js verify            独立が保たれているか (上流への依存が残っていないか)
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 const ROOT = path.resolve(__dirname, '..');
 const VENDOR = path.join(ROOT, 'overlay', 'vendor');
@@ -45,9 +45,13 @@ const TOOLS = {
   },
 };
 
-function expand(p) { return p && p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p; }
-function claudeHome() { return expand(process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude')); }
-function settingsPath() { return process.env.CLAUDE_SETTINGS || path.join(claudeHome(), 'settings.json'); }
+/**
+ * `expand()` は削除した —— vendor は `~` 付きの道を一本も持たない
+ * (実測: `expand` の呼び手は 49/50 行の 2 箇所のみだった)。
+ * 住所は `abode.js` が答える(第58条(a))。
+ */
+function claudeHome() { return abode.pathFor('abode'); }
+function settingsPath() { return process.env.CLAUDE_SETTINGS || abode.pathFor('settings'); }
 
 function countFiles(dir) {
   let n = 0;

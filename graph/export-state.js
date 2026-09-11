@@ -9,18 +9,18 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const kg = require('./kg.js');
 const forge = require('./forge.js');
 const clergy = require('./clergy.js');
 const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
+const abode = require('./abode.js');           // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 const ROOT = path.join(__dirname, '..');
 
 function readGraph() {
   const nodes = kg.query('');            // all nodes
   // rebuild edges from the store the same way kg does
-  const kgRoot = process.env.PARADISE_KG || path.join(os.homedir(), '.claude', 'paradise-kg');
+  const kgRoot = process.env.PARADISE_KG || abode.pathFor('kg');
   let edges = [];
   try {
     edges = fs.readFileSync(path.join(kgRoot, 'edges.jsonl'), 'utf8')
