@@ -272,8 +272,29 @@ if (svgMatches.length === 1) {
 }
 
 const ok = checks.every((check) => check.ok) && composition.status !== 'fail';
-console.log(JSON.stringify({ ok, file: htmlPath, checks, composition }, null, 2));
-process.exit(ok ? 0 : 1);
+
+// 楽園による改修 (第20条: 取り込んだ物は楽園の所有物である / 第34条: 罠を残さない)
+//
+// **病**: 元は `console.log(...)` の直後に `process.exit(...)` を呼んでいた。
+// POSIX (CI の Ubuntu) では stdout がパイプのとき **非ブロッキング**で開かれる。
+// パイプ緩衝 (Linux 既定 64KiB) を越える書き込みは部分書き込みになり、残りは
+// 非同期に掃き出される。`process.exit()` はその掃き出しを**待たない**ので、
+// 受け取り側は**途中で切れた JSON** を読む。親は `status 0` を見ているのに
+// stdout は不完全 — これが「JSON が壊れている」という誤った名乗りの正体である。
+// Windows では stdout パイプが同期書き込みなので**再現しない**。だから
+// 「手元は緑、CI だけ赤」になった。
+//
+// **実測** (WSL Ubuntu, node v22.14.0, 231,442 文字を 10 回):
+//   process.exit あり … 10 回中 5 回が 219,264 文字で切断
+//                       → "Unterminated string in JSON at position 219264"
+//   process.exit なし … 15 回中 0 回 (600,000 文字でも 0 回)
+// CI の実際の破断位置 219,186 と一致する (図の中身で数百文字ずれるだけ)。
+//
+// **治療**: 終了コードは `process.exitCode` で名乗り、exit を呼ばない。
+// node は event loop が空になってから終わるので、stdout は最後まで掃き出される。
+// 出力を切り詰めないのは意図的である — 診断は痩せさせず、完全に届けるべきである。
+process.stdout.write(`${JSON.stringify({ ok, file: htmlPath, checks, composition }, null, 2)}\n`);
+process.exitCode = ok ? 0 : 1;
 
 function collectArrows(fragment) {
   const arrows = [];
