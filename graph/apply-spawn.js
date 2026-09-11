@@ -25,13 +25,16 @@
  * 最小権限を守る: **信徒を擁する神官にだけ**与える。全員には与えない。
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const clergy = require('./clergy.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const AGENTS_DIR = () => process.env.CLAUDE_HOME
-  ? path.join(process.env.CLAUDE_HOME, 'agents')
-  : path.join(os.homedir(), '.claude', 'agents');
+/**
+ * 兄弟の `apply-models.js` と**同一の口**にする(AC-20 の対称性)。
+ * 片方が `PARADISE_AGENTS` を見て他方が `CLAUDE_HOME` だけを見ていた頃は、
+ * 隔離した走行で agents の frontmatter が二つの住処に割れた。
+ */
+const AGENTS_DIR = () => process.env.PARADISE_AGENTS || abode.pathFor('agents');
 
 /**
  * 起動の権能を持つべき者 = 下位を擁する者。

@@ -25,7 +25,6 @@
  * ゆえに `ordain forge --write` の直後、`~/.claude/agents/<新名>.md` は**存在しない**。
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -65,14 +64,15 @@ const domainsLedger = () => require('./domains.js').LEDGER;
 
 const clergy = require('./clergy.js');
 const domains = require('./domains.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 /** 既存の全ての名。**鍛造の時点で衝突を裁く** — 後の門に叱られるのは8工程時代と同じ体験である。 */
 function existingNames() {
   const out = new Set();
   try { for (const f of fs.readdirSync(agentsDir())) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, '')); } catch {}
   try {
-    const home = process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude');
-    for (const f of fs.readdirSync(path.join(home, 'agents'))) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, ''));
+    // 配備先の神官も名の衝突に数える。住所は abode.js が答える(第58条(a))。
+    for (const f of fs.readdirSync(abode.pathFor('agents'))) if (f.endsWith('.md')) out.add(f.replace(/\.md$/, ''));
   } catch {}
   for (const p of clergy.allPriests()) out.add(p);
   for (const b of clergy.allBelievers()) out.add(b);

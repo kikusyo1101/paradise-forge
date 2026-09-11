@@ -14,10 +14,10 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const clergy = require('./clergy.js');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const AGENT_DIR = process.env.PARADISE_AGENTS || path.join(os.homedir(), '.claude', 'agents');
+const AGENT_DIR = process.env.PARADISE_AGENTS || abode.pathFor('agents');
 
 /** Which rank does this agent hold? */
 function rankOf(name) {

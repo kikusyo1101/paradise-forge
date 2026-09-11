@@ -21,23 +21,34 @@
  *   - `adopt` は人の承認を要する。機械は判断材料までを用意する
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
 const ROOT = path.resolve(__dirname, '..');
 const OVERLAY = path.join(ROOT, 'overlay', 'overlay.json');
 
+/**
+ * `~` を展開する。**上流の道(`~/Documents/workspace/everything-claude-code`)を
+ * 展開する正当な用途があるので、この関数は残す。** ただしホームの出所は
+ * `abode.home()` に一本化する —— 住所を作れる場所は一つである(第58条(a))。
+ */
 function expand(p) {
   if (!p) return p;
-  return p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p;
+  return p.startsWith('~') ? path.join(abode.home(process.env), p.slice(1)) : p;
 }
 function cfg() { return JSON.parse(fs.readFileSync(OVERLAY, 'utf8')); }
 function upstreamPath(c) {
   return expand(process.env[c.upstream.path_env] || c.upstream.default_path);
 }
-function claudeHome(c) {
-  return expand(process.env[c.deploy_target.path_env] || c.deploy_target.default_path);
+/**
+ * 配備先。**住所の権威は `graph/abode.js` に移った。**
+ * `overlay.json` の `deploy_target.default_path` はもう読まれない
+ * (`path_env: CLAUDE_HOME` は abode の個別 env として生き続ける)。
+ * 引数 `c` は呼び手の互換のために残す。
+ */
+function claudeHome(_c) {
+  return abode.pathFor('abode');
 }
 function git(dir, args) {
   return execFileSync('git', args, { cwd: dir, encoding: 'utf8', timeout: 120000 }).trim();

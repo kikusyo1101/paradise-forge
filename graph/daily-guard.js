@@ -30,10 +30,9 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const LEDGER = process.env.PARADISE_DAILY_LEDGER ||
-  path.join(os.homedir(), '.claude', 'paradise-daily.json');
+const LEDGER = process.env.PARADISE_DAILY_LEDGER || abode.pathFor('dailyLedger');
 const TARGET_HOUR = Number(process.env.PARADISE_DAILY_HOUR || 22);
 /** How long a claimed lease is honoured before it is presumed dead (minutes). */
 const LEASE_MINUTES = Number(process.env.PARADISE_DAILY_LEASE_MINUTES || 90);

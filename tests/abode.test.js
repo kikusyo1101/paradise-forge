@@ -493,37 +493,74 @@ test('註釈は道を説明してよい — 走るコードの中の住所だけ
 });
 
 /**
- * **住所走査の基準値** —— この段では「増えたら赤」で守る。
+ * **住所走査はゼロを要求する。**
  *
- * 出所は実測である(改革前 / 本走行時に再測):
- *   $ rg -o "os\.homedir\(\)" graph/*.js tools -g '!**\/node_modules\/**' | wc -l
- *   16          ← 14 ファイル / 16 箇所 (design.md §3 の付け替え地図と一致)
- * `abode.js` 自身の 1 箇所は除外の内側にあるので、この数には現れない。
+ * 改革前の実測(work-1 の出発点):
+ *   $ node graph/abode.js check --count
+ *   ✗ 楽園の住所を直に作っている engine (16 件) — abode.js を通せ   ← exit 1
+ *     14 ファイル / 16 箇所 (design.md §3 の付け替え地図と一致)
  *
- * work-1 が 16 箇所を全て `abode` 経由に付け替える。**その時この門を締め直す**:
- * TODO(work-1 完了後): 下の 2 行を
- *     assert.strictEqual(refs.length, 0, ...);
- * に置き換え、KNOWN_HOMEDIR_RESIDUE ごと消すこと。
- * 基準値を残したまま work-1 を「完了」と呼べば、この門は残骸を守る門になる。
+ * work-1 が 16 箇所を全て `abode` 経由に付け替えた。ゆえにこの門は
+ * **基準値を捨ててゼロを要求する**。基準値を残したまま work-1 を「完了」と
+ * 呼べば、この門は残骸を守る門になる —— 緩んだ門は、いつか残骸を守る門になる。
+ * `abode.js` 自身の 1 箇所は除外の内側にあるので、この数には現れない
+ * (除外の裏付けは `exclusionAudit` の四重の錠が別に検めている)。
  */
-const KNOWN_HOMEDIR_RESIDUE = 16;
-
-test(`住所の直書きは基準値 ${KNOWN_HOMEDIR_RESIDUE} 件から増えていない (work-1 で 0 にする)`, () => {
+test('住所の直書きは生産コードに一つも無い (第58条(a))', () => {
   const refs = abode.homedirRefs();
-  assert.ok(refs.length <= KNOWN_HOMEDIR_RESIDUE,
-    `住所の直書きが ${refs.length} 件に増えた (基準 ${KNOWN_HOMEDIR_RESIDUE}) — ` +
-    '新しい engine が abode.js を通さずに住所を作っている:\n' +
-    refs.map(r => `  ${r.file}:${r.line}  ${r.text}`).join('\n'));
-  // 減ったなら基準値を下げよ。緩んだ門は、いつか残骸を守る門になる。
-  assert.ok(refs.length === KNOWN_HOMEDIR_RESIDUE || refs.length === 0,
-    `住所の直書きが ${refs.length} 件に減った — この試験の KNOWN_HOMEDIR_RESIDUE を下げよ (第22条)`);
+  assert.deepStrictEqual(refs.map(r => `${r.file}:${r.line}  ${r.text}`), [],
+    `住所の直書きが ${refs.length} 件残っている — abode.js を通していない engine が在る`);
 });
 
-test(`check --count は残存を隠さず exit 1 で名指す (この段では赤が正しい)`, () => {
+test('check --count は残存ゼロを exit 0 で答える (work-1 の完了条件)', () => {
   const r = cli(['check', '--count']);
-  assert.strictEqual(r.code, 1,
-    '生産コードに住所の直書きが残っているのに緑を出した — 門を緩めて通してはならない');
-  assert.ok(/graph\/pulse\.js:\d+/.test(r.out), `行を名指ししていない: ${r.out}`);
+  assert.strictEqual(r.code, 0,
+    `check --count が exit ${r.code} — 住所の直書きが残っている:\n${r.out}`);
+  // **門を緩めて緑にしていないこと**を、除外の名乗りで確かめる(第54条(c))。
+  assert.ok(/除外 1 件: graph\/abode\.js/.test(r.out),
+    `除外を黙って適用している(名乗りの行が無い): ${r.out}`);
+});
+
+test('【逆】新しい engine が住所を直に作れば check --count は赤に戻る', () => {
+  // 門がゼロを要求するようになった以上、**1 件でも鳴ること**を実際に撃つ。
+  // 在ることを資格と認めない(第54条(b))—— 緑は「撃っても鳴らない」ではなく
+  // 「撃てば鳴る門が、今は鳴っていない」でなければならない。
+  const root = fakeRepo('residue', {
+    files: {
+      'graph/newcomer.js':
+        "const os = require('os');\nconst path = require('path');\n" +
+        "const AGENTS = path.join(os.homedir(), '.claude', 'agents');\n",
+    },
+  });
+  const refs = abode.homedirRefs(root).filter(r => r.file === 'graph/newcomer.js');
+  assert.strictEqual(refs.length, 1, `新しい直書きを名指せていない: ${JSON.stringify(refs)}`);
+  assert.strictEqual(refs[0].why, 'os.homedir() の直接呼び出し');
+});
+
+/**
+ * **住所走査は `check` の既定経路に入っている。**
+ *
+ * work-1 の問い:「基準値をゼロへ締め直したなら、`--count` を旗なしの `check` に
+ * 入れられるか」。答えは**入っている**(`check()` の `all` 分岐が住所走査を
+ * 常に走らせる)。だが「入っている」を散文で述べれば腐る(第10条)。
+ * ゆえに**旗を立てずに撃って赤になること**を門が握る —— 誰かが将来
+ * `--count` を旗つきの特別扱いに戻せば、ここが鳴る。
+ */
+test('旗を立てない check も住所走査を走らせる (--count は既定経路に在る)', () => {
+  const root = fakeRepo('default-path', {
+    files: {
+      'graph/rogue.js':
+        "const os = require('os');\nconst path = require('path');\n" +
+        "const D = path.join(os.homedir(), '.claude');\n",
+    },
+  });
+  const bare = abode.check({ repoRoot: root });             // 旗を一つも立てない
+  assert.strictEqual(bare.ok, false, '旗なしの check が住所の直書きを見逃した');
+  assert.ok(bare.homedir.some(h => h.file === 'graph/rogue.js'),
+    `旗なしの check が行を名指していない: ${JSON.stringify(bare.homedir)}`);
+  // 台帳の段も同時に走ること(既定は --all である)を、旗つきとの差で確かめる。
+  const onlyCount = abode.check({ repoRoot: root, count: true });
+  assert.deepStrictEqual(onlyCount.ledger, [], '--count だけで台帳の段まで走っている');
 });
 
 // ══════════════════════════════════════════════════════════════════════

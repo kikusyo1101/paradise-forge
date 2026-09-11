@@ -63,11 +63,12 @@
  *   `Bash|PowerShell` にする。
  */
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const abode = require('./abode.js');   // 第58条: 楽園自身の住所を知るのは abode.js だけ
 
-const SETTINGS = process.env.PARADISE_SETTINGS ||
-  path.join(process.env.CLAUDE_HOME || path.join(os.homedir(), '.claude'), 'settings.json');
+// `PARADISE_SETTINGS` は abode より強い(既存の門と CI がこれで実機を差し替える)。
+// 生の値をそのまま採るのは、相対の道を渡されたときの従来の解釈を保つためである。
+const SETTINGS = process.env.PARADISE_SETTINGS || abode.pathFor('settings');
 
 /**
  * 既知のツール名群。matcher は tool_name に照合されるので、
