@@ -100,14 +100,24 @@ test('resolve は全住所と由来を返し、mode は repo|global の 2 値で
   assert.ok(['env', 'default'].includes(r.source), `source が由来を名乗らない: ${r.source}`);
 });
 
-test('この段の既定は global である — 既定の反転は第4段の仕事 (AC-52)', () => {
-  // **神の日常が 1 バイトも変わっていないこと**を、この一行で固定する。
-  // work-4 がここを 'repo' に変える。その差分が 1 行であることが PR の可読性の要件。
-  assert.strictEqual(abode.DEFAULT_MODE, 'global',
-    '第0段で既定を反転させてはならない — 器を建てるのと住所を移すのは別の仕事である');
-  const r = abode.resolve({ env: {} });
-  assert.strictEqual(r.mode, 'global');
-  assert.strictEqual(r.source, 'default');
+test('反転の差分は 1 行である — 段階は定数一つが表す (AC-52 / design §1.3)', () => {
+  /**
+   * **AC-52 の意味はここで変わらない。** 第0段では「反転してはならない」を、
+   * 第4段では「反転は 1 行で表されねばならない」を守る —— どちらも同じ要件、
+   * すなわち**段階が一箇所にだけ住むこと**の両面である。
+   *
+   * ソースを実際に走査して数える。`DEFAULT_MODE` に値を代入する行が 2 本在れば、
+   * 反転は 1 行の差分ではなくなり、design §1.3 が PR の可読性の要件として
+   * 置いた形が壊れる。かつ二箇所が食い違えば、住所は静かに割れる。
+   */
+  const src = fs.readFileSync(ABODE_JS, 'utf8').split('\n');
+  const assigns = src
+    .map((l, i) => ({ i: i + 1, t: l.trim() }))
+    .filter(x => /^const\s+DEFAULT_MODE\s*=/.test(x.t));
+  assert.strictEqual(assigns.length, 1,
+    '既定を決める行が 1 本でない — 段階は一箇所にだけ住まねばならない: ' + JSON.stringify(assigns));
+  assert.ok(/'repo'|"repo"/.test(assigns[0].t),
+    `第4段の既定は repo である: ${assigns[0].t}`);
 });
 
 test('PARADISE_ABODE=repo なら全住所が <repo> 配下で、sentinel は 0 件 (AC-1)', () => {
@@ -167,6 +177,52 @@ test('未知の path の鍵は exit 2 で、引ける鍵を名乗る (第16条)'
 
 test('pathFor は未知の鍵に undefined を返さず throw する', () => {
   assert.throws(() => abode.pathFor('agentz'), /未知の住所の鍵/);
+});
+
+test('第4段の既定は repo である — 素の走行が楽園の内を向く (AC-54)', () => {
+  /**
+   * **この一行が段階を表す。**(design §1.3)
+   * 第0〜3段は `'global'`(神の日常を 1 バイトも変えない)。第4段でここが `'repo'` に
+   * 反転した —— **差分は 1 行**であり、戻すのも 1 行である(design §8 危険2 の退路)。
+   *
+   * ⚠️ この門は「定数が repo であること」だけでは足りない。定数を見て `resolve()` が
+   * 別の答えを返すなら、宣言と実測が割れている(第10条)。ゆえに**両方**を見る。
+   */
+  assert.strictEqual(abode.DEFAULT_MODE, 'repo',
+    '既定が反転していない — 第4段は既定を repo にする段である');
+  const r = abode.resolve({ env: {} });
+  assert.strictEqual(r.mode, 'repo', '定数は repo なのに resolve が別の答えを返した');
+  assert.strictEqual(r.source, 'default', 'env 無しで source が default でない');
+});
+
+test('反転は実測でも効いている — 素の resolve の全住所が <repo> 配下 (AC-54 / work-4 完了条件)', () => {
+  /**
+   * **子プロセスで、env を一つも立てずに撃つ。** 親の process.env を継いだ
+   * `resolve()` は、試験走行が立てた `PARADISE_*` を吸ってしまいうる ——
+   * それでは「素の走行」を測ったことにならない(第58条(c) の同型)。
+   */
+  const clean = { ...process.env };
+  for (const k of Object.keys(clean)) if (/^PARADISE_|^CLAUDE_HOME$/.test(k)) delete clean[k];
+  const r = spawnSync(process.execPath, [ABODE_JS, 'resolve', '--json'],
+    { encoding: 'utf8', cwd: ROOT, env: clean });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.mode, 'repo');
+  assert.strictEqual(j.source, 'default');
+  for (const k of ['abode', 'settings', 'agents', 'commands', 'rules', 'skills', 'claudeMd', 'kg', 'dailyLedger']) {
+    assert.ok(j[k].startsWith(ROOT),
+      `素の走行で ${k} が楽園の外を指している: ${j[k]} — 反転が効いていない (AC-54)`);
+  }
+  // `home` は診断専用であり住所ではない。ここだけは外を指してよい(むしろ指すべき)。
+  assert.ok(!j.home.startsWith(path.join(ROOT, '.claude')), 'home が住所に化けている');
+});
+
+test('外を向かせるのは global の明示だけである — 逆向き (AC-54)', () => {
+  const g = abode.resolve({ env: { PARADISE_ABODE: 'global', USERPROFILE: 'C:\\sentinel-home' } });
+  assert.strictEqual(g.mode, 'global');
+  assert.strictEqual(g.source, 'env', '明示したのに source が env でない');
+  assert.ok(!g.abode.startsWith(ROOT), 'global を名乗ったのに楽園の内を向いている');
+  assert.ok(g.kg.includes('paradise-kg'), 'global の KG が配備の木の外の名を持たない');
 });
 
 test('未実装の retreat は exit 2 — 0 で「済んだ」ふりをしない', () => {

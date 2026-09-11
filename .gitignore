@@ -30,6 +30,17 @@ graph/kg-store/
 # 手で編集してはならない —— 建て直す命令は一つ:
 #   PARADISE_ABODE=repo node graph/deploy.js --write
 
+# ── だが日次台帳と記憶は追跡しない(第4段の移設で内へ来た)─────────────
+#
+# `paradise-daily.json` は第43条の走行権を記録する**走行状態**であって原本ではない。
+# 走るたびに `lastDate` / `lease` が書き換わり、並行PRでは必ず衝突し、手で解決する
+# 術が無い —— `graph/kg-store/` を追跡しない理由(上の註釈)と全く同型である。
+# 派生物(`.claude/settings.json`)を追跡する理由 ——「clone 直後から無ければ門が
+# skip に落ちる」—— は台帳には当てはまらない。台帳が無ければ `daily-guard` は
+# 空の台帳から始める(`readLedger()` の既定)。それは欠損ではなく初期状態である。
+.claude/paradise-daily.json
+.claude/paradise-daily.json.lock
+
 # 創造物は別の倉に住む (憲法 第30条) — github.com/kikusyo1101/paradise-creations
 creations/
 
