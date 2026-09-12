@@ -14,6 +14,11 @@
  *   deploy.js --write  実際に配備する
  *   deploy.js check    配備物が定義と一致しているか調べる (CI 用, exit 1 で乖離)
  *
+ *   deploy.js plan --creations     兄弟倉へ何を鏡写すかを見せる (EX-2 / dry run)
+ *   deploy.js --write --creations  兄弟倉へ実際に鏡写す (globalWrite 経由)
+ *     照合は `node graph/abode.js check --creations` が持つ —— **ここには check を作らない**
+ *     (同じ問いに二つの答えを持たない / 第29条)。兄弟倉が無ければ exit 2 で名乗る。
+ *
  * 配備の順序は overlay.json の四分類そのもの:
  *   1. 上流を素通しで写す
  *   2. replace を楽園版で上書き
@@ -364,6 +369,115 @@ function write() {
            transforms: applied, pontiff_seat: seat, guards, home: p.home };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 兄弟倉への配備 — EX-2 の鏡写し (第30条 / 要件 §11.1 甲案)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * **鏡写しであって、plan() の再走ではない。**
+ *
+ * `<creations>/.claude/` へは `<repo>/.claude/` の
+ * `{agents/, commands/, rules/, CLAUDE.md}` を**そのまま複製**する。
+ * overlay から建て直したり transform を再適用したりしない ——
+ * `<repo>/.claude` は既に変換済みの派生物であり、そこから写せば
+ * **内容の同一性(sha256 一致)が 1:1 検査の意味になる**。
+ * 二度建てれば二つの真実ができる(第29条)。
+ *
+ * ⚠️ **`settings.json` と `paradise-daily.json` は写さない。**
+ *    EX-2 の `target` が名指すのは四つだけである。台帳を越えて書かない。
+ *
+ * @returns {{unmeasurable:string|null, source:string, target:string,
+ *   exportTarget:string, steps:object[], counts:object}}
+ */
+function creationsPlan(opts) {
+  const site = abode.resolve(opts);
+  const src = site.abode;                       // 楽園の派生物(既に変換済み)
+  const dst = site.creationsAbode;              // <creations-root>/.claude
+  const root = path.dirname(dst);
+  const e = abode.exportFor('EX-2');
+  const out = {
+    unmeasurable: null, source: src, target: dst,
+    exportTarget: e ? e.target : '(台帳に EX-2 が無い)',
+    steps: [], counts: {},
+  };
+  if (!e) {
+    out.unmeasurable = 'graph/abode.json に EX-2 が無い — 台帳に無い宛先へは書けない (第58条(b))';
+    return out;
+  }
+  if (!fs.existsSync(root)) {
+    // 兄弟倉そのものが無い機。**黙って 0 を返さない**(第37条)。
+    out.unmeasurable = `兄弟倉が無い: ${root} — 配備先の倉が無ければ配備は検められない`;
+    return out;
+  }
+  if (!fs.existsSync(src)) {
+    out.unmeasurable = `鏡写しの源が無い: ${src} — node graph/deploy.js --write で先に楽園の住処を建てよ`;
+    return out;
+  }
+  for (const kind of abode.CREATIONS_TREES) {
+    const sd = path.join(src, kind);
+    for (const f of listMd(sd)) {
+      out.steps.push({ kind, file: f, src: path.join(sd, f), dst: path.join(dst, kind, f),
+                       dstDirLabel: path.join(dst, kind) });
+    }
+    out.counts[kind] = out.steps.filter(s => s.kind === kind).length;
+  }
+  for (const f of abode.CREATIONS_FILES) {
+    const sp = path.join(src, f.name);
+    if (!fs.existsSync(sp)) continue;
+    out.steps.push({ kind: 'root', file: f.name, src: sp, dst: path.join(dst, f.name), dstDirLabel: dst });
+    out.counts.root = (out.counts.root || 0) + 1;
+  }
+  return out;
+}
+
+/**
+ * 兄弟倉へ実際に鏡写す。**書き込みは必ず EX-2 の関門を通る**(第58条(b))。
+ *
+ * `abode.globalWrite()` は呼び手を stack から実測し、EX-2 の `writer`
+ * (= `graph/deploy.js`)と一致することを要求する。ゆえに**ここから直接呼ぶ** ——
+ * 別の engine を挟めば呼び手が変わり、関門が拒む。
+ *
+ * **前提条件**: 複製の前に `check()` を走らせ、乖離が在れば**複製を拒む**。
+ * 汚れた源を鏡写せば、汚れが二箇所に増えるだけである。
+ */
+function writeCreations(opts) {
+  const p = creationsPlan(opts);
+  if (p.unmeasurable) return { ok: false, unmeasurable: p.unmeasurable };
+
+  // ── 前提: 源が汚れていないか。乖離が在れば写さない。
+  const pre = check();
+  if (pre.skipped) {
+    return { ok: false, refused: `源の乖離を検められない (deploy check が skip: ${pre.skipped}) — ` +
+      '検めていない源を鏡写すことはできない (第37条)' };
+  }
+  if (!pre.ok) {
+    return { ok: false, refused: `源が楽園の定義と乖離している (${pre.drift.length} 件) — ` +
+      '汚れた源を鏡写せば汚れが二箇所に増える。node graph/deploy.js --write で建て直してから来い',
+      drift: pre.drift.slice(0, 8).map(d => `${d.kind}/${d.file}: ${d.why}`) };
+  }
+
+  const e = abode.exportFor('EX-2');
+  const copied = abode.globalWrite(e.target, () => {
+    const done = [];
+    // 余剰を残さない —— 1:1 は「足りている」だけでなく「余っていない」ことである。
+    for (const kind of abode.CREATIONS_TREES) {
+      const dd = path.join(p.target, kind);
+      const want = new Set(p.steps.filter(s => s.kind === kind).map(s => s.file));
+      for (const f of listMd(dd)) if (!want.has(f)) { fs.rmSync(path.join(dd, f)); done.push(`removed: ${kind}/${f}`); }
+    }
+    for (const s of p.steps) {
+      fs.mkdirSync(path.dirname(s.dst), { recursive: true });
+      fs.copyFileSync(s.src, s.dst);
+      done.push(`${s.kind}/${s.file}`);
+    }
+    return done;
+  });
+  return { ok: true, source: p.source, target: p.target, exportTarget: e.target,
+           deployed: copied.length, counts: p.counts,
+           note: 'settings.json / paradise-daily.json は EX-2 の target に無いので写していない',
+           verify: 'node graph/abode.js check --creations' };
+}
+
 /**
  * CLI 本体。**`process.exit()` を使わず `process.exitCode` を返す。**
  *
@@ -374,6 +488,40 @@ function write() {
  */
 function main(argv) {
   const cmd = argv[2];
+  const wantCreations = argv.includes('--creations');
+  if (wantCreations && cmd === 'check') {
+    // **同じ問いに二つの答えを持たない**(第29条)。兄弟倉の照合は abode.js が持つ。
+    console.error('ERROR: 兄弟倉の照合はこの器が持たない — node graph/abode.js check --creations が唯一の答えである');
+    return 2;
+  }
+  if (wantCreations) {
+    const p = creationsPlan();
+    if (p.unmeasurable) {
+      // **黙って 0 を返さない。** 「検められなかった」は exit 2 である(第37条 / abode §1.4)。
+      console.log('═══════ ⛪ CREATIONS DEPLOY (EX-2) ═══════');
+      console.log(`  · 検められず: ${p.unmeasurable}`);
+      console.log('══════════════════════════════════════════');
+      return 2;
+    }
+    if (!argv.includes('--write')) {
+      console.log('═══════ ⛪ CREATIONS DEPLOY — 計画 (EX-2 / dry run) ═══════');
+      console.log(`source : ${p.source}   (楽園の派生物をそのまま鏡写す)`);
+      console.log(`target : ${p.target}`);
+      console.log(`輸出   : ${p.exportTarget}`);
+      console.log(`files  : ${JSON.stringify(p.counts)}`);
+      for (const kind of Object.keys(p.counts)) {
+        const rows = p.steps.filter(s => s.kind === kind);
+        if (rows.length) console.log(`  ${kind.padEnd(9)} ${rows.length} 本  ${rows[0].dstDirLabel}`);
+      }
+      console.log('  ⚠️ settings.json / paradise-daily.json は写さない — EX-2 の target に無い');
+      console.log('  (dry run — pass --write to deploy)');
+      console.log('═══════════════════════════════════════════════════════');
+      return 0;
+    }
+    const r = writeCreations();
+    console.log(JSON.stringify(r, null, 2));
+    return r.ok ? 0 : 1;
+  }
   if (cmd === 'check') {
     const r = check();
     console.log('═══════ 🏛  DEPLOYMENT CHECK ═══════');
@@ -410,4 +558,4 @@ if (require.main === module) {
   catch (e) { console.error('ERROR: ' + e.message); process.exitCode = 1; }
 }
 
-module.exports = { plan, check, write, governedKeys, stripFrontmatterKeys, TRANSFORM_KEYS };
+module.exports = { plan, check, write, creationsPlan, writeCreations, governedKeys, stripFrontmatterKeys, TRANSFORM_KEYS };
