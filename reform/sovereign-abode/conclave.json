@@ -357,6 +357,16 @@
       "bytes": 30017,
       "note": "第4段(work-4)が着地: DEFAULT_MODE を 1 行で repo へ反転し、KG 122節点/33辺/5共変と日次台帳25行を sha256 集合一致で移設。migrate --plan/--verify を実装(--write は持たない)。故障注入で deploy.check が反転先でも赤くなることを実証。素/repo/global の 3 走行とも 471 passed 0 failed。",
       "detail": "build ⟡ reform/sovereign-abode/build-4-evidence.md — 第4段(work-4)が着地: DEFAULT_MODE を 1 行で repo へ反転し、KG 122節点/33辺/5共変と日次台帳25行を sha256 集合一致で移設。migrate --plan/--verify を実装(--write は持たない)。故障注入で deploy.check が反転先でも赤くなることを実証。素/repo/global の 3 走行とも 471 passed 0 failed。"
+    },
+    {
+      "ts": "2026-09-12T11:52:36.905Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-5-evidence.md",
+      "sha256": "749fb10e91c24f9f51a57660a5084dab6bb03c64d9ca7abbff9a7cd3c1857f12",
+      "bytes": 33957,
+      "note": "第5段: 兄弟倉へ神官30/命令19/掟8/CLAUDE.mdを配備。check --creations がAC-46〜51を裁く",
+      "detail": "build ⟡ reform/sovereign-abode/build-5-evidence.md — 第5段: 兄弟倉へ神官30/命令19/掟8/CLAUDE.mdを配備。check --creations がAC-46〜51を裁く"
     }
   ],
   "spawnTrace": {
