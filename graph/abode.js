@@ -25,7 +25,8 @@
  *   node graph/abode.js resolve [--json]     住所を印字 (由来つき)
  *   node graph/abode.js path <key>           単一の住所を印字 (スクリプトから引く口)
  *   node graph/abode.js check [--count] [--ledger] [--exclusion]
- *                            [--silent-green] [--symmetry] [--hermetic] [--all]
+ *                            [--silent-green] [--symmetry] [--hermetic]
+ *                            [--creations] [--all]
  *                                            違反の検出。旗が無ければ --all
  *                                            **知らない旗は exit 2** (黙って捨てない)
  *   node graph/abode.js exports [--external] [--verify <id>]
@@ -766,21 +767,188 @@ function selfAudit(repoRoot = REPO_ROOT) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// 兄弟倉の神官 — 環が起動する場所に神官が居るか (AC-46〜AC-50 / EX-2)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 兄弟倉へ写す物。**EX-2 の `target` が名指した四つだけ**である ——
+ * `<creations-root>/.claude/{agents,commands,rules,CLAUDE.md}`。
+ *
+ * `settings.json` と `paradise-daily.json` は台帳に載っていない。台帳を越えて
+ * 検めれば、台帳を越えて書いてよいことになる(第54条(d) の裏返し)。
+ */
+const CREATIONS_TREES = ['agents', 'commands', 'rules'];
+const CREATIONS_FILES = [{ name: 'CLAUDE.md', key: 'claudeMd' }];
+
+function listMd(dir) {
+  try { return fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort(); } catch { return null; }
+}
+
+/**
+ * 兄弟倉の神官の実在を検める(AC-46〜AC-50)。
+ *
+ * **判定の物差しは「兄弟倉そのものが在るか」である。**
+ *  - 兄弟倉の root が**無い**(CI 等) … `skipped` に理由を載せて ok=true(AC-49)。
+ *  - 兄弟倉の root は**在る**のに `.claude` が無い / 神官が 0 体 … **赤**(AC-48)。
+ *    ここを skip に落とせば、本改革が退治している病(「測れなかった」を「緑」と読む)
+ *    そのものを、この門が再演することになる(第37条)。
+ *
+ * 比較は二重である。**名前集合の 1:1** と、**内容 sha256 の一致**。
+ * 名前だけを数える門は、中身をすり替えられても緑を出す(第5条: そう書かれていることではなく、そう鳴ること)。
+ *
+ * ⚠️ 住所は自分で組まない。`resolve().creationsAbode`(= `workspace.js` 経由 — 第30条)と
+ *    `pathFor('agents'|'commands'|'rules'|'claudeMd')` だけを引く。
+ *
+ * @param {{env?:object, repoRoot?:string}} [opts]
+ * @returns {{ok:boolean, skipped:string|null, reason?:string, root:string, abode:string,
+ *   counts:object, missing:string[], extra:string[], differs:string[],
+ *   tracked:boolean|null, unmeasurable:string[], why:string[]}}
+ */
+function creationsAbode(opts = {}) {
+  const site = resolve(opts);
+  // `creationsAbode` は `<root>/.claude` である。root はその親 —— **一つの解決から採る**。
+  // 二度引けば「mode は repo と答えたのに住所は global」と割れる(work-1 の教訓)。
+  const abodeDir = site.creationsAbode;
+  const root = path.dirname(abodeDir);
+  const out = {
+    ok: true, skipped: null, root, abode: abodeDir,
+    counts: { agents: null, commands: null, rules: null, claudeMd: null },
+    missing: [], extra: [], differs: [], tracked: null, unmeasurable: [], why: [],
+  };
+
+  // ── AC-49: 兄弟倉そのものが無い機。**名乗って** skip する。黙って緑にしない。
+  if (!isDir(root)) {
+    out.skipped = `creations abode 不在: ${root} — 兄弟倉そのものがこの機に無い(clone していない機では創造物も無い)`;
+    out.reason = out.skipped;
+    return out;
+  }
+
+  // ── AC-48: 兄弟倉は在る。ここから先の不在は全て赤である。
+  if (!isDir(abodeDir)) {
+    out.ok = false;
+    out.why.push(`creations abode: 兄弟倉は在るのに ${abodeDir} が無い — ` +
+      'この倉で起動した環は神官を一体も見ない。**不在は skip ではない**(第37条 / AC-48)。' +
+      ' node graph/deploy.js --write --creations で配備せよ');
+  }
+
+  for (const kind of CREATIONS_TREES) {
+    const srcDir = pathFor(kind, opts);
+    const dstDir = path.join(abodeDir, kind);
+    const src = listMd(srcDir);
+    const dst = listMd(dstDir);
+    out.counts[kind] = dst === null ? null : dst.length;
+    if (src === null) {
+      out.unmeasurable.push(`楽園側の ${kind} を読めない: ${srcDir} — 鏡写しの源が無ければ 1:1 は測れない`);
+      continue;
+    }
+    if (dst === null) {
+      if (isDir(abodeDir)) {
+        out.ok = false;
+        out.why.push(`creations abode: ${kind}/ が兄弟倉に無い — 楽園には ${src.length} 本在る (AC-48)`);
+      }
+      out.missing.push(...src.map(f => `${kind}/${f}`));
+      continue;
+    }
+    if (dst.length === 0) {
+      out.ok = false;
+      out.why.push(`creations abode: ${kind}/ が空である — 神官が 0 体の倉を緑と呼んではならない (AC-48)`);
+    }
+    const have = new Set(dst);
+    const want = new Set(src);
+    for (const f of src) {
+      if (!have.has(f)) {
+        out.missing.push(`${kind}/${f}`);
+        out.ok = false;
+        out.why.push(`creations abode: ${kind === 'agents' ? '神官' : kind} が欠けている — ${f.replace(/\.md$/, '')}`);
+        continue;
+      }
+      // 名が在っても中身が違えば、それは同じ神官ではない。
+      const a = sha256(fs.readFileSync(path.join(srcDir, f)));
+      const b = sha256(fs.readFileSync(path.join(dstDir, f)));
+      if (a !== b) {
+        out.differs.push(`${kind}/${f}`);
+        out.ok = false;
+        out.why.push(`creations abode: ${kind}/${f} の中身が楽園と食い違う — ` +
+          '名の一致は同一性ではない。node graph/deploy.js --write --creations で鏡写しをやり直せ');
+      }
+    }
+    for (const f of dst) {
+      if (want.has(f)) continue;
+      out.extra.push(`${kind}/${f}`);
+      out.ok = false;
+      out.why.push(`creations abode: 楽園に居ない者が ${kind}/ に居る — ${f} (余剰は 1:1 の破れである)`);
+    }
+  }
+
+  for (const f of CREATIONS_FILES) {
+    const src = pathFor(f.key, opts);
+    const dst = path.join(abodeDir, f.name);
+    if (!isFile(src)) {
+      out.unmeasurable.push(`楽園側の ${f.name} が無い: ${src}`);
+      continue;
+    }
+    if (!isFile(dst)) {
+      out.counts.claudeMd = false;
+      out.missing.push(f.name);
+      out.ok = false;
+      out.why.push(`creations abode: ${f.name} が兄弟倉に無い — ` +
+        '散文の掟を持たない倉で起動した環は、掟を知らないまま働く (AC-46)');
+      continue;
+    }
+    out.counts.claudeMd = true;
+    if (sha256(fs.readFileSync(src)) !== sha256(fs.readFileSync(dst))) {
+      out.differs.push(f.name);
+      out.ok = false;
+      out.why.push(`creations abode: ${f.name} の中身が楽園と食い違う`);
+    }
+  }
+
+  // ── AC-50: 第30条の逆流。創造物の倉が engine の写しを履歴に抱えてはならない。
+  const g = spawnGit(root, ['ls-files', '.claude']);
+  if (g === null) {
+    // **黙って false にしない。** 「追跡していない」と「検められなかった」は違う(第37条)。
+    out.tracked = null;
+    out.unmeasurable.push(`${root} で git ls-files を走らせられない — ` +
+      '兄弟倉が git 倉でないか git が無い。第30条の逆流は**検められなかった**のであって、無いのではない');
+  } else {
+    const rows = g.split('\n').map(s => s.trim()).filter(Boolean);
+    out.tracked = rows.length > 0;
+    if (out.tracked) {
+      out.ok = false;
+      out.why.push(`創造物の倉が engine の写しを追跡している (第30条) — ${rows.length} 件 ` +
+        `(例: ${rows.slice(0, 3).join(', ')})。兄弟倉の .gitignore に .claude/ を足せ (AC-50)`);
+    }
+  }
+  return out;
+}
+
+/** git を一度だけ叩く薄い口。走らせられなければ **null**(空文字ではない — 第16条)。 */
+function spawnGit(cwd, args) {
+  try {
+    const r = require('child_process').spawnSync('git',
+      ['-C', String(cwd).split(path.sep).join('/'), ...args], { encoding: 'utf8' });
+    if (r.error || r.status !== 0) return null;
+    return String(r.stdout || '');
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // check — 三段構えを束ねる
 // ══════════════════════════════════════════════════════════════════════
 
 /**
  * @param {{repoRoot?:string, count?:boolean, ledger?:boolean, exclusion?:boolean,
- *   silentGreen?:boolean, symmetry?:boolean, hermetic?:boolean}} [opts]
+ *   silentGreen?:boolean, symmetry?:boolean, hermetic?:boolean, creations?:boolean}} [opts]
  * @returns {{ok:boolean, exclusion:object, homedir:object[], ledger:object[], self:object[],
- *   silentGreen:object[], symmetry:object, hermetic:object|null}}
+ *   silentGreen:object[], symmetry:object, hermetic:object|null, creations:object|null}}
  */
 function check(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
   const all = !(opts.count || opts.ledger || opts.exclusion || opts.silentGreen ||
-                opts.symmetry || opts.hermetic);
+                opts.symmetry || opts.hermetic || opts.creations);
   const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [],
-              silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null, ok: true };
+              silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null,
+              creations: null, ok: true };
   if (all || opts.count || opts.exclusion) r.homedir = homedirRefs(repoRoot);
   if (all || opts.ledger) {
     r.ledger = validateLedger(ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {}), repoRoot);
@@ -804,8 +972,14 @@ function check(opts = {}) {
       r.hermetic = require('./hermetic.js').audit();
     }
   }
+  /**
+   * 兄弟倉の神官(EX-2 / AC-46〜50)。**`--all` に必ず含める。**
+   * 旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ(第44条)。
+   */
+  if (all || opts.creations) r.creations = creationsAbode(opts);
   r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0 &&
-         r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok);
+         r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok) &&
+         (r.creations === null || r.creations.ok);
   return r;
 }
 
@@ -1020,6 +1194,7 @@ function printExports(rest) {
 const CHECK_FLAGS = {
   '--count': 'count', '--ledger': 'ledger', '--exclusion': 'exclusion',
   '--silent-green': 'silentGreen', '--symmetry': 'symmetry', '--hermetic': 'hermetic',
+  '--creations': 'creations',
   '--all': 'all',
 };
 
@@ -1065,6 +1240,26 @@ function printCheck(rest) {
   }
   for (const w of r.symmetry.why) console.log(`✗ ${w}`);
   if (r.hermeticSkipped) console.log(`  · skip: ${r.hermeticSkipped}`);
+  if (r.creations) {
+    const c = r.creations;
+    if (c.skipped) {
+      // **skip は口で名乗る**(第58条(e) / §1.4)。黙って通った門は門ではない。
+      console.log(`  · skip: ${c.skipped}`);
+    } else {
+      const n = (v) => (v === null ? '(読めず)' : v);
+      console.log(`  · creations abode: ${c.abode}`);
+      console.log(`    agents ${n(c.counts.agents)} / commands ${n(c.counts.commands)} / rules ${n(c.counts.rules)} / ` +
+        `CLAUDE.md ${c.counts.claudeMd === null ? '(読めず)' : c.counts.claudeMd ? 'あり' : 'なし'} / ` +
+        `git 追跡 ${c.tracked === null ? '(検められず)' : c.tracked}`);
+      for (const u of c.unmeasurable) console.log(`    · 検められず: ${u}`);
+      if (!c.ok) {
+        console.log(`✗ 兄弟倉の住処が楽園と一致しない (${c.why.length} 件) — 第30条 / EX-2`);
+        for (const w of c.why.slice(0, 12)) console.log(`  ${w}`);
+        if (c.why.length > 12) console.log(`  … 他 ${c.why.length - 12} 件`);
+        console.log('  → node graph/deploy.js --write --creations');
+      }
+    }
+  }
   if (r.hermetic && !r.hermetic.ok) {
     console.log(`✗ 門が己の測る対象を汚している (${r.hermetic.violations.length} 件) — 第58条(c)`);
     for (const h of r.hermetic.violations) console.log(`  ${h.file}:${h.line}  ${h.obj}.${h.fn}(${h.arg})`);
@@ -1187,10 +1382,11 @@ module.exports = {
   exportRealPath, verifyExport,
   homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
   silentGreens, silentGreenTargets, symmetryAudit, codeOnly,
+  creationsAbode,
   migratePlan, migrateVerify, migrateSides, measureFile,
   REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS, CHECK_FLAGS, MIGRATE_TARGETS,
   HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
-  SILENT_GREEN_PATTERNS, SYMMETRY_PAIR,
+  SILENT_GREEN_PATTERNS, SYMMETRY_PAIR, CREATIONS_TREES, CREATIONS_FILES,
   ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,
 };
 
