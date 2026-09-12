@@ -367,6 +367,16 @@
       "bytes": 33957,
       "note": "第5段: 兄弟倉へ神官30/命令19/掟8/CLAUDE.mdを配備。check --creations がAC-46〜51を裁く",
       "detail": "build ⟡ reform/sovereign-abode/build-5-evidence.md — 第5段: 兄弟倉へ神官30/命令19/掟8/CLAUDE.mdを配備。check --creations がAC-46〜51を裁く"
+    },
+    {
+      "ts": "2026-09-12T16:36:15.905Z",
+      "event": "beat",
+      "phase": "build",
+      "evidence": "reform/sovereign-abode/build-7-evidence.md",
+      "sha256": "8223fea5e7b58384a084196093307b3a8e7ac9c33006fc49cc968695310dfb7b",
+      "bytes": 53133,
+      "note": "第6段: 撤収を完遂。逆向き依存6件→0件、神5キー無傷、hooks は消さず移した",
+      "detail": "build ⟡ reform/sovereign-abode/build-7-evidence.md — 第6段: 撤収を完遂。逆向き依存6件→0件、神5キー無傷、hooks は消さず移した"
     }
   ],
   "spawnTrace": {
