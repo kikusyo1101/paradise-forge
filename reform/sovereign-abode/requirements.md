@@ -461,6 +461,33 @@ settings.json は神のキーと混住しており、engine は `JSON.stringify(
 期待: **exit 0**。神 5 キーの正準 sha256 が凍結値と一致。
 **本書起草時に実測した現行値(先頭 16 桁)= `cbca9224ec5e6cac`**:
 
+> ⚠️ **【第6段での追記 — この数は後に再現不能であることが判明した】**
+>
+> 第6段(work-6)の実装時、起草時のプローブ `pddes-god.js` が倉にも git 履歴にも
+> 存在しないことが判り、正準化の流儀を **8 通り**試したが `cbca9224ec5e6cac` を
+> 再現できなかった(sorted / 宣言順 / 本書の記載順 × compact / indent2 / +NL /
+> entries 配列 / 値のみ)。実測:
+>
+> ```console
+> 1 sorted   / compact           b66c5008319d71c6      5 reqOrder / compact    0f41c6a8d2b23a2e
+> 2 sorted   / indent2           191de27c0294f054      6 reqOrder / indent2    080354a2bf34fb10
+> 3 sorted   / indent2 + NL      9e327e9def86fe2f      7 entries配列 (sorted)  e619c7da5032b3b5
+> 4 declOrder/ compact           511fe0210d91750d      8 値のみ (sorted)        7eb516e948664457
+> ```
+>
+> さらに、**神 5 キーは 2026-08-27 の原初設定の退避から今日まで一バイトも変わっていない**:
+> `settings.json` / `settings.json.bak.1787846094` / `settings.json.pre-wire.bak` の
+> 三者の正準 sha が全て `b66c5008319d71c6` で一致する。
+> ゆえに「起草時と値が動いたから違う」という説明も成り立たない。
+>
+> **この記載を消さないのは、歴史を消さないためである。**「測ったつもりで外した」こと
+> 自体が教訓である(第37条)。**下の実測ブロックは起草時の記録としてそのまま残す。**
+>
+> **正典は本節 §9.2 の機構のほうである** —— `retreat --plan` が実測して
+> `reform/sovereign-abode/retreat-baseline.json` に凍結し、`retreat --verify` は
+> **凍結値と照合する**。数は実測が生むのであって、散文に書いた数が正典なのではない(第22条)。
+
+
 ```console
 $ node <probe>
 keys: enableWorkflows, extraKnownMarketplaces, language, theme, agentPushNotifEnabled,
@@ -955,6 +982,8 @@ USERPROFILE=<sentinel> HOME=<sentinel> CLAUDE_HOME=/nonexistent \
 # 神の資産の実測(読み取りのみ)
 node <probe>   # settings.json の 9 キー / 神 5 キー / permissions.deny=9
                # → god-subset-sha256: cbca9224ec5e6cac
+               #    【第6段での追記】この数は再現不能であった。実測は b66c5008319d71c6。
+               #    AC-35 の註を見よ。凍結は retreat-baseline.json が持つ(第22条)。
                # → hook refs into paradise repo: 6
 node <probe>   # ~/AppData/Local/hermes/cron/jobs.json → jobs: 2
 ls -la ~/AppData/Local/hermes/scripts/paradise-catchup.py
