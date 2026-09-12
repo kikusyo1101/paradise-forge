@@ -804,6 +804,19 @@ AC-32 は「楽園のフック(KG 注入 / PreCompact / SessionEnd)が**リポ�
 生きている**」ことを求める。**この段では満たしていない**(撤収は「消す」ではなく「移す」だが、
 移す先がまだ空である)。撤収の実行段の仕事として申し送る。
 
+### 7.6 `PARADISE_ABODE=global` で `derived check` / `abode check` が赤い(AC-53)
+
+§8.1 に実出力。**着手前 HEAD でも同じく赤い**ので本段が壊したのではないが、
+AC-53(「両方の mode で全走行が緑」)は**この一点で満たしていない**。
+直すには `derived.js` が「倉の中の派生物は**常に repo の掟の写し**である」と宣言する必要があり、
+それは L-19 とは別の裁定である。
+
+> **問5**: `derived.js` の `verifyRepoSettings()` が引く掟を
+> `policyFor({ mode: 'repo' })` に**固定**してよいか(EX-1 の照合を global に固定したのと同じ形)。
+> 教主の私見では**固定すべき** —— `<repo>/.claude/settings.json` は定義上
+> **repo の住処の派生物**であり、走らせた側の env で「あるべき姿」が変わる道理は無い。
+> だが AC-53 に触れる裁定なので、勝手には変えていない。
+
 ### 7.5 `tests/guards.test.js` の 1 門が赤い — **本段の責任ではない(HEAD でも赤い)**
 
 ```console
@@ -848,6 +861,35 @@ $ md5sum -c before.md5
 | `node graph/hermetic.js check` | `✓ 版管理下の現物を走行中に書き換える門は無い` | **0** |
 | `node tests/paradise.test.js --gate 'atlas'` | `Paradise gate-filter: 19 of 471 gates matched — 19 green, 0 red` | **0**(§9.5: 一度 17/2 に落とし、図ではなく構造を直して戻した) |
 | `node graph/atlas.js draw wiring` + `firstScreen` | `kind=fits minpx=0.00 overflow=0` | **0** |
+| **`node tests/paradise.test.js`** | **`Paradise self-test: 471 passed, 0 failed`** | **0** |
+| `node graph/census.js check` | `✓ every number the paradise claims about itself is true` | **0** |
+| `PARADISE_ABODE=repo` × `abode check` / `derived check` / `apply-guards verify` | 全て緑 | **0 / 0 / 0** |
+| `PARADISE_ABODE=global` × `abode check` / `derived check` | (§8.1 を見よ) | **1 / 1**(**着手前 HEAD でも同じく 1**) |
+| `PARADISE_ABODE=global` × `apply-guards verify` | `✓ 掟は機構である: deny 9 / ask 1 / allow 5` | **0** |
+
+### 8.1 `PARADISE_ABODE=global` が赤い件(AC-53)— **着手前 HEAD でも赤い**
+
+```console
+$ PARADISE_ABODE=global node graph/derived.js check
+  🔴 permissions.deny: Edit(**/.claude/**) は掟に無い — 手で足された行である
+
+$ git stash && PARADISE_ABODE=global node graph/derived.js check ; git stash pop
+BASE derived global → 1        ← **着手前 HEAD でも 1**
+BASE abode   global → 1        ← 同上
+```
+
+**理由は構造的であり、本段が壊したのではない。** `derived.js` は
+`<repo>/.claude/settings.json`(git 追跡された派生物)が **`policyFor()` の答えと一致するか**を
+検める。`PARADISE_ABODE=global` を立てれば `policyFor()` は global の掟(deny 9)を返すが、
+**倉の中の派生物は repo の掟(deny 10)の写しである** —— だから食い違う。
+
+これは L-19 が生んだ新しい状態ではなく、**同じ構造が第4段から在った**
+(着手前の HEAD でも `PARADISE_ABODE=global` で `derived check` は 1 を返す)。
+`census.js` / CI / `tests/paradise.test.js` はいずれも env 無し(= repo)で走るので
+**実害は無い**が、AC-53 の「両方の mode で緑」は**この一点で満たしていない**。
+**本段では直していない**(直すには `derived.js` が「派生物は常に repo の掟の写しである」
+と宣言する必要があり、それは L-19 とは別の裁定である)。**申し送りとする。**
+
 
 ---
 
