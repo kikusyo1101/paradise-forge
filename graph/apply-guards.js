@@ -706,11 +706,73 @@ function permissionsMatch(cur, policy = POLICY) {
 }
 
 /**
+ * **リポジトリ内の住処へ移送する楽園固有のフック**(裁可 2-A / AC-32)。
+ *
+ * 撤収は「消す」ではなく「移す」である。神の住処から
+ * `tools/hooks/paradise-session-start.js` を引く前に、**移送先が生きていなければ
+ * 機能が黙って消える**。ゆえにこの宣言が `<repo>/.claude/settings.json` へ
+ * 楽園のフックを生やし、その後で神の住処から引く —— 順序が正典である。
+ *
+ * ⚠️ **絶対パスを書かない。** `$CLAUDE_PROJECT_DIR` は Claude Code が
+ *    プロジェクト直下を指して渡す変数であり、これを使う限り倉を動かしても壊れない
+ *    (絶対パス直書きが AC-30 の逆向き依存そのものであった)。
+ *    フック自身も `PARADISE_ROOT` ② 自己位置 の二段で楽園を解決する。
+ *
+ * ⚠️ **移送先は「対象ファイル」で決まり、env では決まらない。**
+ *    `repoHooksFor(file)` は渡された file が repo の住処の settings.json で
+ *    あるときだけフックを返す。`PARADISE_ABODE=repo` を名乗った者が
+ *    神の住処へ楽園のフックを書けてはならない —— env で分岐すれば、
+ *    住処を取り違えた一回の走行が神のホームを汚す。
+ */
+const REPO_HOOKS = {
+  SessionStart: [{
+    matcher: '*',
+    hooks: [{ type: 'command',
+              command: 'node "$CLAUDE_PROJECT_DIR/tools/hooks/paradise-session-start.js"' }],
+    description: 'Paradise: inject the knowledge-graph snapshot (repo abode / 第58条)',
+  }],
+};
+
+/** repo の住処の settings.json の絶対パス(env を見ない — 住処は固定で問う)。 */
+function repoSettingsFile() {
+  try { return abode.pathFor('settings', { env: { PARADISE_ABODE: 'repo' } }); }
+  catch { return null; }
+}
+
+/**
+ * その `file` が**リポジトリ内の住処**の settings.json か。
+ * 神の住処(global)を渡された場合は false —— 楽園のフックは外へ出さない。
+ */
+function isRepoSettingsFile(file) {
+  const want = repoSettingsFile();
+  if (!want || !file) return false;
+  const norm = (p) => path.resolve(String(p)).split(path.sep).join('/').toLowerCase();
+  return norm(file) === norm(want);
+}
+
+/** 移送先に生やすべきフック。repo の住処以外には 1 本も返さない。 */
+function repoHooksFor(file) {
+  return isRepoSettingsFile(file) ? JSON.parse(JSON.stringify(REPO_HOOKS)) : {};
+}
+
+/** 同じフックが既に居るか(command の同一性で見る — description の差は本質ではない)。 */
+function hasSameHook(groups, want) {
+  if (!Array.isArray(groups)) return false;
+  const cmds = (g) => ((g && Array.isArray(g.hooks)) ? g.hooks : [])
+    .map(h => String((h && h.command) || '')).join('\u0000');
+  return groups.some(g => cmds(g) === cmds(want));
+}
+
+/**
  * 望ましい settings を組む。**純関数**。
  * permissions の既存の余分なキー(additionalDirectories 等)は保存する —
  * 楽園が知らない設定を黙って消す機構は、いずれ誰かの手を焼く。
+ *
+ * @param {object} settings
+ * @param {{file?:string}} [opts] 対象ファイル。**repo の住処なら楽園のフックを生やす**
+ *   (AC-32)。省略すれば 1 本も生やさない —— 既定で神のホームへ足さないのが安全側である。
  */
-function buildDesired(settings) {
+function buildDesired(settings, opts = {}) {
   const next = JSON.parse(JSON.stringify(settings));
   const changes = [];
 
@@ -779,6 +841,22 @@ function buildDesired(settings) {
     for (const p of r.proposals) proposals.push(p);
   }
 
+  // (d) **移送先を生やす**(裁可 2-A / AC-32)。repo の住処のときだけ 1 本も欠かさず。
+  //     撤収が「消す」ではなく「移す」であることを、ここのフック数が証す。
+  //     神の住処を渡されれば `repoHooksFor` は空を返すので、この節は何もしない。
+  const wantHooks = repoHooksFor(opts.file);
+  for (const [event, groups] of Object.entries(wantHooks)) {
+    for (const want of groups) {
+      if (!next.hooks || typeof next.hooks !== 'object') next.hooks = {};
+      if (!Array.isArray(next.hooks[event])) next.hooks[event] = [];
+      if (hasSameHook(next.hooks[event], want)) continue;
+      next.hooks[event].push(want);
+      changes.push({ kind: 'repo-hook', event,
+        matcher: want.matcher, description: want.description,
+        note: '移送先に楽園のフックが居ない — 撤収は消すではなく移すである (AC-32)' });
+    }
+  }
+
   return { next, changes, proposals };
 }
 
@@ -792,7 +870,7 @@ function diff(file = SETTINGS) {
     return { skipped: true, ok: true, file, changes: [],
              note: 'no settings.json on this machine — nothing deployed to verify' };
   }
-  const { changes, proposals } = buildDesired(s);
+  const { changes, proposals } = buildDesired(s, { file });
   const env = envDrift(s);
   return { skipped: false, ok: changes.length === 0, file, changes, proposals,
            diagnosis: diagnoseSettings(s), envDrift: env,
@@ -804,7 +882,7 @@ function apply(file = SETTINGS) {
   const s = readSettings(file);
   if (s === null) return { skipped: true, ok: true, file, changed: false,
                            note: 'no settings.json on this machine — nothing to apply' };
-  const { next, changes } = buildDesired(s);
+  const { next, changes } = buildDesired(s, { file });
   const before = fs.readFileSync(file, 'utf8');
   const after = JSON.stringify(next, null, 2) + '\n';
   if (before === after) return { ok: true, changed: false, file, changes: [] };
@@ -950,6 +1028,7 @@ if (require.main === module) {
 
 module.exports = {
   POLICY, policyFor, BASE_DENY, REPO_ABODE_DENY, POLICY_ASK, POLICY_ALLOW,
+  REPO_HOOKS, repoHooksFor, isRepoSettingsFile, repoSettingsFile,
   KNOWN_TOOLS, SETTINGS, HOOK_HEALTH_CAVEAT,
   classify, diagnose, diagnoseSettings,
   extractTools, extractConditions, toolsToMatcher, conditionToIf, repairGroup,
