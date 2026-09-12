@@ -931,6 +931,273 @@ test('【脱法】globalWrite を mode で分岐させると鳴る (AC-55 の逆
 });
 
 // ══════════════════════════════════════════════════════════════════════
+// 7.5 兄弟倉の神官 — 環が起動する場所に神官が居るか (AC-46〜AC-51 / EX-2)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n兄弟倉の住処 (第30条 / EX-2 / AC-46〜51):');
+
+/**
+ * 偽の「楽園の住処」と偽の「兄弟倉」を `os.tmpdir()` に建てる。
+ * **現物の倉にも現物の兄弟倉にも一行も書かない**(第58条(c))。
+ *
+ * 住所は env で差す —— `CLAUDE_HOME` が楽園側の `.claude`、
+ * `PARADISE_CREATIONS` が兄弟倉の根。`creationsAbode()` は
+ * `resolve()` 一本からこの二つを採るので、これだけで丸ごと隔離できる。
+ */
+function fakeCreations(tag, opts = {}) {
+  const srcAbode = path.join(mktmp(tag + '-src'), '.claude');
+  const dstRoot = mktmp(tag + '-creations');
+  const dstAbode = path.join(dstRoot, '.claude');
+  const agents = opts.agents || ['cardinal', 'architect', 'code-reviewer'];
+  const commands = opts.commands || ['ship', 'forge'];
+  const rules = opts.rules || ['AGENTS'];
+  const trees = { agents, commands, rules };
+  for (const [kind, names] of Object.entries(trees)) {
+    fs.mkdirSync(path.join(srcAbode, kind), { recursive: true });
+    for (const n of names) fs.writeFileSync(path.join(srcAbode, kind, n + '.md'), `# ${kind}/${n}\n`);
+  }
+  fs.writeFileSync(path.join(srcAbode, 'CLAUDE.md'), '# 掟\n');
+  // 楽園側にしか無い物 —— 台帳を越えて写していないことを裁くための囮。
+  fs.writeFileSync(path.join(srcAbode, 'settings.json'), '{"bait":true}\n');
+  fs.writeFileSync(path.join(srcAbode, 'paradise-daily.json'), '{"bait":true}\n');
+
+  if (opts.deploy !== false) {
+    for (const [kind, names] of Object.entries(trees)) {
+      fs.mkdirSync(path.join(dstAbode, kind), { recursive: true });
+      for (const n of names) fs.copyFileSync(path.join(srcAbode, kind, n + '.md'), path.join(dstAbode, kind, n + '.md'));
+    }
+    fs.copyFileSync(path.join(srcAbode, 'CLAUDE.md'), path.join(dstAbode, 'CLAUDE.md'));
+  }
+  const env = { CLAUDE_HOME: srcAbode, PARADISE_CREATIONS: dstRoot };
+  return { srcAbode, dstRoot, dstAbode, env, trees };
+}
+
+/** 偽の兄弟倉を git 倉にして `.claude` を追跡させる。git が無ければ null。 */
+function trackInGit(dir) {
+  const run = (...a) => spawnSync('git', ['-C', dir.split(path.sep).join('/'), ...a],
+    { encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t',
+      GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  if (run('init', '-q', '.').status !== 0) return null;
+  if (run('add', '.claude').status !== 0) return null;
+  if (run('commit', '-qm', 'track').status !== 0) return null;
+  return run('ls-files', '.claude').stdout;
+}
+
+test('【正】兄弟倉に神官が 1:1 で居れば緑 — 名も中身も一致する (AC-46)', () => {
+  const f = fakeCreations('cre-ok');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.skipped, null, `在る倉を skip した: ${r.skipped}`);
+  assert.strictEqual(r.ok, true, '1:1 なのに赤: ' + JSON.stringify(r.why));
+  assert.deepStrictEqual(r.missing, []);
+  assert.deepStrictEqual(r.extra, []);
+  assert.deepStrictEqual(r.differs, []);
+  assert.strictEqual(r.counts.agents, f.trees.agents.length);
+  assert.strictEqual(r.counts.commands, f.trees.commands.length);
+  assert.strictEqual(r.counts.rules, f.trees.rules.length);
+  assert.strictEqual(r.counts.claudeMd, true);
+});
+
+test('【正】現物の兄弟倉が 30 / 19 / 8 で緑 — 作り物だけの門は現実が壊れても鳴らない (§7.2)', () => {
+  /**
+   * **現物を撃つ。** ただし兄弟倉が無い機(CI)では skip が正しい(AC-49)。
+   * ゆえに 0 か「skip を名乗った 0」のどちらかを要求し、**1 だけを赤とする**。
+   */
+  const r = cli(['check', '--creations']);
+  assert.notStrictEqual(r.code, 1, `現物の兄弟倉に神官が居ない:\n${r.out}`);
+  assert.strictEqual(r.code, 0, `想定外の exit ${r.code}:\n${r.out}`);
+  if (/· skip: creations abode 不在/.test(r.out)) {
+    console.log('      (この機に兄弟倉が無い — 門は名乗って skip した。AC-49)');
+    return;
+  }
+  assert.ok(/agents 30 \/ commands 19 \/ rules 8/.test(r.out),
+    `完了条件の数を語っていない (§7.2 は agents 30 / commands 19 / rules 8 を求める):\n${r.out}`);
+  assert.ok(/CLAUDE\.md あり/.test(r.out), `CLAUDE.md が配備されていない:\n${r.out}`);
+});
+
+test('【逆】神官を 1 本消すと、その名を名指して赤 (AC-47)', () => {
+  const f = fakeCreations('cre-missing');
+  fs.rmSync(path.join(f.dstAbode, 'agents', 'cardinal.md'));
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.ok, false, '神官が欠けたのに緑');
+  assert.ok(r.missing.includes('agents/cardinal.md'), '欠落を名指していない: ' + JSON.stringify(r.missing));
+  assert.ok(r.why.some(w => /神官 が欠けている — cardinal/.test(w)),
+    '要件が求めた名指しの形になっていない: ' + JSON.stringify(r.why));
+});
+
+test('【逆】名が揃っていても中身が違えば赤 — 名の一致は同一性ではない (AC-46)', () => {
+  const f = fakeCreations('cre-differs');
+  fs.writeFileSync(path.join(f.dstAbode, 'agents', 'architect.md'), '# 偽物\n');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.ok, false, '中身をすり替えても緑 — 数える門は騙される');
+  assert.ok(r.differs.includes('agents/architect.md'), '差を名指していない: ' + JSON.stringify(r.differs));
+  assert.deepStrictEqual(r.missing, [], '欠落でないものを欠落と呼んでいる');
+});
+
+test('【逆】楽園に居ない者が兄弟倉に居れば赤 — 1:1 は余剰も許さない (AC-46)', () => {
+  const f = fakeCreations('cre-extra');
+  fs.writeFileSync(path.join(f.dstAbode, 'agents', 'impostor.md'), '# 誰?\n');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.ok, false, '余剰が通った');
+  assert.ok(r.extra.includes('agents/impostor.md'), '余剰を名指していない: ' + JSON.stringify(r.extra));
+});
+
+test('【逆】agents が空なら赤 — skip に落ちてはならない (AC-48)', () => {
+  const f = fakeCreations('cre-empty');
+  for (const n of f.trees.agents) fs.rmSync(path.join(f.dstAbode, 'agents', n + '.md'));
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.skipped, null,
+    '神官ゼロを skip と呼んだ — これがこの改革の退治している病そのものである (第37条)');
+  assert.strictEqual(r.ok, false, '神官が 0 体の倉を緑と呼んだ');
+  assert.strictEqual(r.counts.agents, 0);
+  assert.ok(r.why.some(w => /AC-48/.test(w)), '空を空として名指していない: ' + JSON.stringify(r.why));
+});
+
+test('【逆】兄弟倉は在るのに .claude ごと無ければ赤 — 不在は skip ではない (AC-48)', () => {
+  const f = fakeCreations('cre-noabode', { deploy: false });
+  assert.ok(!fs.existsSync(f.dstAbode), '前提が崩れている(配備してはならない)');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.skipped, null, '倉が在るのに skip した — 物差しは「兄弟倉そのものが在るか」である');
+  assert.strictEqual(r.ok, false, '神官が一体も居ない倉を緑と呼んだ');
+  assert.ok(r.why.some(w => /第37条/.test(w) && /AC-48/.test(w)),
+    '不在を skip でなく赤として名指していない: ' + JSON.stringify(r.why));
+});
+
+test('【正】兄弟倉そのものが無い機は、名乗って skip し exit 0 (AC-49)', () => {
+  const gone = path.join(mktmp('cre-gone'), 'no-such-creations');
+  const r = abode.creationsAbode({ env: { PARADISE_CREATIONS: gone } });
+  assert.ok(r.skipped, '兄弟倉が無い機で skip しなかった');
+  assert.ok(/creations abode 不在: /.test(r.skipped),
+    `設計 §1.4 が定めた skip の文言になっていない: ${r.skipped}`);
+  assert.strictEqual(r.ok, true, '倉が無いこと自体は違反ではない');
+});
+
+test('【正】CLI の skip は口で名乗る — 黙った緑を許さない (AC-49 / 第58条(e))', () => {
+  const gone = path.join(mktmp('cre-gone-cli'), 'no-such-creations');
+  const r = cli(['check', '--creations'], { PARADISE_CREATIONS: gone });
+  assert.strictEqual(r.code, 0, `倉が無い機で exit ${r.code}:\n${r.out}`);
+  assert.ok(/· skip: creations abode 不在: /.test(r.out),
+    `skip を印字していない — 黙って通った門は N skipped にも数えられない:\n${r.out}`);
+});
+
+test('【逆】兄弟倉が .claude を git 追跡していれば赤 — 第30条の逆流 (AC-50)', () => {
+  const f = fakeCreations('cre-tracked');
+  const tracked = trackInGit(f.dstRoot);
+  if (tracked === null) {
+    console.log('      (git が使えない環境 — 門は黙る。第21条)');
+    return;
+  }
+  assert.ok(tracked.trim().length, '前提が崩れている(追跡させられていない)');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.tracked, true, 'git 追跡を見落とした');
+  assert.strictEqual(r.ok, false, 'engine の写しが創造物の履歴に入っても緑');
+  assert.ok(r.why.some(w => /第30条/.test(w)),
+    '第30条の逆流として名指していない: ' + JSON.stringify(r.why));
+});
+
+test('【正】現物の兄弟倉は .claude を追跡していない (AC-50 の正)', () => {
+  const r = abode.creationsAbode();
+  // 兄弟倉が無い機では測れない —— **黙って抜けず、名乗ってから抜ける**(第58条(e))。
+  const measurable = !r.skipped;
+  if (!measurable) console.log('      (この機に兄弟倉が無い — AC-49 の skip)');
+  else {
+    assert.notStrictEqual(r.tracked, null,
+      '第30条の逆流を検められなかった: ' + JSON.stringify(r.unmeasurable));
+    assert.strictEqual(r.tracked, false,
+      '創造物の倉が engine の写しを追跡している — 兄弟倉の .gitignore に .claude/ を足せ');
+  }
+});
+
+test('git を走らせられなければ tracked は null — 黙って false にしない (第37条)', () => {
+  // git 倉でない場所に対して `ls-files` は失敗する。**「追跡していない」と混同しない。**
+  const f = fakeCreations('cre-nogit');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.tracked, null,
+    '検められなかったものを false(= 追跡していない)と答えた — 第37条の正面違反');
+  assert.ok(r.unmeasurable.some(u => /ls-files/.test(u)),
+    '検められなかった理由を持っていない: ' + JSON.stringify(r.unmeasurable));
+});
+
+test('台帳を越えて写さない — settings.json / paradise-daily.json は EX-2 の target に無い', () => {
+  const f = fakeCreations('cre-scope');
+  const r = abode.creationsAbode({ env: f.env });
+  assert.strictEqual(r.ok, true, '前提が崩れている: ' + JSON.stringify(r.why));
+  for (const bait of ['settings.json', 'paradise-daily.json']) {
+    assert.ok(!fs.existsSync(path.join(f.dstAbode, bait)),
+      `${bait} を兄弟倉へ写している — EX-2 の target が名指すのは四つだけである`);
+    assert.ok(!r.missing.includes(bait) && !r.why.some(w => w.includes(bait)),
+      `${bait} の不在を門が咎めている — 台帳を越えて検めれば、台帳を越えて書いてよいことになる`);
+  }
+  const e = abode.exportFor('EX-2');
+  assert.strictEqual(e.target, '<creations-root>/.claude/{agents,commands,rules,CLAUDE.md}',
+    '台帳の target が変わった — 門と台帳のどちらが正しいかを決めてから直せ');
+  assert.strictEqual(e.writer, 'graph/deploy.js', 'EX-2 の書き手が変わった');
+});
+
+test('--creations は check の知る旗であり、--all にも含まれる (第44条)', () => {
+  assert.strictEqual(abode.CHECK_FLAGS['--creations'], 'creations', '旗が登録されていない');
+  // 旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ。
+  const all = abode.check({ repoRoot: ROOT });
+  assert.notStrictEqual(all.creations, null, '--all(旗なし)で creations を走らせていない');
+  // 知らない旗は依然として exit 2 —— 第3段の掟を壊していない。
+  const bad = cli(['check', '--creationz']);
+  assert.strictEqual(bad.code, 2, `知らない旗が exit ${bad.code} を返した`);
+  assert.ok(/--creations/.test(bad.out), '知る旗の一覧に --creations が出ていない');
+});
+
+test('creationsAbode は住所を自分で組まない — workspace.js の答えの下に住む (第30条)', () => {
+  const ws = require(path.join(ROOT, 'graph', 'workspace.js'));
+  const box = mktmp('cre-addr');
+  const r = abode.creationsAbode({ env: { PARADISE_CREATIONS: box } });
+  assert.strictEqual(r.root, ws.resolve({ env: { PARADISE_CREATIONS: box } }).root,
+    '兄弟倉の根を workspace.js 以外の口から作っている');
+  assert.strictEqual(r.abode, path.join(r.root, '.claude'));
+  // ソースにも二重の住所組みが無いことを実測で示す(註釈だけの宣言は機構ではない — 第10条)
+  const src = fs.readFileSync(ABODE_JS, 'utf8').split('\n');
+  const start = src.findIndex(l => /^function creationsAbode\s*\(/.test(l));
+  const end = src.findIndex((l, i) => i > start && /^function spawnGit\s*\(/.test(l));
+  assert.ok(start >= 0 && end > start, 'creationsAbode を切り出せない');
+  for (let i = start; i <= end; i++) {
+    assert.ok(!/\b(os\.homedir|paradise-creations)\b/.test(src[i]),
+      `creationsAbode が住所を直に組んでいる: ${i + 1}: ${src[i].trim()}`);
+  }
+});
+
+test('【逆】AC-51 — 住処解決が神官ゼロを指したとき check-agents は skipped=false で赤', () => {
+  /**
+   * **`skipped=true` で `ok=true` を返した瞬間に不合格**という掟を、門で固定する。
+   * 実測された病(改革の着手時): env を四本立てても `check-agents` は本物のホームを見て
+   * `skipped=true ok=true` を返していた —— **測らずに緑**である。
+   */
+  const box = path.join(mktmp('ac51-empty'), '.claude');
+  fs.mkdirSync(path.join(box, 'agents'), { recursive: true });
+  const ca = require(path.join(ROOT, 'graph', 'check-agents.js'));
+  const r = ca.check(undefined, { env: { CLAUDE_HOME: box } });
+  assert.strictEqual(r.skipped, false,
+    '神官ゼロを skip と呼んだ — skipped=true かつ ok=true はこの改革が退治している病そのものである');
+  assert.strictEqual(r.ok, false, '神官が一体も居ないのに緑');
+  assert.ok(/一体も居ない/.test(r.note), '理由を名乗っていない: ' + r.note);
+});
+
+test('【正】AC-51 — 住処解決が神官の揃った兄弟倉を指せば skipped=false かつ ok=true', () => {
+  const ca = require(path.join(ROOT, 'graph', 'check-agents.js'));
+  const need = ca.requiredAgents();
+  const box = path.join(mktmp('ac51-full'), '.claude');
+  fs.mkdirSync(path.join(box, 'agents'), { recursive: true });
+  // 名指された神官を全員、実体つきで置く。`tools:` 行を持たない = 全継承(起動の権能も継承)。
+  for (const a of need) fs.writeFileSync(path.join(box, 'agents', a + '.md'), `---\nname: ${a}\n---\n# ${a}\n`);
+  const clergy = require(path.join(ROOT, 'graph', 'clergy.js'));
+  for (const c of Object.values(clergy.COLLEGE || {})) {
+    for (const b of c.believers || []) {
+      const p = path.join(box, 'agents', b + '.md');
+      if (!fs.existsSync(p)) fs.writeFileSync(p, `---\nname: ${b}\n---\n# ${b}\n`);
+    }
+  }
+  const r = ca.check(undefined, { env: { CLAUDE_HOME: box } });
+  assert.strictEqual(r.skipped, false, '実物が在るのに skip した');
+  assert.strictEqual(r.ok, true, '揃っているのに赤: ' + r.note);
+  assert.strictEqual(r.dir, path.join(box, 'agents'), '住処解決が指した先を見ていない');
+});
+
+// ══════════════════════════════════════════════════════════════════════
 // 8. 門そのものの密閉性 (第58条(c))
 // ══════════════════════════════════════════════════════════════════════
 console.log('\n門の密閉性 (第58条(c)):');
