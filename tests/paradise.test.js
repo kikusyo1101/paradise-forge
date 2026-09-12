@@ -2778,7 +2778,15 @@ test('derived: 住処の settings.json は生成元が engine の定数なので
 test('derived: 消えた deny 行を名指し、直す命令を示す (AC-15)', () => {
   // 「件数が違う」だけの診断は、赤くなっても直せない。
   const derived = require('../graph/derived.js');
-  const { POLICY } = require('../graph/apply-guards.js');
+  // ⚠️ **基準は `policyFor({mode:'repo'})` であって、周囲の住処の `POLICY` ではない**
+  // (裁可 5-A)。`<repo>/.claude/settings.json` は定義上 repo の住処の派生物であり、
+  // 走らせた側の env で「あるべき姿」が変わる道理は無い —— ゆえに `verifyRepoSettings()`
+  // は repo に固定されている。ここで `POLICY`(= `policyFor()`・周囲の住処に依る)から
+  // 写しを組めば、`PARADISE_ABODE=global` の走行で deny が 9 件になり、
+  // 10 件を期待する裁き手と食い違って**門が偽の赤を出す**(CI で実際に鳴った)。
+  // 試験の基準は、裁き手と同じ口から採る。
+  const { policyFor } = require('../graph/apply-guards.js');
+  const POLICY = policyFor({ mode: 'repo' });
   const pontiff = require('../graph/clergy.js').RANKS.pontiff;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'derived-settings-'));
   const f = path.join(tmp, 'settings.json');
