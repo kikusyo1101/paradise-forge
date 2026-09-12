@@ -11,7 +11,8 @@
       "Edit(~/.claude/**)",
       "Edit(**/.env)",
       "Read(**/.env)",
-      "Read(**/.env.*)"
+      "Read(**/.env.*)",
+      "Edit(**/.claude/**)"
     ],
     "ask": [
       "Bash(gh pr merge:*)"

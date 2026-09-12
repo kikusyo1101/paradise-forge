@@ -26,15 +26,22 @@
  *   node graph/abode.js path <key>           単一の住所を印字 (スクリプトから引く口)
  *   node graph/abode.js check [--count] [--ledger] [--exclusion]
  *                            [--silent-green] [--symmetry] [--hermetic]
- *                            [--creations] [--all]
+ *                            [--creations] [--backrefs] [--all]
  *                                            違反の検出。旗が無ければ --all
  *                                            **知らない旗は exit 2** (黙って捨てない)
+ *                                            ⚠️ `--backrefs` は --all に含まれない
+ *                                               (撤収前は必ず赤い。撤収完了後に編入 / 台帳 [41])
  *   node graph/abode.js exports [--external] [--verify <id>]
  *                                            台帳の印字と、照合の道の提示
  *   node graph/abode.js migrate --plan | --verify
  *                                            KG / 日次台帳の移設 (計画と照合のみ)
  *                                            **--write は存在しない** —— 住所を知る器は書かない
- *   node graph/abode.js retreat --plan | --verify     (第6段 / work-6 で実装)
+ *   node graph/abode.js retreat --plan [--freeze] | --verify
+ *                                            撤収の計画と照合。**--write は存在しない**。
+ *                                            `--freeze` が書くのは**楽園の倉の中**
+ *                                            (reform/sovereign-abode/retreat-baseline.json)
+ *                                            であって `~/.claude` ではない。
+ *                                            実際の撤収は神が計画を読み、名指した後に行う。
  *
  * exit code は三値。**2 を 0 に混ぜてはならない**(第37条: 不在は通過ではない):
  *   0 = 検めて、違反が無かった
@@ -437,14 +444,22 @@ function verifyExport(id, opts = {}) {
   }
   // 遅延 require: apply-guards は abode を読む。環になる require は関数の中に置く。
   const G = require('./apply-guards.js');
+  /**
+   * ⚠️ **照合の基準は `global` の掟に固定する**(L-19 / 第6段)。
+   * 掟は住処に依るようになった(`policyFor()`): repo の住処では
+   * `Edit(**` + `/.claude/**)` が一行足される。だが EX-1 の輸出先は**神の住処**であり、
+   * そこに在るべきは **global の掟**である。走らせた側の `PARADISE_ABODE` で
+   * 照合の基準が揺れれば、**同じ実機が日によって赤くも緑にもなる**(第37条)。
+   */
+  const EX1_POLICY = G.policyFor({ mode: 'global' });
   let s = null;
   try { s = JSON.parse(fs.readFileSync(real, 'utf8')); }
   catch (err) { throw unmeasurable(`実機の settings.json を読めない: ${real} — ${err.message}`); }
   const perms = (s && s.permissions) || null;
   if (!perms) why.push('実機に permissions が無い — EX-1 の輸出が消えている');
-  else if (!G.permissionsMatch(perms, G.POLICY)) {
+  else if (!G.permissionsMatch(perms, EX1_POLICY)) {
     for (const kind of ['deny', 'ask', 'allow']) {
-      const want = new Set(G.POLICY[kind] || []);
+      const want = new Set(EX1_POLICY[kind] || []);
       const got = new Set(perms[kind] || []);
       for (const w of want) if (!got.has(w)) why.push(`${kind} から消えている: ${w}`);
       for (const g of got) if (!want.has(g)) why.push(`${kind} に台帳外の行が在る: ${g}`);
@@ -766,6 +781,70 @@ function selfAudit(repoRoot = REPO_ROOT) {
   return out;
 }
 
+/**
+ * **AC-16 — engine が神のキーを削除する権能を持っていないか**(R-4)。
+ *
+ * 要件 §R-4: 「撤収と修理は、**台帳に載っていないキーを削除してはならない**」。
+ * **前例が実在する** —— `env.PATH` は engine の判断で消された(障害牲16)。
+ * 第6段(撤収)は同じ形を engine 全体へ広げる仕事であるから、先に錠を掛ける。
+ *
+ * この門は `apply-guards.js` の `repairEnv()` の**本体だけ**をソースから切り出し、
+ * `delete` が台帳(`REPAIRABLE_ENV_KEYS` / `mayDeleteEnvKey`)の守りの内側に
+ * 居るかを検める。
+ *
+ * **なぜ静的に見るのか**: 振る舞いの門(「台帳外のキーを渡したら残る」)は既に
+ * `tests/guards.test.js` が持っている。だが振る舞いの門は**書かれた道**しか撃てない。
+ * 「engine が**権能を持っている**」は構造の問題であり、構造は構造で見る。
+ *
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
+function envRepairAudit(repoRoot = REPO_ROOT) {
+  const rel = 'graph/apply-guards.js';
+  const src = read(path.join(repoRoot, rel));
+  const out = [];
+  if (!src) {
+    return [{ file: rel, line: 0, text: '', why: `${rel} を読めない — AC-16 を検められない` }];
+  }
+  const lines = src.split('\n');
+
+  // 台帳そのものが在るか。無ければ「権能に錠が無い」である。
+  if (!/const\s+REPAIRABLE_ENV_KEYS\s*=/.test(src)) {
+    out.push({ file: rel, line: 0, text: '',
+      why: '削除してよいキーの台帳 (REPAIRABLE_ENV_KEYS) が無い — ' +
+           'engine は「何を消してよいか」を宣言せずに消している (AC-16 / R-4)' });
+  }
+  if (!/function\s+mayDeleteEnvKey\s*\(/.test(src)) {
+    out.push({ file: rel, line: 0, text: '',
+      why: '台帳を引く述語 (mayDeleteEnvKey) が無い — 台帳が在っても参照されねば飾りである' });
+  }
+
+  // `repairEnv()` の本体を切り出して、`delete` が守りの内側に居るかを見る。
+  const start = lines.findIndex(l => /^function\s+repairEnv\s*\(/.test(l));
+  if (start < 0) {
+    out.push({ file: rel, line: 0, text: '', why: 'repairEnv() が見つからない — AC-16 を検められない' });
+    return out;
+  }
+  let depth = 0, end = start;
+  for (let i = start; i < lines.length; i++) {
+    depth += (lines[i].match(/\{/g) || []).length - (lines[i].match(/\}/g) || []).length;
+    end = i;
+    if (i > start && depth <= 0) break;
+  }
+  const body = lines.slice(start, end + 1);
+  const guarded = body.some(l => /mayDeleteEnvKey\s*\(/.test(l));
+  body.forEach((l, i) => {
+    const t = l.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+    if (!/\bdelete\s+\w+\s*[[.]/.test(l)) return;
+    if (guarded) return;                       // 台帳の守りが本体に在れば、この delete は錠の内側
+    out.push({ file: rel, line: start + i + 1, text: t.slice(0, 100),
+      why: 'engine が神のキーを削除する権能を持っている — ' +
+           'この delete は台帳 (mayDeleteEnvKey) の守りの外に在る。' +
+           '削除が要るならそれは**神への提示**であって engine の判断ではない (AC-16 / R-4 / 障害牲16)' });
+  });
+  return out;
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // 兄弟倉の神官 — 環が起動する場所に神官が居るか (AC-46〜AC-50 / EX-2)
 // ══════════════════════════════════════════════════════════════════════
@@ -945,14 +1024,20 @@ function spawnGit(cwd, args) {
 function check(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
   const all = !(opts.count || opts.ledger || opts.exclusion || opts.silentGreen ||
-                opts.symmetry || opts.hermetic || opts.creations);
+                opts.symmetry || opts.hermetic || opts.creations || opts.backrefs);
   const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [],
               silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null,
-              creations: null, ok: true };
+              creations: null, backrefs: null, envRepair: [], ok: true };
   if (all || opts.count || opts.exclusion) r.homedir = homedirRefs(repoRoot);
   if (all || opts.ledger) {
     r.ledger = validateLedger(ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {}), repoRoot);
     r.self = selfAudit(repoRoot);
+    /**
+     * 設計 §4.2 の表の「(第三段の静的側)」の行: `apply-guards.js` の `repairEnv()` が
+     * 台帳に無いキーを削除できる状態 → AC-16。**`--all` に含める**(撤収前でも緑でありうる ——
+     * これは実機を見る門ではなく、engine の構造を見る門だからである)。
+     */
+    r.envRepair = envRepairAudit(repoRoot);
   }
   if (all || opts.silentGreen) r.silentGreen = silentGreens(repoRoot);
   if (all || opts.symmetry) r.symmetry = symmetryAudit(repoRoot);
@@ -977,9 +1062,25 @@ function check(opts = {}) {
    * 旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ(第44条)。
    */
   if (all || opts.creations) r.creations = creationsAbode(opts);
+  /**
+   * **逆向き依存(AC-30 / AC-31)。`--all` には含めない。**
+   *
+   * 撤収前の今、実機の `~/.claude/settings.json` は楽園の絶対パスを握った hook を
+   * **6 本持っている**。それは正しい —— まだ撤収していないのだから。
+   * これを `--all` に含めれば、**CI も自己診断も今日から赤くなる**。
+   * 赤い門は見られなくなり、見られない門は第57条の禁じ手(閾値の引き下げ)を招く。
+   *
+   * ゆえに `--backrefs` を**明示したときだけ**走る旗にする。
+   * **裁定: 撤収が完了した日に `--all` へ編入する** —— 台帳 [41] への申し送りである。
+   * (編入の条件は「`check --backrefs` が exit 0 になること」であり、それは
+   *  神が hooks の去就を名指した後にしか起こらない)
+   */
+  if (opts.backrefs) r.backrefs = backRefs(opts);
   r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0 &&
+         r.envRepair.length === 0 &&
          r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok) &&
-         (r.creations === null || r.creations.ok);
+         (r.creations === null || r.creations.ok) &&
+         (r.backrefs === null || r.backrefs.skipped !== null || r.backrefs.rows.length === 0);
   return r;
 }
 
@@ -1123,6 +1224,499 @@ function migrateVerify(opts = {}) {
   return { ok: unmeasurable.length === 0 && rows.every(r => r.sha === true), rows, unmeasurable };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 撤収 — 神のホームから楽園の痕跡を引く「計る器」 (AC-16 / AC-29〜AC-38)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ **この節は 1 バイトも書かない。** `retreat` は `--write` を持たない(§1.5)。
+ * 住所を知る器は書かない —— 実際に撤収するのは神が計画を読み、名指した後である。
+ *
+ * 神の 5 キー。`~/.claude/settings.json` は神のキーと楽園のキーが**混住**しており、
+ * engine は `JSON.stringify(next)` の**全書き戻し**方式である(apply-guards:704 /
+ * apply-seat:79 / vendor:126,128)。撤収時に必ず全キーを触る。
+ * **前例がある** —— `env.PATH` は engine の判断で消された(障害牲16)。ゆえに照合は必須。
+ */
+const GOD_KEYS = ['theme', 'language', 'enableWorkflows', 'extraKnownMarketplaces', 'agentPushNotifEnabled'];
+
+/** 楽園が実機の settings.json に書いたキー(EX-1 の `permissions` を除く)。 */
+const PARADISE_SETTINGS_KEYS = ['model', 'effortLevel'];
+
+/**
+ * 凍結の在り処。**数はここが持つ。散文は在り処だけを指す**(第22条)。
+ *
+ * 起草時、design.md と requirements.md は神 5 キーの sha256 を
+ * **散文に書き写していた**。第6段で実測したところ
+ * どの正準化の流儀からも再現できず(8 通り試行)、起草時のプローブは倉にも
+ * git 履歴にも存在しなかった。**散文に書いた数は正典ではない。**
+ * 固定値を門に直書きすれば、外れた瞬間から門は永久に赤く、
+ * 次に来る者は必ず閾値を緩めたくなる(第57条の禁じ手への誘惑)。
+ */
+const RETREAT_BASELINE = path.join(REPO_ROOT, 'reform', 'sovereign-abode', 'retreat-baseline.json');
+
+/**
+ * 不可侵名簿(要件 §9.1 の表)。**撤収は絶対にこれらへ触れない。**
+ * `kind`: `dir` はディレクトリ(三つ組で照合) / `file` は 1 本のファイル。
+ *
+ * ディレクトリを毎回ハッシュしない理由: `projects/` は 28M、`plugins/` は 7.3M である。
+ * 撤収のたびに全ハッシュを採れば門が実用に耐えない。ゆえに
+ * **(ファイル数, 合計バイト, 最新 mtime) の三つ組**で照合する。
+ *
+ * ⚠️ **`volatile` の意味と、なぜ必要か(実測に基づく裁定)**:
+ * 名簿の多くは **Claude Code 自身が常時書いている**。`sessions/` は走行のたびに増え、
+ * `.credentials.json` はトークンの更新で書き換わり、`backups/` は自動退避で増える。
+ * これらに三つ組の**完全一致**を課せば、凍結の 30 秒後に門が赤くなる ——
+ * そして赤い門は見られなくなり、見られない門は第57条の禁じ手(閾値の引き下げ)を招く。
+ *
+ * ゆえに `volatile` な項目は**「減った/消えた」だけを赤**とする。根拠:
+ * **撤収は壊す手であって作る手ではない。** 撤収が起こしうる害は「失われる」ことだけである。
+ * 増えたことは神と Claude Code の日常であり、撤収の害ではない。
+ * (**ただし黙らない** —— 増減は照合の出力に必ず印字する。第54条(c))
+ *
+ * `volatile` でない項目(`plugins/` / 原初設定の退避 / `skills/pr-review`)は
+ * **三つ組の完全一致**を課す。これらは日常では 1 バイトも動かない。
+ */
+const SANCTUARY = [
+  { rel: '.credentials.json', kind: 'file', volatile: true, why: 'Claude Code の認証。触れば神はログインを失う (トークン更新で書き換わる)' },
+  { rel: '.credentials.lock', kind: 'file', volatile: true, why: 'Claude Code の認証ロック', optional: true },
+  { rel: 'projects', kind: 'dir', volatile: true, why: 'セッション履歴の本体 (28M) — Claude Code の資産であって楽園の物ではない' },
+  { rel: 'plugins', kind: 'dir', why: '神の私物 (marketplace / 7.3M)。日常では 1 バイトも動かない' },
+  { rel: 'sessions', kind: 'dir', volatile: true, why: 'Claude Code のセッション記録 (走行のたびに増える)' },
+  { rel: 'session-env', kind: 'dir', volatile: true, why: 'Claude Code のセッション環境', optional: true },
+  { rel: 'shell-snapshots', kind: 'dir', volatile: true, why: 'Claude Code のシェル断面', optional: true },
+  { rel: 'history.jsonl', kind: 'file', volatile: true, why: 'Claude Code の履歴', optional: true },
+  { rel: 'skills/learned', kind: 'dir', volatile: true, why: '神の私物 — vendor に複製が無い。消えたら二度と戻らない (SessionEnd の hook が書く)' },
+  { rel: 'skills/pr-review', kind: 'dir', why: '神の私物 — vendor に複製が無い' },
+  { rel: 'skills', kind: 'dir', volatile: true, why: '残り 11 件は帰属未確定 (障害物17 = OUT)。今回は触れない' },
+  { rel: 'policy-limits.json', kind: 'file', volatile: true, why: 'Claude Code の制限 (遠隔から更新される)', optional: true },
+  { rel: 'remote-settings.json', kind: 'file', volatile: true, why: 'Claude Code の遠隔設定 (遠隔から更新される)', optional: true },
+  { rel: 'backups', kind: 'dir', volatile: true, why: 'Claude Code の退避 (自動で増える)', optional: true },
+  { rel: 'cache', kind: 'dir', volatile: true, why: 'Claude Code のキャッシュ', optional: true },
+  { rel: 'ide', kind: 'dir', volatile: true, why: 'Claude Code の IDE 連携', optional: true },
+  { rel: '.last-cleanup', kind: 'file', volatile: true, why: 'Claude Code の内部印', optional: true },
+  { rel: 'settings.json.pre-wire.bak', kind: 'file', why: '**神の原初設定の唯一の証拠**。2026-08-28 の退避 — 1 バイトも動いてはならない' },
+  { rel: 'settings.json.bak.1787846094', kind: 'file', why: '**神の原初設定の唯一の証拠** — 1 バイトも動いてはならない' },
+];
+
+/**
+ * 神へ提示する拒否(`refused`)。**「対象外」を黙って対象外にしない**(第54条(c))。
+ * 台帳 EX-1 はここに載る —— 「楽園由来だから引く」という機械的判断を台帳が阻む(AC-29)。
+ */
+function retreatRefusals() {
+  const out = SANCTUARY.map(s => ({ what: `~/.claude/${s.rel}`, why: `不可侵名簿: ${s.why}` }));
+  const ex1 = exportFor('EX-1');
+  if (ex1) {
+    out.push({
+      what: ex1.target,
+      why: `台帳 ${ex1.id} により**残す**。出所は楽園だが守備範囲はマシン全体である — ` +
+           `楽園内へ引けば、神が他所の倉で作業した瞬間に force-push が通る。${ex1.reason}`,
+    });
+  }
+  return out;
+}
+
+/** ディレクトリの三つ組 (ファイル数, 合計バイト, 最新 mtime)。不在は null(0 ではない)。 */
+function dirTriple(dir) {
+  if (!isDir(dir)) return null;
+  let files = 0, bytes = 0, mtime = 0;
+  const walk = (p, depth) => {
+    if (depth > 12) return;
+    let ents = [];
+    try { ents = fs.readdirSync(p, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const q = path.join(p, e.name);
+      if (e.isDirectory()) walk(q, depth + 1);
+      else {
+        try { const st = fs.statSync(q); files++; bytes += st.size; mtime = Math.max(mtime, Math.floor(st.mtimeMs)); }
+        catch { /* 読めない一本は数えない —— 数えられないことは後段の三つ組の差で出る */ }
+      }
+    }
+  };
+  walk(dir, 0);
+  return { files, bytes, mtime };
+}
+
+/** 不可侵名簿の一項目を測る。**不在は null** —— 0 と混ぜれば「消えた」と「空」が同じ顔になる。 */
+function measureSanctuary(abodeDir, s) {
+  const p = path.join(abodeDir, s.rel);
+  if (s.kind === 'dir') {
+    const t = dirTriple(p);
+    return { rel: s.rel, kind: s.kind, why: s.why, optional: !!s.optional, path: p,
+             exists: t !== null, triple: t };
+  }
+  let st = null;
+  try { st = fs.statSync(p); } catch { st = null; }
+  return { rel: s.rel, kind: s.kind, why: s.why, optional: !!s.optional, path: p,
+           exists: !!st && st.isFile(),
+           triple: st && st.isFile() ? { files: 1, bytes: st.size, mtime: Math.floor(st.mtimeMs) } : null };
+}
+
+/**
+ * 実機の settings.json を読む。**この器は書かない。**
+ * @param {{env?:object, settingsFile?:string}} [opts] `settingsFile` は門が複製を差す口。
+ */
+function godSettingsPath(opts = {}) {
+  if (opts.settingsFile) return path.resolve(opts.settingsFile);
+  const env = opts.env || process.env;
+  // `PARADISE_SETTINGS` は既に在る差し替えの口(OVERRIDE_ENV)。門はこれで複製を差す。
+  if (String(env.PARADISE_SETTINGS || '').trim()) return path.resolve(String(env.PARADISE_SETTINGS).trim());
+  return resolve({ env: { ...env, PARADISE_ABODE: 'global' } }).settings;
+}
+
+/**
+ * 神 5 キーを抜き出し、**キー名でソートした正準 JSON** とその sha256 を返す。
+ *
+ * 正準化の流儀を**ここ一箇所に固定する**。凍結と照合が別々の流儀を持てば、
+ * 撤収の前後で必ず食い違い、しかも原因が判らない。
+ * 流儀: キー名昇順 + `JSON.stringify` の compact(空白なし・末尾改行なし)。
+ * @returns {{present:object, missing:string[], canonical:string, sha:string}}
+ */
+function godSubset(settings) {
+  const present = {};
+  const missing = [];
+  for (const k of GOD_KEYS.slice().sort()) {
+    if (settings && Object.prototype.hasOwnProperty.call(settings, k)) present[k] = settings[k];
+    else missing.push(k);
+  }
+  const canonical = JSON.stringify(present);
+  return { present, missing, canonical, sha: sha256(canonical) };
+}
+
+/** 凍結を読む。無ければ null —— **null は「検められなかった」であって「違反なし」ではない**。 */
+function readBaseline(file = RETREAT_BASELINE) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+/**
+ * 実機 `settings.json` の hooks のうち、**楽園リポジトリの絶対パスを握っている**もの
+ * を数え上げる(AC-30 / AC-31)。
+ *
+ * ⚠️ **`check --all` には含めない。** 撤収前の今は必ず 6 件在り、含めれば CI も
+ * 自己診断も今日から赤くなる。`--backrefs` を**明示したときだけ**走る旗である。
+ * **撤収完了後に `--all` へ編入する** —— 台帳 [41] への申し送りとする。
+ *
+ * @param {{env?:object, settingsFile?:string, repoRoot?:string}} [opts]
+ * @returns {{skipped:string|null, path:string, rows:object[]}}
+ */
+function backRefs(opts = {}) {
+  const repoRoot = path.resolve(opts.repoRoot || REPO_ROOT);
+  const file = godSettingsPath(opts);
+  if (!isFile(file)) {
+    // 実機が無い機(CI)では**名乗って** skip する。黙って緑にしない(第58条(e))。
+    return { skipped: `実機の ${file} が無い — 逆向き依存は検められない`, path: file, rows: [] };
+  }
+  let s = null;
+  try { s = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { throw unmeasurable(`実機の settings.json を読めない: ${file} — ${e.message}`); }
+  const needle = repoRoot.split(path.sep).join('/').toLowerCase();
+  const rows = [];
+  for (const [event, groups] of Object.entries((s && s.hooks) || {})) {
+    if (!Array.isArray(groups)) continue;
+    groups.forEach((g, index) => {
+      for (const h of ((g && g.hooks) || [])) {
+        const cmd = String((h && h.command) || '');
+        if (!cmd.replace(/\\/g, '/').toLowerCase().includes(needle)) continue;
+        rows.push({ event, index, matcher: g && g.matcher != null ? String(g.matcher) : '',
+                    command: cmd, description: (g && g.description) || '' });
+      }
+    });
+  }
+  return { skipped: null, path: file, rows };
+}
+
+/**
+ * 一本の hook が**楽園固有か汎用か**を、実測で判じる(R-8)。
+ *
+ * **推測で書かない。** 判定の根拠は「そのスクリプトが何を読み、何処へ書くか」である。
+ * 要件 R-8 は「汎用に見える 5 本(vendor 由来)については、撤収計画が一覧を印字して
+ * **神の名指しを求める**」と定める。ゆえにこの関数は**裁かない** —— 事実を並べるだけである。
+ */
+function classifyHook(row, repoRoot = REPO_ROOT) {
+  const m = String(row.command).replace(/\\/g, '/').match(/["']?([^"'\s]*\.(?:js|mjs|cjs))["']?/);
+  const scriptAbs = m ? m[1] : null;
+  const rel = scriptAbs ? path.relative(repoRoot, scriptAbs).split(path.sep).join('/') : null;
+  const src = scriptAbs ? read(scriptAbs) : '';
+  const vendor = !!rel && rel.startsWith('overlay/vendor/');
+  // **楽園の名を実際に呼んでいるか**をソースから測る(在り処ではなく中身で判ずる)。
+  const refsParadise = /PARADISE_ROOT|paradiseRoot|graph\/kg\.js|kg-store|楽園/.test(src);
+  const touches = [];
+  for (const [re, what] of [
+    [/getSessionsDir/, '~/.claude/sessions/ を読み書きする'],
+    [/getLearnedSkillsDir/, '~/.claude/skills/learned/ を読み書きする'],
+    [/getTempDir/, 'os.tmpdir() に数える'],
+    [/getClaudeDir/, '~/.claude/ 配下を見る'],
+    [/execFileSync|spawnSync|execSync/, '外部命令を起動する'],
+  ]) if (re.test(src)) touches.push(what);
+  return {
+    script: rel, exists: !!scriptAbs && isFile(scriptAbs), vendor,
+    paradiseSpecific: refsParadise,
+    verdict: refsParadise ? 'paradise-specific' : vendor ? 'vendor-generic' : 'unknown',
+    touches,
+    basis: !scriptAbs ? 'command からスクリプトの道を読めない — 判定不能'
+      : refsParadise ? `ソースが楽園を名指している (${rel})`
+      : vendor ? `vendor 由来 (${rel}) / 楽園を一切参照しない`
+      : `楽園の倉に住むが vendor ではない (${rel}) / 楽園を参照しない`,
+  };
+}
+
+/**
+ * 神の住処に**実際に住んでいる**楽園の配備物を数え上げる。
+ *
+ * ⚠️ **`deploy.js` を require しない。** 一度は deploy の `plan()` を遅延 require で
+ * 呼んで計画の 58 件を引いたが、**それは環を作る**:
+ * `deploy.js` は `upstream.js` を経て `abode.js` を require しているので、
+ * `abode → deploy → upstream → abode` の相互依存が生まれる。
+ * 実測でそれが図に出た —— `atlas` の結線図で `abode` が 2 段深くなり、
+ * 高さが 800 → 1008px に伸び、実ブラウザで字が **5.18px**(床 6px)まで潰れた。
+ * **住所を知る器は、住所を使う者に依ってはならない**(第58条: 土台は上に建つ物を知らない)。
+ *
+ * ⚠️ **註釈の中にも `require` の綴りを書かない。** `wiring.js` は正規表現でソースを
+ * 走査して辺を測る —— 註釈に綴れば、**呼んでいないのに辺が在ることになる**(実測で踏んだ)。
+ *
+ * ゆえに**実機を直に測る**。撤収が知りたいのは「計画に何が在るか」ではなく
+ * 「**実機に何が在るか**」である —— 計画に在るだけで実機に無い物は撤収しようがない(第37条)。
+ * 木の形は `CREATIONS_TREES` / `CREATIONS_FILES` が既に知っている(EX-2 が使う同じ知識)。
+ *
+ * **出所との照合は `deploy.js check` の職務である。** ここでその答えを二つ持たない(第29条)。
+ * @returns {{kind:string, file:string, dst:string, onDisk:boolean}[]}
+ */
+function deployedFiles(abodeDir) {
+  const out = [];
+  for (const kind of CREATIONS_TREES) {
+    const dir = path.join(abodeDir, kind);
+    for (const f of (listMd(dir) || [])) {
+      out.push({ kind, file: f, dst: path.join(dir, f), onDisk: true });
+    }
+  }
+  for (const f of CREATIONS_FILES) {
+    const dst = path.join(abodeDir, f.name);
+    out.push({ kind: 'root', file: f.name, dst, onDisk: isFile(dst) });
+  }
+  return out;
+}
+
+/**
+ * 撤収計画。**`--write` を持たない。計画を印字するだけ**(AC-29 / R-8)。
+ *
+ * @param {{env?:object, settingsFile?:string, repoRoot?:string, baselineFile?:string}} [opts]
+ * @returns {{files:object[], settingsKeys:object, hooks:object[], refused:object[],
+ *            god:object, sanctuary:object[], violations:string[]}}
+ */
+function retreatPlan(opts = {}) {
+  const repoRoot = path.resolve(opts.repoRoot || REPO_ROOT);
+  const env = opts.env || process.env;
+  const violations = [];
+
+  // ── (2) settings.json のキーの帰属 ──────────────────────────────
+  const settingsFile = godSettingsPath({ env, settingsFile: opts.settingsFile });
+  /**
+   * ⚠️ **住処は settings の道から引く。** かつてここは `resolve({PARADISE_ABODE:'global'})`
+   * の住処をそのまま使っていた —— すなわち **`settingsFile` で複製を差しても、
+   * 不可侵名簿だけは現物 `~/.claude` を測っていた**。門は複製を撃ったつもりで
+   * 現物を読み、凍結と照合が別々の機を見て永久に食い違う。
+   * **差し替えの口は、全ての測定に等しく掛からねばならない**(第37条 / migrateSides と同じ裁定)。
+   */
+  const abodeDir = path.dirname(settingsFile);
+
+  // ── (1) 撤収対象のファイル — **実機を直に測る**(deployedFiles の註を見よ)
+  const files = deployedFiles(abodeDir);
+  const deployNote = null;
+
+  let raw = null;
+  try { raw = JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch { raw = null; }
+  const god = godSubset(raw);
+  const allKeys = raw ? Object.keys(raw) : [];
+  const settingsKeys = {
+    path: settingsFile,
+    exists: raw !== null,
+    all: allKeys,
+    god: GOD_KEYS.filter(k => allKeys.includes(k)),
+    paradise: PARADISE_SETTINGS_KEYS.filter(k => allKeys.includes(k)),
+    // **`permissions` は台帳 EX-1 により残る。** 計画に載れば AC-29 違反である。
+    retained: allKeys.filter(k => k === 'permissions'),
+    unknown: allKeys.filter(k => !GOD_KEYS.includes(k) && !PARADISE_SETTINGS_KEYS.includes(k) &&
+                                 k !== 'permissions' && k !== 'hooks'),
+  };
+  /**
+   * **AC-29 — 撤収の暴走**。「楽園由来だから引く」という機械的判断が、
+   * 台帳の EX-1 に**必ず阻まれる**ことを証す。計画に `permissions` が載ったら赤。
+   */
+  if (settingsKeys.paradise.includes('permissions')) {
+    violations.push('撤収計画に permissions が載っている — 台帳 EX-1 は「残す」と定めている (AC-29)');
+  }
+
+  // ── (3) hooks の逆向き依存 ────────────────────────────────────────
+  const br = backRefs({ env, settingsFile: opts.settingsFile, repoRoot });
+  const hooks = br.rows.map(r => ({ ...r, ...classifyHook(r, repoRoot) }));
+
+  // ── (4) 拒むもの / 不可侵名簿の現況 ───────────────────────────────
+  const refused = retreatRefusals();
+  const sanctuary = SANCTUARY.map(s => measureSanctuary(abodeDir, s));
+
+  // ── (5) 凍結 ────────────────────────────────────────────────────
+  const baseline = readBaseline(opts.baselineFile || RETREAT_BASELINE);
+
+  return { files, deployNote, abode: abodeDir, settingsKeys, hooks, hooksSkipped: br.skipped,
+           refused, sanctuary, god, baseline, baselinePath: opts.baselineFile || RETREAT_BASELINE,
+           violations };
+}
+
+/**
+ * 凍結すべき中身を組む。**器はこれを返すだけ** —— 書くのは CLI の `--plan --freeze` で
+ * あり、書き先は**楽園の倉の中**(`reform/sovereign-abode/retreat-baseline.json`)である。
+ * `~/.claude` へは 1 バイトも書かない。
+ *
+ * **値そのものを残す理由**: sha だけでは「何が変わったか」を名指せない。
+ * AC-36/37 はキー名**と値**の名指しを要求している。
+ */
+function retreatBaselineBody(opts = {}) {
+  const p = retreatPlan(opts);
+  return {
+    _note: '神 5 キーの凍結。**数はここが持つ。散文に書き写すな**(第22条 / design §8 危険1 の註)。' +
+           'retreat --verify がこの sha と values を実機と照合する(AC-35〜38)。',
+    canonicalization: 'キー名昇順 + JSON.stringify の compact(空白なし・末尾改行なし)',
+    godKeys: GOD_KEYS.slice().sort(),
+    sha256: p.god.sha,
+    sha256Short: p.god.sha.slice(0, 16),
+    values: p.god.present,
+    missing: p.god.missing,
+    source: p.settingsKeys.path,
+    takenAt: new Date().toISOString(),
+    sanctuary: p.sanctuary.map(s => ({ rel: s.rel, kind: s.kind, volatile: !!s.volatile,
+                                       exists: s.exists, triple: s.triple })),
+  };
+}
+
+/**
+ * 撤収前後の照合(AC-33〜AC-38)。
+ * **baseline が無ければ exit 2** —— skip ではない。照合の基点が無いことは
+ * 「違反が無い」ではない(第37条)。
+ *
+ * @param {{env?:object, settingsFile?:string, baselineFile?:string, repoRoot?:string}} [opts]
+ * @returns {{ok:boolean, findings:{kind:string,why:string}[], god:object, sanctuary:object[],
+ *            baseline:object, path:string}}
+ */
+function retreatVerify(opts = {}) {
+  const file = opts.baselineFile || RETREAT_BASELINE;
+  const baseline = readBaseline(file);
+  if (!baseline) {
+    throw unmeasurable(
+      `凍結が無い: ${file} — 照合の基点が無ければ検められない。` +
+      'まず node graph/abode.js retreat --plan --freeze で凍結せよ(第37条: 不在は通過ではない)');
+  }
+  const settingsFile = godSettingsPath({ env: opts.env, settingsFile: opts.settingsFile });
+  if (!isFile(settingsFile)) {
+    throw unmeasurable(`実機の settings.json が無い: ${settingsFile} — 撤収の跡を検められない`);
+  }
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(settingsFile, 'utf8')); }
+  catch (e) { throw unmeasurable(`実機の settings.json を読めない: ${settingsFile} — ${e.message}`); }
+
+  const findings = [];
+  const god = godSubset(raw);
+  const frozen = baseline.values || {};
+
+  // ── AC-36: キーの消失 ────────────────────────────────────────────
+  for (const k of Object.keys(frozen)) {
+    if (!Object.prototype.hasOwnProperty.call(god.present, k)) {
+      findings.push({ kind: 'missing-key', key: k,
+        why: `神のキーが消えた: ${k} (${JSON.stringify(frozen[k])})` });
+    }
+  }
+  // ── AC-37: 値の改変 ──────────────────────────────────────────────
+  for (const k of Object.keys(frozen)) {
+    if (!Object.prototype.hasOwnProperty.call(god.present, k)) continue;
+    const a = JSON.stringify(frozen[k]), b = JSON.stringify(god.present[k]);
+    if (a !== b) {
+      findings.push({ kind: 'changed-value', key: k,
+        why: `神のキーの値が変わった: ${k} ${a} → ${b}` });
+    }
+  }
+  // ── AC-38: キーの増殖 ────────────────────────────────────────────
+  // **足すのも引くのと同じく無断の改変である。**
+  for (const k of Object.keys(god.present)) {
+    if (!Object.prototype.hasOwnProperty.call(frozen, k)) {
+      findings.push({ kind: 'extra-key', key: k, why: `台帳に無いキーが増えた: ${k}` });
+    }
+  }
+  /**
+   * 神 5 キーの外にも「増殖」は起こりうる。だが**そこは GOD_KEYS の管轄ではない** ——
+   * 楽園のキー(model/effortLevel)と `permissions` / `hooks` は帰属が別であり、
+   * `verifyExport('EX-1')` と `retreat --plan` が別途見張る。
+   * ここで全キーを裁けば、神が自分で足した新しい設定まで赤くなる。
+   */
+
+  // ── AC-35: 正準 sha256 ───────────────────────────────────────────
+  const shaOk = god.sha === baseline.sha256;
+  if (!shaOk && !findings.length) {
+    findings.push({ kind: 'sha-mismatch', key: '(canonical)',
+      why: `神 5 キーの正準 sha256 が凍結値と違う: ${god.sha.slice(0, 16)} ≠ ${String(baseline.sha256).slice(0, 16)} — ` +
+           'キーの増減も値の変化も見つからないのに sha が違う = 正準化の流儀が食い違っている' });
+  }
+
+  // ── AC-33 / AC-34: 不可侵名簿 ────────────────────────────────────
+  const abodeDir = path.dirname(settingsFile);
+  const frozenSanctuary = new Map((baseline.sanctuary || []).map(s => [s.rel, s]));
+  const sanctuary = SANCTUARY.map(s => {
+    const now = measureSanctuary(abodeDir, s);
+    const was = frozenSanctuary.get(s.rel) || null;
+    const row = { ...now, was: was ? was.triple : null, wasExists: was ? was.exists : null, ok: true, why: null };
+    if (!was) {
+      row.ok = false;
+      row.why = `${s.rel}: 凍結に記録が無い — 名簿が凍結の後で増えた。凍結を取り直せ`;
+      findings.push({ kind: 'sanctuary-unfrozen', key: s.rel, why: row.why });
+      return row;
+    }
+    if (was.exists && !now.exists) {
+      row.ok = false;
+      const n = was.triple ? was.triple.files : '?';
+      row.why = `${s.rel}: 撤収前 ${n} ファイル / 撤収後 0 ファイル — **消えている**`;
+      findings.push({ kind: 'sanctuary-gone', key: s.rel, why: row.why });
+      return row;
+    }
+    if (!now.exists) {
+      // 凍結時も無かった → 名簿に在るが実機に無い。optional ならそれでよい。
+      if (!s.optional) {
+        row.ok = false;
+        row.why = `${s.rel}: 凍結時も撤収後も不在 — 名簿に在る物が実機に無い。名簿を検めよ`;
+        findings.push({ kind: 'sanctuary-absent', key: s.rel, why: row.why });
+      } else row.why = `${s.rel}: この機には元から無い(optional)`;
+      return row;
+    }
+    /**
+     * **「存在する」だけでは通さない**(第37条: 不在は通過ではない。存在も通過ではない)。
+     *
+     * `volatile` な項目 = Claude Code 自身が常時書く物 → **減ったこと**だけを赤とする
+     * (撤収は壊す手であって作る手ではない。増えたのは日常であって撤収の害ではない)。
+     * `volatile` でない項目 → **三つ組の完全一致**を課す(日常では 1 バイトも動かない)。
+     * **どちらの場合も増減は必ず印字する** —— 黙って通した照合は照合ではない(第54条(c))。
+     */
+    const moved = [];
+    if (now.triple.files !== was.triple.files) moved.push(`ファイル数 ${was.triple.files} → ${now.triple.files}`);
+    if (now.triple.bytes !== was.triple.bytes) moved.push(`合計バイト ${was.triple.bytes} → ${now.triple.bytes}`);
+    if (now.triple.mtime !== was.triple.mtime) {
+      moved.push(`最新 mtime ${new Date(was.triple.mtime).toISOString()} → ${new Date(now.triple.mtime).toISOString()}`);
+    }
+    row.moved = moved;
+    const shrank = now.triple.files < was.triple.files || now.triple.bytes < was.triple.bytes;
+    const bad = s.volatile ? shrank : moved.length > 0;
+    if (bad) {
+      row.ok = false;
+      row.why = s.volatile
+        ? `${s.rel}: **減っている** — 撤収前 ${was.triple.files} ファイル / ${was.triple.bytes} バイト、` +
+          `撤収後 ${now.triple.files} ファイル / ${now.triple.bytes} バイト`
+        : `${s.rel}: ${moved.join(' / ')} — この項目は日常では動かない`;
+      findings.push({ kind: 'sanctuary-changed', key: s.rel, why: row.why });
+    } else if (moved.length) {
+      row.why = `${s.rel}: ${moved.join(' / ')} (${s.volatile ? 'volatile — 増えるのは日常であり撤収の害ではない' : ''})`;
+    }
+    return row;
+  });
+
+  return { ok: findings.length === 0 && shaOk, findings, god, sanctuary,
+           baseline, path: settingsFile, baselinePath: file, shaOk };
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────
 
 function printResolve(rest) {
@@ -1195,6 +1789,12 @@ const CHECK_FLAGS = {
   '--count': 'count', '--ledger': 'ledger', '--exclusion': 'exclusion',
   '--silent-green': 'silentGreen', '--symmetry': 'symmetry', '--hermetic': 'hermetic',
   '--creations': 'creations',
+  /**
+   * ⚠️ **`--backrefs` は `--all` に含まれない。** 撤収前の今は必ず赤い(6 件)——
+   * それが正しい。含めれば CI も自己診断も今日から赤くなり、赤い門は見られなくなる。
+   * **撤収完了後に `--all` へ編入する**(台帳 [41] への申し送り / `check()` の註を見よ)。
+   */
+  '--backrefs': 'backrefs',
   '--all': 'all',
 };
 
@@ -1231,6 +1831,14 @@ function printCheck(rest) {
     console.log(`✗ 器が己に課した禁則を破っている (${r.self.length} 件)`);
     for (const s of r.self) console.log(`  ${s.file}:${s.line}  ${s.text}\n     ${s.why}`);
   }
+  if (r.envRepair.length) {
+    console.log(`✗ engine が神のキーを削除する権能を持っている (${r.envRepair.length} 件) — AC-16 / R-4`);
+    for (const s of r.envRepair) {
+      console.log(`  ${s.file}${s.line ? ':' + s.line : ''}  ${s.text}`);
+      console.log(`     ${s.why}`);
+    }
+    console.log('  → 削除が要るならそれは神への提示である。台帳 REPAIRABLE_ENV_KEYS に載せるか、proposals へ回せ');
+  }
   if (r.silentGreen.length) {
     console.log(`✗ 黙って早期に return する門 (${r.silentGreen.length} 件) — skip() を使え`);
     for (const s of r.silentGreen) {
@@ -1264,6 +1872,25 @@ function printCheck(rest) {
     console.log(`✗ 門が己の測る対象を汚している (${r.hermetic.violations.length} 件) — 第58条(c)`);
     for (const h of r.hermetic.violations) console.log(`  ${h.file}:${h.line}  ${h.obj}.${h.fn}(${h.arg})`);
     console.log('  → 詳しくは node graph/hermetic.js check');
+  }
+  if (r.backrefs) {
+    const b = r.backrefs;
+    if (b.skipped) {
+      // **実機が無い機(CI)は「検められなかった」を名乗って通す**(第58条(e))。
+      console.log(`  · skip: ${b.skipped}`);
+    } else if (b.rows.length === 0) {
+      console.log(`  ✓ 逆向き依存は 0 件 — 実機の hooks は楽園の木を指していない (AC-30)`);
+      console.log(`    実機: ${b.path}`);
+    } else {
+      console.log(`✗ 実機の hooks が楽園リポジトリの絶対パスを握っている (${b.rows.length} 件) — AC-31 / 第20条の鏡像`);
+      console.log(`    実機: ${b.path}`);
+      for (const h of b.rows) {
+        console.log(`  ${h.event}[${h.index}]  matcher=${JSON.stringify(h.matcher)}`);
+        console.log(`     ${h.command}`);
+      }
+      console.log('  → **撤収前の今は、これが赤いのが正しい。** 計画は node graph/abode.js retreat --plan');
+      console.log('  → この旗は --all に含まれない(撤収完了後に編入する / 台帳 [41])');
+    }
   }
   if (r.ok) {
     console.log('  ✓ 住所は abode.js に集まり、台帳は実質を持ち、器は台帳へ書く口を持たない');
@@ -1347,6 +1974,226 @@ function printMigrate(rest) {
   return v.ok ? 0 : 1;
 }
 
+/**
+ * `retreat` の CLI。**`--write` は存在しない**(§1.5 / AC-29 / R-8)。
+ *
+ * 旗:
+ *   `--plan`            撤収計画を印字する。**冗長に印字する** —— 神がこれを読んで裁可を下す。
+ *   `--plan --freeze`   神 5 キーの凍結を `reform/sovereign-abode/retreat-baseline.json` へ書く。
+ *                       **これは楽園の倉の中への書き込みであり、`~/.claude` への書き込みではない。**
+ *   `--verify`          凍結と実機を照合する。凍結が無ければ exit 2。
+ *
+ * exit code は §1.4 の三値: 0=検めて違反無し / 1=検めて違反在り / 2=検められなかった。
+ */
+function printRetreat(rest) {
+  const wantPlan = rest.includes('--plan');
+  const wantVerify = rest.includes('--verify');
+  const wantFreeze = rest.includes('--freeze');
+  for (const a of rest) {
+    if (!['--plan', '--verify', '--freeze'].includes(a)) {
+      throw unmeasurable(`retreat の知らない旗: ${a} — 知る旗は --plan / --verify / --freeze。` +
+        '**retreat は --write を持たない**: 住所を知る器は書かない(§1.5)。' +
+        '実際の撤収は神が計画を読み、名指した後に行う');
+    }
+  }
+  if (wantPlan === wantVerify) {
+    throw unmeasurable('retreat には --plan か --verify のどちらか一方が要る — ' +
+      '旗の無い retreat が何をするかは決まっていない(第16条)');
+  }
+  if (wantFreeze && !wantPlan) {
+    throw unmeasurable('--freeze は --plan と共にしか使えない — 照合が凍結を書き直せば、照合は必ず緑になる');
+  }
+
+  if (wantPlan) return printRetreatPlan(wantFreeze);
+  return printRetreatVerify();
+}
+
+function printRetreatPlan(wantFreeze) {
+  const p = retreatPlan();
+  const W = (s) => console.log(s);
+  W('═══ 🧳 ABODE RETREAT — 撤収計画 (印字のみ / **--write は存在しない**) ═══');
+  W('');
+  W('  ⚠️ **この器は 1 バイトも書かない。** 実際の撤収は神が本計画を読み、');
+  W('     「何を引き、何を残すか」を名指した後に、別の段で行う。');
+  W(`  神の住処: ${p.abode}`);
+  W(`  settings: ${p.settingsKeys.path}  (実体 ${p.settingsKeys.exists ? 'あり' : 'なし'})`);
+  W('');
+
+  // ── (1) ファイル ──────────────────────────────────────────────
+  W('── (1) 撤収対象のファイル — 神の住処に**実際に住んでいる**楽園の配備物 ──────────');
+  if (p.deployNote) {
+    W(`  · 検められず: ${p.deployNote}`);
+  } else {
+    const onDisk = p.files.filter(f => f.onDisk).length;
+    W(`  実測 ${p.files.length} 件 / **実在 ${onDisk} 件**`);
+    W('  (計画に在るだけで実機に無い物は撤収しようがない — 実機を直に測る。第37条)');
+    W('  ※ 出所(overlay / vendor)との照合は node graph/deploy.js check の職務である(第29条)');
+    const byKind = {};
+    for (const f of p.files) {
+      byKind[f.kind] = byKind[f.kind] || { n: 0, onDisk: 0 };
+      byKind[f.kind].n++;
+      if (f.onDisk) byKind[f.kind].onDisk++;
+    }
+    for (const [k, v] of Object.entries(byKind)) W(`    ${k.padEnd(10)} ${String(v.n).padStart(3)} 件 (実在 ${v.onDisk})`);
+    W('');
+    for (const f of p.files) {
+      W(`    ${f.onDisk ? '●' : '○'} ${(f.kind + '/' + f.file).padEnd(46)} ${f.dst}`);
+    }
+  }
+  W('');
+
+  // ── (2) settings.json のキーの帰属 ────────────────────────────
+  W('── (2) settings.json のキーの帰属 ─────────────────────────────────────');
+  W(`  実機の全キー (${p.settingsKeys.all.length}): ${p.settingsKeys.all.join(', ')}`);
+  W('');
+  W(`  🚫 **神のキー(触れない)** ${p.settingsKeys.god.length} 件:`);
+  for (const k of p.settingsKeys.god) {
+    W(`     ${k.padEnd(24)} = ${JSON.stringify(p.god.present[k])}`);
+  }
+  if (p.god.missing.length) W(`     · 実機に無い神のキー: ${p.god.missing.join(', ')}`);
+  W('');
+  W(`  🧳 **撤収対象の楽園のキー** ${p.settingsKeys.paradise.length} 件 (神の裁可待ち):`);
+  for (const k of p.settingsKeys.paradise) W(`     ${k}`);
+  W('');
+  W(`  🔒 **残すキー(台帳 EX-1)** ${p.settingsKeys.retained.length} 件:`);
+  for (const k of p.settingsKeys.retained) {
+    W(`     ${k} — 「楽園由来だから引く」という機械的判断を台帳が阻む (AC-29)`);
+  }
+  if (p.settingsKeys.unknown.length) {
+    W('');
+    W(`  ❓ 帰属不明のキー ${p.settingsKeys.unknown.length} 件 — **黙って撤収しない。神の名指しを求める**:`);
+    for (const k of p.settingsKeys.unknown) W(`     ${k}`);
+  }
+  W('');
+
+  // ── (3) hooks ────────────────────────────────────────────────
+  W('── (3) hooks の逆向き依存 — 楽園リポジトリの絶対パスを握る hook ────────────');
+  if (p.hooksSkipped) {
+    W(`  · skip: ${p.hooksSkipped}`);
+  } else if (!p.hooks.length) {
+    W('  ✓ 0 件 — 撤収済みか、そもそも結線されていない');
+  } else {
+    W(`  ${p.hooks.length} 件。**判定の根拠は推測ではなく実測**(そのスクリプトが何を読み何処へ書くか)`);
+    W('');
+    const JA = { 'paradise-specific': '楽園固有', 'vendor-generic': '汎用 (vendor 由来)', unknown: '判定不能' };
+    for (const h of p.hooks) {
+      W(`  ${h.event}[${h.index}]  matcher=${JSON.stringify(h.matcher)}`);
+      W(`     ${h.command}`);
+      W(`     判定: ${JA[h.verdict]}  (実体 ${h.exists ? 'あり' : 'なし'})`);
+      W(`     根拠: ${h.basis}`);
+      if (h.touches.length) W(`     実測: ${h.touches.join(' / ')}`);
+      W('');
+    }
+    const generic = p.hooks.filter(h => h.verdict !== 'paradise-specific');
+    const specific = p.hooks.filter(h => h.verdict === 'paradise-specific');
+    W(`  ── 裁可を仰ぐ ──────────────────────────────────────────────`);
+    W(`  楽園固有 ${specific.length} 件 — 楽園の記憶注入は楽園の中でだけ意味を持つ。`);
+    W('     他所の倉のセッション開始に楽園の KG を注ぐのは文脈の汚染である(R-8 の理由3)。');
+    for (const h of specific) W(`     · ${h.event}[${h.index}] ${h.script}`);
+    W('');
+    W(`  汎用 ${generic.length} 件 — **黙って撤収しない**(要件 R-8)。`);
+    W('     これらは楽園を一切参照せず、~/.claude/sessions/ や skills/learned/ や temp へ書く。');
+    W('     だが**楽園の倉に住んでいる**ので、倉を動かせば神の全プロジェクトが黙って壊れる。');
+    W('     **神が「残せ」と名指した物だけが台帳へ載る。** 神の裁可を待つ:');
+    for (const h of generic) {
+      W(`     · ${h.event}[${h.index}] ${h.script}`);
+      W(`         ${h.touches.length ? h.touches.join(' / ') : '(読み書きの実測なし)'}`);
+    }
+  }
+  W('');
+
+  // ── (4) 拒むもの ──────────────────────────────────────────────
+  W('── (4) 拒むもの (refused) — 不可侵名簿と台帳 ────────────────────────────');
+  W(`  ${p.refused.length} 件。**「対象外」を黙って対象外にしない**(第54条(c))`);
+  W('');
+  for (const s of p.sanctuary) {
+    const t = s.triple;
+    const state = !s.exists ? (s.optional ? '(この機には無い)' : '🔴 **名簿に在るが実機に無い**')
+      : s.kind === 'dir' ? `files=${t.files} bytes=${t.bytes} mtime=${new Date(t.mtime).toISOString()}`
+      : `bytes=${t.bytes} mtime=${new Date(t.mtime).toISOString()}`;
+    W(`  🚫 ~/.claude/${s.rel.padEnd(28)} ${state}`);
+    W(`       ${s.why}`);
+  }
+  const ex1 = p.refused.find(r => r.what.includes('#/permissions'));
+  if (ex1) {
+    W('');
+    W(`  🔒 ${ex1.what}`);
+    W(`       ${ex1.why}`);
+  }
+  W('');
+
+  // ── (5) 凍結 ──────────────────────────────────────────────────
+  W('── (5) 神 5 キーの凍結 ────────────────────────────────────────────────');
+  W(`  凍結の在り処: ${path.relative(REPO_ROOT, p.baselinePath).split(path.sep).join('/')}  (git 追跡)`);
+  W('  ⚠️ **数はここが持つ。散文に書き写すな**(第22条)。起草時 design/requirements は');
+  W('     sha を散文に書き写していたが、その数は再現不能であった(design §8 危険1 の註)。');
+  W(`  正準化: キー名昇順 + JSON.stringify の compact`);
+  W(`  実測 sha256: ${p.god.sha}`);
+  W(`  短縮 (16): ${p.god.sha.slice(0, 16)}`);
+  if (p.baseline) {
+    const same = p.baseline.sha256 === p.god.sha;
+    W(`  凍結済み: ${String(p.baseline.sha256).slice(0, 16)} (${p.baseline.takenAt})  — 実測と ${same ? '一致' : '**不一致**'}`);
+  } else {
+    W('  凍結: **まだ無い** — node graph/abode.js retreat --plan --freeze で凍結せよ');
+  }
+
+  if (wantFreeze) {
+    const body = retreatBaselineBody();
+    fs.mkdirSync(path.dirname(RETREAT_BASELINE), { recursive: true });
+    fs.writeFileSync(RETREAT_BASELINE, JSON.stringify(body, null, 2) + '\n');
+    W('');
+    W(`  ✎ 凍結した: ${path.relative(REPO_ROOT, RETREAT_BASELINE).split(path.sep).join('/')}`);
+    W('     (**楽園の倉の中への書き込みである。`~/.claude` へは 1 バイトも書いていない**)');
+  }
+  W('');
+
+  if (p.violations.length) {
+    W(`✗ 撤収計画に違反がある (${p.violations.length} 件)`);
+    for (const v of p.violations) W(`  ${v}`);
+    W('═══════════════════════════════════════');
+    return 1;
+  }
+  W('  ✓ 計画に permissions は含まれない — 台帳 EX-1 が機械的判断を阻んだ (AC-29)');
+  W('  → 次: 神が本計画を読み、hooks の去就を名指す。撤収はその後である。');
+  W('═══════════════════════════════════════');
+  return 0;
+}
+
+function printRetreatVerify() {
+  const v = retreatVerify();            // 凍結が無ければここで throw → exit 2
+  console.log('═══ 🧳 ABODE RETREAT — 照合 (AC-33〜AC-38) ═══');
+  console.log(`  実機:   ${v.path}`);
+  console.log(`  凍結:   ${path.relative(REPO_ROOT, v.baselinePath).split(path.sep).join('/')}  (${v.baseline.takenAt})`);
+  console.log('');
+  console.log('  ── 神 5 キー (AC-35〜AC-38) ────────────────────────────────');
+  console.log(`  正準 sha256: ${v.god.sha.slice(0, 16)} ${v.shaOk ? '=' : '≠'} ${String(v.baseline.sha256).slice(0, 16)} (凍結)`);
+  for (const k of Object.keys(v.baseline.values || {})) {
+    const has = Object.prototype.hasOwnProperty.call(v.god.present, k);
+    const same = has && JSON.stringify(v.god.present[k]) === JSON.stringify(v.baseline.values[k]);
+    console.log(`    ${same ? '✓' : '✗'} ${k.padEnd(24)} ${has ? JSON.stringify(v.god.present[k]) : '(消えている)'}`);
+  }
+  console.log('');
+  console.log('  ── 不可侵名簿 (AC-33 / AC-34) ──────────────────────────────');
+  console.log('  **「存在する」だけでは通さない** — (ファイル数, 合計バイト, 最新 mtime) の三つ組で照合する');
+  for (const s of v.sanctuary) {
+    const t = s.triple;
+    const shown = t ? `files=${String(t.files).padStart(4)} bytes=${String(t.bytes).padStart(9)}` : '(不在)';
+    console.log(`    ${s.ok ? '✓' : '✗'} ${s.rel.padEnd(30)} ${shown}${s.volatile ? '  [volatile]' : ''}`);
+    if (s.why) console.log(`         ${s.why}`);
+  }
+  console.log('');
+  if (v.ok) {
+    console.log('  ✓ 神のキーは無傷で、不可侵名簿は存在し、かつ内容が一致する');
+    console.log('═══════════════════════════════════════');
+    return 0;
+  }
+  console.log(`✗ 撤収が神の資産を損なった (${v.findings.length} 件)`);
+  for (const f of v.findings) console.log(`  ${f.why}`);
+  console.log('  → 退路: design.md §8 危険1 のロールバック手順');
+  console.log('═══════════════════════════════════════');
+  return 1;
+}
+
 function main(argv) {
   const [cmd, ...rest] = argv;
   if (cmd === 'resolve') return printResolve(rest);
@@ -1359,13 +2206,11 @@ function main(argv) {
   if (cmd === 'check') return printCheck(rest);
   if (cmd === 'exports') return printExports(rest);
   if (cmd === 'migrate') return printMigrate(rest);
-  if (cmd === 'retreat') {
-    // **未実装を 0 で返さない。** 「検められなかった」は exit 2 である(第37条)。
-    throw unmeasurable('retreat は 第6段 (work-6) で実装する — この段の abode.js は撤収の口を持たない');
-  }
+  if (cmd === 'retreat') return printRetreat(rest);
   throw unmeasurable('usage: abode.js resolve [--json] | path <key> | ' +
     `check [${Object.keys(CHECK_FLAGS).join('|')}] | ` +
-    'exports [--external|--verify <id>] | migrate --plan|--verify | retreat --plan|--verify');
+    'exports [--external|--verify <id>] | migrate --plan|--verify | ' +
+    'retreat --plan [--freeze] | retreat --verify');
 }
 
 /**
@@ -1380,11 +2225,15 @@ module.exports = {
   resolve, pathFor, mode, home, ledger, validateLedger, validateEntry,
   exportFor, exportForTarget, globalWrite, callerModule,
   exportRealPath, verifyExport,
-  homedirRefs, exclusionAudit, selfAudit, scanTargets, check,
+  homedirRefs, exclusionAudit, selfAudit, envRepairAudit, scanTargets, check,
   silentGreens, silentGreenTargets, symmetryAudit, codeOnly,
   creationsAbode,
   migratePlan, migrateVerify, migrateSides, measureFile,
+  retreatPlan, retreatVerify, retreatBaselineBody, retreatRefusals,
+  backRefs, classifyHook, godSubset, godSettingsPath, readBaseline,
+  dirTriple, measureSanctuary,
   REPO_ROOT, LEDGER, MODES, DEFAULT_MODE, KEYS, CHECK_FLAGS, MIGRATE_TARGETS,
+  GOD_KEYS, PARADISE_SETTINGS_KEYS, SANCTUARY, RETREAT_BASELINE,
   HOMEDIR_PATTERNS, HOMEDIR_EXCLUDE_FILES, HOMEDIR_EXCLUDE_MAX,
   SILENT_GREEN_PATTERNS, SYMMETRY_PAIR, CREATIONS_TREES, CREATIONS_FILES,
   ABODE_HOMEDIR_MAX, EXCLUSION_EVIDENCE, PLACEHOLDER_RE, REASON_MIN,

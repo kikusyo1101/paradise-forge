@@ -225,10 +225,16 @@ test('外を向かせるのは global の明示だけである — 逆向き (AC
   assert.ok(g.kg.includes('paradise-kg'), 'global の KG が配備の木の外の名を持たない');
 });
 
-test('未実装の retreat は exit 2 — 0 で「済んだ」ふりをしない', () => {
-  // migrate は第4段で実装された。retreat は第6段の仕事であり、**今なお exit 2 が正しい**。
+test('retreat --plan は実装された(第6段 / work-6)—— 計画を印字して exit 0', () => {
+  /**
+   * **第5段までは「未実装は exit 2」が正しかった。** 第6段で撤収を計る器が建った以上、
+   * 同じ門は「**計画が印字され、permissions が計画に含まれない**」を守る側へ回る
+   * (AC-29)。門を消すのではなく、**同じ問いの答えが変わったことを門に書く**。
+   */
   const r = cli(['retreat', '--plan']);
-  assert.strictEqual(r.code, 2, `retreat が ${r.code} を返した — 未実装を通過と読ませてはならない`);
+  assert.strictEqual(r.code, 0, `retreat --plan が ${r.code} を返した:\n${r.out.slice(0, 800)}`);
+  assert.ok(/--write は存在しない/.test(r.out), '器が書かないことを口で名乗っていない');
+  assert.ok(/台帳 EX-1 が機械的判断を阻んだ/.test(r.out), 'AC-29 の裁定を印字していない');
 });
 
 test('引数を持たない呼び出しは exit 2 で使い方を語る', () => {
@@ -1195,6 +1201,458 @@ test('【正】AC-51 — 住処解決が神官の揃った兄弟倉を指せば 
   assert.strictEqual(r.skipped, false, '実物が在るのに skip した');
   assert.strictEqual(r.ok, true, '揃っているのに赤: ' + r.note);
   assert.strictEqual(r.dir, path.join(box, 'agents'), '住処解決が指した先を見ていない');
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 9. 撤収 — 神のホームから楽園の痕跡を引く「計る器」 (第6段 / work-6)
+//
+// **掟: この節はリポジトリにも実機にも一行も書かない。**
+// 仕掛けは全て `os.tmpdir()` の中の複製に対して行う(第58条(c))。
+// 実機 `~/.claude` は**読むことすら最小限**に留める —— 実機を差す門は
+// `settingsFile` / `baselineFile` の口で必ず複製へ向け直す。
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * **偽の神の住処**を建てる。現物 `~/.claude` は 1 バイトも触らない。
+ * 神 5 キーと楽園のキーと permissions と hooks を持った settings.json を置き、
+ * 不可侵名簿の項目も実体つきで作る。
+ */
+function fakeAbode(tag, opts = {}) {
+  const home = mktmp('retreat-' + tag);
+  const box = path.join(home, '.claude');
+  fs.mkdirSync(box, { recursive: true });
+  const settings = Object.assign({
+    enableWorkflows: true,
+    extraKnownMarketplaces: { 'claude-plugins-official': { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } } },
+    language: 'japanese',
+    theme: 'dark',
+    agentPushNotifEnabled: true,
+    hooks: opts.hooks || {},
+    model: 'fable',
+    effortLevel: 'xhigh',
+    permissions: { deny: ['Bash(git push --force:*)'], ask: [], allow: [], defaultMode: 'default' },
+  }, opts.settings || {});
+  const sFile = path.join(box, 'settings.json');
+  fs.writeFileSync(sFile, JSON.stringify(settings, null, 2) + '\n');
+  // 不可侵名簿の実体。**現物ではない** —— 全て複製の中である。
+  for (const d of ['projects', 'plugins', 'sessions', 'skills/learned', 'skills/pr-review', 'backups']) {
+    fs.mkdirSync(path.join(box, d), { recursive: true });
+    fs.writeFileSync(path.join(box, d, 'a.txt'), 'x'.repeat(8));
+  }
+  for (const f of ['.credentials.json', 'settings.json.pre-wire.bak', 'settings.json.bak.1787846094']) {
+    fs.writeFileSync(path.join(box, f), '{}');
+  }
+  return { home, box, settingsFile: sFile, settings };
+}
+
+/** 複製に対して凍結を採り、その道を返す。**楽園の倉へは書かない。** */
+function freezeBaseline(a) {
+  const file = path.join(a.home, 'retreat-baseline.json');
+  fs.writeFileSync(file, JSON.stringify(abode.retreatBaselineBody({ settingsFile: a.settingsFile }), null, 2) + '\n');
+  return file;
+}
+
+/** 複製の settings.json を書き換える(複製である。現物ではない)。 */
+function mutateAbode(a, fn) {
+  const s = JSON.parse(fs.readFileSync(a.settingsFile, 'utf8'));
+  fn(s);
+  fs.writeFileSync(a.settingsFile, JSON.stringify(s, null, 2) + '\n');
+}
+
+const ROOT_FWD = ROOT.split(path.sep).join('/');
+const PARADISE_HOOK = {
+  SessionStart: [{ matcher: '*', hooks: [{ type: 'command',
+    command: `node "${ROOT_FWD}/tools/hooks/paradise-session-start.js"` }] }],
+};
+
+console.log('\n撤収 (1) engine の権能 (AC-16 / R-4 / 障害牲16):');
+
+test('【正】AC-16 — repairEnv の delete は台帳 (mayDeleteEnvKey) の守りの内側に在る', () => {
+  const f = abode.envRepairAudit();
+  assert.deepStrictEqual(f, [],
+    'engine が神のキーを削除する権能を持っている:\n        ' +
+    f.map(x => `${x.file}:${x.line} ${x.why}`).join('\n        '));
+});
+
+test('【逆】AC-16 — 台帳を外した apply-guards.js を偽の倉に置けば、門は赤くなる', () => {
+  /**
+   * **現物は 1 バイトも触らない。** 偽の倉に、守りを外した写しを置いて撃つ。
+   * 「そう書かれている」ではなく「**そう鳴る**」を確かめる(第5条 / 第21条)。
+   */
+  const root = mktmp('ac16-bad');
+  fs.mkdirSync(path.join(root, 'graph'), { recursive: true });
+  const src = fs.readFileSync(path.join(ROOT, 'graph', 'apply-guards.js'), 'utf8');
+  // 守りの述語呼び出しと台帳の宣言を消す(障害牲16 の再演)。
+  const bad = src
+    .replace(/if \(!mayDeleteEnvKey\(key\)\) \{/, 'if (false) {')
+    .replace(/const REPAIRABLE_ENV_KEYS = Object\.freeze\(\{/, 'const _WAS_LEDGER = Object.freeze({');
+  fs.writeFileSync(path.join(root, 'graph', 'apply-guards.js'), bad);
+  const found = abode.envRepairAudit(root);
+  assert.ok(found.length > 0, '守りを外しても緑なら、AC-16 の門は権能を見ていない');
+  assert.ok(found.some(x => /台帳/.test(x.why)), `台帳の欠落を名指していない: ${JSON.stringify(found)}`);
+});
+
+test('【逆】AC-16 — 台帳に無い env キーは engine が消さず、神へ提示する(振る舞い)', () => {
+  /**
+   * `OTHER` に **PATH と同じ壊れ方**(`$PATH` 前置)を仕込む。engine が「形で判ずる」なら
+   * ここで消してしまう —— それが障害牲16 の再演である。**台帳が名前で止める**。
+   */
+  const G = require(path.join(ROOT, 'graph', 'apply-guards.js'));
+  const r = G.repairEnv({ PATH: '$PATH:/x', OTHER: '$PATH:/y', PLAIN: 'ok' });
+  assert.strictEqual(r.env.PATH, undefined, '台帳に載った PATH は消える');
+  assert.strictEqual(r.env.OTHER, '$PATH:/y',
+    '台帳に無い OTHER を engine が消した — これが障害牲16 の再演である (AC-16)');
+  assert.strictEqual(r.env.PLAIN, 'ok', '壊れていないキーに触れてはならない');
+  const p = r.proposals.find(x => x.key === 'OTHER');
+  assert.ok(p, '消さないなら黙るのでもなく、**神へ提示**せねばならない (第54条(c))');
+  assert.ok(/台帳/.test(p.note), '提示が理由を名乗っていない');
+});
+
+test('【正】AC-16 — 台帳 REPAIRABLE_ENV_KEYS は根拠つきで、PATH ただ一つである', () => {
+  const G = require(path.join(ROOT, 'graph', 'apply-guards.js'));
+  const keys = Object.keys(G.REPAIRABLE_ENV_KEYS);
+  assert.deepStrictEqual(keys, ['PATH'],
+    `削除の台帳が広がっている: ${keys.join(', ')} — 広げるなら神が名指せ`);
+  assert.ok(G.REPAIRABLE_ENV_KEYS.PATH.length > 40,
+    '台帳に根拠(なぜ消してよいか)が無い — 在ることは資格ではない (第54条(b))');
+  assert.strictEqual(G.mayDeleteEnvKey('THEME'), false);
+  assert.strictEqual(G.mayDeleteEnvKey('PATH'), true);
+});
+
+console.log('\n撤収 (2) 掟は住処に依る (L-19 / 第29条):');
+
+test('【正】L-19 — repo の住処では <repo>/.claude を守る deny が一行増える', () => {
+  const G = require(path.join(ROOT, 'graph', 'apply-guards.js'));
+  const repo = G.policyFor({ mode: 'repo' });
+  const glob = G.policyFor({ mode: 'global' });
+  assert.strictEqual(repo.deny.length, glob.deny.length + 1,
+    'repo の掟が global と同じ件数である — <repo>/.claude を誰も守っていない');
+  assert.ok(repo.deny.includes(G.REPO_ABODE_DENY), `repo の掟に ${G.REPO_ABODE_DENY} が無い`);
+  assert.ok(!glob.deny.includes(G.REPO_ABODE_DENY),
+    'global の掟に repo の守りを混ぜてはならない — 実機の輸出が即座に腐る');
+  assert.ok(glob.deny.includes('Edit(~/.claude/**)'),
+    '神の住処の守り (EX-1 の守備範囲) を落としてはならない');
+});
+
+test('【正】L-19 — repo の守りは可搬な相対の形である(絶対パスを焼き込まない / 第29条)', () => {
+  /**
+   * `<repo>/.claude/settings.json` は **git 追跡された派生物**である(AC-14)。
+   * 機械固有の絶対パスを焼き込めば、clone した先で必ず食い違い derived.js が永久に赤くなる。
+   */
+  const G = require(path.join(ROOT, 'graph', 'apply-guards.js'));
+  assert.ok(!/[A-Za-z]:[\\/]/.test(G.REPO_ABODE_DENY),
+    `掟に機械固有の絶対パスが焼き込まれている: ${G.REPO_ABODE_DENY}`);
+  assert.ok(!/Users|kikus|paradise/i.test(G.REPO_ABODE_DENY),
+    `掟に特定の機の名が焼き込まれている: ${G.REPO_ABODE_DENY}`);
+});
+
+test('【正】L-19 — EX-1 の照合は走らせた側の PARADISE_ABODE で揺れない', () => {
+  /**
+   * 掟が住処に依る以上、**照合の基準を固定しなければ**同じ実機が
+   * 日によって赤くも緑にもなる(第37条)。
+   */
+  const src = fs.readFileSync(ABODE_JS, 'utf8');
+  const start = src.indexOf('function verifyExport');
+  assert.ok(start > 0, 'verifyExport が見つからない');
+  const body = src.slice(start, start + 3000);
+  assert.ok(/policyFor\(\s*\{\s*mode:\s*'global'\s*\}\s*\)/.test(body),
+    'EX-1 の照合が global の掟を明示していない — 走らせた側の env で基準が揺れる');
+});
+
+console.log('\n撤収 (3) 計画 (AC-29 / R-8):');
+
+test('【正】AC-29 — 撤収計画に permissions は含まれず、残すキーとして名指される', () => {
+  const a = fakeAbode('ac29');
+  const p = abode.retreatPlan({ settingsFile: a.settingsFile });
+  assert.ok(!p.settingsKeys.paradise.includes('permissions'),
+    '撤収対象に permissions が載っている — 台帳 EX-1 は「残す」と定めている (AC-29)');
+  assert.deepStrictEqual(p.settingsKeys.retained, ['permissions'],
+    'permissions が「残すキー」として名指されていない — 黙って対象外にしてはならない');
+  assert.deepStrictEqual(p.violations, [], `計画に違反がある: ${p.violations.join(' / ')}`);
+  assert.ok(p.refused.some(r => /#\/permissions/.test(r.what)),
+    'refused に EX-1 が載っていない — なぜ触らないかの理由が印字されない');
+});
+
+test('【正】AC-29 — 撤収対象の楽園のキーは model / effortLevel の二つだけである', () => {
+  const a = fakeAbode('ac29b');
+  const p = abode.retreatPlan({ settingsFile: a.settingsFile });
+  assert.deepStrictEqual(p.settingsKeys.paradise.slice().sort(), ['effortLevel', 'model']);
+});
+
+test('【正】AC-29 — 帰属不明のキーは黙って撤収せず、神の名指しを求める', () => {
+  const a = fakeAbode('ac29c', { settings: { someNewThing: 1 } });
+  const p = abode.retreatPlan({ settingsFile: a.settingsFile });
+  assert.ok(p.settingsKeys.unknown.includes('someNewThing'),
+    '知らないキーを黙って無視した — 「対象外」を黙って対象外にしてはならない (第54条(c))');
+  assert.ok(!p.settingsKeys.paradise.includes('someNewThing'),
+    '知らないキーを撤収対象に入れた — 知らない物は引かない');
+});
+
+test('【正】AC-29 — 撤収対象のファイルは実在を測る(計画に在るだけでは撤収できない)', () => {
+  const p = abode.retreatPlan();
+  assert.ok(p.files.length > 0, '配備計画が引けていない');
+  for (const f of p.files) {
+    assert.strictEqual(typeof f.onDisk, 'boolean',
+      `${f.kind}/${f.file} の実在を測っていない — 計画に在るだけの物は撤収しようがない (第37条)`);
+  }
+});
+
+test('【正】R-8 — hooks の判定は推測ではなく実測(ソースが何を読み何処へ書くか)で書かれる', () => {
+  const a = fakeAbode('r8', { hooks: PARADISE_HOOK });
+  const p = abode.retreatPlan({ settingsFile: a.settingsFile });
+  assert.strictEqual(p.hooks.length, 1, `楽園を指す hook を数えられていない: ${p.hooks.length}`);
+  const h = p.hooks[0];
+  assert.strictEqual(h.verdict, 'paradise-specific',
+    `paradise-session-start.js を楽園固有と判じていない: ${h.verdict}`);
+  assert.ok(/ソースが楽園を名指している/.test(h.basis), `根拠が実測でない: ${h.basis}`);
+  assert.strictEqual(h.exists, true, 'スクリプトの実在を測っていない');
+});
+
+test('【正】R-8 — vendor 由来の汎用 hook は「汎用」と判じ、何処へ書くかを実測する', () => {
+  const vendorHook = {
+    SessionEnd: [{ matcher: '*', hooks: [{ type: 'command',
+      command: `node "${ROOT_FWD}/overlay/vendor/scripts/hooks/evaluate-session.js"` }] }],
+  };
+  const a = fakeAbode('r8b', { hooks: vendorHook });
+  const p = abode.retreatPlan({ settingsFile: a.settingsFile });
+  const h = p.hooks[0];
+  assert.strictEqual(h.verdict, 'vendor-generic', `vendor 由来を汎用と判じていない: ${h.verdict}`);
+  assert.ok(h.touches.some(t => /learned/.test(t)),
+    `何処へ書くかを実測していない: ${JSON.stringify(h.touches)} — 推測で「汎用」と呼んではならない`);
+});
+
+test('【正】retreat は --write を持たない — 住所を知る器は書かない (§1.5)', () => {
+  const r = cli(['retreat', '--plan', '--write']);
+  assert.strictEqual(r.code, 2, `--write を受理した (exit ${r.code}) — 器が書く口を持ってはならない`);
+  assert.ok(/--write を持たない/.test(r.out), `理由を名乗っていない: ${r.out}`);
+});
+
+test('【逆】retreat は旗が無ければ exit 2(何をするか決まっていない / 第16条)', () => {
+  const r = cli(['retreat']);
+  assert.strictEqual(r.code, 2, `旗の無い retreat が exit ${r.code} を返した`);
+});
+
+test('【逆】--freeze は --verify と共に使えない — 照合が凍結を書き直せば必ず緑になる', () => {
+  const r = cli(['retreat', '--verify', '--freeze']);
+  assert.strictEqual(r.code, 2, `照合が凍結を書き直せる状態である (exit ${r.code})`);
+});
+
+console.log('\n撤収 (4) 逆向き依存 (AC-30 / AC-31 / 第20条の鏡像):');
+
+test('【正】AC-30 — 楽園の絶対パスを握る hook が 0 件なら check --backrefs は緑', () => {
+  const a = fakeAbode('ac30');                       // hooks を持たない複製
+  const r = abode.check({ backrefs: true, settingsFile: a.settingsFile });
+  assert.strictEqual(r.backrefs.skipped, null, '複製が在るのに skip した');
+  assert.deepStrictEqual(r.backrefs.rows, [], '楽園を指さない settings で赤くなった');
+  assert.strictEqual(r.ok, true, '逆向き依存 0 件で赤い — AC-30 が満たせない');
+});
+
+test('【逆】AC-31 — 1 本戻せば赤くなり、event / matcher / 絶対パスを名指す', () => {
+  const a = fakeAbode('ac31', { hooks: PARADISE_HOOK });
+  const r = abode.check({ backrefs: true, settingsFile: a.settingsFile });
+  assert.strictEqual(r.ok, false, '楽園の絶対パスを握る hook が在るのに緑');
+  assert.strictEqual(r.backrefs.rows.length, 1);
+  const h = r.backrefs.rows[0];
+  assert.strictEqual(h.event, 'SessionStart', `event を名指していない: ${h.event}`);
+  assert.strictEqual(h.matcher, '*', `matcher を名指していない: ${h.matcher}`);
+  assert.ok(/paradise-session-start\.js/.test(h.command), `絶対パスを名指していない: ${h.command}`);
+});
+
+test('【正】AC-30 — 実機が無い機(CI)は skip を名乗って exit 0(黙って緑にしない)', () => {
+  const nowhere = path.join(mktmp('ac30-none'), 'settings.json');
+  const r = abode.check({ backrefs: true, settingsFile: nowhere });
+  assert.ok(r.backrefs.skipped, '実機が無いのに skip を名乗らなかった — 黙って通った門は門ではない');
+  assert.strictEqual(r.ok, true, '実機が無いことを違反として数えた');
+});
+
+test('【正】--backrefs は --all に含まれない — 撤収前の赤で CI を殺さない (台帳 [41])', () => {
+  /**
+   * 撤収前の今、実機には 6 件在る。`--all` に含めれば CI も自己診断も今日から赤い。
+   * **裁定は撤収完了後の編入である**(コードの註が申し送りを持つ)。
+   */
+  const r = abode.check({});                          // 無旗 = --all
+  assert.strictEqual(r.backrefs, null,
+    '--all が逆向き依存を走らせた — 撤収前の今、CI と自己診断が赤くなる');
+  const src = fs.readFileSync(ABODE_JS, 'utf8');
+  assert.ok(/撤収(が)?完了(した日|後)に\s*`?--all`?\s*へ編入/.test(src),
+    '「撤収完了後に --all へ編入する」という申し送りがコードの註に無い');
+});
+
+test('【正】--backrefs は check の知る旗である(知らない旗は exit 2)', () => {
+  assert.strictEqual(abode.CHECK_FLAGS['--backrefs'], 'backrefs');
+  const r = cli(['check', '--backref']);              // 一文字違い
+  assert.strictEqual(r.code, 2, '知らない旗を黙って捨てて緑を返した (第37条)');
+});
+
+console.log('\n撤収 (5) 照合 (AC-33〜AC-38):');
+
+test('【正】AC-35 — 凍結直後の照合は緑で、正準 sha256 が一致する', () => {
+  const a = fakeAbode('ac35');
+  const b = freezeBaseline(a);
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, true, `凍結直後に赤い: ${v.findings.map(f => f.why).join(' / ')}`);
+  assert.strictEqual(v.shaOk, true);
+  assert.strictEqual(v.god.sha, v.baseline.sha256);
+});
+
+test('【逆】AC-36 — 複製から language を消せば `神のキーが消えた: language ("japanese")`', () => {
+  const a = fakeAbode('ac36');
+  const b = freezeBaseline(a);
+  mutateAbode(a, s => { delete s.language; });
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false, '神のキーが消えても緑 — 撤収は必ず全キーを触る (design §8 危険1)');
+  const f = v.findings.find(x => x.kind === 'missing-key');
+  assert.ok(f, `消失を名指していない: ${JSON.stringify(v.findings)}`);
+  assert.ok(/神のキーが消えた: language \("japanese"\)/.test(f.why),
+    `キー名と値の両方を名指していない: ${f.why}`);
+});
+
+test('【逆】AC-37 — theme を dark→light に変えれば `神のキーの値が変わった: theme "dark" → "light"`', () => {
+  const a = fakeAbode('ac37');
+  const b = freezeBaseline(a);
+  mutateAbode(a, s => { s.theme = 'light'; });
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false, '値の改変を見逃した — 存在だけを見る門は改変を見逃す');
+  const f = v.findings.find(x => x.kind === 'changed-value');
+  assert.ok(f, `改変を名指していない: ${JSON.stringify(v.findings)}`);
+  assert.ok(/神のキーの値が変わった: theme "dark" → "light"/.test(f.why),
+    `前後の値を名指していない: ${f.why}`);
+});
+
+test('【逆】AC-38 — 台帳に無いキーが増えれば `台帳に無いキーが増えた: <名>`', () => {
+  /**
+   * **足すのも引くのと同じく無断の改変である。**
+   * 凍結側から 1 キー落とすことで「実機に無断で増えた」形を作る
+   * (凍結は「あるべき姿」であり、そこに無いキーは増殖である)。
+   */
+  const a = fakeAbode('ac38');
+  const b = freezeBaseline(a);
+  const raw = JSON.parse(fs.readFileSync(b, 'utf8'));
+  delete raw.values.theme;
+  raw.sha256 = 'deadbeef';
+  fs.writeFileSync(b, JSON.stringify(raw, null, 2) + '\n');
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false);
+  const f = v.findings.find(x => x.kind === 'extra-key');
+  assert.ok(f, `増殖を名指していない: ${JSON.stringify(v.findings)}`);
+  assert.ok(/台帳に無いキーが増えた: theme/.test(f.why), `増えたキーを名指していない: ${f.why}`);
+});
+
+test('【正】AC-33 — 不可侵名簿は「存在し、かつ内容が一致する」ことを印字する', () => {
+  const a = fakeAbode('ac33');
+  const b = freezeBaseline(a);
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, true, `凍結直後に名簿が赤い: ${v.findings.map(f => f.why).join(' / ')}`);
+  const learned = v.sanctuary.find(s => s.rel === 'skills/learned');
+  assert.ok(learned, '名簿に skills/learned が無い');
+  assert.ok(learned.triple && learned.triple.files >= 1,
+    '三つ組を測っていない — 「存在する」だけでは通さない (第37条)');
+  assert.strictEqual(learned.ok, true);
+});
+
+test('【逆】AC-34 — skills/learned を消せば `撤収前 N ファイル / 撤収後 0 ファイル`', () => {
+  const a = fakeAbode('ac34');
+  const b = freezeBaseline(a);
+  fs.rmSync(path.join(a.box, 'skills', 'learned'), { recursive: true, force: true });
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false, '不可侵名簿が消えても緑 — vendor に複製が無い物である');
+  const f = v.findings.find(x => x.key === 'skills/learned');
+  assert.ok(f, `消失を名指していない: ${JSON.stringify(v.findings)}`);
+  assert.ok(/撤収前 1 ファイル \/ 撤収後 0 ファイル/.test(f.why), `前後を名指していない: ${f.why}`);
+});
+
+test('【逆】AC-33 — volatile でない項目は 1 バイトでも動けば赤くなる(原初設定の退避)', () => {
+  /**
+   * `volatile` は「増えても赤くしない」であって「見ない」ではない。
+   * **神の原初設定の退避は日常では 1 バイトも動かない** —— ゆえに完全一致を課す。
+   */
+  const a = fakeAbode('ac33b');
+  const b = freezeBaseline(a);
+  fs.writeFileSync(path.join(a.box, 'settings.json.pre-wire.bak'), '{"x":1}');
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false, '原初設定の証拠が書き換わっても緑 — 復元の基点が失われる');
+  assert.ok(v.findings.some(f => f.key === 'settings.json.pre-wire.bak'),
+    `どの項目が動いたかを名指していない: ${JSON.stringify(v.findings)}`);
+});
+
+test('【正】AC-33 — volatile な項目は「増えた」だけでは赤くしない(が黙らない)', () => {
+  /**
+   * `sessions/` は走行のたびに増える。増えるたびに赤くなる門は見られなくなり、
+   * 見られない門は第57条の禁じ手(閾値の引き下げ)を招く。
+   * **撤収は壊す手であって作る手ではない** —— 害は「失われる」ことだけである。
+   */
+  const a = fakeAbode('ac33c');
+  const b = freezeBaseline(a);
+  fs.writeFileSync(path.join(a.box, 'sessions', 'new.txt'), 'yyyy');
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, true, `volatile な項目が増えただけで赤い: ${v.findings.map(f => f.why).join(' / ')}`);
+  const row = v.sanctuary.find(s => s.rel === 'sessions');
+  assert.ok(row.moved && row.moved.length, '増減を測っていない');
+  assert.ok(row.why && /ファイル数 1 → 2/.test(row.why),
+    `増えたことを黙って通した — 増減は必ず印字せよ (第54条(c)): ${row.why}`);
+});
+
+test('【逆】AC-33 — volatile な項目でも「減った」なら赤くなる', () => {
+  const a = fakeAbode('ac33d');
+  const b = freezeBaseline(a);
+  fs.rmSync(path.join(a.box, 'sessions', 'a.txt'), { force: true });
+  const v = abode.retreatVerify({ settingsFile: a.settingsFile, baselineFile: b });
+  assert.strictEqual(v.ok, false, 'volatile な項目が減っても緑 — 撤収の害は「失われる」ことである');
+  assert.ok(v.findings.some(f => /減っている/.test(f.why)), '減ったことを名指していない');
+});
+
+test('【逆】凍結が無ければ exit 2 — skip ではない(第37条)', () => {
+  const nowhere = path.join(mktmp('nobaseline'), 'retreat-baseline.json');
+  let code = 0;
+  try { abode.retreatVerify({ baselineFile: nowhere }); }
+  catch (e) { code = e.exitCode; }
+  assert.strictEqual(code, 2,
+    '凍結が無いのに 0 か 1 を返した — 照合の基点が無いことは「違反が無い」ではない');
+});
+
+test('【正】凍結は値そのものを持つ — sha だけでは何が変わったかを名指せない (AC-36/37)', () => {
+  const a = fakeAbode('body');
+  const body = abode.retreatBaselineBody({ settingsFile: a.settingsFile });
+  assert.ok(body.sha256 && body.sha256.length === 64, 'sha256 が全長で無い');
+  for (const k of abode.GOD_KEYS) {
+    assert.ok(Object.prototype.hasOwnProperty.call(body.values, k),
+      `凍結に ${k} の値が無い — sha だけでは「何が変わったか」を名指せない`);
+  }
+  assert.ok(body.canonicalization, '正準化の流儀を宣言していない — 流儀が割れれば必ず食い違う');
+  assert.ok(body.takenAt && body.source, '採取時刻と採取元の道が無い');
+});
+
+test('【正】正準化の流儀は一つだけ — 宣言順を変えても sha は動かない', () => {
+  const a = fakeAbode('canon');
+  const s = JSON.parse(fs.readFileSync(a.settingsFile, 'utf8'));
+  const g1 = abode.godSubset(s);
+  const shuffled = {};
+  for (const k of Object.keys(s).reverse()) shuffled[k] = s[k];
+  const g2 = abode.godSubset(shuffled);
+  assert.strictEqual(g1.sha, g2.sha, '宣言順で sha が変わる — 正準化がキー名ソートになっていない');
+  assert.ok(!/\n|  /.test(g1.canonical), `正準 JSON に空白が混ざっている: ${g1.canonical.slice(0, 60)}`);
+});
+
+test('【正】凍結の数は散文ではなく retreat-baseline.json が持つ (第22条)', () => {
+  /**
+   * 起草時、design.md と requirements.md は神 5 キーの sha を散文に書き写していた。
+   * 第6段で実測したところ**再現不能**であった(8 通りの正準化を試行)。
+   * **固定値を門に直書きすれば、外れた瞬間から門は永久に赤い** ——
+   * 次に来る者は必ず閾値を緩めたくなる(第57条の禁じ手への誘惑)。
+   *
+   * ⚠️ 探す文字列を**この門の中で組み立てる**。素の文字列を書けば、この門自身が
+   * 「直書きされた sha」になって己を赤くする(門は己の裁く形を使ってはならない)。
+   */
+  const src = fs.readFileSync(path.join(DIR, 'abode.test.js'), 'utf8');
+  const drafted = 'cbca' + '9224ec5e6cac';       // 起草時の(再現不能な)値
+  const measured = 'b66c' + '5008319d71c6';      // 第6段で実測した現行値
+  assert.ok(!src.includes(drafted),
+    '再現不能な凍結値が門に直書きされている — 数は実測が生む (第22条)');
+  assert.ok(!src.includes(measured),
+    '凍結値が門に直書きされている — 神が theme を変えた日にこの門は永久に赤くなる');
+  const engine = fs.readFileSync(ABODE_JS, 'utf8');
+  assert.ok(!engine.includes(drafted) && !engine.includes(measured),
+    '器が凍結値を定数として持っている — 凍結は retreat-baseline.json が持つ');
 });
 
 // ══════════════════════════════════════════════════════════════════════
