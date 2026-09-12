@@ -165,38 +165,89 @@ function forbiddenReason(event, group) {
  *
  * deny は例外を作れない。ゆえに deny に置くのは「いかなる文脈でも神の御手を
  * 経ずに起きてはならないもの」だけに限る。迷うものは ask に置く。
+ *
+ * ⚠️ **掟は静的定数ではなくなった**(L-19 / 第29条 / 第58条)。第4段で楽園の配備物は
+ * `<repo>/.claude` へ移った。`Edit(~/.claude/**)` は**もう楽園の配備物を守っていない** ——
+ * 守っているのは神の住処(EX-1 の守備範囲)だけである。ゆえに掟は**住処に依る**:
+ * `policyFor()` が abode の mode を見て、repo の住処に一本足す。
+ *
+ * **なぜ二つの掟を持つのか(片方に寄せない理由)**:
+ *  - 一本に寄せて `Edit(**` + `/.claude/**)` を EX-1 にも出せば、**実機の輸出が即座に腐る** ——
+ *    そして直す唯一の道は `~/.claude` へ書くことである。第6段はそれを禁じられている。
+ *  - `<repo>/.claude` の守りは**楽園自身の配備物の守り**であり、守備範囲は楽園の倉に閉じる。
+ *    神のマシン全体を守る EX-1 とは**帰属が違う**。帰属の違う守りを一つの束に混ぜれば、
+ *    撤収のときに何が誰の物か判らなくなる(それが本改革の主題である)。
  */
-const POLICY = {
-  deny: [
-    // 歴史を壊す手 — 取り返しがつかないものだけを deny に置く
-    'Bash(git push --force:*)',
-    'Bash(git push -f:*)',
-    'Bash(git push --force-with-lease:*)',
-    'Bash(git reset --hard:*)',
-    'Bash(git commit --no-verify:*)',
-    // 第19条: 配備物は成果物である。手で触らず deploy.js で建て直す。
-    // deploy.js は Node の fs で書くので Edit ツールを通らない → 配備は妨げない。
-    'Edit(~/.claude/**)',
-    // 第6条: 秘密は読むことすら許さない。読めた瞬間に文脈へ漏れる。
-    'Edit(**/.env)',
-    'Read(**/.env)',
-    'Read(**/.env.*)',
-  ],
-  ask: [
-    // マージは神の御手 (CLAUDE.md 絶対に守ること 1)。教主は自ら承認しない。
-    'Bash(gh pr merge:*)',
-  ],
-  allow: [
-    // 楽園の門。これらは何度でも走らせてよい — 走らせない方が危険である。
-    'Bash(node graph/*)',
-    'Bash(node tests/*)',
-    // 読み取り系の git。壊さない手にいちいち許可を求めさせない。
-    'Bash(git status:*)',
-    'Bash(git diff:*)',
-    'Bash(git log:*)',
-  ],
-  defaultMode: 'default',
-};
+const BASE_DENY = [
+  // 歴史を壊す手 — 取り返しがつかないものだけを deny に置く
+  'Bash(git push --force:*)',
+  'Bash(git push -f:*)',
+  'Bash(git push --force-with-lease:*)',
+  'Bash(git reset --hard:*)',
+  'Bash(git commit --no-verify:*)',
+  // 第19条: 配備物は成果物である。手で触らず deploy.js で建て直す。
+  // deploy.js は Node の fs で書くので Edit ツールを通らない → 配備は妨げない。
+  // ⚠️ この一行は **神の住処** を守る(EX-1 の守備範囲)。第4段以降、楽園の配備物は
+  //    ここに居ない —— 楽園の配備物を守るのは下の `REPO_ABODE_DENY` である。
+  'Edit(~/.claude/**)',
+  // 第6条: 秘密は読むことすら許さない。読めた瞬間に文脈へ漏れる。
+  'Edit(**/.env)',
+  'Read(**/.env)',
+  'Read(**/.env.*)',
+];
+
+/**
+ * リポジトリ内の住処を守る一行(L-19)。**repo の住処のときだけ掟に加わる。**
+ *
+ * 形の裁定(実測に基づく): permissions の Read/Edit は gitignore 構文であり、
+ * **相対の形を解する**(公式文書 "Configure permissions" の pattern 表):
+ *   `//path` = ファイルシステム根からの絶対 / `~/path` = ホーム起点 /
+ *   `/path` = **settings の出所**からの相対 / `path` や `<星星>/path` = 現在地からの相対。
+ * 絶対の道(`//c/Users/.../paradise/.claude/` 配下)を書けば、**その文字列は機械固有**になる。
+ * `<repo>/.claude/settings.json` は **git 追跡された派生物**であるから(AC-14)、
+ * 機械固有の絶対パスを焼き込めば **clone した先で必ず食い違い、derived.js が永久に赤くなる**
+ * (第29条: 派生は真実の写しである)。ゆえに**可搬な相対の形**を採る。
+ * `Edit(**` + `/.claude/**)` は deny 規則として任意の深さの `.claude` に当たるので、
+ * 楽園の倉でも兄弟倉でも同じ一行が効く。
+ */
+const REPO_ABODE_DENY = 'Edit(**/.claude/**)';
+
+const POLICY_ASK = [
+  // マージは神の御手 (CLAUDE.md 絶対に守ること 1)。教主は自ら承認しない。
+  'Bash(gh pr merge:*)',
+];
+const POLICY_ALLOW = [
+  // 楽園の門。これらは何度でも走らせてよい — 走らせない方が危険である。
+  'Bash(node graph/*)',
+  'Bash(node tests/*)',
+  // 読み取り系の git。壊さない手にいちいち許可を求めさせない。
+  'Bash(git status:*)',
+  'Bash(git diff:*)',
+  'Bash(git log:*)',
+];
+
+/**
+ * 住処に応じた掟を組む(L-19 / 第29条)。
+ *
+ * @param {{env?:object, repoRoot?:string, mode?:'repo'|'global'}} [opts]
+ *   `mode` を明示すれば abode を引かない(輸出 EX-1 の照合はこれを使う —— 実機の
+ *   permissions は **global の掟**と照合されねばならない。走らせた側の env で
+ *   照合の基準が揺れれば、同じ実機が日によって赤くも緑にもなる)。
+ * @returns {{deny:string[], ask:string[], allow:string[], defaultMode:string}}
+ */
+function policyFor(opts = {}) {
+  const mode = opts.mode || abode.resolve({ env: opts.env, repoRoot: opts.repoRoot }).mode;
+  const deny = BASE_DENY.slice();
+  if (mode === 'repo') deny.push(REPO_ABODE_DENY);
+  return { deny, ask: POLICY_ASK.slice(), allow: POLICY_ALLOW.slice(), defaultMode: 'default' };
+}
+
+/**
+ * 既定の住処の掟。**この束を読む者は「今の住処の掟」を読んでいる。**
+ * 実機(global)の輸出を照合する者は `policyFor({ mode: 'global' })` を明示して引く。
+ */
+const POLICY = policyFor();
+
 
 const POLICY_KEYS = ['deny', 'ask', 'allow', 'defaultMode'];
 
@@ -441,31 +492,76 @@ function envDrift(settings) {
 }
 
 /**
+ * **engine が神の設定から削除してよいキーの台帳**(AC-16 / R-4)。
+ *
+ * かつて `repairEnv()` は「壊れた `PATH`」を**自分の判断で消していた**。
+ * その判断は正しかったが、**権能としては大きすぎた** —— 障害牲16 の実例がそれである
+ * (`env.PATH` は engine の判断で消され、神は結果しか知らされなかった)。
+ *
+ * 第6段(撤収)は同じ形を engine 全体へ広げる仕事である。ゆえに先に錠を掛ける:
+ * **撤収と修理は、この台帳に載っていないキーを削除してはならない。**
+ * 削除が要るなら、それは**神への提示**であって engine の判断ではない。
+ *
+ * `abode.js check` の静的検査(`envRepairAudit()`)がこの錠を見張る ——
+ * `repairEnv()` の本体に、この台帳を参照しない `delete` が現れたら exit 1 で名指す。
+ */
+const REPAIRABLE_ENV_KEYS = Object.freeze({
+  PATH: '実測: `$PATH:/c/Program Files/GitHub CLI` は展開されずリテラルとして PATH を丸ごと' +
+        '置き換え、node を呼ぶ hook 15/15 を殺していた。この行は何も足しておらず、' +
+        '削除は「元に戻す」であって「神の設定を変える」ではない(障害牲16 の裁定)',
+});
+
+/** そのキーを engine が削除してよいか。台帳に無ければ **false** ——「知らないキーは残す」。 */
+function mayDeleteEnvKey(key) {
+  return Object.prototype.hasOwnProperty.call(REPAIRABLE_ENV_KEYS, key);
+}
+
+/**
  * env を修復する。**純関数** — 与えられた env は変更しない。
- * 消すのは「展開されない PATH 参照で始まる `PATH`」ただ一つ。
- * 実測で、その行は何も足しておらず PATH を破壊するだけだった。
+ *
+ * ⚠️ **削除は `REPAIRABLE_ENV_KEYS` に載ったキーに限る**(AC-16)。
+ * 台帳外のキーが壊れていても**消さない** —— `proposals` に載せて**神へ提示する**。
+ * 提示は削除ではない。神が名指した物だけが台帳へ載る(許可制の正しい使い方)。
+ *
  * `env` が空になったら `env` キーごと消す(空の器を残さない)。
- * @returns {{env:object|undefined, changes:object[]}}
+ * @returns {{env:object|undefined, changes:object[], proposals:object[]}}
  */
 function repairEnv(env) {
   const changes = [];
-  if (!env || typeof env !== 'object' || Array.isArray(env)) return { env, changes };
+  const proposals = [];
+  if (!env || typeof env !== 'object' || Array.isArray(env)) return { env, changes, proposals };
   const next = { ...env };
-  if (typeof next.PATH === 'string' && isPathPrefixedValue(next.PATH)) {
-    const from = next.PATH;
-    delete next.PATH;                         // ⚠️ PATH 以外のキーには決して触れない
+
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value !== 'string' || !isPathPrefixedValue(value)) continue;
+    if (!mayDeleteEnvKey(key)) {
+      /**
+       * **台帳に無いキーは engine が消さない。** 神へ提示するだけである。
+       * ここを `delete next[key]` に変えれば AC-16 が赤くなる —— それが錠である。
+       */
+      proposals.push({
+        kind: 'env-proposal', key, from: value, severity: 'warn',
+        note: `env.${key} = ${JSON.stringify(value)} は展開されない参照を含むが、` +
+              `**${key} は削除の台帳(REPAIRABLE_ENV_KEYS)に無い** — ` +
+              'engine は消さない。消すべきなら神が名指せ(AC-16 / R-4)',
+      });
+      continue;
+    }
+    delete next[key];                         // ⚠️ 台帳に載ったキーだけがここへ来る
     const emptied = !Object.keys(next).length;
     changes.push({
-      kind: 'env', key: 'PATH', from, severity: 'fatal', emptied,
-      note: `env.PATH = "${from}" は展開されない — 削除する`
-          + (emptied ? ' (env はこれ一つだったのでキーごと消える)' : '')
-          + ' (実測: この行は何も足さず PATH を破壊してフック 15/15 を殺していた)',
+      kind: 'env', key, from: value, severity: 'fatal', emptied,
+      ledger: REPAIRABLE_ENV_KEYS[key],
+      note: `env.${key} = "${value}" は展開されない — 削除する`
+          + (emptied ? ` (env はこれ一つだったのでキーごと消える)` : '')
+          + ` (台帳の根拠: ${REPAIRABLE_ENV_KEYS[key]})`,
     });
   }
+
   // 一つの欠陥は一つの乖離として数える — 空になったことを別行で叫べば、
   // drift の件数が実際の欠陥数より膨らんで検査の意味が薄れる。
-  if (!Object.keys(next).length) return { env: undefined, changes };
-  return { env: next, changes };
+  if (!Object.keys(next).length) return { env: undefined, changes, proposals };
+  return { env: next, changes, proposals };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -590,11 +686,17 @@ function readSettings(file = SETTINGS) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
 }
 
-/** 掟どおりの permissions か。余分なキーは楽園の管轄外なので見ない。 */
-function permissionsMatch(cur) {
+/**
+ * 掟どおりの permissions か。余分なキーは楽園の管轄外なので見ない。
+ * @param {object} cur 検める permissions
+ * @param {object} [policy] 照合の基準。**省略すれば「今の住処の掟」**。
+ *   実機(global)の輸出を照合する者は `policyFor({ mode: 'global' })` を明示して渡す ——
+ *   走らせた側の env で基準が揺れれば、同じ実機が日によって赤くも緑にもなる。
+ */
+function permissionsMatch(cur, policy = POLICY) {
   if (!cur || typeof cur !== 'object') return false;
   for (const k of POLICY_KEYS) {
-    const a = cur[k], b = POLICY[k];
+    const a = cur[k], b = policy[k];
     if (Array.isArray(b)) {
       if (!Array.isArray(a) || a.length !== b.length) return false;
       for (let i = 0; i < b.length; i++) if (a[i] !== b[i]) return false;
@@ -604,11 +706,73 @@ function permissionsMatch(cur) {
 }
 
 /**
+ * **リポジトリ内の住処へ移送する楽園固有のフック**(裁可 2-A / AC-32)。
+ *
+ * 撤収は「消す」ではなく「移す」である。神の住処から
+ * `tools/hooks/paradise-session-start.js` を引く前に、**移送先が生きていなければ
+ * 機能が黙って消える**。ゆえにこの宣言が `<repo>/.claude/settings.json` へ
+ * 楽園のフックを生やし、その後で神の住処から引く —— 順序が正典である。
+ *
+ * ⚠️ **絶対パスを書かない。** `$CLAUDE_PROJECT_DIR` は Claude Code が
+ *    プロジェクト直下を指して渡す変数であり、これを使う限り倉を動かしても壊れない
+ *    (絶対パス直書きが AC-30 の逆向き依存そのものであった)。
+ *    フック自身も `PARADISE_ROOT` ② 自己位置 の二段で楽園を解決する。
+ *
+ * ⚠️ **移送先は「対象ファイル」で決まり、env では決まらない。**
+ *    `repoHooksFor(file)` は渡された file が repo の住処の settings.json で
+ *    あるときだけフックを返す。`PARADISE_ABODE=repo` を名乗った者が
+ *    神の住処へ楽園のフックを書けてはならない —— env で分岐すれば、
+ *    住処を取り違えた一回の走行が神のホームを汚す。
+ */
+const REPO_HOOKS = {
+  SessionStart: [{
+    matcher: '*',
+    hooks: [{ type: 'command',
+              command: 'node "$CLAUDE_PROJECT_DIR/tools/hooks/paradise-session-start.js"' }],
+    description: 'Paradise: inject the knowledge-graph snapshot (repo abode / 第58条)',
+  }],
+};
+
+/** repo の住処の settings.json の絶対パス(env を見ない — 住処は固定で問う)。 */
+function repoSettingsFile() {
+  try { return abode.pathFor('settings', { env: { PARADISE_ABODE: 'repo' } }); }
+  catch { return null; }
+}
+
+/**
+ * その `file` が**リポジトリ内の住処**の settings.json か。
+ * 神の住処(global)を渡された場合は false —— 楽園のフックは外へ出さない。
+ */
+function isRepoSettingsFile(file) {
+  const want = repoSettingsFile();
+  if (!want || !file) return false;
+  const norm = (p) => path.resolve(String(p)).split(path.sep).join('/').toLowerCase();
+  return norm(file) === norm(want);
+}
+
+/** 移送先に生やすべきフック。repo の住処以外には 1 本も返さない。 */
+function repoHooksFor(file) {
+  return isRepoSettingsFile(file) ? JSON.parse(JSON.stringify(REPO_HOOKS)) : {};
+}
+
+/** 同じフックが既に居るか(command の同一性で見る — description の差は本質ではない)。 */
+function hasSameHook(groups, want) {
+  if (!Array.isArray(groups)) return false;
+  const cmds = (g) => ((g && Array.isArray(g.hooks)) ? g.hooks : [])
+    .map(h => String((h && h.command) || '')).join('\u0000');
+  return groups.some(g => cmds(g) === cmds(want));
+}
+
+/**
  * 望ましい settings を組む。**純関数**。
  * permissions の既存の余分なキー(additionalDirectories 等)は保存する —
  * 楽園が知らない設定を黙って消す機構は、いずれ誰かの手を焼く。
+ *
+ * @param {object} settings
+ * @param {{file?:string}} [opts] 対象ファイル。**repo の住処なら楽園のフックを生やす**
+ *   (AC-32)。省略すれば 1 本も生やさない —— 既定で神のホームへ足さないのが安全側である。
  */
-function buildDesired(settings) {
+function buildDesired(settings, opts = {}) {
   const next = JSON.parse(JSON.stringify(settings));
   const changes = [];
 
@@ -667,13 +831,33 @@ function buildDesired(settings) {
   }
 
   // (c) env の健全性 — 門が鳴っても走れなければ同じこと
+  //     ⚠️ **削除は台帳(REPAIRABLE_ENV_KEYS)に載ったキーだけ**(AC-16)。
+  //     台帳外のキーは `proposals` に載って神へ提示される —— 提示は削除ではない。
+  const proposals = [];
   if (next.env && typeof next.env === 'object' && !Array.isArray(next.env)) {
     const r = repairEnv(next.env);
     if (r.env === undefined) delete next.env; else next.env = r.env;
     for (const c of r.changes) changes.push(c);
+    for (const p of r.proposals) proposals.push(p);
   }
 
-  return { next, changes };
+  // (d) **移送先を生やす**(裁可 2-A / AC-32)。repo の住処のときだけ 1 本も欠かさず。
+  //     撤収が「消す」ではなく「移す」であることを、ここのフック数が証す。
+  //     神の住処を渡されれば `repoHooksFor` は空を返すので、この節は何もしない。
+  const wantHooks = repoHooksFor(opts.file);
+  for (const [event, groups] of Object.entries(wantHooks)) {
+    for (const want of groups) {
+      if (!next.hooks || typeof next.hooks !== 'object') next.hooks = {};
+      if (!Array.isArray(next.hooks[event])) next.hooks[event] = [];
+      if (hasSameHook(next.hooks[event], want)) continue;
+      next.hooks[event].push(want);
+      changes.push({ kind: 'repo-hook', event,
+        matcher: want.matcher, description: want.description,
+        note: '移送先に楽園のフックが居ない — 撤収は消すではなく移すである (AC-32)' });
+    }
+  }
+
+  return { next, changes, proposals };
 }
 
 /**
@@ -686,9 +870,9 @@ function diff(file = SETTINGS) {
     return { skipped: true, ok: true, file, changes: [],
              note: 'no settings.json on this machine — nothing deployed to verify' };
   }
-  const { changes } = buildDesired(s);
+  const { changes, proposals } = buildDesired(s, { file });
   const env = envDrift(s);
-  return { skipped: false, ok: changes.length === 0, file, changes,
+  return { skipped: false, ok: changes.length === 0, file, changes, proposals,
            diagnosis: diagnoseSettings(s), envDrift: env,
            envFatal: env.filter(e => e.severity === 'fatal').length };
 }
@@ -698,7 +882,7 @@ function apply(file = SETTINGS) {
   const s = readSettings(file);
   if (s === null) return { skipped: true, ok: true, file, changed: false,
                            note: 'no settings.json on this machine — nothing to apply' };
-  const { next, changes } = buildDesired(s);
+  const { next, changes } = buildDesired(s, { file });
   const before = fs.readFileSync(file, 'utf8');
   const after = JSON.stringify(next, null, 2) + '\n';
   if (before === after) return { ok: true, changed: false, file, changes: [] };
@@ -813,13 +997,21 @@ if (require.main === module) {
     }
     console.log(`     → node graph/apply-guards.js apply`);
   }
-  // env は「修復対象でなくとも報告する」— PATH 以外のキーは消さないが黙らない。
+  // env は「修復対象でなくとも報告する」— 台帳外のキーは消さないが黙らない。
   if (!d.skipped) {
     const ed = d.envDrift || [];
     if (!ed.length) console.log('  ✓ env に展開されないシェル変数参照は無い');
     for (const e of ed) {
       console.log(`  ${e.severity === 'fatal' ? '🔴' : '⚠️ '} env.${e.key} [${e.kind}] ${e.value}`);
       console.log(`      ${e.detail}`);
+    }
+    /**
+     * **提示は削除ではない**(AC-16 / R-4)。台帳に無いキーを engine が消せば、
+     * それは神の設定への無断の改変である。ゆえに口で名指して、神の裁可を待つ。
+     */
+    for (const p of (d.proposals || [])) {
+      console.log(`  📋 神への提示 (engine は消さない): env.${p.key}`);
+      console.log(`      ${p.note}`);
     }
     const health = hookHealth(readSettings(file));
     const bad = health.filter(h => h.resolvableUnderEnv === false);
@@ -835,11 +1027,14 @@ if (require.main === module) {
 }
 
 module.exports = {
-  POLICY, KNOWN_TOOLS, SETTINGS, HOOK_HEALTH_CAVEAT,
+  POLICY, policyFor, BASE_DENY, REPO_ABODE_DENY, POLICY_ASK, POLICY_ALLOW,
+  REPO_HOOKS, repoHooksFor, isRepoSettingsFile, repoSettingsFile,
+  KNOWN_TOOLS, SETTINGS, HOOK_HEALTH_CAVEAT,
   classify, diagnose, diagnoseSettings,
   extractTools, extractConditions, toolsToMatcher, conditionToIf, repairGroup,
   handlerBlocks, handlerCarriesCondition, isUnconditionalBlock,
   FORBIDDEN_HOOKS, forbiddenReason, TOOL_GATE_EVENTS,
-  envDrift, repairEnv, hookHealth, commandExe, splitPathList, resolvesIn,
+  envDrift, repairEnv, REPAIRABLE_ENV_KEYS, mayDeleteEnvKey,
+  hookHealth, commandExe, splitPathList, resolvesIn,
   readSettings, permissionsMatch, buildDesired, diff, apply, verify,
 };

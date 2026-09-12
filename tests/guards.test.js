@@ -799,6 +799,159 @@ test('【逆】実機の deny が 1 行消えれば EX-1 の照合は赤にな�
   assert.ok(v.why.some(w => w.includes(gone)), `消えた deny 文字列 ${gone} を名指していない: ${v.why.join(' / ')}`);
 });
 
+// ─────────────────────────────────────────────────────────────────────
+console.log('\n撤収の移送先 (AC-32 / 裁可 2-A) と輸出 EX-3 (裁可 1-A):');
+
+test('【正】AC-32 — repo の住処の settings に楽園のフックが生える (撤収は消すではなく移す)', () => {
+  const want = G.repoHooksFor(G.repoSettingsFile());
+  assert.ok(want.SessionStart && want.SessionStart.length === 1,
+    '移送先の宣言に楽園のフックが無い — 引いた先で機能が消える');
+  const cmd = String(want.SessionStart[0].hooks[0].command);
+  assert.ok(/paradise-session-start\.js/.test(cmd), `楽園のフックを指していない: ${cmd}`);
+  // **絶対パスを書かない。** 倉の絶対パス直書きは AC-30 の逆向き依存そのものである。
+  assert.ok(/\$CLAUDE_PROJECT_DIR/.test(cmd), `$CLAUDE_PROJECT_DIR を使っていない: ${cmd}`);
+  assert.ok(!/[A-Za-z]:\//.test(cmd), `絶対パスを直書きしている — 倉を動かせば壊れる: ${cmd}`);
+});
+
+test('【逆】神の住処へは楽園のフックを 1 本も足さない — env ではなく宛先で決まる', () => {
+  /**
+   * `PARADISE_ABODE=repo` を名乗った者が神の住処へ楽園のフックを書けてはならない。
+   * env で分岐すれば、住処を取り違えた一回の走行が神のホームを汚す。
+   */
+  const godFile = path.join(TMP, 'god-abode', 'settings.json');
+  assert.deepStrictEqual(G.repoHooksFor(godFile), {},
+    '神の住処に楽園のフックを生やそうとした (宛先ではなく env で分岐している)');
+  const s = { hooks: { SessionStart: [] }, permissions: {} };
+  const r = G.buildDesired(s, { file: godFile });
+  assert.strictEqual((r.next.hooks.SessionStart || []).length, 0,
+    'buildDesired が神の住処へ楽園のフックを足した');
+  assert.ok(!r.changes.some(c => c.kind === 'repo-hook'),
+    '神の住処に対して repo-hook の変更を立てた');
+});
+
+test('【正】移送先の宣言は二度撃っても増えない (冪等)', () => {
+  const file = G.repoSettingsFile();
+  const once = G.buildDesired({ permissions: {} }, { file });
+  const twice = G.buildDesired(once.next, { file });
+  assert.strictEqual((twice.next.hooks.SessionStart || []).length, 1,
+    '同じフックが二本生えた — apply を二度走らせれば増殖する');
+  assert.ok(!twice.changes.some(c => c.kind === 'repo-hook'),
+    '既に居るフックを「無い」と診断した');
+});
+
+test('【正】EX-3 — 台帳の宛先・writer・照合の道が実在する', () => {
+  const abode = require(path.join(DIR, '..', 'graph', 'abode.js'));
+  const e = abode.exportFor('EX-3');
+  assert.ok(e, 'graph/abode.json に EX-3 が無い — 台帳に無い宛先へは書けない');
+  assert.strictEqual(e.writer, 'graph/apply-hooks.js');
+  assert.ok(fs.existsSync(path.join(DIR, '..', e.writer)), `writer が実在しない: ${e.writer}`);
+  assert.strictEqual(e.ordainedBy, 'god');
+  assert.ok(/1-A/.test(e.ordainedVia), `裁可 1-A への言及が無い: ${e.ordainedVia}`);
+});
+
+test('【正】EX-3 — 汎用 5 本と、それが引く lib 2 本が台帳の運ぶ物である', () => {
+  const H = require(path.join(DIR, '..', 'graph', 'apply-hooks.js'));
+  assert.strictEqual(H.HOOK_FILES.length, 5, '汎用フックは 5 本である');
+  assert.deepStrictEqual(H.LIB_FILES.slice().sort(), ['package-manager.js', 'utils.js'],
+    'lib を運ばなければ require が解けない — 5 本だけ複製しても動かない(実測)');
+  // 源が実在すること。源が欠けたまま移せば、神の住処に半端な複製が残る。
+  for (const f of H.HOOK_FILES) {
+    assert.ok(fs.existsSync(path.join(H.SRC_HOOKS, f)), `源が無い: hooks/${f}`);
+  }
+  for (const f of H.LIB_FILES) {
+    assert.ok(fs.existsSync(path.join(H.SRC_LIB, f)), `源が無い: lib/${f}`);
+  }
+});
+
+test('【正】EX-3 — 複製先の構造は scripts/{hooks,lib} で、相対 require が解ける', () => {
+  /**
+   * `evaluate-session.js` は `__dirname/../../skills/continuous-learning/config.json`
+   * を読む。`~/.claude/scripts/hooks/` に置いて初めてこれが
+   * `~/.claude/skills/continuous-learning/config.json` を指す —— **ちょうど二段**である。
+   * 一段浅くても深くても config を失う。
+   */
+  const H = require(path.join(DIR, '..', 'graph', 'apply-hooks.js'));
+  const fake = path.join(TMP, 'ex3-home');
+  const dest = path.join(fake, '.claude', 'scripts');
+  const p = H.plan({ dest });
+  assert.strictEqual(p.unmeasurable, null, `計画が測れない: ${p.unmeasurable}`);
+  assert.strictEqual(p.steps.length, 7, `運ぶ物が 7 本でない: ${p.steps.length}`);
+  const hookDst = p.steps.find(s => s.file === 'evaluate-session.js').dst;
+  const resolved = path.resolve(path.dirname(hookDst), '..', '..', 'skills', 'continuous-learning', 'config.json');
+  assert.strictEqual(resolved, path.join(fake, '.claude', 'skills', 'continuous-learning', 'config.json'),
+    `相対参照が住処の skills を指さない: ${resolved}`);
+});
+
+test('【逆】EX-3 — 複製が無ければ照合は赤(「在る」だけでは通さない)', () => {
+  const H = require(path.join(DIR, '..', 'graph', 'apply-hooks.js'));
+  const fake = path.join(TMP, 'ex3-verify');
+  fs.mkdirSync(path.join(fake, '.claude'), { recursive: true });
+  const dest = path.join(fake, '.claude', 'scripts');
+  const v1 = H.verify({ dest });
+  assert.strictEqual(v1.ok, false, '複製が 1 本も無いのに緑になった');
+  assert.ok(v1.why.length >= 7, `欠けた複製を名指していない: ${v1.why.length}`);
+
+  H.apply({ dest });
+  const v2 = H.verify({ dest });
+  assert.strictEqual(v2.ok, true, `複製直後に赤い: ${v2.why.join(' / ')}`);
+
+  // sha で裁くことを証す —— 中身を書き換えれば「在る」のに赤い
+  const one = path.join(dest, 'lib', 'utils.js');
+  fs.appendFileSync(one, '\n// 手で足した行\n');
+  const v3 = H.verify({ dest });
+  assert.strictEqual(v3.ok, false, '中身が源と食い違うのに「在る」だけで通した');
+  assert.ok(v3.why.some(w => /utils\.js/.test(w)), `食い違った複製を名指していない: ${v3.why.join(' / ')}`);
+});
+
+test('【正】EX-3 — 神の住処が無い機(CI)は理由を名乗って skip する (第58条(e))', () => {
+  const H = require(path.join(DIR, '..', 'graph', 'apply-hooks.js'));
+  const nowhere = path.join(TMP, 'ex3-nohome', 'not-a-home', '.claude', 'scripts');
+  const v = H.verify({ dest: nowhere });
+  assert.strictEqual(v.ok, true, '住処が無いことを違反として数えた — CI が赤くなる');
+  assert.ok(v.skipped, '黙って緑に落ちた — skip は理由を名乗らねばならない');
+});
+
+test('【逆】withdraw — 移送先が空なら楽園のフックを引かない (裁可 2-A の順序)', () => {
+  /**
+   * **空の移送先へ向けて引けば機能が黙って消える。** ゆえに withdraw は
+   * repo 側に同名のフックが現に居ることを実測し、居なければ拒む。
+   */
+  const H = require(path.join(DIR, '..', 'graph', 'apply-hooks.js'));
+  const dir = path.join(TMP, 'withdraw');
+  fs.mkdirSync(dir, { recursive: true });
+  const god = path.join(dir, 'god.json');
+  const emptyRepo = path.join(dir, 'repo-empty.json');
+  const liveRepo = path.join(dir, 'repo-live.json');
+  const PARADISE_CMD = 'node "C:/somewhere/paradise/tools/hooks/paradise-session-start.js"';
+  const godBody = () => ({
+    theme: 'dark',
+    hooks: { SessionStart: [
+      { matcher: '*', hooks: [{ type: 'command', command: 'node "other.js"' }] },
+      { matcher: '*', hooks: [{ type: 'command', command: PARADISE_CMD }] },
+    ] },
+  });
+  fs.writeFileSync(god, JSON.stringify(godBody(), null, 2));
+  fs.writeFileSync(emptyRepo, JSON.stringify({ permissions: {} }, null, 2));
+  fs.writeFileSync(liveRepo, JSON.stringify({ hooks: { SessionStart: [
+    { matcher: '*', hooks: [{ type: 'command',
+      command: 'node "$CLAUDE_PROJECT_DIR/tools/hooks/paradise-session-start.js"' }] }] } }, null, 2));
+
+  const r1 = H.withdraw({ settingsFile: god, repoSettingsFile: emptyRepo });
+  assert.strictEqual(r1.ok, false, '移送先が空なのに引いた — 機能が黙って消える');
+  assert.ok(r1.refused && /移送先/.test(r1.refused), `拒みの理由を名乗っていない: ${r1.refused}`);
+  const still = JSON.parse(fs.readFileSync(god, 'utf8'));
+  assert.strictEqual(still.hooks.SessionStart.length, 2, '拒んだのにフックが消えている');
+
+  const r2 = H.withdraw({ settingsFile: god, repoSettingsFile: liveRepo });
+  assert.strictEqual(r2.ok, true, `移送先が生きているのに引けなかった: ${r2.refused}`);
+  assert.strictEqual(r2.removed, 1);
+  assert.ok(r2.backup && fs.existsSync(r2.backup), '退避を取らずに神の settings を書いた');
+  const after = JSON.parse(fs.readFileSync(god, 'utf8'));
+  assert.strictEqual(after.hooks.SessionStart.length, 1, '楽園のフックだけを引いていない');
+  assert.strictEqual(after.theme, 'dark', '神のキーに触れた');
+  assert.ok(!JSON.stringify(after).includes('paradise-session-start'), '引いたはずのフックが残っている');
+});
+
 // --- report ---
 try { fs.rmSync(TMP, { recursive: true, force: true }); } catch {}
 console.log(`\nParadise guards self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));

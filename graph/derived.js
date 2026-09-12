@@ -211,8 +211,13 @@ function verifyRepoSettings(opts = {}) {
     return { ok: false, file: rel, tracked, exists, findings, note: 'JSON が壊れている' };
   }
 
-  // ── permissions ← apply-guards.POLICY ────────────────────────────────
-  const { POLICY } = require('./apply-guards.js');
+  // ── permissions ← apply-guards.policyFor({mode:'repo'}) ──────────────
+  // **揃は repo に固定する**(裁可 5-A / AC-53)。`<repo>/.claude/settings.json` は
+  // 定義上 repo の住処の派生物であり、走らせた側の env で「あるべき姿」が変わる道理は無い。
+  // 既定の `POLICY` を引けば `PARADISE_ABODE=global` で走らせた者には
+  // repo 専用の deny 一本 (Edit(**/.claude/**)) が「掟に無い行」と見え、
+  // 同じ作業木が env 次第で赤くも緑にもなる —— EX-1 の照合を global に固定したのと同じ形。
+  const POLICY = require('./apply-guards.js').policyFor({ mode: 'repo' });
   const perms = (cur && typeof cur.permissions === 'object' && cur.permissions) || {};
   for (const key of ['deny', 'ask', 'allow']) {
     const want = POLICY[key], got = Array.isArray(perms[key]) ? perms[key] : [];

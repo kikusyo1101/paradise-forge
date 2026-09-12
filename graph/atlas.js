@@ -1016,8 +1016,29 @@ function irWiring() {
    */
   // 席の幅は名ごとに与える。**その無駄が 19 席の段では図幅そのものになる。**
   const nameW = (id) => Math.max(56, Math.ceil(id.length * 6.6) + 18);
+  /**
+   * **流れを横にする。** 縦に流すと図幅が engine の**席の総和**で決まり、
+   * engine が増えるたびに字が床(6px)へ近づく。
+   *
+   * 実測(第7段 / engine 39 本・結線 35 本):
+   *   縦 (flow 既定)      size 3112 × 652  → 1440 に収める縮小で字 **5.93px**(床割れ)
+   *   横 (flow horizontal) size 1028 × 1715 → 縮小が要らず字は縮まない
+   *
+   * 幅が**段の数(7)**で決まり、席の数で決まらないのが要点である。
+   * 第6段では席の幅を名ごとに与えて 3416 → 2265px に詰めて床を満たしたが、
+   * engine を 2 本足しただけで 2495px まで戻り、また床を割った ——
+   * **詰めるのは一度しか効かない。向きを変えるのは構造の手当てである。**
+   * (この主題が engine 数に対してスケールしない構造的欠陥そのものについては
+   *  `reform/sovereign-abode/build-7-evidence.md` §10 に次の改革の題として残した)
+   *
+   * ⚠️ `widthOf` は渡さない。横流しでは席は**縦**に並ぶので `widthOf` は
+   *    席の高さになり、名の長さを高さに写すのは意味を成さない。
+   *    箱の幅は `nodeOf` が `nameW` で与えるので、字の読みやすさは保たれる。
+   *    段の間隔 `COL` は最長の名(約 163px)より広く取る — 狭ければ隣の段の
+   *    箱と衝突して描画器が正しく鳴く。
+   */
   const L = layered(linked.map(e => ({ id: e.id, deps: e.requires })),
-                    { W: LW, H: 52, COL: LW + 12, ROW: 104, widthOf: nameW });
+                    { W: LW, H: 52, COL: 212, ROW: 68, flow: 'horizontal' });
   const [W, H] = L.box;
   const SW = widthFor(solo.map(e => e.id));
 
