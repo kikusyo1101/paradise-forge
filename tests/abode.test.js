@@ -1465,17 +1465,34 @@ test('【正】AC-30 — 実機が無い機(CI)は skip を名乗って exit 0(�
   assert.strictEqual(r.ok, true, '実機が無いことを違反として数えた');
 });
 
-test('【正】--backrefs は --all に含まれない — 撤収前の赤で CI を殺さない (台帳 [41])', () => {
+test('【正】--backrefs は --all に編入された — 撤収が完遂したので既定で走る (第44条)', () => {
   /**
-   * 撤収前の今、実機には 6 件在る。`--all` に含めれば CI も自己診断も今日から赤い。
-   * **裁定は撤収完了後の編入である**(コードの註が申し送りを持つ)。
+   * 第6段までは `--all` から外していた(撤収前の実機に 6 件在り、含めれば CI も
+   * 自己診断も赤くなる)。**第7段で申し送りの条件が満たされた** ——
+   * 汎用 5 本は EX-3 で `~/.claude/scripts/` へ移し、楽園固有の 1 本は
+   * repo の移送先へ移して `check --backrefs` が 0 件 / exit 0 になった。
+   * ゆえに編入する: **旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ。**
    */
-  const r = abode.check({});                          // 無旗 = --all
-  assert.strictEqual(r.backrefs, null,
-    '--all が逆向き依存を走らせた — 撤収前の今、CI と自己診断が赤くなる');
+  const r = abode.check({ settingsFile: path.join(mktmp('all-backrefs'), 'settings.json') });
+  assert.notStrictEqual(r.backrefs, null,
+    '--all が逆向き依存を走らせていない — 編入したはずの門が既定で走らない (第44条)');
   const src = fs.readFileSync(ABODE_JS, 'utf8');
-  assert.ok(/撤収(が)?完了(した日|後)に\s*`?--all`?\s*へ編入/.test(src),
-    '「撤収完了後に --all へ編入する」という申し送りがコードの註に無い');
+  assert.ok(/第7段で\s*`?--all`?\s*へ編入/.test(src),
+    '編入の根拠がコードの註に無い — なぜ方針が変わったのか読めない');
+  // 旗そのものは残る(単独で撃ちたい場面が在る)
+  assert.strictEqual(abode.CHECK_FLAGS['--backrefs'], 'backrefs');
+});
+
+test('【正】--all に編入しても実機が無い機(CI)は skip を名乗って緑 (第58条(e))', () => {
+  /**
+   * 編入の安全性の根拠はここに在る。CI に実機の `~/.claude/settings.json` は無い。
+   * **黙って緑ではなく、理由を名乗って skip する**から編入してよい。
+   */
+  const nowhere = path.join(mktmp('all-backrefs-ci'), 'settings.json');
+  const r = abode.check({ settingsFile: nowhere });
+  assert.ok(r.backrefs && r.backrefs.skipped,
+    '実機が無いのに skip を名乗らなかった — 黙って通った門は門ではない');
+  assert.strictEqual(r.ok, true, '実機が無いことを違反として数えた — CI が赤くなる');
 });
 
 test('【正】--backrefs は check の知る旗である(知らない旗は exit 2)', () => {

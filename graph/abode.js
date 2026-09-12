@@ -1024,7 +1024,7 @@ function spawnGit(cwd, args) {
 function check(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
   const all = !(opts.count || opts.ledger || opts.exclusion || opts.silentGreen ||
-                opts.symmetry || opts.hermetic || opts.creations || opts.backrefs);
+                opts.symmetry || opts.hermetic || opts.creations);
   const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [],
               silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null,
               creations: null, backrefs: null, envRepair: [], ok: true };
@@ -1063,19 +1063,23 @@ function check(opts = {}) {
    */
   if (all || opts.creations) r.creations = creationsAbode(opts);
   /**
-   * **逆向き依存(AC-30 / AC-31)。`--all` には含めない。**
+   * **逆向き依存(AC-30 / AC-31)。第7段で `--all` へ編入した。**
    *
-   * 撤収前の今、実機の `~/.claude/settings.json` は楽園の絶対パスを握った hook を
-   * **6 本持っている**。それは正しい —— まだ撤収していないのだから。
-   * これを `--all` に含めれば、**CI も自己診断も今日から赤くなる**。
-   * 赤い門は見られなくなり、見られない門は第57条の禁じ手(閾値の引き下げ)を招く。
+   * 第6段までは `--all` に含めなかった。撤収前の実機は楽園の絶対パスを握った
+   * hook を **6 本持っており**、それは正しかった —— まだ撤収していないのだから。
+   * 含めれば CI も自己診断も赤くなり、赤い門は見られなくなり、見られない門は
+   * 第57条の禁じ手(閾値の引き下げ)を招く。ゆえに明示の旗にしていた。
    *
-   * ゆえに `--backrefs` を**明示したときだけ**走る旗にする。
-   * **裁定: 撤収が完了した日に `--all` へ編入する** —— 台帳 [41] への申し送りである。
-   * (編入の条件は「`check --backrefs` が exit 0 になること」であり、それは
-   *  神が hooks の去就を名指した後にしか起こらない)
+   * **申し送りの条件が満たされた**(第7段 / 裁可 1-A・2-A):
+   * 汎用 5 本は `~/.claude/scripts/` へ複製して道を向け直し(輸出 EX-3)、
+   * 楽園固有の 1 本は `<repo>/.claude/settings.json` の移送先へ移した(AC-32)。
+   * 実測: `check --backrefs` が **0 件 / exit 0**。ゆえに編入する ——
+   * **旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ**(第44条)。
+   *
+   * 実機が無い機(CI)では `backRefs()` が理由を名乗って skip する(第58条(e))ので、
+   * 編入しても CI は緑のままである。
    */
-  if (opts.backrefs) r.backrefs = backRefs(opts);
+  if (all || opts.backrefs) r.backrefs = backRefs(opts);
   r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0 &&
          r.envRepair.length === 0 &&
          r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok) &&
@@ -1391,9 +1395,10 @@ function readBaseline(file = RETREAT_BASELINE) {
  * 実機 `settings.json` の hooks のうち、**楽園リポジトリの絶対パスを握っている**もの
  * を数え上げる(AC-30 / AC-31)。
  *
- * ⚠️ **`check --all` には含めない。** 撤収前の今は必ず 6 件在り、含めれば CI も
- * 自己診断も今日から赤くなる。`--backrefs` を**明示したときだけ**走る旗である。
- * **撤収完了後に `--all` へ編入する** —— 台帳 [41] への申し送りとする。
+ * ⚠️ **第7段で `--all` へ編入した。** 第6段までは撤収前の実機に 6 件在ったので
+ * 明示の旗だけで走らせていた。撤収が完遂し 0 件になったので `check()` の既定に入れた ——
+ * 旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ(第44条)。
+ * 実機が無い機(CI)では理由を名乗って skip する(第58条(e))。
  *
  * @param {{env?:object, settingsFile?:string, repoRoot?:string}} [opts]
  * @returns {{skipped:string|null, path:string, rows:object[]}}
@@ -1790,9 +1795,9 @@ const CHECK_FLAGS = {
   '--silent-green': 'silentGreen', '--symmetry': 'symmetry', '--hermetic': 'hermetic',
   '--creations': 'creations',
   /**
-   * ⚠️ **`--backrefs` は `--all` に含まれない。** 撤収前の今は必ず赤い(6 件)——
-   * それが正しい。含めれば CI も自己診断も今日から赤くなり、赤い門は見られなくなる。
-   * **撤収完了後に `--all` へ編入する**(台帳 [41] への申し送り / `check()` の註を見よ)。
+   * ⚠️ **`--backrefs` は第7段で `--all` へ編入された。** この旗は今も残す ——
+   * 逆向き依存だけを単独で撃ちたい場面(撤収の作業中)が在るからである。
+   * 編入の根拠と条件は `check()` の註を見よ。
    */
   '--backrefs': 'backrefs',
   '--all': 'all',
