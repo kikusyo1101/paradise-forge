@@ -474,3 +474,110 @@ execFileSync('node', [path.join(__dirname, 'x.test.js')])
 正しく緩め、正しく締めたことの両方が、この三段で示されている。
 
 ---
+
+## §7 憲法 — 新しい条を立てず、第44条に項を足した
+
+第44条は既に「誰も呼ばない物は腐る」を語っていた。ただし対象が**器物**
+(`tools/upstream-watch.py`)だった。根は同じなので**新しい条は立てない**。
+項 (b)(c) を足し、末尾に「これを強制する門」の列挙を建てた。
+
+- **(b)** 試験は器物より厳しく数える。器物は散文に名が出れば呼ばれていると
+  数えてよいが、**試験は走らされて初めて門である**。
+  `counsel.test.js` は赤いまま住み続けていた —— 誰も走らせないので、誰も赤い
+  ことを知らなかった。後に裁くと、赤い2門は実装の欠陥ではなく**門の側が古かった**。
+  **呼ばれない門は、守るのをやめるだけでは済まない。腐って、嘘を語り始める。**
+- **(c)** 免除は口で名乗る(第54条(c) の系)。理由の書けない除外は見逃しである。
+- **これを強制する門**: `graph/wiring.js` の `check`。**この門自身も CI から呼ばれる。**
+
+```console
+$ node graph/codex.js index --write
+✍️  CONSTITUTION.INDEX.md を建てた (5151 B)
+
+$ node graph/codex.js check; echo "EXIT=$?"
+═══════ 📖 CODEX CHECK ═══════
+  ✓ 索引は本文と一致している (59 条)
+══════════════════════════════
+EXIT=0
+```
+
+---
+
+## §8 完了条件の実測 — 自己申告ではなく実出力
+
+```console
+$ node tests/counsel.test.js            Counsel self-test: 51 passed, 0 failed        EXIT=0
+$ node tests/guards.test.js             Paradise guards self-test: 75 passed, 0 failed EXIT=0
+$ node tests/abandoned-run.test.js      abandoned-run: 20 passed, 0 failed            EXIT=0
+$ node tests/gauge-audit.test.js        6 passed, 0 failed, 0 skipped                 EXIT=0
+$ node tests/paradise.test.js           Paradise self-test: 471 passed, 0 failed      EXIT=0
+$ node graph/gauge.js ledger --audit    rows=7 distinct=7 duplicates=0 … corrupt=0    EXIT=0
+$ node graph/wiring.js check            ✓ 門 19 本すべてに走らせる者が居る (第44条)    EXIT=0
+$ node graph/check-agents.js            every dispatch reaches the declared priest    EXIT=0
+$ node graph/codex.js check             ✓ 索引は本文と一致している (59 条)             EXIT=0
+$ node graph/workspace.js check                                                       EXIT=0
+$ node graph/hermetic.js check          ✓ 版管理下の現物を走行中に書き換える門は無い    EXIT=0
+$ node graph/derived.js check                                                         EXIT=0
+$ node graph/conclave.js audit                                                        EXIT=0
+$ node graph/abode.js check                                                           EXIT=0
+$ node graph/abode.js check --outward                                                 EXIT=0
+$ node graph/abode.js check --backrefs                                                EXIT=0
+$ node graph/abode.js check --ledger                                                  EXIT=0
+$ node graph/census.js check            ✓ every number the paradise claims is true    EXIT=0
+```
+
+**`paradise.test.js` は 471 passed / 0 failed** —— 基準(471)から**減っていない**。
+`counsel.test.js` は **49 passed / 2 failed → 51 passed / 0 failed**(門は減らさず、
+2 門とも生きたまま直した)。
+
+### 神の実機 `~/.claude` を1バイトも汚していないこと
+
+```console
+$ sha256sum ~/.claude/settings.json
+e6fb4b2011d14c5b05c3537e5f7aacf8298262367ea0ba0234a09dd6c46f7ccc  /c/Users/kikus/.claude/settings.json
+
+$ find ~/.claude -type f | wc -l
+556
+```
+
+**着手前と完全一致**(§0: `e6fb4b20…` / 556)。
+
+### 兄弟倉の台帳に触れていないこと
+
+```console
+$ cd paradise-creations && git status --short gauge-ledger.jsonl
+ M gauge-ledger.jsonl                    ← 着手前から在る、教主の未コミット1行
+
+$ ls -l --time-style=full-iso gauge-ledger.jsonl
+-rw-r--r-- 1 kikus 2034 2026-09-09 20:27:19 +0900 gauge-ledger.jsonl
+$ date
+2026年 9月 13日 日曜日 18:01:46
+```
+
+**最終更新は 9月9日** —— 本日の作業(9月13日)は台帳に一切書いていない。
+差分の1行は `gate-filter` の正当な記録であり、消していない・触っていない。
+gauge の故障注入は全て `os.tmpdir()` の複製に対して行った。
+
+---
+
+## §9 できなかったこと・見られなかったこと(正直に)
+
+- **CI 上で実際に緑になることは見ていない。** 掟により push も PR も禁じられて
+  いるため、確かめたのは**手元で同じ命令を走らせた結果**だけである。
+  tribunal.yml に足した 4 ステップが GitHub Actions の runner 上で緑になることは、
+  教主が PR を建てるまで**未検証**である。特に `gauge-audit.test.js` の実台帳の
+  節は、**CI では skip を名乗る経路**に入る(兄弟倉が無いため)。その skip 経路を
+  手元で直接は撃っていない —— 手元には実台帳が在り、常に (b) の本監査へ入るからである。
+  (ただし「台帳が無い倉」の振る舞いは §4 の【逆】で `os.tmpdir()` の空倉に対して
+  撃っており、`rows=0` を名乗って exit 0 になることは確認済みである。)
+- **メタ門は `tests/` 直下しか見ていない。** 将来 `tests/sub/foo.test.js` のような
+  入れ子が生まれた場合、現在の実装は**見落とす**。`readdirSync` を再帰にすれば
+  塞げるが、今この倉に入れ子は無く、**在りもしない構造に備えて門を複雑にするのは
+  第57条の戒め(運べない条件を想像で足す)に近い**と判断して見送った。
+  入れ子を作る日が来たら、その PR でここを直すべきである。
+- **メタ門は「呼ばれているか」しか見ない。「緑か」は見ない。** CI に結線された
+  門が後に赤くなれば CI 自体が赤くなるので二重には数えないが、
+  `paradise.test.js` から呼ばれる門が握り潰される形(try/catch)は検知できない。
+- **`counsel.test.js` の裁きは、実装側が正しいという判断に依存している。**
+  根拠は3本(道の宣言 / clergy.js の註釈 / check-agents の逆側実測)示したが、
+  「`assess` を要件の神官が担うべきか」という**設計そのものの当否**は裁いていない。
+  裁いたのは「宣言と発令と門の三者のうち、どれが古かったか」である。
