@@ -89,6 +89,12 @@ function main() {
       chain: 'god → pontiff → cardinal → priest → believer   ‖   executor (independent)',
     },
   };
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   * 盤面は倉の中の `dashboard/` に生まれる —— 関門は黙って通る。
+   * 住所が一行変われば黙らなくなる。それがこの一行の職務である。
+   */
+  abode.guardWrite(out, { why: '盤面の状態を書き出す' });
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const json = JSON.stringify(state, null, 2);
   fs.writeFileSync(out, json);

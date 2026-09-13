@@ -117,7 +117,14 @@ function apply(dir, opts = {}) {
     const text = fs.readFileSync(r.path, 'utf8');
     const res = addSpawnTool(text, clergy.SPAWN_TOOL);
     if (!res) { changed.push({ ...r, note: 'no frontmatter, skipped' }); continue; }
-    if (res.changed && !opts.dryRun) fs.writeFileSync(r.path, res.text);
+    if (res.changed && !opts.dryRun) {
+      /**
+       * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+       * 起動の権能を書く先も神官の木である —— 倉の中なら黙って通る。
+       */
+      abode.guardWrite(r.path, { why: '起動の権能を frontmatter へ書く' });
+      fs.writeFileSync(r.path, res.text);
+    }
     changed.push({ ...r, note: res.note, applied: res.changed && !opts.dryRun });
   }
   return { changed, dryRun: !!opts.dryRun };

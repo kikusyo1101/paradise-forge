@@ -112,7 +112,15 @@ function main() {
       const t2 = r.effort == null
         ? deleteFrontmatterKey(t1, 'effort')   // 効かない宣言は書かない(第10条)
         : setFrontmatterKey(t1, 'effort', r.effort);
-      if (t2 !== before) { fs.writeFileSync(r.file, t2); changed++; console.log(`  ✎ ${r.name.padEnd(24)} ${r.rank.padEnd(9)} → ${r.model}/${r.effort ?? '(effort無し)'}`); }
+      if (t2 !== before) {
+        /**
+         * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+         * 神官の木は倉の中に住む(第4段)—— 関門は黙って通す。`PARADISE_ABODE=global`
+         * を立てれば神の `~/.claude/agents` を指すが、台帳にその宛先は無い。
+         */
+        abode.guardWrite(r.file, { why: '神官の位階モデルを frontmatter へ書く' });
+        fs.writeFileSync(r.file, t2); changed++; console.log(`  ✎ ${r.name.padEnd(24)} ${r.rank.padEnd(9)} → ${r.model}/${r.effort ?? '(effort無し)'}`);
+      }
     }
     console.log(`\napplied to ${changed} agent file(s) in ${AGENT_DIR}`);
     return;

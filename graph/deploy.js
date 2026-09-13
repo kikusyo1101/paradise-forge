@@ -288,6 +288,23 @@ function write() {
     return { ok: false, error: `${p.missing.length} source file(s) missing`, missing: p.missing.map(m => m.src) };
   }
   /**
+   * **輸出の関門(第58条(f) / AC-55)。1 ファイルもコピーする前に、住処を一度検める。**
+   *
+   * 実測された欠陥A(第8段):
+   *
+   *   $ USERPROFILE=<偽ホーム> PARADISE_ABODE=global node graph/deploy.js --write
+   *     { "ok": false, "deployed": 58, ... }      ← **58 ファイルが既に外に出ている**
+   *
+   * 台帳にその宛先は無い(EX-1 は settings の permissions キー 1 本、EX-2 は兄弟倉、
+   * EX-3 は `~/.claude/scripts/{hooks,lib}` のみ)。すなわち `global` は
+   * **第6段で撤収した 58 ファイルをそのまま戻せるモード**であった。
+   *
+   * ゆえに関門は**ループの外**に置く。中に置けば「1 ファイル目で拒む」ことはできても
+   * **0 ファイルで拒む**ことはできない —— 関門は 1 バイトも書かせずに落ちて初めて関門である。
+   * 住処ひとつを検めれば足りる:全ての step の `dst` は `p.home` の配下である。
+   */
+  abode.guardWrite(p.home, { why: '配備物を住処へ書く' });
+  /**
    * **リポジトリ内の住処では、器そのものも配備物である**(第19条(b) / 第58条)。
    *
    * `apply-seat` も `apply-guards` も「settings.json が無ければ何もしない」と
@@ -539,7 +556,18 @@ function main(argv) {
     console.log('════════════════════════════════════');
     return r.ok ? 0 : 1;
   }
-  if (argv.includes('--write')) { console.log(JSON.stringify(write(), null, 2)); return 0; }
+  if (argv.includes('--write')) {
+    /**
+     * **`write()` が `ok:false` を返したら exit 1 である。**
+     *
+     * 第8段の実測(欠陥A)で捕らえた:偽のホームへ `--write` を撃つと
+     * `{"ok":false,"deployed":58,...}` を印字しながら **exit 0** を返していた。
+     * 失敗を 0 で報せる CLI は、CI にとって成功と区別がつかない(第37条)。
+     */
+    const r = write();
+    console.log(JSON.stringify(r, null, 2));
+    return r.ok ? 0 : 1;
+  }
   const p = plan();
   console.log('═══════ 🏛  DEPLOYMENT PLAN ═══════');
   console.log('upstream:', p.upstream);

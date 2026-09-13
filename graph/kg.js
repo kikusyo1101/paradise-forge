@@ -34,6 +34,15 @@ const EDGES = path.join(ROOT, 'edges.jsonl');
 const COCHANGE = path.join(ROOT, 'cochange.jsonl');
 
 function ensure() {
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。記憶の倉を作る/書く前に一度検める。**
+   *
+   * 記憶は `mode=repo` では `<repo>/graph/kg-store` に住む(第19条(b))—— 関門は
+   * 黙って通す。`PARADISE_ABODE=global` なら `~/.claude/paradise-kg` を指すが、
+   * **台帳にその宛先は無い**。`PARADISE_KG` で複製を差した門はそのまま通る
+   * (呼び手が名指した道 / `guardWrite` の註 (4))。
+   */
+  abode.guardWrite(ROOT, { why: '知識グラフの倉を作る' });
   fs.mkdirSync(ROOT, { recursive: true });
   for (const f of [NODES, EDGES, COCHANGE]) if (!fs.existsSync(f)) fs.writeFileSync(f, '');
 }

@@ -74,6 +74,12 @@ function readLedger() {
 }
 
 function writeLedger(l) {
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   * 日次台帳は住処の中に住む —— `mode=repo` なら倉の中で黙って通る。
+   * `global` では `~/.claude/paradise-daily.json` を指すが、台帳にその宛先は無い。
+   */
+  abode.guardWrite(LEDGER, { why: '日次のノルマ台帳を書く' });
   fs.mkdirSync(path.dirname(LEDGER), { recursive: true });
   fs.writeFileSync(LEDGER, JSON.stringify(l, null, 2));
 }
@@ -167,6 +173,11 @@ function isDue() {
  */
 function claim(holder, kind) {
   const lock = LEDGER + '.lock';
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。錠を置く前に台帳の道を検める。**
+   * 錠も台帳の隣に生まれる。書く物が増えたなら、関門もそこへ掛ける。
+   */
+  abode.guardWrite(lock, { why: '日次台帳の錠を置く' });
   fs.mkdirSync(path.dirname(LEDGER), { recursive: true });
   let fd;
   try {

@@ -441,6 +441,328 @@ test('関門は mode を見ない — global は「台帳を迂回する」意�
 });
 
 // ══════════════════════════════════════════════════════════════════════
+// 4.5 宛先の側から見た関門 — guardWrite (第8段 / AC-55 / AC-23 / 第58条(f))
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n倉の外への書き込み (第58条(f) / AC-55):');
+
+/** engine を子プロセスで撃つ。exit code は契約であり、出力と同じ重さを持つ。 */
+function runEngine(rel, args, env) {
+  const r = spawnSync(process.execPath, [path.join(ROOT, rel), ...args],
+    { encoding: 'utf8', cwd: ROOT, env: { ...process.env, ...(env || {}) } });
+  return { code: r.status, out: String(r.stdout || '') + String(r.stderr || '') };
+}
+
+/**
+ * **偽のホームを建てる。神の実機には一切触れない。**
+ *
+ * `USERPROFILE` / `HOME` を差し替えれば `abode.home()` はここを答える
+ * (`home()` はその順で読む —— 門が器を隔離するために在る順序である)。
+ * `.claude/settings.json` を置くのは、engine が「配備されていない」と言って
+ * 黙って skip するのを防ぐため —— **skip した走行は関門を試していない。**
+ */
+function fakeHome(tag, settings) {
+  const home = mktmp('fakehome-' + tag);
+  const box = path.join(home, '.claude');
+  fs.mkdirSync(box, { recursive: true });
+  fs.writeFileSync(path.join(box, 'settings.json'),
+    JSON.stringify(settings || {}, null, 2) + '\n');
+  return { home, box, settingsFile: path.join(box, 'settings.json'),
+           env: { USERPROFILE: home, HOME: home } };
+}
+
+/** ディレクトリの中身を「道 → sha256」で丸ごと撮る。**前後の差で裁くため。** */
+function snapshotTree(dir) {
+  const crypto = require('crypto');
+  const out = new Map();
+  const walk = (d, rel) => {
+    let ents = [];
+    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents.sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(d, e.name), r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) walk(p, r);
+      else out.set(r, crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'));
+    }
+  };
+  walk(dir, '');
+  return out;
+}
+function sameTree(a, b) {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) if (b.get(k) !== v) return false;
+  return true;
+}
+
+test('【正】倉の中への書き込みは黙って通る — 関門が既定の道を重くしない', () => {
+  const r = abode.guardWrite(path.join(ROOT, '.claude', 'settings.json'));
+  assert.strictEqual(r.inside, true, '自分の倉の中が輸出として裁かれている');
+  assert.strictEqual(r.scope, 'repo');
+  assert.strictEqual(r.export, null, '倉の中に台帳の裏付けを要求している');
+});
+
+test('【逆】神の住処へは、台帳に無い宛先なら拒む — 呼び手と宛先を名指す (AC-55)', () => {
+  const f = fakeHome('deny');
+  const victim = path.join(f.box, 'agents', 'smuggled.md');
+  let threw = null;
+  try { abode.guardWrite(victim, { env: f.env }); } catch (e) { threw = e; }
+  assert.ok(threw, '神の住処へ台帳を迂回して書けてしまった — global が抜け道のままである');
+  assert.ok(threw.message.includes(victim), `宛先を名指していない: ${threw.message}`);
+  assert.ok(/tests\/abode\.test\.js/.test(threw.message),
+    `呼び手を名指していない: ${threw.message}`);
+  assert.ok(/AC-55/.test(threw.message), '条を引いていない — 直す者が根拠に辿り着けない');
+});
+
+test('【逆】mode を倒しても関門の可否は 1 ミリも動かない (AC-55 の核心)', () => {
+  const f = fakeHome('mode');
+  const victim = path.join(f.box, 'commands', 'x.md');
+  const answers = [];
+  for (const m of ['repo', 'global', undefined]) {
+    const env = { ...f.env };
+    if (m) env.PARADISE_ABODE = m;
+    try { abode.guardWrite(victim, { env }); answers.push('通した'); }
+    catch { answers.push('拒んだ'); }
+  }
+  assert.deepStrictEqual(answers, ['拒んだ', '拒んだ', '拒んだ'],
+    `mode で答えが揺れた: ${JSON.stringify(answers)} — ` +
+    'global が「許可制を外すモード」に戻っている');
+});
+
+test('【正】台帳に載った writer が載った宛先へ書くときは通り、輸出を名乗る (EX-1)', () => {
+  // 呼び手はこの試験ファイルなので EX-1 の writer ではない —— 直接は通らない。
+  const f = fakeHome('ex1');
+  let threw = null;
+  try { abode.guardWrite(f.settingsFile, { env: f.env }); } catch (e) { threw = e; }
+  assert.ok(threw, 'EX-1 の宛先へ、writer でない者が書けてしまった');
+  assert.ok(/EX-1\(writer=graph\/apply-guards\.js\)/.test(threw.message),
+    `どの輸出の範囲かを名乗っていない: ${threw.message}`);
+});
+
+test('【正】mode=repo の engine は倉の中の settings.json へ実際に書ける(拒まれない)', () => {
+  /**
+   * 倉の中は関門が黙って通す。**この門が赤いなら、関門が日常を壊している。**
+   *
+   * ⚠️ **現物の `<repo>/.claude/settings.json` を的にしてはならない**(第58条(c))。
+   * それは版管理下の現物であり、`apply` は改行の正準化だけで作業木を汚す
+   * (第7段の HEAD でも同じであることを実測した —— 本段が持ち込んだ病ではない)。
+   * ゆえに的は**倉の中の未追跡の道**に建てる:
+   *   - `guardWrite` にとっては紛れもなく「倉の中」である(REPO_ROOT 配下)——
+   *     複製を倉の外に置いたのでは、この門は「倉の中」を一度も試していない。
+   *   - `hermetic.js` は倉の中の**未追跡**への書き込みを赤にしない(`untracked`)。
+   *   - 走行の終わりに消すので、作業木の前後の差は空である。
+   */
+  const box = path.join(ROOT, '.paradise-guard-probe-' + process.pid);
+  try {
+    fs.mkdirSync(box, { recursive: true });
+    const target = path.join(box, 'settings.json');
+    fs.writeFileSync(target, '{}\n');                 // permissions 無し → 必ず 1 回書く
+    const r = runEngine('graph/apply-guards.js', ['apply', target], { PARADISE_ABODE: 'repo' });
+    assert.strictEqual(r.code, 0, `倉の中への apply が拒まれた:\n${r.out}`);
+    assert.ok(!/倉の外への書き込みを拒んだ/.test(r.out), `倉の中を輸出として拒んだ:\n${r.out}`);
+    // 倉の中は輸出ではないので、EX-1 を名乗ってはならない(名乗れば台帳の意味が壊れる)
+    assert.ok(!/\[輸出 EX-1\]/.test(r.out), `倉の中の書き込みを輸出として名乗った:\n${r.out}`);
+    // **書けたことを実測する。** 「拒まれなかった」だけでは、書かずに黙った走行と区別がつかない
+    const s = JSON.parse(fs.readFileSync(target, 'utf8'));
+    assert.ok(s.permissions && s.permissions.deny.length > 0,
+      `倉の中へ実際に書けていない: ${JSON.stringify(s).slice(0, 120)}`);
+  } finally {
+    try { fs.rmSync(box, { recursive: true, force: true }); } catch {}
+  }
+  // 既定(mode=repo)の住処が倉の中を指していること自体も実測する
+  const site = abode.resolve({ env: { PARADISE_ABODE: 'repo' } });
+  assert.ok(site.settings.startsWith(ROOT + path.sep),
+    `mode=repo なのに住処が倉の外を指している: ${site.settings}`);
+});
+
+test('【正】台帳が在る走行で外へ書くとき apply-guards は [輸出 EX-1] を名乗る (第54条(c))', () => {
+  const f = fakeHome('announce');       // permissions の無い settings → 必ず 1 回書く
+  const r = runEngine('graph/apply-guards.js', ['apply'],
+    { ...f.env, PARADISE_ABODE: 'global' });
+  assert.strictEqual(r.code, 0, `台帳の在る正しい輸出が拒まれた:\n${r.out}`);
+  assert.ok(/\[輸出 EX-1\] ~\/\.claude\/settings\.json#\/permissions ← graph\/apply-guards\.js/.test(r.out),
+    `黙って通した輸出が在る — 第54条(c) は「黙って通した輸出は 0 件」である:\n${r.out}`);
+  const s = JSON.parse(fs.readFileSync(f.settingsFile, 'utf8'));
+  assert.ok(s.permissions && s.permissions.deny.length > 0, '名乗ったのに書けていない');
+});
+
+test('【逆・欠陥A】PARADISE_ABODE=global の deploy --write は exit 1 で 1 バイトも書かない', () => {
+  /**
+   * **実測された欠陥**(第8段の着手時):
+   *   $ USERPROFILE=<偽ホーム> PARADISE_ABODE=global node graph/deploy.js --write
+   *     {"ok":false,"deployed":58,...}        ← 58 ファイルが外へ出て、なお exit 0
+   * 第6段で撤収した物が、そのまま戻せる状態であった。
+   */
+  const f = fakeHome('deployA');
+  const before = snapshotTree(f.box);
+  const r = runEngine('graph/deploy.js', ['--write'], { ...f.env, PARADISE_ABODE: 'global' });
+  assert.strictEqual(r.code, 1, `台帳を迂回した配備が exit ${r.code} で通った:\n${r.out.slice(0, 800)}`);
+  assert.ok(/AC-55|第58条/.test(r.out), `拒んだ理由に条を引いていない:\n${r.out.slice(0, 800)}`);
+  const after = snapshotTree(f.box);
+  assert.ok(sameTree(before, after),
+    `拒んだのに偽ホームの中身が変わった — 1 バイトも書かない契約が破れた\n` +
+    `  前 ${before.size} 件 / 後 ${after.size} 件`);
+});
+
+test('【逆・欠陥B / AC-23 の実現】台帳から EX-1 を抜けば apply-guards apply は exit 1', () => {
+  /**
+   * **これが第8段の本丸である。** AC-23 は要件にこう書かれている ——
+   * 「台帳から EX-1 を消した状態で apply-guards.js apply を走らせたら exit 1、
+   *   1 バイトも書かない」。第7段までこの門は**嘘であった**:
+   * apply-guards は `globalWrite` を通らず直接 `fs.writeFileSync` していたので、
+   * 台帳に何が載っていようと関係なく書けた。
+   *
+   * ⚠️ 偽の台帳は**複製**に対して作る(第58条(c))。現物の abode.json は触らない。
+   */
+  const led = JSON.parse(fs.readFileSync(path.join(ROOT, 'graph', 'abode.json'), 'utf8'));
+  led.exports = led.exports.filter(e => e.id !== 'EX-1');
+  assert.strictEqual(led.exports.length, 2, '仕掛けに失敗した — EX-1 が抜けていない');
+  const box = mktmp('no-ex1');
+  const fakeLedger = path.join(box, 'abode.json');
+  fs.writeFileSync(fakeLedger, JSON.stringify(led, null, 2) + '\n');
+
+  // 偽の倉に engine 一式を写し、そこの台帳だけを抜いた物に差し替える。
+  const fakeRoot = mktmp('no-ex1-repo');
+  fs.mkdirSync(path.join(fakeRoot, 'graph'), { recursive: true });
+  for (const n of fs.readdirSync(path.join(ROOT, 'graph'))) {
+    const src = path.join(ROOT, 'graph', n);
+    if (fs.statSync(src).isDirectory()) continue;
+    fs.copyFileSync(src, path.join(fakeRoot, 'graph', n));
+  }
+  fs.copyFileSync(fakeLedger, path.join(fakeRoot, 'graph', 'abode.json'));
+
+  const f = fakeHome('no-ex1-home');
+  const before = fs.readFileSync(f.settingsFile, 'utf8');
+  const mtimeBefore = fs.statSync(f.settingsFile).mtimeMs;
+  const r = spawnSync(process.execPath, [path.join(fakeRoot, 'graph', 'apply-guards.js'), 'apply'],
+    { encoding: 'utf8', cwd: fakeRoot,
+      env: { ...process.env, ...f.env, PARADISE_ABODE: 'global' } });
+  const out = String(r.stdout || '') + String(r.stderr || '');
+  assert.strictEqual(r.status, 1,
+    `台帳から EX-1 を消しても exit ${r.status} で書けた — AC-23 が門として嘘のままである:\n${out}`);
+  assert.strictEqual(fs.readFileSync(f.settingsFile, 'utf8'), before,
+    'settings.json の中身が変わった — 1 バイトも書かない契約が破れた');
+  assert.strictEqual(fs.statSync(f.settingsFile).mtimeMs, mtimeBefore,
+    'settings.json の mtime が動いた — 同じ中身を書き直している');
+});
+
+test('【逆】guardWrite を mode で分岐させる変異を仕込むと selfAudit が鳴る (AC-55)', () => {
+  const base = fs.readFileSync(ABODE_JS, 'utf8');
+  const src = base.replace('function guardWrite(realPath, opts = {}) {',
+    'function guardWrite(realPath, opts = {}) {\n  if (mode() === \'global\') return { inside: false };');
+  assert.notStrictEqual(src, base, '注入に失敗した — 門を試せていない');
+  const root = fakeRepo('guard-mode-branch', { abodeSrc: src });
+  const f = abode.selfAudit(root);
+  assert.ok(f.some(x => /AC-55/.test(x.why) && /guardWrite/.test(x.why)),
+    'guardWrite が mode を見ても門が黙っている — ' +
+    'globalWrite を一切触らずに許可制を丸ごと外せる:' + JSON.stringify(f));
+});
+
+test('【逆】関門そのものを器から消すと selfAudit が鳴る — 掛ける相手が居ない', () => {
+  const base = fs.readFileSync(ABODE_JS, 'utf8');
+  const src = base.replace(/^function guardWrite\s*\(/m, 'function guardWriteDisabled(');
+  assert.notStrictEqual(src, base, '注入に失敗した');
+  const root = fakeRepo('guard-gone', { abodeSrc: src });
+  const f = abode.selfAudit(root);
+  assert.ok(f.some(x => /guardWrite\(\) がこの器に無い/.test(x.why)),
+    '関門が消えても門が黙っている: ' + JSON.stringify(f));
+});
+
+test('【正】exportRoots は ~ と <creations-root> と {a,b} を解き、知らない記法は解かない', () => {
+  const fake = mktmp('roots-home');
+  const r1 = abode.exportRoots({ target: '~/.claude/settings.json#/permissions' },
+    { env: { USERPROFILE: fake, HOME: fake } });
+  assert.deepStrictEqual(r1, [path.join(fake, '.claude', 'settings.json')],
+    `~ 起点を解けていない: ${JSON.stringify(r1)}`);
+  // ブレースは各枝へ展開する(EX-3 の形)。**一本にまとめてはならない。**
+  const r2 = abode.exportRoots({ target: '~/.claude/scripts/{hooks,lib}' },
+    { env: { USERPROFILE: fake, HOME: fake } });
+  assert.deepStrictEqual(r2.sort(), [
+    path.join(fake, '.claude', 'scripts', 'hooks'),
+    path.join(fake, '.claude', 'scripts', 'lib'),
+  ].sort(), `ブレースを解けていない: ${JSON.stringify(r2)}`);
+  // <creations-root> は workspace.js が答える(第30条)。器がここで組み立てない。
+  const box = mktmp('roots-creations');
+  const r3 = abode.exportRoots({ target: '<creations-root>/.claude/{agents,commands}' },
+    { env: { PARADISE_CREATIONS: box } });
+  assert.deepStrictEqual(r3.sort(), [
+    path.join(box, '.claude', 'agents'),
+    path.join(box, '.claude', 'commands'),
+  ].sort(), `兄弟倉の記法を解けていない: ${JSON.stringify(r3)}`);
+  // 知らない記法は**推測で埋めない**(第16条)。空 = 拒む側に倒れる。
+  assert.deepStrictEqual(abode.exportRoots({ target: '<who-knows>/x' }), []);
+});
+
+test('【正】現物の台帳の輸出は 3 件とも実パスへ解ける — 解けない宛先は守れない', () => {
+  for (const e of abode.ledger().exports) {
+    const roots = abode.exportRoots(e);
+    assert.ok(roots.length > 0,
+      `${e.id} の target を実パスへ解けない: ${e.target} — ` +
+      'guardWrite が守れない宛先は、台帳に載っていても関門の外である(第37条)');
+    for (const r of roots) assert.ok(path.isAbsolute(r), `相対路が混ざった: ${r}`);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 4.6 外へ書く engine の静的な門 — check --outward (AC-55 / 第58条(f))
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n外へ書く engine の静的な門 (check --outward):');
+
+test('【正】現物の engine は全て関門を通っている — check --outward が exit 0', () => {
+  assert.deepStrictEqual(abode.outwardRefs(), [],
+    'abode から住所を引きながら関門を通らない engine が在る');
+  const r = cli(['check', '--outward']);
+  assert.strictEqual(r.code, 0, `check --outward が赤い:\n${r.out}`);
+});
+
+test('【正】--outward は --all に編入されている — 旗を立てねば走らない門は死ぬ (第44条)', () => {
+  const src = fs.readFileSync(ABODE_JS, 'utf8');
+  assert.ok(/'--outward':\s*'outward'/.test(src), 'CHECK_FLAGS に --outward が無い');
+  // 旗を一つも立てない check の結果に outward の欄が在り、ok に効いていること
+  const r = abode.check();
+  assert.ok(Array.isArray(r.outward), '旗の無い check が outward を測っていない');
+});
+
+test('【逆】abode を引く engine から関門の呼びを消すと、行とファイルを名指して鳴る', () => {
+  /**
+   * **故障注入は複製に対して行う**(第58条(c))。現物の engine は 1 バイトも触らない。
+   * 「関門を消す」を再現するため、`guardWrite` の呼びだけを消した写しを偽の倉へ置く。
+   */
+  const real = fs.readFileSync(path.join(ROOT, 'graph', 'apply-guards.js'), 'utf8');
+  assert.ok(/abode\.guardWrite\(/.test(real), '前提: 現物は関門を通っている');
+  const mutated = real.replace(/^(\s*)(const sanction = )?abode\.guardWrite\(.*$/m,
+    '$1const sanction = { export: null };');
+  assert.ok(!/abode\.guardWrite\(/.test(mutated), '注入に失敗した — 呼びが残っている');
+  const root = fakeRepo('outward-mutant', { files: { 'graph/apply-guards.js': mutated } });
+  const rows = abode.outwardRefs(root);
+  assert.ok(rows.length > 0, '関門を消しても門が黙っている — AC-55 が構造で守られていない');
+  assert.ok(rows.every(x => x.file === 'graph/apply-guards.js'),
+    `関係の無いファイルまで咎めた: ${JSON.stringify(rows.map(x => x.file))}`);
+  assert.ok(rows.some(x => x.line > 0 && /writeFileSync/.test(x.text)),
+    `書く行を名指していない — 名指ししない門は直せない: ${JSON.stringify(rows)}`);
+});
+
+test('【逆】abode を引かない engine は対象外 — 住所を持たない者に輸出の罪は無い', () => {
+  const root = fakeRepo('outward-no-abode', {
+    files: { 'graph/lonely.js': "const fs = require('fs');\nfs.writeFileSync('/tmp/x', 'y');\n" },
+  });
+  assert.deepStrictEqual(abode.outwardRefs(root).filter(x => x.file === 'graph/lonely.js'), [],
+    'abode を引かない engine を咎めた — この門が裁くのは「住所を引きながら検められない」形である');
+});
+
+test('註釈と文字列の中の writeFileSync は数えない — 病を説明した罰を与えない', () => {
+  const root = fakeRepo('outward-prose', {
+    files: {
+      'graph/doc.js':
+        "const abode = require('./abode.js');\n" +
+        '// この engine はかつて fs.writeFileSync を関門の外で呼んでいた\n' +
+        "const why = 'writeFileSync( を関門の外で呼ぶな';\n" +
+        'module.exports = { why };\n',
+    },
+  });
+  assert.deepStrictEqual(abode.outwardRefs(root).filter(x => x.file === 'graph/doc.js'), [],
+    '註釈と文字列の中の病名を違反として数えた');
+});
+
+
+// ══════════════════════════════════════════════════════════════════════
 // 5. 除外の四重の錠 — 除外は名前ではなく実質が与える (第54条(a)(c))
 // ══════════════════════════════════════════════════════════════════════
 console.log('\n除外の裏付け (第58条(a)):');
