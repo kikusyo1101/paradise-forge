@@ -75,6 +75,16 @@ function apply(file = SETTINGS) {
   s.effortLevel = want.effort;
   const after = JSON.stringify(s);
   if (before === after) return { ok: true, changed: false, file, ...want };
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   *
+   * 座は倉の中の settings.json に住む(第4段の反転以後)—— ゆえに通常は
+   * `guardWrite` が黙って通す。だが `PARADISE_ABODE=global` を立てれば、この
+   * engine は**神の settings.json** を指す。台帳に載っているのは EX-1 の
+   * permissions キーだけであり、**座はそこに無い**。
+   * 台帳が許していない宛先へは、mode を倒しても出られない。
+   */
+  abode.guardWrite(file, { why: '教主の座を settings.json へ書く' });
   fs.writeFileSync(file, JSON.stringify(s, null, 2) + '\n');
   return { ok: true, changed: true, file, ...want };
 }

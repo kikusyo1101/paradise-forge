@@ -886,8 +886,25 @@ function apply(file = SETTINGS) {
   const before = fs.readFileSync(file, 'utf8');
   const after = JSON.stringify(next, null, 2) + '\n';
   if (before === after) return { ok: true, changed: false, file, changes: [] };
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   *
+   * この engine は EX-1 の writer である —— 神の `~/.claude/settings.json` の
+   * permissions を書く唯一の者。だが**第8段まで、その資格を一度も検められていなかった**:
+   *
+   *   $ USERPROFILE=<偽ホーム> PARADISE_ABODE=global node graph/apply-guards.js apply
+   *     ✎ 掟を機構にした (1 change(s))       ← [輸出 EX-1] の名乗りが無い
+   *     deny 9 / ask 1 / allow 5 が、台帳を一度も引かずに書かれていた
+   *
+   * ゆえに AC-23(「台帳から EX-1 を消せば exit 1」)は門として嘘であった。
+   * `guardWrite` は倉の中(`<repo>/.claude/settings.json`)を黙って通し、
+   * 倉の外では台帳 EX-1 の裏付け(writer = この file、宛先 = この道)を要求する。
+   */
+  const sanction = abode.guardWrite(file, { why: '掟を settings.json へ書く' });
   fs.writeFileSync(file, after);
-  return { ok: true, changed: true, file, changes };
+  // **通した輸出は名乗る**(第54条(c): 黙って通した輸出は 0 件)。倉の中は輸出ではないので黙る。
+  if (sanction.export) console.log(`[輸出 ${sanction.export.id}] ${sanction.export.target} ← ${sanction.export.writer}`);
+  return { ok: true, changed: true, file, changes, export: sanction.export ? sanction.export.id : null };
 }
 
 function verify(file = SETTINGS) { return diff(file); }

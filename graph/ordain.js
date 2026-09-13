@@ -283,6 +283,12 @@ function plan(req) {
 }
 
 function writeAgentMd(step) {
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   * 鍛造は倉の中(`overlay/agents/`)に書く —— 関門は黙って通る。
+   * `PARADISE_ORDAIN_ROOT` で複製を差した門も、呼び手が名指した道として通る。
+   */
+  abode.guardWrite(agentsDir(), { why: '神官の md を鍛造する' });
   fs.mkdirSync(agentsDir(), { recursive: true });
   // 計画の `file` は**現物の倉からの相対路**(散文に見せるため)。書く先は今の倉である。
   fs.writeFileSync(path.join(forgeRoot(), step.file), step.content);

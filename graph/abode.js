@@ -16,8 +16,12 @@
  *
  * この器はもう一つの職務を持つ —— **輸出の関門**である。
  * 神託:「グローバルには私が直接追加を依頼したものだけ入れる」。
- * ゆえにグローバルへ書く engine は `globalWrite()` を通り、宛先は
+ * ゆえにグローバルへ書く engine は関門を通り、宛先は
  * `graph/abode.json`(神が名指した台帳)に載っていなければならない。
+ * 関門の口は二つある。**同じ台帳を、違う向きから読むだけである**(第58条(f)):
+ *   - `globalWrite(target, write)` … **宛先を名指して**書く者を包む
+ *   - `guardWrite(realPath)`       … **己が握る実パス**を差し出して可否を問う。
+ *                                    倉の中なら黙って通る。倉の外なら台帳の裏付けが要る
  * **この engine は台帳へ書く口を持たない** —— 持てば、裁かれる側が裁きの
  * 範囲を決めることになる(第54条(d))。
  *
@@ -26,11 +30,12 @@
  *   node graph/abode.js path <key>           単一の住所を印字 (スクリプトから引く口)
  *   node graph/abode.js check [--count] [--ledger] [--exclusion]
  *                            [--silent-green] [--symmetry] [--hermetic]
- *                            [--creations] [--backrefs] [--all]
+ *                            [--creations] [--outward] [--backrefs] [--all]
  *                                            違反の検出。旗が無ければ --all
  *                                            **知らない旗は exit 2** (黙って捨てない)
- *                                            ⚠️ `--backrefs` は --all に含まれない
- *                                               (撤収前は必ず赤い。撤収完了後に編入 / 台帳 [41])
+ *                                            `--outward` = 外へ書きうる engine が
+ *                                            関門を通っているか (第8段で --all へ編入)
+ *                                            `--backrefs` も第7段で --all へ編入済み
  *   node graph/abode.js exports [--external] [--verify <id>]
  *                                            台帳の印字と、照合の道の提示
  *   node graph/abode.js migrate --plan | --verify
@@ -382,6 +387,12 @@ function callerModule() {
  *    「既定の住所が外を向く」だけであって、「台帳を迂回する」意味を持たない(AC-55)。
  *    mode で輸出を分岐させる実装は `check` が静的に禁じる。
  *
+ * ⚠️ **この関門は「宛先を名指して包む」口である。** 宛先を名指せない engine
+ *    (「今から書くこの実パスは輸出か?」しか問えない者)のためには
+ *    `guardWrite()` が在る。本体は `guardWrite()` に委ね、ここは
+ *    **台帳の target を実パスへ解いて渡すだけ**にする —— 同じ問いに二つの答えを
+ *    持てば、いつか食い違う(第29条)。
+ *
  * @param {string} target
  * @param {() => any} write   実際の書き込みを行う関数
  * @throws {Error} 台帳に無い / 実質が無い / writer 不一致 / 呼び手が測れない
@@ -404,9 +415,212 @@ function globalWrite(target, write) {
   if (typeof write !== 'function') {
     throw unmeasurable(`${e.id}: 書き込みの関数が渡されていない — 関門は書く者を包んで初めて関門である`);
   }
+  /**
+   * **宛先の側からも同じ関門を通す**(第8段)。
+   *
+   * これは二重の検査ではなく、**同じ問いに答えが二つ在ることを禁じる**仕掛けである
+   * (第29条)。engine は二つの口から関門へ入る —— 宛先を名乗る者は `globalWrite`、
+   * 己の握る実パスを差し出す者は `guardWrite`。その二つが**違う台帳の読み方**を
+   * 持てば、片方だけを通る抜け道がいつか生まれる。ゆえに `globalWrite` は
+   * 己の entry を実パスへ解き、**`guardWrite` にもう一度裁かせてから**書く。
+   *
+   * 解けない宛先は `unmeasurable` である —— 実パスに落ちない宛先は
+   * `guardWrite` が守れない宛先であり、「守れない」を「守った」と読んではならない(第37条)。
+   */
+  const roots = exportRoots(e);
+  if (!roots.length) {
+    throw unmeasurable(`${e.id} の target を実パスへ解けない: ${e.target} — ` +
+      '実パスに落ちない宛先は関門が守れない。台帳の記法を器が解けるようにせよ(第37条)');
+  }
+  for (const root of roots) guardWrite(root, { why: `${e.id} の宛先` });
   const r = write();
   console.log(`[輸出 ${e.id}] ${e.target} ← ${e.writer}`);
   return r;
+}
+
+/**
+ * **宛先の側から見た関門(第8段 / AC-55 / 第58条(f))。**
+ *
+ * `globalWrite()` は「台帳の target を名指して書く者」を包む口である。だが
+ * **実測された欠陥はそこに無かった** —— 欠陥は「台帳を名指さずに、ただ
+ * `abode.pathFor('settings')` が答えた道へ `fs.writeFileSync` する engine」であった。
+ * 名指さない者は関門を知らず、関門も彼を知らない。
+ *
+ *   $ USERPROFILE=<偽ホーム> PARADISE_ABODE=global node graph/apply-guards.js apply
+ *     ✎ 掟を機構にした (1 change(s))          ← [輸出 EX-1] の名乗りが**無い**
+ *     書かれた結果: deny 9 ask 1 allow 5
+ *
+ * ゆえにこの口は問いを裏返す:**「今から書くこの実パスは、台帳が許した宛先か」**。
+ * engine は宛先を名乗る必要がない —— 書く直前に己が握っている道を渡すだけでよい。
+ *
+ *  (1) 倉(`REPO_ROOT`)の配下なら**黙って通す。** 自分の倉の中は輸出ではない。
+ *      `PARADISE_ABODE=repo`(既定)の書き込みは全てここで抜ける ——
+ *      **この関門が既定の道を重くしてはならない。**
+ *  (2) 倉の外なら、台帳 `exports` を引く。**呼び手を `callerModule()` で実測**し、
+ *      「その呼び手が `writer` であり、かつ `target` を実パスへ解いた物が
+ *      与えられた実パスの前置である」エントリが在ることを要求する。
+ *  (3) 台帳の裏付けが無く、しかもその道が**楽園の住処**(`abodeRoots()`)の
+ *      配下なら throw。**宛先と呼び手を名指す** —— 名指ししない門は直せない(第58条(a))。
+ *
+ * ⚠️ **(4) 楽園の住処でもない、倉の外の道** —— これは「**呼び手が名指した道**」である。
+ *    engine が己で組み立てた道ではありえない:住所を作れるのは `abode.js` だけであり
+ *    (第58条(a))、`check --count` がソースを走査してそれを強制している。
+ *    ゆえに倉の外の道が engine の手に在るなら、出所は二つしかない ——
+ *    **abode が答えた**(→ (2)(3) が裁く)か、**呼び手が渡した**(→ CLI 引数、
+ *    すなわち神が明示的に名指した道、あるいは門が建てた複製)かである。
+ *    後者を拒めば、**第58条(c) が命じる密閉(複製への故障注入)が不可能になる** ——
+ *    門は現物を汚さぬために `os.tmpdir()` の写しへ書くのだから。
+ *    ゆえに通す。ただし `scope` に `'caller-named'` と**記して返す**(黙って通さない)。
+ *
+ * ⚠️ **`caller === null`(測れず)は通さない。**「測れなかった」を「一致した」と
+ *    読んではならない(第37条)。
+ *
+ * ⚠️ **この関門は mode を一切見ない。** それどころか `abodeRoots()` は
+ *    **すべての mode の住処を同時に**数える —— ゆえに `PARADISE_ABODE` を
+ *    どちらに倒しても可否は 1 ミリも動かない。global は
+ *    「台帳の輸出を実行するモード」であって「許可制を外すモード」ではない(AC-55)。
+ *    `globalWrite` に掛かっているのと同じ禁則を `selfAudit()` がこの本体にも掛ける。
+ *
+ * @param {string} realPath  これから書く**実パス**(`~` ではない。engine が握っている道)
+ * @param {{env?:object, repoRoot?:string, why?:string}} [opts]
+ * @returns {{inside:boolean, scope:'repo'|'export'|'caller-named', export:object|null, real:string}}
+ * @throws {Error} 楽園の住処でありながら、台帳に裏付けの無い書き込み
+ */
+function guardWrite(realPath, opts = {}) {
+  const repoRoot = path.resolve(opts.repoRoot || REPO_ROOT);
+  if (typeof realPath !== 'string' || !realPath.trim()) {
+    throw unmeasurable('guardWrite に道が渡されていない — ' +
+      '書く先を言えない書き込みは、検められない書き込みである(第37条)');
+  }
+  const real = path.resolve(realPath);
+  const under = (root) => real === root || real.startsWith(root + path.sep);
+
+  // (1) 倉の中は輸出ではない。**黙って通す。**
+  if (under(repoRoot)) return { inside: true, scope: 'repo', export: null, real };
+
+  // (2) 倉の外 —— 台帳の裏付けを探す。呼び手は名乗りではなく実測(第54条(a))。
+  const caller = callerModule();
+  const led = ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {});
+  const candidates = [];
+  for (const e of led.exports) {
+    if (!e || typeof e !== 'object') continue;
+    for (const r of exportRoots(e, opts)) {
+      if (under(r)) { candidates.push({ e, r }); break; }
+    }
+  }
+  const hit = candidates.find(c => c.e.writer === caller);
+  if (hit) {
+    const bad = validateEntry(hit.e, 0, 'exports', repoRoot);
+    if (bad.length) {
+      throw new Error(`${hit.e.id} の台帳エントリに実質が無い — ` +
+        bad.map(f => `${f.field}: ${f.why}`).join(' / ') + ' (第54条(b))');
+    }
+    return { inside: false, scope: 'export', export: hit.e, real };
+  }
+
+  // (3) 楽園の住処でありながら台帳の裏付けが無い —— 拒む。**宛先と呼び手を名指す。**
+  const homes = abodeRoots(opts);
+  const home = homes.find(h => under(h.path));
+  if (home || candidates.length) {
+    const who = caller === null ? '(測れず — 第37条により通さない)' : caller;
+    const near = candidates.length
+      ? ` 宛先は ${candidates.map(c => `${c.e.id}(writer=${c.e.writer})`).join(' / ')} の範囲だが、呼び手が違う。`
+      : ` この道は楽園の住処である(${home.why})が、台帳のどの輸出の範囲にも入らない。`;
+    throw new Error(
+      `倉の外への書き込みを拒んだ: ${real} ← ${who}${near}` +
+      (opts.why ? ` (${opts.why})` : '') +
+      ' — 倉の外へ出るのは、台帳に載った writer が台帳に載った宛先へ書くときだけである' +
+      ' (AC-55 / 第58条(b)(f))。mode はこの可否を変えない:' +
+      ' PARADISE_ABODE=global は「台帳の輸出を実行するモード」であって「許可制を外すモード」ではない');
+  }
+
+  // (4) 呼び手が名指した、楽園の住処ではない道。記して通す(上の註を見よ)。
+  return { inside: false, scope: 'caller-named', export: null, real };
+}
+
+/**
+ * **楽園の住処になりうる道を、すべての mode について一度に数える。**
+ *
+ * `guardWrite` が「この道は楽園の住処か」を問うための地図である。
+ *
+ * **(1) mode で分岐しない。** `repo` の住処も `global` の住処も**同時に**数える。
+ * ゆえに `PARADISE_ABODE` をどちらへ倒しても関門の可否は動かない(AC-55)。
+ * 「今どちらを向いているか」を問えば、**向きを変えるだけで関門を外せる** ——
+ * それがまさに第8段で塞ぐ穴であった。
+ *
+ * **(2) 個別 env の上書き(`OVERRIDE_ENV`)を剥いでから数える。** 二つの理由がある:
+ *   - **守りが env で動いてはならない。** `CLAUDE_HOME=<どこか>` を立てただけで
+ *     神の `~/.claude` がこの地図から外れるなら、それは env 一本で開く抜け道である。
+ *     剥いで数えれば、神の住処と倉の住処は**何を立てても必ず**守られる。
+ *   - 逆に、**上書きが指す先そのものは守りの対象ではない。** それは
+ *     「呼び手が名指した道」であり(`guardWrite` の註 (4))、第58条(c) が命じる
+ *     密閉 —— 門が `os.tmpdir()` の複製を差して engine を撃つ道 —— そのものである。
+ *     ここで拒めば、門は現物を汚さずに engine を試せなくなる。
+ *
+ * @returns {{path:string, why:string}[]}
+ */
+function abodeRoots(opts = {}) {
+  const repoRoot = opts.repoRoot || REPO_ROOT;
+  const env = { ...((opts && opts.env) || process.env) };
+  for (const o of OVERRIDE_ENV) delete env[o.env];       // (2) 上書きを剥ぐ
+  const out = [];
+  const add = (p, why) => { if (p) out.push({ path: path.resolve(p), why }); };
+  for (const m of MODES) {                                // (1) 全ての mode を同時に
+    const site = resolve({ env: { ...env, PARADISE_ABODE: m }, repoRoot });
+    add(site.abode, `PARADISE_ABODE=${m} の住処`);
+    add(site.kg, `PARADISE_ABODE=${m} の記憶`);
+    add(site.creationsAbode, '兄弟倉の住処');
+  }
+  return out;
+}
+
+/**
+ * 台帳の一エントリが覆う**実パスの根**を列挙する。
+ *
+ * `exportRealPath()` は `~` 起点の**単一の道**しか解かない(そしてそれで正しい ——
+ * `EX-2` に null を返すことを既存の門が握っている)。だがこの関門は
+ * `<creations-root>/...` も `{hooks,lib}` のようなブレース記法も解けねばならない。
+ * ゆえに**列挙する**口を別に建てる。
+ *
+ *  - `~/…`                … `home(env)` で解く(`exportRealPath` と同じ土台)
+ *  - `<creations-root>/…` … **`workspace.js` 経由で解く**(第30条: 創造物の住所を
+ *                            知るのは `workspace.js` だけである。ここで `..` を
+ *                            組み立てれば住所が二本になる)
+ *  - `{a,b}`              … 各枝へ展開する(EX-3 の `scripts/{hooks,lib}` の形。
+ *                            `apply-hooks.js` が実際に `scripts/hooks` と
+ *                            `scripts/lib` の二つへ書くのと同じ読み方)
+ *  - `#/pointer`          … **パス部だけを見る。** JSON の中のどのキーかは
+ *                            ファイル単位の関門の関心ではない(EX-1 の
+ *                            `settings.json#/permissions` は settings.json を覆う)
+ *
+ * @returns {string[]} 解けた実パスの根。解けない記法には**推測で埋めず**空を返す
+ */
+function exportRoots(e, opts = {}) {
+  const raw = String((e && e.target) || '').split('#')[0].trim();
+  if (!raw) return [];
+  const env = (opts && opts.env) || process.env;
+  const repoRoot = opts.repoRoot || REPO_ROOT;
+
+  // ブレース展開。入れ子は台帳に無い(在れば解けないので空を返す = 拒む側に倒れる)。
+  const expand = (s) => {
+    const m = s.match(/^([^{}]*)\{([^{}]+)\}([^{}]*)$/);
+    if (!m) return /[{}]/.test(s) ? [] : [s];
+    return m[2].split(',').map(part => m[1] + part.trim() + m[3]);
+  };
+
+  let base = null;
+  let rest = null;
+  if (raw.startsWith('~')) {
+    base = home(env);
+    rest = raw.slice(1);
+  } else if (raw.startsWith('<creations-root>')) {
+    base = workspace.resolve({ repoRoot, env }).root;
+    rest = raw.slice('<creations-root>'.length);
+  } else {
+    return [];                       // 知らない記法は解かない(第16条: 推測で埋めない)
+  }
+  rest = rest.replace(/^[\\/]+/, '');
+  return expand(rest).map(r => (r ? path.join(base, r) : path.resolve(base)));
 }
 
 /**
@@ -735,7 +949,7 @@ function symmetryAudit(repoRoot = REPO_ROOT) {
 /**
  * `abode.js` 自身のソースを検める。
  *  (1) 台帳へ**書く**口を持っていないか(第54条(d) / AC-56)
- *  (2) `globalWrite` が mode を見て輸出を分岐していないか(AC-55)
+ *  (2) `globalWrite` / `guardWrite` が mode を見て輸出を分岐していないか(AC-55)
  * @returns {{file:string, line:number, text:string, why:string}[]}
  */
 function selfAudit(repoRoot = REPO_ROOT) {
@@ -759,10 +973,23 @@ function selfAudit(repoRoot = REPO_ROOT) {
     }
   });
 
-  // (2) globalWrite が mode を参照していないか。関数の本体だけを切り出して見る ——
-  //     ファイル全体を見れば resolve() の mode に当たって永久に赤くなる。
-  const start = lines.findIndex(l => /^function globalWrite\s*\(/.test(l));
-  if (start >= 0) {
+  /**
+   * (2) **関門が mode を参照していないか。** 関数の本体だけを切り出して見る ——
+   *     ファイル全体を見れば `resolve()` の mode に当たって永久に赤くなる。
+   *
+   * ⚠️ **禁則は `globalWrite` だけに掛けても足りない**(第8段の実測)。
+   *    倉の外への書き込みを実際に裁いているのは `guardWrite` であり、そこに
+   *    `if (mode() === 'global') return;` を一行足せば、**globalWrite を一切触らずに**
+   *    許可制を丸ごと外せてしまう。関門の名が増えたなら、禁則もその名へ広げる。
+   */
+  const GATES = ['globalWrite', 'guardWrite'];
+  for (const gate of GATES) {
+    const start = lines.findIndex(l => new RegExp(`^function ${gate}\\s*\\(`).test(l));
+    if (start < 0) {
+      out.push({ file: rel, line: 0, text: '',
+        why: `関門 ${gate}() がこの器に無い — 禁則を掛ける相手が居ない (AC-55 / 第58条(f))` });
+      continue;
+    }
     let depth = 0, end = start;
     for (let i = start; i < lines.length; i++) {
       depth += (lines[i].match(/\{/g) || []).length - (lines[i].match(/\}/g) || []).length;
@@ -774,8 +1001,65 @@ function selfAudit(repoRoot = REPO_ROOT) {
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
       if (/\bmode\s*\(|\.mode\b|DEFAULT_MODE\b/.test(lines[i])) {
         out.push({ file: rel, line: i + 1, text: t.slice(0, 100),
-          why: 'globalWrite が mode を見ている — global は「台帳を迂回する」意味を持たない (AC-55)' });
+          why: `${gate} が mode を見ている — global は「台帳を迂回する」意味を持たない (AC-55)` });
       }
+    }
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 外へ出る engine の静的な門 — check --outward (第8段 / AC-55 / 第58条(f))
+// ══════════════════════════════════════════════════════════════════════
+
+/** ファイルシステムへ書く口。**復元の有無は問わない** — 書けること自体が輸出の権能である。 */
+const OUTWARD_WRITE_RE =
+  /\b(writeFileSync|appendFileSync|copyFileSync|mkdirSync|rmSync|createWriteStream)\s*\(/;
+
+/** 関門を通っている証。どちらの口から入ってもよい(§`guardWrite` の註)。 */
+const OUTWARD_GATE_RE = /\b(guardWrite|globalWrite)\s*\(/;
+
+/**
+ * **住所を abode から引きながら、関門を一度も通らない engine を名指す。**
+ *
+ * 第8段の実測が示したのは、**振る舞いの門だけでは足りない**ということである。
+ * `tests/abode.test.js` は「台帳に無い宛先は 1 バイトも書けない」を撃っていたが、
+ * それは `globalWrite` を**呼んだ者**にしか効かない。呼ばない者は門の外に居た:
+ *
+ *     $ (graph/*.js のうち abode を require し、かつ書く口を持つ 11 本を走査)
+ *       関門を通っていたのは deploy.js (EX-2) と apply-hooks.js (EX-3) の 2 本だけ
+ *
+ * ゆえに**構造を構造で見る**。`./abode.js` を require していて、かつ書く口を持つ
+ * ファイルが `guardWrite(` も `globalWrite(` も一度も含まないなら、
+ * **書く行を名指して**赤にする —— 名指ししない門は、赤くなっても直せない(第58条(a))。
+ *
+ * ⚠️ 走査は `codeOnly()` を通す。この門が裁く病の名は、註釈にも診断文にも書かれる
+ *    (この註釈自身が `writeFileSync` の語を含む)。病を説明した罰を与えてはならない。
+ *
+ * ⚠️ **倉の中にしか書かない engine を除外しない。** `guardWrite` は倉の中を
+ *    黙って通すので、掛けても害が無い —— むしろ掛けておくのが正しい。
+ *    「この engine は倉の中にしか書かない」は**今日の真実**であって、
+ *    住所が一行変わった明日には嘘になる(第4段の反転がまさにそれであった)。
+ *
+ * @returns {{file:string, line:number, text:string, why:string}[]}
+ */
+function outwardRefs(repoRoot = REPO_ROOT) {
+  const out = [];
+  for (const rel of scanTargets(repoRoot)) {
+    if (rel === 'graph/abode.js') continue;          // 関門そのもの。己を通れとは言えない
+    const raw = read(path.join(repoRoot, rel));
+    if (!raw) continue;
+    // require は文字列リテラルなので `codeOnly()` の前(生のソース)で見る。
+    if (!/require\s*\(\s*['"`]\.\/abode\.js['"`]\s*\)/.test(raw)) continue;
+    const code = codeOnly(raw);
+    if (OUTWARD_GATE_RE.test(code)) continue;        // どちらかの口から関門を通っている
+    const lines = code.split('\n');
+    const rawLines = raw.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!OUTWARD_WRITE_RE.test(lines[i])) continue;
+      out.push({ file: rel, line: i + 1, text: rawLines[i].trim().slice(0, 100),
+        why: 'abode から住所を引きながら、書く直前に関門を一度も通っていない — ' +
+             'abode.guardWrite(<書く道>) を書く直前に置け。倉の中なら黙って通る (AC-55 / 第58条(f))' });
     }
   }
   return out;
@@ -1024,10 +1308,10 @@ function spawnGit(cwd, args) {
 function check(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
   const all = !(opts.count || opts.ledger || opts.exclusion || opts.silentGreen ||
-                opts.symmetry || opts.hermetic || opts.creations);
+                opts.symmetry || opts.hermetic || opts.creations || opts.outward);
   const r = { exclusion: exclusionAudit(repoRoot), homedir: [], ledger: [], self: [],
               silentGreen: [], symmetry: { ok: true, rows: [], why: [] }, hermetic: null,
-              creations: null, backrefs: null, envRepair: [], ok: true };
+              creations: null, backrefs: null, envRepair: [], outward: [], ok: true };
   if (all || opts.count || opts.exclusion) r.homedir = homedirRefs(repoRoot);
   if (all || opts.ledger) {
     r.ledger = validateLedger(ledger(opts.ledgerFile ? { file: opts.ledgerFile } : {}), repoRoot);
@@ -1040,6 +1324,14 @@ function check(opts = {}) {
     r.envRepair = envRepairAudit(repoRoot);
   }
   if (all || opts.silentGreen) r.silentGreen = silentGreens(repoRoot);
+  /**
+   * **外へ書く engine が関門を通っているか(AC-55 / 第58条(f))。`--all` に編入する。**
+   *
+   * 旗を立てたときしか走らない門は、誰も旗を立てなくなった日に死ぬ(第44条)。
+   * この門は実機を一切見ない —— 倉のソースだけを読む構造の門であるから、
+   * CI でも神の機でも同じ答えを返す。編入して害が無く、外す理由が無い。
+   */
+  if (all || opts.outward) r.outward = outwardRefs(repoRoot);
   if (all || opts.symmetry) r.symmetry = symmetryAudit(repoRoot);
   /**
    * 密閉は `graph/hermetic.js` が裁く(work-7 で建った)。**ここで作法を二重に書かない** ——
@@ -1081,7 +1373,7 @@ function check(opts = {}) {
    */
   if (all || opts.backrefs) r.backrefs = backRefs(opts);
   r.ok = r.exclusion.ok && r.homedir.length === 0 && r.ledger.length === 0 && r.self.length === 0 &&
-         r.envRepair.length === 0 &&
+         r.envRepair.length === 0 && r.outward.length === 0 &&
          r.silentGreen.length === 0 && r.symmetry.ok && (r.hermetic === null || r.hermetic.ok) &&
          (r.creations === null || r.creations.ok) &&
          (r.backrefs === null || r.backrefs.skipped !== null || r.backrefs.rows.length === 0);
@@ -1795,6 +2087,11 @@ const CHECK_FLAGS = {
   '--silent-green': 'silentGreen', '--symmetry': 'symmetry', '--hermetic': 'hermetic',
   '--creations': 'creations',
   /**
+   * **第8段で建った旗。`--all` に編入してある**(`check()` の註を見よ)。
+   * 単独で撃ちたい場面(engine に関門を掛けて回る作業中)のために残す。
+   */
+  '--outward': 'outward',
+  /**
    * ⚠️ **`--backrefs` は第7段で `--all` へ編入された。** この旗は今も残す ——
    * 逆向き依存だけを単独で撃ちたい場面(撤収の作業中)が在るからである。
    * 編入の根拠と条件は `check()` の註を見よ。
@@ -1843,6 +2140,21 @@ function printCheck(rest) {
       console.log(`     ${s.why}`);
     }
     console.log('  → 削除が要るならそれは神への提示である。台帳 REPAIRABLE_ENV_KEYS に載せるか、proposals へ回せ');
+  }
+  if (r.outward.length) {
+    console.log(`✗ 外へ書きうる engine が関門を通っていない (${r.outward.length} 行) — AC-55 / 第58条(f)`);
+    const byFile = new Map();
+    for (const s of r.outward) {
+      if (!byFile.has(s.file)) byFile.set(s.file, []);
+      byFile.get(s.file).push(s);
+    }
+    for (const [file, rows] of byFile) {
+      console.log(`  ${file}  (${rows.length} 箇所)`);
+      for (const s of rows.slice(0, 6)) console.log(`    ${file}:${s.line}  ${s.text}`);
+      if (rows.length > 6) console.log(`    … 他 ${rows.length - 6} 行`);
+    }
+    console.log('  → 書く直前に abode.guardWrite(<書く道>) を置け。' +
+      '倉の中は黙って通る。倉の外は台帳の writer と宛先が要る');
   }
   if (r.silentGreen.length) {
     console.log(`✗ 黙って早期に return する門 (${r.silentGreen.length} 件) — skip() を使え`);
@@ -2228,9 +2540,9 @@ function main(argv) {
  */
 module.exports = {
   resolve, pathFor, mode, home, ledger, validateLedger, validateEntry,
-  exportFor, exportForTarget, globalWrite, callerModule,
+  exportFor, exportForTarget, globalWrite, guardWrite, exportRoots, callerModule,
   exportRealPath, verifyExport,
-  homedirRefs, exclusionAudit, selfAudit, envRepairAudit, scanTargets, check,
+  homedirRefs, exclusionAudit, selfAudit, envRepairAudit, outwardRefs, scanTargets, check,
   silentGreens, silentGreenTargets, symmetryAudit, codeOnly,
   creationsAbode,
   migratePlan, migrateVerify, migrateSides, measureFile,

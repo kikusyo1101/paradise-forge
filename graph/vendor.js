@@ -127,6 +127,15 @@ function wire(opts = {}) {
              preserved_paradise_hooks: Object.keys(ownEntries),
              note: 'dry run — pass --write to apply' };
   }
+  /**
+   * **輸出の関門(第58条(f) / AC-55)。書く直前に置く。**
+   *
+   * この engine は settings.json の hooks を書く。`mode=repo` なら倉の中で
+   * 黙って通り、`global` なら**神の settings.json** を指す —— そして台帳に
+   * 載っているのは EX-1 の permissions キーだけであって hooks ではない。
+   * **出所が楽園であることは、書いてよい理由にならない**(第58条(b))。
+   */
+  abode.guardWrite(sp, { why: 'vendor の hooks を settings.json へ書く' });
   fs.copyFileSync(sp, sp + '.pre-vendor.bak');
   s.hooks = next;
   fs.writeFileSync(sp, JSON.stringify(s, null, 2));
@@ -152,6 +161,8 @@ function refresh(opts = {}) {
   }
   if (!opts.yes) return { ok: true, dry_run: true, plan, note: 'dry run — pass --yes to copy. Adoption is a human judgment (Art. 19(d)).' };
   for (const p of plan) {
+    // **輸出の関門**(第58条(f))。vendor の木は倉の中である —— 関門は黙って通る。
+    abode.guardWrite(p.to, { why: '上流を vendor/ へ取り込む' });
     fs.rmSync(p.to, { recursive: true, force: true });
     fs.cpSync(p.from, p.to, { recursive: true });
   }
