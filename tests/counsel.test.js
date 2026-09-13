@@ -55,6 +55,44 @@ const ROUTES = [
   ['ポモドーロタイマーが欲しい', ['standard']],
   ['タスク管理アプリを作って', ['standard', 'full']],
   ['タイポを直して', ['quick']],
+
+  // ── reform 走行『route-misfire』が塞いだ誤着 (AC-01〜05) ──────────────
+  // 「既に在る物に一段足す」願いが、文書の語彙(診断/監査)に道を奪われていた。
+  // 死因は三つ: (a) CREATE_RE が建造の動詞を知らない (b)「診断」が COUNSEL と
+  // DOC の両方に居て打ち消しが無効化される (c) REFORM_RE が engine の固有名を知らない。
+  ['楽園の自己診断に絞り込みの口を設ける', ['reform']],
+  ['門に監査の一段を足す', ['reform']],
+  // `--audit` はフラグ名であって依頼の動詞ではない。denude が剥ぐ (FR-02)
+  ['CI に ledger --audit を追加する', ['reform']],
+  // engine の固有名 `gauge` を REFORM_RE が知らず、既定の standard へ落ちていた
+  ['gauge に fingerprint を確かめる口を設ける', ['reform']],
+
+  // ── 回帰防止 — 教主が名指しした 4 件 (AC-06〜09) ─────────────────────
+  ['楽園の位階の相関図を作れ', ['cartography']],
+  // ⚠️ `台帳`/`ledger` を ENGINE_NAMES に入れると、この一行が reform へ攫われる (L-4)
+  ['台帳の毒を直す', ['quick']],
+  ['build a habit tracker app', ['full']],
+  ['比較表がほしい', ['counsel']],
+
+  // ── 既存の門が撃っている断定 — 一つも壊していない証拠 (AC-10) ──────────
+  ['ログイン画面のバグを直す', ['quick']],
+  ['オーケストレーションの相関図、関連図を作成し連携してほしい', ['cartography']],
+  ['位階の図を描いてほしい', ['cartography']],
+  ['creations のデータフローを可視化して', ['cartography']],
+  ['draw a sequence diagram of the dispatch chain', ['cartography']],
+  ['意図を汲んでタイマーを実装してほしい', ['standard']],
+  ['地図アプリが欲しい', ['standard', 'full']],
+  ['楽園の憲法に条を足せ', ['reform']],
+  ['バグを直して', ['quick']],
+  ['エンジンを監査してほしい', ['counsel']],
+  ['ダッシュボードを生きた門にせよ', ['reform']],
+  ['fix login bug', ['quick']],
+  ['add a dark mode toggle', ['standard']],
+  ['楽園のオーケストレーションを改善する', ['reform']],
+  ['憲法に条を足す', ['reform']],
+  ['improve the harness engine', ['reform']],
+  ['門を強化する', ['reform']],
+  ['市場の競合を調査して報告書をくれ', ['counsel']],
 ];
 
 for (const [wish, want] of ROUTES) {
@@ -64,6 +102,187 @@ for (const [wish, want] of ROUTES) {
       `expected ${want.join('|')} but got "${got}"`);
   });
 }
+
+/**
+ * **AC-04 は「何であるか」ではなく「何でないか」を撃つ**(教主裁定1)。
+ *
+ * 設計 §1.6 は「`fullJa` から『アプリ』を外して standard へ着けよ」と提案したが、
+ * 教主はこれを**却下**した —— 本走行の主題は **counsel への誤着**であって、
+ * full/standard の境目ではない。境目の病は別件に起票済み(台帳 PARA-7)。
+ * ゆえに `fullJa` は一字も触っていない。撃つべきはただ一点:
+ * **「診断」という文書の語彙に、産物(アプリ)を求める願いの道を奪わせない**。
+ */
+test('"健康診断アプリが欲しい" は counsel でない (AC-04 / 教主裁定1)', () => {
+  const got = forge.chooseScale('健康診断アプリが欲しい');
+  assert.notStrictEqual(got, 'counsel',
+    `「診断」の一語に道を奪われている — 求められているのは文書ではなく物である (got=${got})`);
+  // 何であるかも記録する。黙って通すのではなく、現在の落ち先を口に出す(第37条)。
+  assert.ok(['standard', 'full'].includes(got), `創造の道のいずれかであるべき (got=${got})`);
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 1b. 語彙の単体 — 道選びの部品それぞれが効いているか (AC-11 / FR-02・03・04)
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n諐問の道 — 剥ぎと語彙の単体:');
+
+test('denude はフラグ語・バッククォート・ファイル名を剥ぐ (FR-02)', () => {
+  assert.strictEqual(forge.denude('CI に ledger --audit を追加する'), 'CI に ledger を追加する');
+  assert.strictEqual(forge.denude('CI に `ledger --audit` を追加する'), 'CI に を追加する');
+  assert.strictEqual(forge.denude('graph/forge.js の道選びを直す'), 'graph/ の道選びを直す');
+  // **直前の一字を食ってはならない** (L-6)。素朴な実装は「CI」と「を」を繋げる。
+  assert.ok(/CI /.test(forge.denude('CI --audit を足す')), '剥ぎが直前の語を食った');
+});
+
+test('denude は冪等である — 二度剥いでも同じ文', () => {
+  for (const w of ['CI に `ledger --audit` を追加する', 'fix tests/x.test.js -v', '普通の願い']) {
+    assert.strictEqual(forge.denude(forge.denude(w)), forge.denude(w), `冪等でない: ${w}`);
+  }
+});
+
+/**
+ * **`chooseScale` が実際に剥いでいること**を撃つ。
+ *
+ * ⚠️ `denude` の単体の門だけでは足りない —— 実測で確かめた(故障注入 変異15)。
+ * `chooseScale` の中の `denude(wish)` を `String(wish)` に倒しても、
+ * 誤着 5 件はどれも別の語(CI / gauge / 口)で reform に着くので **門は黙った**。
+ *
+ * ゆえに **剥ぎだけが答えを決める願い**で撃つ。フラグ名の中の `fix` / `app` /
+ * `patch` が quick や full の語彙に当たり、剥がなければ道が変わる形である。
+ */
+test('chooseScale は剥いだ文で判定する — フラグ名が道を変えない (FR-02)', () => {
+  for (const [wish, want] of [
+    ['タスク管理に --fix オプションを足す', 'standard'],   // 剥がねば `fix` で quick
+    ['買い物リストに --app 表示を足す', 'standard'],       // 剥がねば `app` で full
+    ['献立表に `--patch` の口を足す', 'standard'],         // 剥がねば `patch` で quick
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), want,
+      `chooseScale が剥いでいない — フラグ名の中の語が道を決めている: ${wish}`);
+  }
+});
+
+test('denude は元の願い文を汚さない — meta.wish は原文のまま (L-5)', () => {
+  const wish = 'CI に `ledger --audit` を追加する';
+  assert.strictEqual(forge.buildDag(wish, 'reform').meta.wish, wish,
+    '剥いだ文が meta.wish に入った — 判定用の文を記録に混ぜてはならない');
+});
+
+test('PRODUCT_RE は産物の主名詞を拾い、「図」を拾わない (FR-03 / L-8)', () => {
+  for (const w of ['健康診断アプリが欲しい', '絞り込みの口を設ける', '監査の一段を足す', 'add a dark mode toggle']) {
+    assert.ok(forge.PRODUCT_RE.test(w), `産物の名を見落とした: ${w}`);
+  }
+});
+
+/**
+ * **一字の産物名にも紛れ語が在る** — build 相の実測で発見し、設計に足した一件。
+ *
+ * 設計 §1.3 の L-8 は「図」についてのみこの病を警告していたが、実装して撃つと
+ * 「口」「相」が **人口 / 窓口 / 相場 / 相談** の中に埋もれており、
+ * **基準線で counsel だった 7 件が standard へ落ちた**(実測)。
+ * 同じ病は一字の産物名すべてに在った。`DIAGRAM_FALSE_FRIENDS` と同じ作法で守る。
+ *
+ * この門は**基準線(変更前の振る舞い)を撃っている** —— 誤着を直すために
+ * 別の誤着を作っていないことの証拠である(教主が最大の危険と呼んだもの)。
+ */
+test('一字の産物名の紛れ語が諐問の道を奪わない (人口/窓口/相場/相談)', () => {
+  for (const [wish, want] of [
+    ['市場を調査して相場を報告してほしい', 'counsel'],
+    ['人口動態を調査して報告してほしい', 'counsel'],
+    ['窓口の混雑を分析してほしい', 'counsel'],
+    ['入口の導線を分析して所見がほしい', 'counsel'],
+    ['業界の相場観を調査して比較表がほしい', 'counsel'],
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), want,
+      `紛れ語「口/相」が産物と誤読され、諐問の道を失った: ${wish}`);
+  }
+  /**
+   * ⚠️ 上の 5 行だけでは **紛れ語の表を空にしても門は黙る** ——
+   * 実測で確かめた(故障注入 変異14)。どれも `DOC_STRONG_RE`(報告/分析/調査/所見/比較表)
+   * に当たるので、紛れ語対策が死んでいても 3 段目の手前で諐問が決まるからである。
+   *
+   * **黙る門は門ではない。** ゆえに `DOC_STRONG_RE` に当たらない形で撃つ ——
+   * 諐問の語彙が「診断 / 妥当か / 見直」しか無い願いは、紛れ語対策だけが守っている。
+   */
+  for (const [wish, want] of [
+    ['窓口の混雑を診断してほしい', 'counsel'],
+    ['人口の推移を診断してほしい', 'counsel'],
+    ['相場の妥当性はどうすべきか', 'counsel'],
+    ['入口の設計は妥当か', 'counsel'],
+    ['窓口の運用を見直す必要はないか', 'counsel'],
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), want,
+      `PRODUCT_FALSE_FRIENDS が効いていない — 紛れ語「口/相」が産物と誤読された: ${wish}`);
+  }
+});
+
+/**
+ * **強い文書の名は産物の名に勝つ。** ただし「診断/監査」だけは負ける。
+ *
+ * 二つの顔を持つ語(文書の名でもあり機構の機能の名でもある)はこの二語だけである。
+ * 「各社の画面設計を調査して報告書がほしい」の「画面」に道を奪わせず、
+ * かつ「健康診断アプリが欲しい」の「診断」には道を奪わせない —— 両向きを撃つ。
+ */
+test('報告書を求める願いは、産物の名を含んでも諐問である', () => {
+  assert.strictEqual(forge.chooseScale('各社の画面設計を調査して報告書がほしい'), 'counsel',
+    '「画面」の一語で文書の依頼が創造の道へ攫われた');
+  assert.strictEqual(forge.chooseScale('競合の機能比較を調査して報告してほしい'), 'counsel',
+    '「機能」の一語で文書の依頼が創造の道へ攫われた');
+  // 逆向き — 二つの顔を持つ「診断」は産物の名に負ける
+  assert.notStrictEqual(forge.chooseScale('健康診断アプリが欲しい'), 'counsel');
+});
+
+test('BUILD_RE は「既に在る物に一段足す」動詞を知っている (FR-01)', () => {
+  for (const w of ['口を設ける', '一段を足す', '機能を追加する', 'add a flag', 'extend the engine']) {
+    assert.ok(forge.BUILD_RE.test(w), `建造の動詞を見落とした: ${w}`);
+  }
+});
+
+test('isCounsel の直接の断定が保存されている (AC-11)', () => {
+  assert.strictEqual(forge.isCounsel('検討したツールを実装して'), false,
+    '創造動詞を含む願いを諐問へ引き込んではならない');
+  assert.strictEqual(forge.isCounsel('現状のCIの健全性を監査してほしい'), true);
+});
+
+test('chooseScale の返り値は文字列である (FR-05 / AC-12 / L-1)', () => {
+  assert.strictEqual(typeof forge.chooseScale('何でもよい願い'), 'string',
+    'object に変えれば admit().scale === chooseScale() を撃つ門が一斉に嘘になる');
+});
+
+test('COUNSEL_JA / COUNSEL_EN の定数名が forge.js に残っている (FR-06 / AC-13 / L-2)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'graph', 'forge.js'), 'utf8');
+  assert.ok(/const COUNSEL_JA\s*=/.test(src), 'COUNSEL_JA が消えた — 壊れ engine の門が撃てなくなる');
+  assert.ok(/const COUNSEL_EN\s*=/.test(src), 'COUNSEL_EN が消えた');
+});
+
+test('admit の裁定は chooseScale と一致する (AC-17 / paradise.test.js:8566 の主張)', () => {
+  const w = 'ポモドーロタイマーを作れ';
+  assert.strictEqual(forge.admit(w, 'nonexistent').scale, forge.chooseScale(w));
+});
+
+/**
+ * **ENGINE_NAMES は測って作る — ただし測るのは門の側である**(設計 §1.5 / 第22条)。
+ *
+ * `forge.js` の中で `fs.readdirSync` を走らせてはならない —— `chooseScale` が
+ * ディスクを読む副作用を持てば、ファイルが増減するたび道選びが黙って変わる。
+ * それは「測る」ではなく「揺れる」である。
+ *
+ * ゆえに語彙は静的に書き、**この門が照合する**。engine が増えたら赤くなって
+ * 人に知らせる —— 語彙に一語足す仕事が生まれるのは、正しい代である。
+ */
+test('ENGINE_NAMES が graph/*.js の名を網羅している (第22条 / 設計 §1.5)', () => {
+  const names = fs.readdirSync(path.join(ROOT, 'graph'))
+    .filter(f => f.endsWith('.js'))
+    .map(f => f.slice(0, -3))
+    .filter(n => n.length >= 4 && /^[a-z][a-z-]*$/.test(n));
+  const vocab = new Set(forge.ENGINE_NAMES.split('|'));
+  const missing = names.filter(n => !vocab.has(n));
+  assert.deepStrictEqual(missing, [],
+    `engine が増えたのに道選びの語彙が知らない: ${missing.join(', ')} — forge.js の ENGINE_NAMES に足せ`);
+  // 逆向き: 禁則の語が紛れ込んでいないか (L-4)
+  for (const forbidden of ['ledger', '台帳']) {
+    assert.ok(!vocab.has(forbidden),
+      `ENGINE_NAMES に ${forbidden} が入った — 「台帳の毒を直す」が quick から reform へ攫われる`);
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════
 // 2. 道の形 — 産まない道であること
@@ -288,8 +507,21 @@ function forgeWithBrokenCounselVocabulary() {
 
 test('COUNSEL_RE を空にすると判定は崩れる(門が効いている証拠)', () => {
   const broken = forgeWithBrokenCounselVocabulary();
-  // 諐問の願いが、諐問でなくなる
-  assert.strictEqual(broken.chooseScale('現状のCIの健全性を監査してほしい'), 'standard',
+  /**
+   * 諐問の願いが、諐問でなくなる。
+   *
+   * ⚠️ **期待値が `standard` から `reform` へ動いた理由**(第57条 —
+   * 門を緑にするために期待値を実装へ倒したのではない):
+   *   reform 走行『route-misfire』の FR-04 が `REFORM_RE` に engine の固有名を加え、
+   *   その中に **`CI`** が入った。ゆえに「現状の**CI**の健全性を監査してほしい」は
+   *   諐問の語彙を失えば「楽園の CI の話」として **reform** が拾う。
+   *   これは `CI に ledger --audit を追加する` → reform (AC-03) と**同じ語彙の帰結**であり、
+   *   語彙を足した以上この落ち先が動くのは必然である。
+   *
+   * **門の主張は一字も緩めていない** —— 「語彙を潰せば counsel でなくなる」を撃ち続ける。
+   * 落ち先を `notStrictEqual('counsel')` で誤魔化さず、**どこへ落ちるかまで名指しする**。
+   */
+  assert.strictEqual(broken.chooseScale('現状のCIの健全性を監査してほしい'), 'reform',
     '語彙を潰しても counsel のままなら、COUNSEL_RE は判定に効いていない');
   assert.strictEqual(broken.chooseScale('楽園のエンジンを監査してほしい'), 'reform',
     '語彙を潰せば主題優先は消え、楽園の話は reform へ落ちる');

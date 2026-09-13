@@ -311,6 +311,172 @@ test('B-4: 走行帳の住所を知るのは workspace.js だけである (第30
 });
 
 // ══════════════════════════════════════════════════════════════════════════
+// 欠陥B(続) — 仮倉の偽の赤 (reform 走行『route-misfire』 / AC-18〜26)
+//
+// 実測された欠陥: `PARADISE_CREATIONS` が仮倉を指したまま `workspace.js check` を
+// 呼ぶと、**創造物の倉ですらない場所**を裁いて EXIT=1 を出した。CI の 30 行目は
+// `|| true` を持たないので、この偽の赤は門を落とす力を持っていた。
+//
+// だが「env なら黙る」は誤った治療である —— この同じファイルの `B-1 [故障注入]` が
+// **env で仮倉を立てて strayRuns() が鳴ることを撃っている**。env を一律に無視すれば
+// 欠陥B 対策が欠陥B 対策を殺す。ゆえに分岐は **指され方**ではなく **場所そのもの**を見る。
+//
+// この節も両向きに撃つ(第37条 — 片側だけ示した修理は壁であって門ではない):
+//   B-5〜B-7  仮倉では裁かず、しかし**黙らない**
+//   B-8 [逆]  本物の倉では今まで通り裁く / strayRuns は今まで通り鳴る
+// ══════════════════════════════════════════════════════════════════════════
+
+/** 本物の倉。無い機械(CI の checkout)では撃てない — その時は声に出して退く。 */
+const REAL_VAULT = path.resolve(ROOT, '..', 'paradise-creations');
+
+test('B-5: isCreationsVault は場所そのものを見る — 名でも指され方でも裁かない (FR-08)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-probe-'));
+  try {
+    // ただの仮ディレクトリは倉ではない
+    assert.strictEqual(workspace.isCreationsVault(d), false, '印の無い場所を倉と認めた');
+    /**
+     * **名前だけの偽物を認めない** (L-11 / AC-23)。
+     * このファイルの `sandbox()` は `paradise-creations` という名の仮倉を作る。
+     * 名で裁けば、**B-1 が撃つ仮倉が本物になり、skip が発動して B-1 が死ぬ**。
+     */
+    const decoy = path.join(d, 'paradise-creations');
+    fs.mkdirSync(decoy);
+    assert.strictEqual(workspace.isCreationsVault(decoy), false,
+      'ディレクトリ名で裁いている — B-1 の砂場が本物と誤認され、故障注入が死ぬ');
+    // 目印ファイルだけでも本物と認める(印 2 / AC-24)
+    fs.writeFileSync(path.join(decoy, workspace.VAULT_MARKER), '');
+    assert.strictEqual(workspace.isCreationsVault(decoy), true,
+      `目印 ${workspace.VAULT_MARKER} を置いても倉と認めない — 印 2 が死んでいる`);
+    // 在らない道は偽(例外を投げない)
+    assert.strictEqual(workspace.isCreationsVault(path.join(d, 'no-such')), false);
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('B-6: isCreationsVault は例外を一つも外へ出さない (NFR-02 / AC-26)', () => {
+  // git が使えない場所・ファイル・空文字・null —— どれも false を返して黙る
+  for (const bad of [null, undefined, '', path.join(os.tmpdir(), 'absolutely-no-such-dir-' + process.pid)]) {
+    let threw = false, v = null;
+    try { v = workspace.isCreationsVault(bad); } catch { threw = true; }
+    assert.strictEqual(threw, false, `isCreationsVault(${JSON.stringify(bad)}) が投げた — check が死ぬ`);
+    assert.strictEqual(v, false);
+  }
+  // ファイル(ディレクトリでない)も false
+  const f = path.join(os.tmpdir(), 'vault-file-' + process.pid);
+  fs.writeFileSync(f, 'x');
+  try { assert.strictEqual(workspace.isCreationsVault(f), false); }
+  finally { try { fs.unlinkSync(f); } catch {} }
+});
+
+test('B-7: resolve() は vault を足すだけ — 既存の 4 キーを一つも変えない (FR-07 / AC-25)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-resolve-'));
+  try {
+    const r = workspace.resolve({ env: { PARADISE_CREATIONS: d } });
+    for (const k of ['root', 'source', 'legacy', 'exists', 'vault']) {
+      assert.ok(k in r, `resolve().${k} が無い`);
+    }
+    // 既存の意味は不変(paradise.test.js:3085 が撃っている)
+    assert.strictEqual(r.source, 'env');
+    assert.strictEqual(r.legacy, false);
+    assert.strictEqual(r.exists, true);
+    assert.strictEqual(r.root, path.resolve(d));
+    assert.strictEqual(r.vault, false, '印の無い仮倉を倉と言った');
+    /**
+     * **`null` は「偽」ではなく「見に行けなかった」** (第16条 / 第37条)。
+     * `conclave.js runAbandonment` が測れなかった走行を null のまま名指しする先例に倣う。
+     * ここを false にすれば、CI の checkout(倉が無い)と
+     * 「倉ではない場所を指している」が同じ言葉になり、人が原因を追えなくなる。
+     */
+    const gone = workspace.resolve({ env: { PARADISE_CREATIONS: path.join(d, 'no-such') } });
+    assert.strictEqual(gone.exists, false);
+    assert.strictEqual(gone.vault, null,
+      '倉が無いのに vault=false と断じた — 「無い」と「見ていない」を同じ値にしてはならない');
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('B-8 [故障注入]: 仮倉を指した check は緑だが、**黙らない** (FR-09 / AC-18・19)', () => {
+  const s = sandbox();
+  try {
+    // 仮倉に reform の走行帳を仕込む —— 修正前はこれが EXIT=1 の偽の赤を生んだ
+    writeLedger(s.store, 'reform-probe', ledger({ scale: 'reform', ratified: 6, artifacts: ['graph/forge.js'] }));
+    let out = '', code = 0;
+    try {
+      out = execFileSync(process.execPath, [WS, 'check'], {
+        encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: s.store },
+      });
+    } catch (e) { code = e.status; out = (e.stdout || '') + (e.stderr || ''); }
+    assert.strictEqual(code, 0, `仮倉を指しただけで偽の赤が出た — 欠陥B が塞がっていない:\n${out}`);
+    // **黙って緑にしてはならない**(第37条)。検めなかったことと、その場所を名乗る。
+    assert.ok(/検めなかった/.test(out), `skip を声に出していない:\n${out}`);
+    assert.ok(/創造物の倉ではない/.test(out), `なぜ検めなかったかを言っていない:\n${out}`);
+    assert.ok(out.includes(path.basename(s.store)) || out.includes(s.store),
+      `skip した場所を名指ししていない — 名指ししない門は読んだ人が原因を追えない:\n${out}`);
+    // 記号は ✓ でも ✗ でもない第三の記号であること(緑を騙らず、赤も騙らない)
+    assert.ok(/·/.test(out), `第三の記号で語っていない:\n${out}`);
+
+    /**
+     * **逆向き — `strayRuns()` 自体は今まで通り鳴る** (FR-10 / L-9 / AC-21)。
+     * skip は CLI の層だけの話であり、関数を黙らせてはいない。
+     * ここを落とせば B-1 [故障注入] が死ぬ。
+     */
+    const stray = workspace.strayRuns(s.repo, { env: { ...process.env, PARADISE_CREATIONS: s.store } });
+    assert.deepStrictEqual(stray.map(r => r.slug), ['reform-probe'],
+      'CLI の skip が strayRuns() 自体を黙らせた — 欠陥B 対策が既存の門を殺している');
+  } finally { s.cleanup(); }
+});
+
+test('B-9: 倉が「無い」と「倉ではない」を別の言葉で言う (第21条 / CI の checkout)', () => {
+  const s = sandbox();
+  try {
+    const gone = path.join(s.dir, 'no-such-store');
+    const out = execFileSync(process.execPath, [WS, 'check'], {
+      encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: gone },
+    });
+    assert.ok(/検めなかった/.test(out), `倉が無い場合も skip を声に出すこと:\n${out}`);
+    assert.ok(/倉が存在しない/.test(out),
+      `「倉が無い」と「倉ではない」を同じ文言で言っている — 人が原因を追えない:\n${out}`);
+  } finally { s.cleanup(); }
+});
+
+test('B-10 [逆]: 本物の倉では今まで通り裁く — 片側だけの修理は壁である (第37条 / AC-20・22)', () => {
+  /**
+   * 本物の倉が無い機械(CI の checkout)では**撃てない**。
+   * その時は緑と数えず、**理由を名乗って退く**(第37条)。
+   */
+  if (!fs.existsSync(REAL_VAULT)) H.skip(`本物の創造物の倉が無い: ${REAL_VAULT}`);
+  assert.strictEqual(workspace.isCreationsVault(REAL_VAULT), true,
+    `本物の倉を倉と認めない — 印 1(git remote)も印 2(${workspace.VAULT_MARKER})も効いていない`);
+
+  // 本物の倉を指した check は skip の文言を出さず、実際に裁く
+  const out = execFileSync(process.execPath, [WS, 'check'], { encoding: 'utf8' });
+  assert.ok(!/検めなかった/.test(out),
+    `本物の倉なのに走行帳の裁きを skip した — 門を殺している:\n${out}`);
+  assert.ok(/✓|✗/.test(out), `裁きの記号が出ていない:\n${out}`);
+});
+
+test('B-11: init は倉の根に目印を置く — 読む側だけを作らない (FR-11 / 第57条)', () => {
+  const s = sandbox();
+  try {
+    const env = { ...process.env, PARADISE_CREATIONS: s.store };
+    const marker = path.join(s.store, workspace.VAULT_MARKER);
+    assert.ok(!fs.existsSync(marker), '砂場に目印が既に在る — 前提が崩れている');
+    workspace.init('probe-creation', { env });
+    assert.ok(fs.existsSync(marker),
+      `init が目印を置かなかった — 印 2 は永久に発火しない枝になる(第57条)`);
+    // 中身は何の目印かを語ること(名前だけの印は印ではない)
+    const body = fs.readFileSync(marker, 'utf8').trim();
+    assert.ok(body.length > 8, `目印が何であるかを語っていない: ${JSON.stringify(body)}`);
+    // 置いた結果、その場所は本物の倉として認められる(置く側と読む側が繋がっている)
+    assert.strictEqual(workspace.isCreationsVault(s.store), true,
+      'init が置いた目印を isCreationsVault が読めない — 置く側と読む側が割れている');
+    // 冪等: 二度目は書き換えない
+    fs.writeFileSync(marker, '人の手で書いた註釈\n');
+    workspace.init('probe-2', { env });
+    assert.strictEqual(fs.readFileSync(marker, 'utf8'), '人の手で書いた註釈\n',
+      'init が既存の目印を上書きした — 冪等でない');
+  } finally { s.cleanup(); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 // 欠陥C — 段が着地したという **真の進捗** を記す口が engine に無かった (鼓動 / beat)
 // ══════════════════════════════════════════════════════════════════════════
 /**

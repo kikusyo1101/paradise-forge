@@ -28,6 +28,14 @@ const { execFileSync } = require('child_process');
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SIBLING_NAME = 'paradise-creations';
 
+/**
+ * 創造物の倉であることを名乗る目印ファイル。
+ *
+ * `git remote` が読めない場所(clone されていない写し、git の無い機械)でも
+ * 「ここは倉である」と言えるようにする第二の印である。**engine が `init` で置く**。
+ */
+const VAULT_MARKER = '.paradise-creations';
+
 /** 既定の住所 — 楽園の兄弟。まだ無くてもこの道を答える。 */
 function defaultRoot(repoRoot = REPO_ROOT) {
   return path.resolve(repoRoot, '..', SIBLING_NAME);
@@ -35,23 +43,35 @@ function defaultRoot(repoRoot = REPO_ROOT) {
 
 /**
  * 創造物の根を解決する。
- * @returns {{root:string, source:'env'|'sibling'|'legacy'|'default', legacy:boolean, exists:boolean}}
+ *
+ * `vault` は「**そこが在るか**」ではなく「**そこが創造物の倉か**」を言う。
+ * 二つを同じ言葉にしていたのが欠陥B の正体であった —— 解決した道がただの
+ * 仮ディレクトリでも `exists:true` としか言えず、走行帳の裁きが偽の赤を出した。
+ *
+ * @returns {{root:string, source:'env'|'sibling'|'legacy'|'default', legacy:boolean, exists:boolean, vault:boolean|null}}
  */
 function resolve(opts = {}) {
   const repoRoot = opts.repoRoot || REPO_ROOT;
   const env = opts.env || process.env;
+  /**
+   * `vault` は `exists` が真のときだけ測る。
+   * **`null` は「見に行けなかった」であって「偽」ではない**(第16条 / 第37条 ——
+   * `conclave.js runAbandonment` が測れなかった走行を null のまま名指しする先例に倣う)。
+   */
+  const withVault = (r) => ({ ...r, vault: r.exists ? isCreationsVault(r.root) : null });
+
   const raw = (env.PARADISE_CREATIONS || '').trim();
   if (raw) {
     const root = path.resolve(raw);
-    return { root, source: 'env', legacy: false, exists: fs.existsSync(root) };
+    return withVault({ root, source: 'env', legacy: false, exists: fs.existsSync(root) });
   }
   const sibling = defaultRoot(repoRoot);
-  if (isDir(sibling)) return { root: sibling, source: 'sibling', legacy: false, exists: true };
+  if (isDir(sibling)) return withVault({ root: sibling, source: 'sibling', legacy: false, exists: true });
 
   const legacy = path.join(repoRoot, 'creations');
-  if (isDir(legacy)) return { root: legacy, source: 'legacy', legacy: true, exists: true };
+  if (isDir(legacy)) return withVault({ root: legacy, source: 'legacy', legacy: true, exists: true });
 
-  return { root: sibling, source: 'default', legacy: false, exists: false };
+  return withVault({ root: sibling, source: 'default', legacy: false, exists: false });
 }
 
 function root(opts) { return resolve(opts).root; }
@@ -67,10 +87,51 @@ function creationDir(slug, opts) {
 function init(slug, opts) {
   const dir = creationDir(slug, opts);
   fs.mkdirSync(dir, { recursive: true });
+  /**
+   * 倉の根に目印を置く (FR-11)。**読む側だけを作ってはならない** ——
+   * 目印を読む印が、一度も置かれないなら、それは第57条が咎める「発火しない門」である。
+   * 冪等: 既に在れば触らない。失敗しても部屋作りは成功とする(目印は印 1 の予備である)。
+   */
+  try {
+    const marker = path.join(root(opts), VAULT_MARKER);
+    if (!fs.existsSync(marker)) {
+      fs.writeFileSync(marker, 'これは楽園(paradise)の創造物が住む倉であることを示す目印である。\n');
+    }
+  } catch { /* 目印が置けなくとも部屋は作れた。git remote の印 1 が残る */ }
   return dir;
 }
 
 function isDir(p) { try { return fs.statSync(p).isDirectory(); } catch { return false; } }
+
+/**
+ * そこは**本物の創造物の倉**か (FR-08)。
+ *
+ * ⚠️ **ディレクトリ名で裁いてはならない**(L-11)。`tests/abandoned-run.test.js` の
+ *    砂場は `paradise-creations` という名の仮倉を作る。名で裁けば既存の門が撃つ
+ *    仮倉が本物になり、`B-1 [故障注入]` が死ぬ。
+ * ⚠️ **`source === 'env'` でも裁いてはならない**(L-10)。40 箇所以上の門が env で
+ *    仮倉を立てて `strayRuns()` を**正しく鳴らしている**。
+ *    **印は場所そのものに在るべきで、指され方に在ってはならない。**
+ *
+ * 判定順は**安い印から**(git は 14〜15ms の代を払う):
+ *   1. 在らない/ディレクトリでない → false
+ *   2. 目印ファイルが在る          → true   (ディスク一発)
+ *   3. git remote origin が paradise-creations で終わる → true
+ *   4. それ以外                    → false
+ *
+ * **例外は一つも外へ出さない**(NFR-02)。git が PATH に無ければ `execFileSync` は
+ * `ENOENT` を投げる —— `strayCreations()` の作法に倣って握り潰す。
+ */
+function isCreationsVault(root) {
+  if (!root || !isDir(root)) return false;
+  try { if (fs.existsSync(path.join(root, VAULT_MARKER))) return true; } catch { /* 読めぬなら次の印へ */ }
+  try {
+    const url = execFileSync('git', ['-C', root, 'config', '--get', 'remote.origin.url'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return new RegExp(`/${SIBLING_NAME}(\\.git)?$`).test(url.replace(/\\/g, '/'));
+  } catch { return false; }
+}
 
 /**
  * 楽園リポジトリに創造物が紛れ込んでいないかを、git の追跡簿で検める。
@@ -253,11 +314,36 @@ if (require.main === module) {
     // 走行帳の住所を印字するだけの口。数えられるものは名指しできる(第22条)。
     for (const l of runLedgers()) console.log(`${l.where.padEnd(10)} ${l.slug.padEnd(28)} ${l.path}`);
   } else if (cmd === 'check') {
+    const r = resolve();
     const stray = strayCreations();
     const hard = hardcodedRefs();
-    const runs = strayRuns();
+    /**
+     * **走行帳の裁きだけが条件付きになる** (FR-09 / 第37条)。
+     *
+     * 欠陥B: `PARADISE_CREATIONS` が仮倉に残っていると、創造物の倉ですらない場所を
+     * 裁いて偽の赤 (EXIT=1) を出していた。だが「env なら黙る」は誤った治療である ——
+     * 40 箇所以上の門が env で仮倉を立てて `strayRuns()` を**正しく鳴らしている**。
+     * 裁きの分岐は **指され方**ではなく **その場所が創造物の倉か** でなければならない。
+     *
+     * そして **skip は exit に影響しない**。検められなかったことは失敗ではない ——
+     * **黙ることが失敗である**。第37条は「絶対に緑にするな」とは言っていない。
+     * 「**見なかったことを見たことにするな**」と言っている。
+     */
+    const judgeRuns = r.vault === true;
+    const runs = judgeRuns ? strayRuns() : [];
+    if (!judgeRuns) {
+      // 記号は ✓ でも ✗ でもない。第三の記号で、緑を騙らず赤も騙らない。
+      // **場所を必ず名指しする** — 名指ししない門は、読んだ人が原因を追えない(第21条)。
+      if (r.vault === null) {
+        console.log(`· 走行帳の流出は検めなかった — 創造物の倉が存在しない: ${r.root}  (source=${r.source})`);
+      } else {
+        console.log(`· 走行帳の流出は検めなかった — ${r.root} は創造物の倉ではない`);
+        console.log(`  (目印 ${VAULT_MARKER} も git remote ${SIBLING_NAME} も無い / source=${r.source})`);
+      }
+    }
     if (stray.length === 0 && hard.length === 0 && runs.length === 0) {
-      console.log('✓ 楽園に創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし');
+      console.log('✓ 楽園に創造物の混入なし・住所の直書きなし' +
+        (judgeRuns ? '・reform 走行帳の流出なし' : ' (走行帳の流出は上記のとおり未検査)'));
       process.exit(0);
     }
     if (runs.length) {
@@ -284,4 +370,5 @@ if (require.main === module) {
 }
 
 module.exports = { resolve, root, defaultRoot, creationDir, init, strayCreations, hardcodedRefs,
-  runLedgers, strayRuns, REFORM_MARKS, ENGINE_PATH_RE, REPO_ROOT, SIBLING_NAME };
+  runLedgers, strayRuns, isCreationsVault, REFORM_MARKS, ENGINE_PATH_RE, REPO_ROOT, SIBLING_NAME,
+  VAULT_MARKER };

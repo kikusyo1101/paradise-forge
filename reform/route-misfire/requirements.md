@@ -113,11 +113,17 @@ node -e "const F=require('./graph/forge.js');const g=F.chooseScale('CI に ledge
 ```
 期待: stdout `reform` / exit **0**
 
-**AC-04** 『健康診断アプリが欲しい』は standard へ着く(counsel でも full でもない)
+**AC-04** 『健康診断アプリが欲しい』は **counsel でない**(教主裁定1)
 ```
-node -e "const F=require('./graph/forge.js');const g=F.chooseScale('健康診断アプリが欲しい');console.log(g);process.exit(g==='standard'?0:1)"
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('健康診断アプリが欲しい');console.log(g);process.exit(g!=='counsel'?0:1)"
 ```
-期待: stdout `standard` / exit **0**
+期待: stdout が `counsel` **以外** / exit **0**
+
+> **教主の裁定1(2026-09-13)** — design §1.6 の「`fullJa` から『アプリ』を外す」は**却下**。
+> `fullJa` は一字も触らない。本走行の主題は **counsel への誤着**であって、
+> full/standard の境目ではない。境目の病は別件に起票済み(台帳 PARA-7)。
+> ゆえに本 AC の期待値を `standard` から **『counsel でないこと』** に改めた。
+> **実測(build 相)**: `full` に着く。「診断」に道を奪われてはいない。
 
 **AC-05** 『gauge に fingerprint を確かめる口を設ける』は reform へ着く
 ```
@@ -127,8 +133,8 @@ node -e "const F=require('./graph/forge.js');const g=F.chooseScale('gauge に fi
 
 ### 3.2 欠陥A — 回帰を防ぐ(教主が名指しした 4 件)
 
-**AC-06** 『健康診断アプリが欲しい』→ standard(AC-04 と同一。教主の回帰防止リストの一件として再掲)
-— AC-04 と同じ命令・同じ期待。
+**AC-06** 『健康診断アプリが欲しい』→ **counsel でない**(AC-04 と同一。教主の回帰防止リストの一件として再掲)
+— AC-04 と同じ命令・同じ期待(教主裁定1により期待値を改めた)。
 
 **AC-07** 『楽園の位階の相関図を作れ』は cartography のままである
 ```
@@ -155,7 +161,7 @@ node -e "const F=require('./graph/forge.js');const g=F.chooseScale('台帳の毒
 node -e "
 const F=require('./graph/forge.js');
 const T=[['楽園の自己診断に絞り込みの口を設ける','reform'],['門に監査の一段を足す','reform'],
-['CI に ledger --audit を追加する','reform'],['健康診断アプリが欲しい','standard'],
+['CI に ledger --audit を追加する','reform'],['健康診断アプリが欲しい','NOT:counsel'],
 ['gauge に fingerprint を確かめる口を設ける','reform'],['楽園の位階の相関図を作れ','cartography'],
 ['楽園のエンジンを監査してほしい','counsel'],['台帳の毒を直す','quick'],
 ['ポモドーロタイマーが欲しい','standard'],['現状のCIの健全性を監査してほしい','counsel'],
@@ -171,7 +177,7 @@ const T=[['楽園の自己診断に絞り込みの口を設ける','reform'],['�
 ['build a habit tracker app','full'],['楽園のオーケストレーションを改善する','reform'],
 ['憲法に条を足す','reform'],['improve the harness engine','reform'],['門を強化する','reform'],
 ['市場の競合を調査して報告書をくれ','counsel']];
-let bad=0;for(const[w,e]of T){const g=F.chooseScale(w);if(!e.split('|').includes(g)){console.log('NG',w,'got='+g,'want='+e);bad++}}
+let bad=0;for(const[w,e]of T){const g=F.chooseScale(w);const ok=e.startsWith('NOT:')?g!==e.slice(4):e.split('|').includes(g);if(!ok){console.log('NG',w,'got='+g,'want='+e);bad++}}
 console.log('NG='+bad+' / '+T.length);process.exit(bad?1:0)"
 ```
 期待: 最終行 `NG=0 / 37` / exit **0**
@@ -389,14 +395,36 @@ node graph/forge.js scale "楽園の自己診断に絞り込みの口を設け�
 
 ---
 
-## 6. 教主の裁定を仰ぐべき点(discovery §8 から繰り上げ)
+## 6. 教主の裁定(2026-09-13 に下りた。以下が優先する)
 
-1. **`fullJa` から「アプリ」を外すこと。** AC-04(健康診断アプリ→standard)を満たす唯一の道だが、
-   日本語の「アプリ」は full の印ではなくなり、英語の `app` は full の印のまま残る —— **非対称が生まれる**。
-   実測では `タスク管理アプリを作って` が full→standard、`地図アプリが欲しい` が full→standard に動く。
-   どちらも既存の門は緑のままだが(`counsel.test.js:56` は `['standard','full']` のどちらでも可、
-   `paradise.test.js:7199` は「cartography でない」としか言わない)、**振る舞いは確かに変わる**。
-2. **`ECサイトを作れ` → standard の誤着**を本走行で直すか、別の走行へ送るか。本 requirements は送る側に立った。
-3. **`.paradise-creations` 目印ファイルを誰がいつ置くか**(FR-11)。
-   `workspace.js init` が置くのか、倉側に一度手で置いて commit するのか。
-   build 相の前に決まっていないと、AC-24 は通るが本物の倉は印 1(git remote)だけに頼ることになる。
+1. **`fullJa` から「アプリ」を外すことは却下された。** `fullJa` は一字も触らない。
+   本走行の主題は **counsel への誤着**であって full/standard の境目ではない。
+   境目の病は別件に起票済み(台帳 PARA-7)。
+   ゆえに **AC-04 / AC-06 の期待値を『standard』から『counsel でないこと』へ改めた**(上記 §3.1)。
+   実測: 『健康診断アプリが欲しい』は **full** に着く —— 「診断」に道を奪われてはいない。
+2. **`ECサイトを作れ` → standard の誤着は本走行に含めない。** 同じ理由。触らない。
+3. **`.paradise-creations` 目印ファイルは作る。** ただし**読む側だけにしない**。
+   * `workspace.js init` が倉の根に置く口を持つ(FR-11。門 `B-11` が撃つ)。
+   * 兄弟倉 `paradise-creations` に実物を置き commit する(**push も PR もしない**)。
+     実測: ブランチ `chore/vault-marker` / commit `e87577c`。
+   * これにより印 2 は**本物の倉で実際に発火している** —— `git` を PATH から外しても
+     `isCreationsVault(本物の倉) === true`(実測)。第57条の「発火しない門」を免れた。
+
+---
+
+## 7. build 相が設計から逸脱した点(正直な記録 — 第37条)
+
+1. **`PRODUCT_FALSE_FRIENDS` を足した(設計に無い)。**
+   設計 §1.3 の L-8 は「図」についてのみ紛れ語を警告していたが、実装して撃つと
+   一字の産物名「口」「相」が **人口 / 窓口 / 入口 / 相場 / 相談** の中に埋もれており、
+   **基準線で counsel だった 7 件が standard へ落ちた**(実測)。
+   設計の判定順は変えていない。`wantsProduct()` として `PRODUCT_RE` の使い方を包んだだけである。
+2. **`DOC_STRONG_RE` を足した(設計に無い)。**
+   設計 §1.3 の 3 段目は「DOC に当たり、かつ PRODUCT が無いなら諐問」だったが、
+   これだと『各社の**画面**設計を調査して**報告書**がほしい』が創造の道へ攫われる(実測)。
+   二つの顔を持つ語は **「診断」と「監査」だけ**であり、他の文書の名(報告書/比較表/調査/分析…)は
+   産物の名に勝たねばならない。3 段目をその形に精密化した。
+3. **`counsel.test.js:292` の「壊れ engine」門の期待値を `standard` → `reform` に改めた。**
+   FR-04 が `REFORM_RE` に **`CI`** を加えた必然の帰結である(『現状の**CI**の健全性を…』)。
+   門の主張(「語彙を潰せば counsel でなくなる」)は一字も緩めていない。
+   `notStrictEqual` で誤魔化さず、落ち先を名指ししたまま残した。
