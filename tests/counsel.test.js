@@ -162,7 +162,19 @@ test('枢機卿 counsel が存在し、6相すべてを統べる', () => {
   assert.ok(c, '諐問の枢機卿が居なければ、報告・集計の担い手は0体のままである');
   assert.strictEqual(c.domain, 'Counsel (諐問)');
   assert.deepStrictEqual(c.governs, ['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel']);
-  assert.deepStrictEqual(c.priests, ['market-researcher', 'auditor', 'reporter']);
+  /**
+   * **4人目の `requirements-analyst` は後から麾下に加わった**(第25条の是正)。
+   *
+   * `assess`(事実を突き合わせて筋を立てる)は forge.js:171 で
+   * `agent: 'requirements-analyst'` と**道が宣言している**。だが彼は counsel の
+   * 麾下に居なかったため、`marshalPlan` は他家の神官への発令を正しく拒み、
+   * 筆頭 `market-researcher` へ落としていた — **宣言と発令が静かに食い違って
+   * いた**。指揮系統を跨がせるのではなく、麾下に加えて正したのが現在の姿である。
+   *
+   * この門はその是正より**古かった**。3人を期待したまま CI から呼ばれず、
+   * 赤いまま誰にも気付かれずに住み続けていた(第44条)。
+   */
+  assert.deepStrictEqual(c.priests, ['market-researcher', 'auditor', 'reporter', 'requirements-analyst']);
   assert.deepStrictEqual(c.believers, ['web-scout', 'feature-ranker', 'data-collector']);
   assert.strictEqual(c.reviewClass, 'executor');
 });
@@ -472,13 +484,31 @@ test('相ごとに相応しい神官が指揮される — 実体を作って命
   // 一度も指揮されなかった。コメントは「相に最も適した神官を選ぶ」と述べていた。
   assert.strictEqual(lead('survey'), 'market-researcher', '外を調べるのは市場調査の神官');
   assert.strictEqual(lead('measure'), 'auditor', '手元を測るのは監査の神官');
-  assert.strictEqual(lead('assess'), 'auditor');
+  /**
+   * **`assess` は `requirements-analyst` である。かつてこの門は `auditor` を期待していた。**
+   *
+   * 裁いた根拠(第57条 — 門を緑にするために期待値を実装へ倒したのではない):
+   *   1. 道が宣言している — forge.js:171 `{ id: 'assess', agent: 'requirements-analyst' }`。
+   *      誰が相を担うかを決めるのは道であり、PHASE_LEAD はそれに従う側である。
+   *   2. clergy.js の註釈が、麾下に加えた理由を第25条として語っている。
+   *   3. 決定的 — 複製で `PHASE_LEAD.assess` を `auditor` へ倒すと、**CI に結線済みの**
+   *      `node graph/check-agents.js` が exit 1 で鳴る:
+   *        🔴 misrouted: assess (scale: counsel) — 宣言 requirements-analyst だが
+   *           発令先は auditor (counsel の筆頭に落ちている)
+   *
+   * 二つの門が正反対を要求し、**呼ばれていた方が正しかった**。この門は孤児
+   * だったため、実装が是正された日から更新されず赤いまま住み続けた(第44条)。
+   */
+  assert.strictEqual(lead('assess'), 'requirements-analyst',
+    '事実を突き合わせて筋を立てるのは要件の神官 — forge.js の宣言と check-agents がそう裁く');
   assert.strictEqual(lead('counter'), 'auditor', '反証は実測に忠実な者が担う');
   assert.strictEqual(lead('synthesize'), 'reporter', '編むのは報告の神官');
   assert.strictEqual(lead('counsel'), 'reporter');
-  // 三名すべてが実際に指揮される(名ばかりの神官を作らない)
+  // 四名すべてが実際に指揮される(名ばかりの神官を作らない)
+  // requirements-analyst を数に加えるのは**門を厳しくする方向**である。麾下に
+  // 居るのに一度も指揮されない神官が生まれれば、それこそ第25条の病だからである。
   const leads = new Set(['survey', 'measure', 'assess', 'counter', 'synthesize', 'counsel'].map(lead));
-  for (const p of ['market-researcher', 'auditor', 'reporter']) {
+  for (const p of clergy.COLLEGE.counsel.priests) {
     assert.ok(leads.has(p), `${p} が一度も指揮されない — 実体だけ作って命令が届いていない`);
   }
 });

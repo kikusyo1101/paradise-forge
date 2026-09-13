@@ -362,7 +362,8 @@ const PHASE_LEAD = {
   // 諐問の道 — 外を調べる者、手元を測る者、編む者は別人である
   survey:     'market-researcher',  // 外の世界の先行事例を調べる
   measure:    'auditor',            // 手元の系を実測する(Edit を持たぬ読み取り専用)
-  assess:     'auditor',            // 集めた事実を突き合わせる
+  // `assess` の宛先はこの表の末尾に一箇所だけ書く。ここに二度目を書くと、
+  // 後勝ちで無効な「生きた顔をした死骸」が生まれる(第44条)。
   synthesize: 'reporter',           // 人が読める報告書に編む
   counsel:    'reporter',           // 推奨と根拠を献じる
   // counter(反証)は counsel 枢機卿が統べる。理想は self-critic だが彼は tribunal の
@@ -410,9 +411,17 @@ const PHASE_LEAD = {
   'ux-review': 'ux-reviewer',      // 表層を裁く目は、ロジックを裁く目と別人である(第18条)
   review:      'code-reviewer',    // 筆頭と同じだが、明示して筆頭依存を断つ
   /**
-   * 諐問の道の残り。`assess` は requirements-analyst と宣言されているが
-   * counsel 枢機卿の麾下に居なかったため、筆頭 auditor へ落ちていた。
-   * `counsel` は executor(執行官)と宣言されている — 執行官は枢機卿の
+   * 諐問の道の分析相。`assess`(事実を突き合わせて筋を立てる)は forge.js が
+   * `agent: 'requirements-analyst'` と宣言しており、彼は counsel 枢機卿の
+   * 4人目の神官として麾下に実在する。ゆえにここで宛先を明示する。
+   *
+   * ⚠️ **かつてこの鍵は上の「諐問の道」節にも `assess: 'auditor'` として
+   * 書かれていた。** JS のオブジェクトは後勝ちなので下のこの行が実効値であり、
+   * 上の行は**生きた顔をした死骸**だった — 読む者には `auditor` に見えるのに、
+   * 機械は一度もその値を使わない。第44条そのものの形である。ゆえに上の重複を
+   * 退治し、宛先の宣言はこの一箇所に集めた。同じ鍵を二度書くな。
+   *
+   * `counsel` 相は executor(執行官)と宣言されている — 執行官は枢機卿の
    * 麾下ではないので、この相の宛先は forge の宣言を正とし、
    * PHASE_LEAD では触れない(触れれば指揮系統を跨ぐ)。
    */
