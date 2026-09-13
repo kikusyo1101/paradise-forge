@@ -129,9 +129,20 @@ function gates(repoRoot = ROOT) {
    * 統べる試験が `path.join('tests', 'x.test.js')` と組む形もある。
    * 綴りだけを見る門は、**呼んでいるのに孤児と報告する**(NAME_RES と同じ教訓)。
    */
-  const mentions = (text, file) => text.includes(`tests/${file}`)
-    || text.includes(`tests\\${file}`)
-    || new RegExp(`['"]tests['"]\\s*,\\s*['"]${file.replace(/\./g, '\\.')}['"]`).test(text);
+  const mentions = (text, file) => {
+    const esc = file.replace(/[.\\]/g, '\\$&');
+    return text.includes(`tests/${file}`)
+      || text.includes(`tests\\${file}`)
+      // `path.join('tests', 'x.test.js')` — 斜線が一つも現れない呼び方
+      || new RegExp(`['"]tests['"]\\s*,\\s*['"]${esc}['"]`).test(text)
+      /**
+       * `path.join(__dirname, 'x.test.js')` — 統べる試験は自分と同じ部屋に住む
+       * 兄弟を呼ぶので、`tests` という綴りを**一度も書かない**のが自然である。
+       * 実測(複製での故障注入)で、この形が孤児と誤審された。**呼んでいるのに
+       * 孤児と報告するのは、孤児を見逃すより悪い誤審である**(NAME_RES と同じ教訓)。
+       */
+      || new RegExp(`__dirname\\s*,\\s*['"]${esc}['"]`).test(text);
+  };
 
   /**
    * **散文で名を語ることは、走らせることではない (第16条)。**
