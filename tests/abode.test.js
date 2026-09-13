@@ -536,24 +536,37 @@ test('【正】台帳に載った writer が載った宛先へ書くときは通
     `どの輸出の範囲かを名乗っていない: ${threw.message}`);
 });
 
-test('【正】mode=repo で apply-guards apply は <repo>/.claude/settings.json を拒まれない', () => {
+test('【正】mode=repo の engine は倉の中の settings.json へ実際に書ける(拒まれない)', () => {
   /**
    * 倉の中は関門が黙って通す。**この門が赤いなら、関門が日常を壊している。**
    *
-   * ⚠️ ここで「実際に書いたこと」を要求してはならない —— 現物の
-   * `<repo>/.claude/settings.json` は既に掟どおりであり、apply は冪等に
-   * 「0 change(s)」を返す。書かせようと仕掛ければ、**版管理下の現物を汚す**
-   * ことになる(第58条(c))。ゆえにここで裁くのは二つ:
-   * **拒まれないこと**と、**倉の中を輸出として名乗らないこと**である。
-   * 「書けること」自体は上の `guardWrite(<repo>/…)` の門が単体で握っている。
+   * ⚠️ **現物の `<repo>/.claude/settings.json` を的にしてはならない**(第58条(c))。
+   * それは版管理下の現物であり、`apply` は改行の正準化だけで作業木を汚す
+   * (第7段の HEAD でも同じであることを実測した —— 本段が持ち込んだ病ではない)。
+   * ゆえに的は**倉の中の未追跡の道**に建てる:
+   *   - `guardWrite` にとっては紛れもなく「倉の中」である(REPO_ROOT 配下)——
+   *     複製を倉の外に置いたのでは、この門は「倉の中」を一度も試していない。
+   *   - `hermetic.js` は倉の中の**未追跡**への書き込みを赤にしない(`untracked`)。
+   *   - 走行の終わりに消すので、作業木の前後の差は空である。
    */
-  const r = runEngine('graph/apply-guards.js', ['apply'], { PARADISE_ABODE: 'repo' });
-  assert.strictEqual(r.code, 0, `倉の中への apply が拒まれた:\n${r.out}`);
-  assert.ok(!/倉の外への書き込みを拒んだ/.test(r.out), `倉の中を輸出として拒んだ:\n${r.out}`);
-  // 倉の中は輸出ではないので、EX-1 を名乗ってはならない(名乗れば台帳の意味が壊れる)
-  assert.ok(!/\[輸出 EX-1\]/.test(r.out),
-    `倉の中の書き込みを輸出として名乗った:\n${r.out}`);
-  // 書く道が倉の中を指していること自体も実測する(mode が効いていない走行を緑にしない)
+  const box = path.join(ROOT, '.paradise-guard-probe-' + process.pid);
+  try {
+    fs.mkdirSync(box, { recursive: true });
+    const target = path.join(box, 'settings.json');
+    fs.writeFileSync(target, '{}\n');                 // permissions 無し → 必ず 1 回書く
+    const r = runEngine('graph/apply-guards.js', ['apply', target], { PARADISE_ABODE: 'repo' });
+    assert.strictEqual(r.code, 0, `倉の中への apply が拒まれた:\n${r.out}`);
+    assert.ok(!/倉の外への書き込みを拒んだ/.test(r.out), `倉の中を輸出として拒んだ:\n${r.out}`);
+    // 倉の中は輸出ではないので、EX-1 を名乗ってはならない(名乗れば台帳の意味が壊れる)
+    assert.ok(!/\[輸出 EX-1\]/.test(r.out), `倉の中の書き込みを輸出として名乗った:\n${r.out}`);
+    // **書けたことを実測する。** 「拒まれなかった」だけでは、書かずに黙った走行と区別がつかない
+    const s = JSON.parse(fs.readFileSync(target, 'utf8'));
+    assert.ok(s.permissions && s.permissions.deny.length > 0,
+      `倉の中へ実際に書けていない: ${JSON.stringify(s).slice(0, 120)}`);
+  } finally {
+    try { fs.rmSync(box, { recursive: true, force: true }); } catch {}
+  }
+  // 既定(mode=repo)の住処が倉の中を指していること自体も実測する
   const site = abode.resolve({ env: { PARADISE_ABODE: 'repo' } });
   assert.ok(site.settings.startsWith(ROOT + path.sep),
     `mode=repo なのに住処が倉の外を指している: ${site.settings}`);

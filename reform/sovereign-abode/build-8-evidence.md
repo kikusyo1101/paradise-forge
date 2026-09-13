@@ -356,3 +356,195 @@ $ node graph/codex.js check
 ══════════════════════════════
 EXIT=0
 ```
+
+---
+
+## §6 門を建てる途中で捕らえた、門自身の病(正直に記す)
+
+**この節は「うまくいった」記録ではない。** 第58条(c)(門は己の測る対象を汚すな)に
+**自分の門が引っかかった**記録である。
+
+最初、`mode=repo` の正の門をこう書いた:
+
+```js
+const r = runEngine('graph/apply-guards.js', ['apply'], { PARADISE_ABODE: 'repo' });
+```
+
+これは現物の `<repo>/.claude/settings.json`(**版管理下**)を的にする。走らせると:
+
+```console
+$ node tests/abode.test.js
+  ✗ この門を走らせても、楽園の作業木は汚れない(前後の差で裁く)
+      この門の走行が作業木を汚した — 復元しても窓は開く (第58条(c)):
+  M .claude/settings.json
+```
+
+**門が門を捕らえた。** 汚れの正体は改行の正準化であり(engine は `\n` で書き、
+作業木は CRLF)、内容の差ではない。**第7段の HEAD(`01fe0b4`)の engine で
+同じことをしても同じく汚れる**ことを実測した —— 本段が持ち込んだ病ではない:
+
+```console
+$ git checkout 01fe0b4 -- graph/apply-guards.js graph/abode.js
+$ PARADISE_ABODE=repo node graph/apply-guards.js apply
+  ✎ 掟を機構にした (0 change(s))   ...\paradise\.claude\settings.json
+$ git status --short .claude
+ M .claude/settings.json          ← 第7段の engine でも汚れる
+```
+
+**閾値を下げる誘惑を退けた。** 取りうる道は三つあった:
+
+1. この門から「実際に書けたこと」の主張を外す(= 弱める)。**却下** ——
+   「拒まれなかった」は「書けた」ではない。黙って何もしなかった走行と区別がつかない。
+2. 汚れを `finally` で `git checkout` して戻す。**却下** ——
+   第58条(c) が名指しで禁じた形である(「復元しても窓は開く」)。
+3. **的を倉の中の未追跡の道に建てる。** 採用。
+   `<repo>/.paradise-guard-probe-<pid>/settings.json` を作り、そこへ書かせ、消す。
+   `guardWrite` にとっては紛れもなく「倉の中」(`REPO_ROOT` 配下)であり ——
+   **複製を倉の外に置いたのでは、この門は「倉の中」を一度も試していないことになる** ——
+   `hermetic.js` は倉の中の未追跡への書き込みを赤にしない(`untracked`)。
+
+結果、門は「倉の中へ**実際に書けた**」(permissions の deny が書かれたことを実測)を
+主張しながら、作業木を 1 バイトも汚さない。
+
+もう一つ、**逆側の設計判断を実測が正した**のも記す。`guardWrite` の最初の実装は
+「倉の外は台帳の裏付けが無ければ全て拒む」であった。走らせると `tests/guards.test.js` が
+**16 門落ちた** —— 全て「`os.tmpdir()` の複製へ書いている」ことを理由に。
+
+```console
+  ✗ apply writes the permissions block that was entirely absent
+      倉の外への書き込みを拒んだ: ...\Temp\paradise-guards-L2dQOp\apply1.json ← graph/apply-guards.js
+Paradise guards self-test: 59 passed, 16 failed
+```
+
+**これは門が正しく鳴ったのではなく、守る対象の定義が粗かった。** 拒むべきは
+「**楽園の住処**でありながら台帳の裏付けが無い書き込み」であって、
+「呼び手が明示的に名指した、楽園と無関係な道」ではない —— 後者を拒めば
+第58条(c) の密閉そのものが不可能になる。`abodeRoots()` を建てて守る対象を
+機構で定めた結果、16 門は全て緑に戻り、**欠陥A/B は変わらず拒まれ続けている**
+(§3 の実出力)。閾値も `|| true` も足していない。
+
+```console
+$ node tests/guards.test.js
+Paradise guards self-test: 75 passed, 0 failed
+EXIT=0
+```
+
+---
+
+## §7 完了条件の実測
+
+### 1. `tests/paradise.test.js` — 素 / repo / global の 3 走行とも緑(第20条)
+
+```console
+$ node tests/paradise.test.js
+Paradise self-test: 471 passed, 0 failed
+BARE_EXIT=0
+
+$ PARADISE_ABODE=repo node tests/paradise.test.js
+Paradise self-test: 471 passed, 0 failed
+REPO_EXIT=0
+
+$ PARADISE_ABODE=global node tests/paradise.test.js
+Paradise self-test: 471 passed, 0 failed
+GLOBAL_EXIT=0
+```
+
+**3 走行とも 471 / 0。** 門を建てた後(§6 の修正を入れた最終形)の再走行も
+`Paradise self-test: 471 passed, 0 failed / FINAL_EXIT=0` である。
+
+### 2. `tests/abode.test.js` — 門の総数
+
+```console
+$ node tests/abode.test.js
+Abode self-test: 135 passed, 0 failed
+EXIT=0
+```
+
+**第6段時点 83 → 135。52 門の増。**
+
+```console
+$ node tests/guards.test.js
+Paradise guards self-test: 75 passed, 0 failed
+EXIT=0
+```
+
+### 3〜4. `abode.js` の旗
+
+```console
+$ node graph/abode.js check              → EXIT=0
+$ node graph/abode.js check --outward    → EXIT=0
+$ node graph/abode.js check --backrefs   → EXIT=0     (第6段の撤収は壊れていない)
+$ node graph/abode.js check --creations  → EXIT=0
+$ node graph/abode.js check --ledger     → EXIT=0
+$ node graph/abode.js check --nonsense   → EXIT=2     (未知の旗は 2 のまま)
+```
+
+### 5. 兄弟の門
+
+```console
+$ node graph/census.js check
+═══════ 🔢 CENSUS CHECK ═══════
+  ✓ every number the paradise claims about itself is true
+═══════════════════════════════
+CENSUS_CHECK_EXIT=0
+
+$ node graph/codex.js check       → EXIT=0   (索引は本文と一致 / 59 条)
+$ node graph/workspace.js check   → EXIT=0   (創造物の混入なし・住所の直書きなし)
+$ node graph/hermetic.js check    → EXIT=0   (版管理下の現物を走行中に書き換える門は無い)
+$ node graph/derived.js check     → EXIT=0
+$ node graph/conclave.js audit    → EXIT=0   (見捨てられた走行: 0 / 判定不能: 0 / 全 11)
+```
+
+**README は手で書いていない。** `census.js check` が緑である ——
+本段は `tests/paradise.test.js` の門数を変えていない(増えたのは
+`tests/abode.test.js` の 52 門であり、README が主張する数はこの走行の数ではない)ので
+`census.js fix` による書き換えは発生しなかった。**数は測定が生む**(第22条)。
+
+---
+
+## §8 神の実機 `~/.claude` を1バイトも汚していないことの証明
+
+§0 で採った指紋と、全作業を終えた後の指紋を**同じ手で**採って照合する。
+
+| 測るもの | 着手前 (§0) | 作業後 | 一致 |
+|---|---|---|---|
+| `sha256sum ~/.claude/settings.json` | `e6fb4b2011d14c5b05c3537e5f7aacf8298262367ea0ba0234a09dd6c46f7ccc` | `e6fb4b2011d14c5b05c3537e5f7aacf8298262367ea0ba0234a09dd6c46f7ccc` | ✓ |
+| `find ~/.claude -type f \| wc -l` | 556 | 556 | ✓ |
+| `node graph/abode.js check --backrefs` | 逆向き依存 0 件 / exit 0 | 逆向き依存 0 件 / exit 0 | ✓ |
+
+```console
+$ sha256sum ~/.claude/settings.json
+e6fb4b2011d14c5b05c3537e5f7aacf8298262367ea0ba0234a09dd6c46f7ccc  /c/Users/kikus/.claude/settings.json
+$ find ~/.claude -type f | wc -l
+556
+$ node graph/abode.js check --backrefs
+  ✓ 逆向き依存は 0 件 — 実機の hooks は楽園の木を指していない (AC-30)
+EXIT=0
+```
+
+**engine を `--write` で走らせたのは、全て偽のホーム(`USERPROFILE`/`HOME` を
+差し替えた `$LOCALAPPDATA/Temp` の中)に対してである。**
+神の実機を的にした走行は、この作業中に一度も無い。
+
+---
+
+## §9 できなかったこと・見ていないこと(正直に)
+
+- **CI(GitHub Actions)では一度も走らせていない。** push も PR も掟で禁じられており、
+  本書の数は全て**この機の単独走行**である。CI 固有の環境(実機の `~/.claude` が無い
+  Ubuntu)での `check --outward` の振る舞いは**論証しただけで実測していない** ——
+  ただしこの門は実機を一切見ず倉のソースだけを読むので、機によって答えが変わる
+  経路は無い(`backRefs` のように実機を見る門とは性質が違う)。
+- **`--outward` は `graph/` と `tools/` しか走査しない**(`scanTargets()` の範囲)。
+  `hooks/` や `dashboard/` に abode を引く engine が生まれれば、この門は見ない。
+  現時点でそこに `require('./abode.js')` は無いことを実測したが、**将来の穴である**。
+- **`exportRoots()` のブレース展開は入れ子を解かない。** 台帳に入れ子は無く、
+  解けない記法には空を返す(= 拒む側に倒れる)ので安全側だが、**完全ではない**。
+- `guardWrite` の `caller-named`(§2.1 の (4))は**通す**判断である。
+  これは第58条(c) の密閉と両立させるための設計判断であり、
+  「倉の外の道が engine の手に在るなら出所は abode か呼び手かの二つだけ」という
+  第58条(a) の保証に**寄りかかっている**。その保証が崩れれば、この判断も崩れる。
+- `apply-hooks.js`(EX-3)と `deploy.js` の `writeCreations`(EX-2)には
+  **二重に関門を掛けていない**(既に `globalWrite` を通っている)。
+  ただし `globalWrite` は内側で `guardWrite` を通すよう配線したので、
+  結果として両者も新しい関門を通っている。
