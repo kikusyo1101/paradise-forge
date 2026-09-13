@@ -152,6 +152,28 @@ jobs:
           node tests/abode.test.js
           node graph/abode.js check --ledger
 
+      # ── 撤収の跡 (第7段 / AC-30 / 裁可 1-A・2-A) ──
+      # 実機の hooks が楽園リポジトリの絶対パスを握っていないか。
+      # 第7段で撤収が完遂し 6 件 → 0 件になったので、この門は `--all` に編入された。
+      # CI には実機の `~/.claude/settings.json` が無い。ゆえにここは
+      # **`· skip: 実機の … が無い — 逆向き依存は検められない` を名乗って exit 0**
+      # になるのが正しい(第58条(e))。**黙った緑ではない。**
+      # 実測(偽の空ホームを指す env で撃った): skip を名乗り exit 0。
+      #
+      # ⚠️ `retreat --verify` は**ここに配線しない。** 同じ env で撃つと
+      #    `✗ 実機の settings.json が無い — 撤収の跡を検められない / exit 2` になる。
+      #    それは正しい振る舞いである(神の住処の凍結は実機でしか照合できず、
+      #    「測れなかった」を緑にしないのが第37条)。だが CI では必ず exit 2 なので
+      #    配線すれば CI が常に赤い。**神の住処の照合は実機で走らせる門である。**
+      - name: 🏠 Abode(撤収)— 実機の hooks が楽園を指していないか (AC-30 / 第20条の鏡像)
+        run: node graph/abode.js check --backrefs
+
+      # ── 輸出 EX-3 (第7段 / 裁可 1-A) ──
+      # 汎用フック 5 本 + lib 2 本の複製が神の住処で源と sha256 一致するか。
+      # CI には神の住処が無いので **skip を名乗って exit 0**(第58条(e))。
+      - name: 🪝 Apply-hooks(EX-3)— 移した汎用フックが源と一致するか
+        run: node graph/apply-hooks.js verify
+
       # ── 兄弟倉への配備 (第5段 / EX-2 / AC-46〜50) ──
       # CI には兄弟倉が無い。ゆえにここは **`· skip: creations abode 不在: …` を
       # 名乗って exit 0** になるのが正しい(AC-49)。**黙った緑ではない。**
@@ -373,3 +395,63 @@ jobs:
               repo: context.repo.repo,
               body,
             });
+
+  # ── 発報 (第60条候補: 鳴らない門は門ではない) ──────────────────────────
+  #
+  # **実測された病**: PR #51 の検証ゲートが赤くなったが、教主も神も気づかなかった。
+  # GitHub の既定の通知は神の目に届いていない —— **鳴っていない門と、鳴ったのに
+  # 誰も聞かない門は、結果において同じである**(第37条の系)。
+  #
+  # ゆえに裁定そのものを神の場所(Discord #神籬)へ運ぶ。
+  #   · 赤いときは必ず鳴る
+  #   · 緑のときは PR のときだけ鳴る(main への push で毎回鳴れば、やがて無視される)
+  #   · **webhook が未設定なら「鳴らせなかった」と CI の注記に残す** ——
+  #     黙って成功したふりをしない。設定漏れは沈黙ではなく可視でなければならない。
+  herald:
+    name: 📣 発報 — 裁定を神へ運ぶ
+    runs-on: ubuntu-latest
+    needs: [verify, tribunal]
+    if: always()
+    steps:
+      - name: 裁定を組み立てて送る
+        env:
+          HOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          VERIFY: ${{ needs.verify.result }}
+          TRIBUNAL: ${{ needs.tribunal.result }}
+        run: |
+          set -u
+          if [ "$VERIFY" = "success" ] && { [ "$TRIBUNAL" = "success" ] || [ "$TRIBUNAL" = "skipped" ]; }; then
+            STATE="green"; ICON="✅"; WORD="緑"
+          else
+            STATE="red";   ICON="🔴"; WORD="赤"
+          fi
+
+          # 緑 かつ PR でないなら黙る(騒音は門を殺す)
+          if [ "$STATE" = "green" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "::notice::緑かつ PR でないため発報しない"
+            exit 0
+          fi
+
+          TITLE="${ICON} 楽園の門は${WORD} — ${{ github.repository }}"
+          WHERE="${{ github.event_name }} / ${{ github.ref_name }}"
+          PRNUM="${{ github.event.pull_request.number }}"
+          [ -n "$PRNUM" ] && WHERE="PR #${PRNUM}"
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY="${TITLE}
+          ${WHERE}
+          検証ゲート: ${VERIFY} / 執行官: ${TRIBUNAL}
+          ${URL}"
+
+          if [ -z "${HOOK:-}" ]; then
+            # **黙らない。** 発報できなかったこと自体を CI の注記に残す(第37条)。
+            echo "::warning::DISCORD_WEBHOOK が未設定のため発報できなかった — 裁定は ${WORD}。設定するまで神は CI の赤に気づけない"
+            echo "$BODY"
+            exit 0
+          fi
+
+          printf '%s' "$BODY" | jq -Rs '{content: .}' > payload.json
+          code=$(curl -s -o resp.txt -w '%{http_code}' -H 'Content-Type: application/json' \
+                      -X POST -d @payload.json "$HOOK")
+          echo "discord http=$code"
+          # 送信の失敗を緑に混ぜない —— 発報の門もまた門である
+          case "$code" in 2*) echo "::notice::発報した (${WORD})";; *) echo "::error::発報に失敗した http=$code"; cat resp.txt; exit 1;; esac

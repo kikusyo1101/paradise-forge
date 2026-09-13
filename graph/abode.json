@@ -25,6 +25,18 @@
       "ordainedOn": "2026-09-10",
       "ordainedVia": "reform/sovereign-abode — 教主の反論2を神が受諾 (requirements.md §1.4 / §11.1 甲案)",
       "verify": "node graph/abode.js check --creations"
+    },
+    {
+      "id": "EX-3",
+      "target": "~/.claude/scripts/{hooks,lib}",
+      "kind": "deploy-tree",
+      "writer": "graph/apply-hooks.js",
+      "scope": "machine",
+      "reason": "撤収は「消す」ではなく「移す」である。神の settings.json は汎用フック 5 本 (suggest-compact / pre-compact / session-start / session-end / evaluate-session) を楽園の倉の絶対パスで握っていた (AC-30 の逆向き依存 6 件のうち 5 件)。この 5 本は楽園を一切参照せず ~/.claude/sessions/ と skills/learned/ と os.tmpdir() へ書く、神の全プロジェクトのための機能である。倉から引くだけでは神の日常が黙って壊れ、倉に残せば逆向き依存が消えない。ゆえに神の住処へ複製し、hook の道をそちらへ向け直す。実測: 5 本は require('../lib/utils') を引き package-manager.js も require('./utils') を引くので lib/ も複製が要る。evaluate-session.js は path.join(__dirname,'..','..','skills','continuous-learning','config.json') を読むため、~/.claude/scripts/hooks/ に置けば ~/.claude/skills/continuous-learning/config.json を指し、それは実機に既在する (409 B)。偽のホームへ複製して 5 本すべてを撃ち exit 0 を確認済み。",
+      "ordainedBy": "god",
+      "ordainedOn": "2026-09-12",
+      "ordainedVia": "reform/sovereign-abode — 第6段の撤収計画に対する神の裁可 1-A",
+      "verify": "node graph/apply-hooks.js verify"
     }
   ],
   "external": [

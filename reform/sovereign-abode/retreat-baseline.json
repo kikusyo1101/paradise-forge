@@ -1,0 +1,241 @@
+{
+  "_note": "神 5 キーの凍結。**数はここが持つ。散文に書き写すな**(第22条 / design §8 危険1 の註)。retreat --verify がこの sha と values を実機と照合する(AC-35〜38)。",
+  "canonicalization": "キー名昇順 + JSON.stringify の compact(空白なし・末尾改行なし)",
+  "godKeys": [
+    "agentPushNotifEnabled",
+    "enableWorkflows",
+    "extraKnownMarketplaces",
+    "language",
+    "theme"
+  ],
+  "sha256": "b66c5008319d71c636d865dedfdb6ed30fa898f302fad3bf374c15dde3d4aeae",
+  "sha256Short": "b66c5008319d71c6",
+  "values": {
+    "agentPushNotifEnabled": true,
+    "enableWorkflows": true,
+    "extraKnownMarketplaces": {
+      "claude-plugins-official": {
+        "source": {
+          "source": "github",
+          "repo": "anthropics/claude-plugins-official"
+        }
+      }
+    },
+    "language": "japanese",
+    "theme": "dark"
+  },
+  "missing": [],
+  "source": "C:\\Users\\kikus\\.claude\\settings.json",
+  "takenAt": "2026-09-12T14:08:23.121Z",
+  "sanctuary": [
+    {
+      "rel": ".credentials.json",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 11520,
+        "mtime": 1789209405066
+      }
+    },
+    {
+      "rel": ".credentials.lock",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 1,
+        "mtime": 1788665070239
+      }
+    },
+    {
+      "rel": "projects",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 39,
+        "bytes": 28374531,
+        "mtime": 1789144308203
+      }
+    },
+    {
+      "rel": "plugins",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 365,
+        "bytes": 6873130,
+        "mtime": 1774765005087
+      }
+    },
+    {
+      "rel": "sessions",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 11,
+        "bytes": 3018,
+        "mtime": 1789210064236
+      }
+    },
+    {
+      "rel": "session-env",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 0,
+        "bytes": 0,
+        "mtime": 0
+      }
+    },
+    {
+      "rel": "shell-snapshots",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 3,
+        "bytes": 210913,
+        "mtime": 1788928846386
+      }
+    },
+    {
+      "rel": "history.jsonl",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 291,
+        "mtime": 1787845862014
+      }
+    },
+    {
+      "rel": "skills/learned",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 0,
+        "bytes": 0,
+        "mtime": 0
+      }
+    },
+    {
+      "rel": "skills/pr-review",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 2924,
+        "mtime": 1774172667117
+      }
+    },
+    {
+      "rel": "skills",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 15,
+        "bytes": 102961,
+        "mtime": 1787846101472
+      }
+    },
+    {
+      "rel": "policy-limits.json",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 214,
+        "mtime": 1789047729256
+      }
+    },
+    {
+      "rel": "remote-settings.json",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 2,
+        "mtime": 1789047729180
+      }
+    },
+    {
+      "rel": "backups",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 5,
+        "bytes": 269660,
+        "mtime": 1789209393341
+      }
+    },
+    {
+      "rel": "cache",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 568125,
+        "mtime": 1787845800054
+      }
+    },
+    {
+      "rel": "ide",
+      "kind": "dir",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 0,
+        "bytes": 0,
+        "mtime": 0
+      }
+    },
+    {
+      "rel": ".last-cleanup",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 24,
+        "mtime": 1789144912481
+      }
+    },
+    {
+      "rel": "settings.json.pre-wire.bak",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 352,
+        "mtime": 1787846127511
+      }
+    },
+    {
+      "rel": "settings.json.bak.1787846094",
+      "kind": "file",
+      "volatile": false,
+      "exists": true,
+      "triple": {
+        "files": 1,
+        "bytes": 353,
+        "mtime": 1787846094156
+      }
+    }
+  ]
+}

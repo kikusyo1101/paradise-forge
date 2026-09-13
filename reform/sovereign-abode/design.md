@@ -674,11 +674,20 @@ function globalWrite(target, write) {
 | 同上 | `apply-guards.js` の `repairEnv()` | 台帳に無いキーを削除できる状態 | AC-16 |
 | `--symmetry` | `apply-models` と `apply-spawn` の agents 解決式 | 同一の呼び口でない | AC-20 |
 | `--silent-green` | `tests/*.js` | `existsSync(...)) return` / `if (X.skipped) return` の形が在る | AC-43, AC-44 |
-| `--backrefs` | 実機 `~/.claude/settings.json` の hooks | 楽園リポジトリの絶対パスを含む | AC-30, AC-31 |
+| `--backrefs` ★ | 実機 `~/.claude/settings.json` の hooks | 楽園リポジトリの絶対パスを含む | AC-30, AC-31 |
 | `--creations` | 兄弟倉 `<creations>/.claude` | 神官 30 と 1:1 でない / `.claude` が git 追跡されている | AC-46〜50 |
 | (overlay 整合) | `overlay.json` の `deploy_target.default_path` | `abode.js` の既定と食い違う | §3.4 |
 
 **`--all`(既定)は上記を全部走らせ、違反を種別ごとに束ねて印字し、1 件でも在れば exit 1。**
+
+★ **ただし `--backrefs` だけは `--all` に含めない**(第6段の裁定)。
+撤収**前**の実機には楽園の絶対パスを握った hook が **6 本**在る —— それが正しい。
+まだ撤収していないのだから。これを `--all` に含めれば **CI も自己診断も今日から赤くなり**、
+赤い門は見られなくなり、見られない門は第57条の禁じ手(閾値の引き下げ)を招く。
+ゆえに `--backrefs` は**明示したときだけ**走る旗とし、
+**撤収が完了した日に `--all` へ編入する**(編入の条件は `check --backrefs` が exit 0 になること。
+それは神が hooks の去就を名指した後にしか起こらない)。→ **台帳 [41] への申し送り**。
+実機が無い機(CI)では `skip` を名乗って exit 0(第58条(e))。
 
 ### 4.3 `abode.js` 自身の除外を、どう安全にするか(第54条の教訓)
 
@@ -887,7 +896,7 @@ tests/counsel.test.js:189 / tests/paradise.test.js:1440,1746,2259,2270,2284
 | ID | ファイル:行 | 何を符号化しているか | 改革後にどう嘘になるか | 直し方 |
 |---|---|---|---|---|
 | **L-18** | `tests/dashboard-no-deps.test.js:57` | `pulse.js` の書き込み行に文字列 `.claude` が現れないこと | 付け替えで `claudeDir` から `.claude` の literal が消える。**門は通り続けるが何も見ていない**(静かな緑の最悪形) | 主張を**住所ベース**に変える: `pulse` のソースから `writeFile\|appendFile\|mkdir` の行を採り、`abode.pathFor('abode')` 配下を指す式(`claudeDir(` / `abode.`)を含まないことを検める |
-| **L-19** | `tests/guards.test.js:159` | `POLICY.deny` に `Edit(~/.claude/**)` が在ること | **EX-1 の輸出先はグローバルのまま**なので嘘にならない。ただし第4段以降、楽園自身の配備物は `<repo>/.claude` に住むので、この deny は**楽園の配備物をもう守っていない** | deny を**足す**: `Edit(<repo>/.claude/**)` 相当。ただし permissions は相対パスを解さないので、`apply-guards.POLICY` を静的定数から `abode` 依存の生成に変える必要がある → **これは第29条(派生は真実の写し)の問題であり、work-6 で扱う** |
+| **L-19** ✅ | `tests/guards.test.js:159` | `POLICY.deny` に `Edit(~/.claude/**)` が在ること | **EX-1 の輸出先はグローバルのまま**なので嘘にならない。ただし第4段以降、楽園自身の配備物は `<repo>/.claude` に住むので、この deny は**楽園の配備物をもう守っていない** | **【第6段で解決】** `POLICY` を静的定数から `policyFor({mode})` の生成へ変え、repo の住処のときだけ `Edit(**` + `/.claude/**)` を一行足す。**形は絶対パスではなく可搬な相対**を採った —— `<repo>/.claude/settings.json` は git 追跡された派生物であり(AC-14)、機械固有の絶対パスを焼き込めば clone 先で必ず食い違って `derived.js` が永久に赤くなる(第29条)。permissions は gitignore 構文を解し、deny 規則の `**` は任意の深さに当たるので、楽園の倉でも兄弟倉でも同じ一行が効く。**EX-1 の照合は `policyFor({mode:'global'})` に固定**した —— 走らせた側の `PARADISE_ABODE` で基準が揺れれば、同じ実機が日によって赤くも緑にもなる(第37条)。実測: repo=`deny 10` / global(実機 EX-1)=`deny 9` |
 | **L-20** | `tests/paradise.test.js:1775` | `deploy: paradise-owned files come from the repository, not from ~/.claude` | 門の**名前**が `~/.claude` を指しているが、中身は `s.src.includes('overlay')` を見るだけ。付け替え後も正しい | 名前を「配備先ではなく overlay から来る」に改める(嘘ではないが誤読を招く) |
 | **L-21** | `tests/counsel.test.js:208` | エラーメッセージが `~/.claude/agents は deploy.js の成果物` と述べる | 第4段以降、成果物は `<repo>/.claude/agents` | メッセージを `abode.pathFor('agents')` から生成する |
 | **L-22** | `tests/paradise.test.js:6216-6217` | `wire-paradise-hooks.js` を**名指しで免除**している | §3.5 で道具を廃止すると、免除リストが**存在しないファイルを守る**ようになる | 廃止と同時に 6217 行の `&& f !== 'wire-paradise-hooks.js'` を削る。**順序: ①overlay.json の $note → ③ファイル削除 → ②免除解除** |
@@ -1207,7 +1216,7 @@ work-0 ─┬─ work-1 ──┬─ work-2 ── work-3 ──┬─ work-4 �
 | work-3 | `node tests/guards.test.js` が `N passed, 0 failed, 0 skipped`、`node graph/abode.js check --silent-green` が exit 0 |
 | work-4 | 素の `node graph/abode.js resolve --json` の全住所が `<repo>` 配下、`node graph/kg.js stats` が nodes 120 |
 | work-5 | `node graph/abode.js check --creations` が exit 0 で agents 30 / commands 19 / rules 8 |
-| work-6 | `node graph/abode.js retreat --verify` が exit 0(神 5 キーの sha256 = `cbca9224ec5e6cac`) |
+| work-6 | `node graph/abode.js retreat --verify` が exit 0 —— 神 5 キーの正準 sha256 が **`reform/sovereign-abode/retreat-baseline.json` に凍結された値と一致**すること(★ 数を散文に書かない。理由は §8 危険1 の註) |
 | work-7 | `node graph/abode.js check --hermetic` が exit 0、`node graph/census.js check` が**同時実行しても**同じ答えを返す |
 
 ---
@@ -1222,14 +1231,34 @@ work-0 ─┬─ work-1 ──┬─ work-2 ── work-3 ──┬─ work-4 �
 `agentPushNotifEnabled`)が巻き添えになる経路が構造的に存在する。
 **前例がある** — `env.PATH` は既に engine の判断で消された。
 
-**予防**: 撤収前に `retreat --plan` が神 5 キーの正準 sha256 を凍結する。実測値:
+**予防**: 撤収前に `retreat --plan` が神 5 キーの正準 sha256 を計算し、
+`reform/sovereign-abode/retreat-baseline.json` に**凍結する**(git 追跡)。
+`retreat --verify` は同じ計算をやり直し、**凍結値と照合する**。
+
+> ⚠️ **凍結値をこの散文に書き写してはならない。** 起草時、本節は
+> `god-subset-sha256(16): cbca9224ec5e6cac` と書いていた。第6段の実装時に実測したところ、
+> **この数はどの正準化の流儀からも再現できなかった**(sorted / 宣言順 / 起草順 × compact /
+> indent2 / +NL / entries 配列 / 値のみ の 8 通りを試した)。
+> 起草時のプローブ `pddes-god.js` は倉に存在せず、git 履歴にも無い。
+> 実測される値(キー名ソート + `JSON.stringify` compact)は `b66c5008319d71c6` であり、
+> **神 5 キーは 2026-08-27 の原初設定の退避から今日まで一バイトも変わっていない**
+> (`settings.json` / `settings.json.bak.1787846094` / `settings.json.pre-wire.bak` の
+> 三者が同一 sha)。ゆえに「値が動いたから違う」でもない —— 起草時の数がロストした
+> スクリプトの産物だったのである。
+>
+> **なぜ散文に数を書かないと決めたか**: 固定値を門に直書きすれば、その値が一度でも
+> 外れた瞬間から門は**永久に赤い**。次に来る者は必ず「閾値を緩める」誘惑に駆られる ——
+> すなわち**設計書自身が第57条の禁じ手への誘惑を仕込んでいた**。
+> 数は実測が生む。散文は**凍結の在り処**だけを指す(第22条と同じ形)。
+
+実測(第6段の着手時 / 読み取りのみ):
 
 ```console
-$ node <probe>
+$ node <読み取り専用プローブ>
 keys: enableWorkflows, extraKnownMarketplaces, language, theme, agentPushNotifEnabled,
       hooks, model, effortLevel, permissions
 god subset: agentPushNotifEnabled, enableWorkflows, extraKnownMarketplaces, language, theme
-god-subset-sha256(16): cbca9224ec5e6cac
+god-subset-sha256(16): b66c5008319d71c6   ← **この数は retreat-baseline.json が持つ。門はそこを見る**
 permissions deny/ask/allow: 9 1 5
 hooks groups: PreToolUse:3 PreCompact:1 SessionStart:2 PostToolUse:4 Stop:1 SessionEnd:2
 backrefs into paradise repo: 6
@@ -1398,7 +1427,9 @@ node tests/paradise.test.js                    # → 455 passed, 0 failed  (単�
 which gh                                       # → /c/Program Files/GitHub CLI/gh
 
 # 神の資産の実測 (読み取りのみ)
-node <pddes-god.js>                            # → god-subset-sha256(16): cbca9224ec5e6cac
+node <pddes-god.js>                            # → god-subset-sha256(16): b66c5008319d71c6
+                                               #    (起草時は cbca9224ec5e6cac と記したが再現不能。
+                                               #     §8 危険1 の註を見よ。凍結は retreat-baseline.json が持つ)
                                                # → permissions deny/ask/allow: 9 1 5
                                                # → hooks: PreToolUse:3 PreCompact:1 SessionStart:2
                                                #          PostToolUse:4 Stop:1 SessionEnd:2
