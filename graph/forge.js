@@ -295,7 +295,13 @@ function denude(wish) {
   let s = String(wish == null ? '' : wish);
   s = s.replace(/`[^`]*`/g, ' ');
   s = s.replace(/(^|[\s(（「『【])--?[A-Za-z][A-Za-z0-9_-]*/g, '$1 ');
-  s = s.replace(/[A-Za-z0-9_.-]+\.(?:js|json|jsonl|md|yml|yaml|ts|tsx|sh)\b/gi, ' ');
+  // ⚠️ 先頭の後読み `(?<![A-Za-z0-9_.-])` は **速さのためではなく命のため**である (quality 相 / S-1)。
+  //    これが無いと、正規表現エンジンは非一致文字列の**全ての開始位置**から
+  //    `[A-Za-z0-9_.-]+` を伸ばし直す —— 計算量は入力長の**二乗**になる。実測:
+  //      "x"*100000  →  4946 ms /  "x"*200000 → 22698 ms (倍率 ×3.99 = 二乗)
+  //    後読みで開始位置を語頭に固定すれば、同じ入力が **0.62 ms** で終わる(約 8000 倍)。
+  //    剥ぐ結果は一字も変わらない(語頭からしか一致しえない正規表現だから)。
+  s = s.replace(/(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]+\.(?:js|json|jsonl|md|yml|yaml|ts|tsx|sh)\b/gi, ' ');
   return s.replace(/\s+/g, ' ').trim();
 }
 
@@ -365,6 +371,23 @@ const ENGINE_NAMES_WEAK_JA = 'ワークフロー';
 const ENGINE_NAMES = ENGINE_NAMES_STRONG + '|' + ENGINE_NAMES_WEAK;
 
 /**
+ * **限定詞の表** —— この直後に在る engine 名は、世間の物を一つ指す語法である。
+ *
+ * ⚠️ build/rework 相は冠詞 7 語 (`a|an|the|my|our|your|their`) しか知らなかった。
+ *    quality 相の実測で **7 語では足りない**ことが判った(review R-3):
+ *      `this vendor` / `that census` / `its workflow` / `his identity` /
+ *      `each vendor` / `some vendor` / `every vendor` / `another vendor`
+ *    —— どれも `add …` を伴うので、弱い名の規則が reform を名乗った。
+ *    指示詞・所有格・数量詞は冠詞と**同じ仕事**をしている。ゆえに同じ表に置く。
+ *
+ * ⚠️ **先頭の `\b` は必須**である: これが無いと `media workflow` の `a ` が
+ *    冠詞と誤読され、除外が効きすぎる(`counsel.test.js` が撃っている)。
+ */
+const DETERMINER_LOOKBEHIND =
+  '(?<!\\b(?:a|an|the|my|our|your|their|this|that|these|those|its|his|her|' +
+  'each|every|some|any|another|no)\\s)';
+
+/**
  * 神託が「楽園そのもの」を指しているか。
  *
  * これが最初に判定される理由: 楽園自身への改革を quick/standard と誤ると、
@@ -377,23 +400,32 @@ const ENGINE_NAMES = ENGINE_NAMES_STRONG + '|' + ENGINE_NAMES_WEAK;
  *
  * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(自己診断/走行帳/門/憲法…)。
  *    rework 相で動かしたのは `ワークフロー` 一語だけで、それは弱い名の側へ移した。
+ *
+ * ⚠️ **強い名にも限定詞の除外を掛ける**(quality 相 / R-4)。build/rework 相は
+ *    「強い名は世間の願い文に現れない」と裁いたが、実測が覆した ——
+ *    `add a gauge widget to my car dashboard` / `add a critic score to my movie app` /
+ *    `add a verdict field to my court case tracker` / `add a codex viewer to my
+ *    fantasy game` / `add a clergy directory to my parish app` …
+ *    **12 件の世間の願いが強い名を踏んで reform へ攫われた**(main では full/standard)。
+ *    強い名も**普通名詞として使われうる**。限定詞の直後なら世間の物である。
+ *    ただし限定詞を伴わない `conclave の毒を除く` は今まで通り楽園を名指す。
  */
 const REFORM_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|' +
   '門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|' +
   '枢機卿|cardinal|神官|priest|自己診断|走行帳)' +
-  `|\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
+  `|${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
 
 /**
- * 弱い名 —— **英語の冠詞の直後に在るものは数えない**。
+ * 弱い名 —— **限定詞の直後に在るものは数えない**。
  *
- * `a vendor` / `an identity` / `the workflow` / `my atlas` は
- * 「世間の物を一つ指す」語法であって、楽園の器官の名指しではない。
- * 後読み `(?<!\b(?:a|an|the|my|our|your|their)\s)` の **先頭の `\b` は必須**である:
- * これが無いと `media workflow` の `a ` が冠詞と誤読され、除外が効きすぎる。
+ * `a vendor` / `an identity` / `the workflow` / `my atlas` / `this vendor` /
+ * `each census` は「世間の物を一つ指す」語法であって、楽園の器官の名指しではない。
+ * 表は `DETERMINER_LOOKBEHIND` に一箇所だけ住む —— 強い名と弱い名で
+ * 別の表を持てば、片方にだけ語を足す誤りが生まれる(第16条)。
  */
 const REFORM_WEAK_RE = new RegExp(
   `(?:${ENGINE_NAMES_WEAK_JA})` +
-  `|(?<!\\b(?:a|an|the|my|our|your|their)\\s)\\b(?:${ENGINE_NAMES_WEAK})\\b`, 'i');
+  `|${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_WEAK})\\b`, 'i');
 
 /**
  * 願いの**対象が楽園自身**か (AC-31)。
@@ -474,7 +506,24 @@ const PRODUCT_RE = new RegExp('アプリ|ツール|コマンド|口|門|画面|�
  * 設計 §1.3 は L-8 で「図」についてのみこの病を警告していたが、
  * **同じ病は一字の産物名すべてに在った**。ゆえに同じ作法で守る。
  */
-const PRODUCT_FALSE_FRIENDS = /人口|窓口|入口|出口|河口|口調|口座|相場|相談|相手|位相|真相|様相|手相|首相|外相|門前|専門|部門|門下/;
+const PRODUCT_FALSE_FRIENDS = new RegExp(
+  // 「口」— 建物・身体・言葉の「口」。産物の口(コマンドの口)ではない
+  '人口|窓口|入口|出口|河口|口調|口座|口コミ|口頭|蛇口|傷口|経口|悪口|糸口|火口|裏口|非常口|改札口|' +
+  // 「相」— 様子・法律・人物の「相」。段階の相ではない
+  '相場|相談|相手|位相|真相|様相|手相|首相|外相|相続|相関|相互|相当|相対|相応|血相|世相|' +
+  // 「門」— 建物・分野・学びの「門」。判定の門ではない
+  '門前|専門|部門|門下|入門|名門|門戸|関門|門限|門外|登竜門|' +
+  /**
+   * ⚠️ **強い産物名にも紛れ語は在る**(quality 相 / R-2)。
+   * build 相は「一字の名だけが危うい」と裁いたが、実測で覆った ——
+   * `機能` `画面` `一段` `タイマー` は二字以上でも他語に埋もれる:
+   *   腎機能 / 肝機能 / 認知機能 → 「機能」は臓器の働きであって産物ではない
+   *   一段落               → 「一段」は作業の区切りであって門の一段ではない
+   *   画面越し             → 「画面」は場所を言う副詞であって求められた物ではない
+   * `PRODUCT_STRONG_RE` はこの守りを持たず、**基準線で counsel だった 6 件が
+   * standard/quick へ落ちていた**(main との突合で確認)。
+   */
+  '[腎肝心肺脳胃腸皮膚身体運動認知生殖免疫視聴嚥下排泄]機能|機能性|一段落|画面越|タイマー競技');
 /** 紛れ語を除いても残る、強い産物の名(これが在れば疑いなく物を求めている)。 */
 const PRODUCT_STRONG_RE = new RegExp('アプリ|ツール|コマンド|画面|機能|フラグ|オプション|' +
   'エンドポイント|ボタン|一段|ページ|タイマー|' +
@@ -482,6 +531,12 @@ const PRODUCT_STRONG_RE = new RegExp('アプリ|ツール|コマンド|画面|�
 
 /** その願いは**産物**を名指ししているか(紛れ語を退けたうえで)。 */
 function wantsProduct(w) {
+  /**
+   * ⚠️ **紛れ語の守りは強い名にも掛かる**(quality 相 / R-2)。
+   * 旧実装はこの一行を持たず、`PRODUCT_STRONG_RE` が紛れ語を素通しにしていた ——
+   * 「腎機能の低下を診断してほしい」が産物の依頼と誤読され、諐問の道を失った。
+   */
+  if (PRODUCT_FALSE_FRIENDS.test(w)) return false;
   if (PRODUCT_STRONG_RE.test(w)) return true;
   // 一字の名(口/門/相)だけで当たった場合、それが紛れ語の一部でないか確かめる
   return PRODUCT_RE.test(w) && !PRODUCT_FALSE_FRIENDS.test(w);
@@ -741,4 +796,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_WEAK_RE, isReformSubject, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };

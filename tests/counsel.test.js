@@ -442,6 +442,200 @@ test('冠詞の直後の弱い名は、建造の動詞を伴っても reform で
 });
 
 // ══════════════════════════════════════════════════════════════════════
+// 1d. **quality 相が実測で見つけた誤着** — 既に緑になったものを疑った結果
+//
+// build/prove 相は「直った」と宣言し、24 件のコーパスで NG=0 を出した。
+// quality 相は **52 件の新しい願い**を自ら考えて撃ち、**50 件が壊れていた**。
+// うち **44 件は main では正しく着いていた** —— すなわち本走行が新たに生んだ病である。
+// 死因は四つ。以下の門はその四つを一つずつ撃つ。
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n道選び — quality 相が実測で見つけた誤着:');
+
+/**
+ * **R-4: 強い名も普通名詞として使われる。** 限定詞の直後なら世間の物である。
+ *
+ * ⚠️ build/rework 相は「強い名は楽園固有で、世間の願い文に現れない」と裁いた。
+ *    実測が覆した —— `gauge` `critic` `verdict` `codex` `clergy` `synod` `forge`
+ *    `abode` `hermetic` は**どれも普通の英単語**であり、main では full/standard に
+ *    正しく着いていた 12 件が、本走行で reform(11相)へ攫われた。
+ */
+const STRONG_WORLDLY = [
+  ['add a gauge widget to my car dashboard', 'gauge'],
+  ['add a critic score to my movie app', 'critic'],
+  ['add a verdict field to my court case tracker', 'verdict'],
+  ['add a forge upgrade screen to my RPG game', 'forge'],
+  ['add an abode listing page to my rental app', 'abode'],
+  ['add a hermetic seal check to my lab app', 'hermetic'],
+  ['add a codex viewer to my fantasy game', 'codex'],
+  ['add a clergy directory to my parish app', 'clergy'],
+  ['add a synod calendar to our church site', 'synod'],
+];
+for (const [wish, why] of STRONG_WORLDLY) {
+  test(`"${wish}" は reform でない — 強い名 ${why} も限定詞の直後なら世間の物 (R-4)`, () => {
+    // 前提: 建造の動詞を確かに持つ(持たなければ別の理由で緑になり、門が黙る)
+    assert.ok(forge.BUILD_RE.test(forge.denude(wish)), `この門の前提が崩れた: ${wish}`);
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform',
+      `強い名 "${why}" が限定詞の直後でも楽園と誤読された — DETERMINER_LOOKBEHIND が REFORM_RE から外れている`);
+    assert.ok(['standard', 'full'].includes(got), `創造の道のいずれかであるべき (got=${got})`);
+  });
+}
+
+test('強い名は限定詞を伴わなければ今まで通り楽園を名指す (R-4 の逆向き)', () => {
+  // ここを落とせば「強い名を語彙から消した」のと同じになる(第36条: 門は消すのではなく分ける)
+  assert.strictEqual(forge.isReformSubject('conclave の毒を除く'), true);
+  assert.strictEqual(forge.chooseScale('gauge に fingerprint を確かめる口を設ける'), 'reform');
+  assert.strictEqual(forge.chooseScale('codex に検めの口を足す'), 'reform');
+  assert.strictEqual(forge.chooseScale('synod に警告の一段を足す'), 'reform');
+});
+
+/**
+ * **R-3: 冠詞 7 語では足りない。** 指示詞・所有格・数量詞も同じ仕事をしている。
+ *
+ * ⚠️ rework 相の表は `a|an|the|my|our|your|their` だけであった。
+ *    `this` `that` `its` `his` `her` `each` `every` `some` `another` は
+ *    **一つも入っておらず**、どれも弱い名を楽園の器官と誤読させた。
+ */
+const DETERMINERS_ADDED = ['this', 'that', 'these', 'those', 'its', 'his', 'her',
+  'each', 'every', 'some', 'any', 'another', 'no'];
+test('冠詞以外の限定詞も弱い名の楽園名指しを打ち消す (R-3)', () => {
+  for (const det of DETERMINERS_ADDED) {
+    assert.strictEqual(forge.isReformSubject(`add a flag to ${det} vendor page`), false,
+      `限定詞 "${det}" の直後の弱い名が楽園と誤読された — DETERMINER_LOOKBEHIND に ${det} が無い`);
+  }
+  // 旧来の冠詞 7 語も引き続き効く(表を書き換えて古い語を落としていないこと)
+  for (const det of ['a', 'an', 'the', 'my', 'our', 'your', 'their']) {
+    assert.strictEqual(forge.isReformSubject(`add a flag to ${det} vendor page`), false,
+      `旧来の冠詞 "${det}" が表から落ちた`);
+  }
+  // ⚠️ 除外が効きすぎていないこと — 語末の `a` を冠詞と誤読してはならない
+  assert.strictEqual(forge.isReformSubject('media workflow に口を足す'), true,
+    '"media" の末尾の a が限定詞と誤読された — 後読みの先頭 \\b が消えている');
+  // 限定詞を伴わない弱い名は、建造の動詞と共に楽園を名指す
+  assert.strictEqual(forge.isReformSubject('add a flag to vendor'), true,
+    '限定詞なしの弱い名まで打ち消された — 除外が効きすぎている');
+});
+
+test('限定詞付きの世間の願い(道まるごと)が reform へ落ちない (R-3)', () => {
+  for (const [wish, why] of [
+    ['add a filter to this vendor screen', 'this vendor'],
+    ['add a toggle to its workflow builder', 'its workflow'],
+    ['add an extra check to his identity page', 'his identity'],
+    ['add a note field to each vendor record in my CRM', 'each vendor'],
+    ['add a badge to some vendor cards on my store page', 'some vendor'],
+    ['add a summary panel to that census explorer', 'that census'],
+  ]) {
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform', `限定詞の除外が死んでいる — "${why}" が楽園と誤読された`);
+    assert.ok(['standard', 'full'].includes(got), `創造の道のいずれかであるべき (got=${got})`);
+  }
+});
+
+/**
+ * **R-2: 強い産物名にも紛れ語が在る。**
+ *
+ * ⚠️ build 相は「一字の名(口/門/相)だけが危うい」と裁き、`PRODUCT_STRONG_RE` は
+ *    `PRODUCT_FALSE_FRIENDS` の守りを**一度も通らなかった**。実測で覆った ——
+ *    `腎機能` `一段落` `画面越し` は main では counsel に着いていた。
+ */
+test('強い産物名の紛れ語が諐問の道を奪わない (R-2 / 機能・一段・画面)', () => {
+  for (const [wish, why] of [
+    ['腎機能の低下を診断してほしい', '腎機能'],
+    ['肝機能の数値は妥当か', '肝機能'],
+    ['認知機能の推移を診断してほしい', '認知機能'],
+    ['作業が一段落したか診断してほしい', '一段落'],
+    ['画面越しの接客は妥当か', '画面越し'],
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), 'counsel',
+      `紛れ語 "${why}" が産物と誤読され、諐問の道を失った — wantsProduct が強い名に紛れ語の守りを掛けていない`);
+  }
+  // 逆向き — 本物の産物の名は今まで通り勝つ(紛れ語の表が広がりすぎていないこと)
+  assert.notStrictEqual(forge.chooseScale('健康診断アプリが欲しい'), 'counsel');
+  assert.strictEqual(forge.chooseScale('add a dark mode toggle'), 'standard');
+  assert.strictEqual(forge.chooseScale('門に監査の一段を足す'), 'reform',
+    '紛れ語の表が「一段」の正当な用法まで食った');
+});
+
+/**
+ * **R-1: 一字の紛れ語の表は実測で見つけた範囲でしかなかった。**
+ *
+ * 教主が名指ししたのは 20 語。quality 相が自ら考えた願いで **20 件が壊れた**。
+ * `口コミ` `蛇口` `傷口` `悪口` `糸口` `火口` `経口` `口頭` /
+ * `相続` `相関` `相互` `相当` `相対` `血相` `世相` /
+ * `入門` `名門` `門戸` `関門` `門限` —— **一つも表に無かった**。
+ */
+test('一字の紛れ語の表は quality 相が足した 20 語を持つ (R-1)', () => {
+  for (const [wish, why] of [
+    ['口コミの傾向を診断してほしい', '口コミ'],
+    ['蛇口の水漏れ件数を診断してほしい', '蛇口'],
+    ['傷口の治り方を診断してほしい', '傷口'],
+    ['悪口の多い投稿を診断してほしい', '悪口'],
+    ['糸口が見つかるか診断してほしい', '糸口'],
+    ['火口の活動を診断してほしい', '火口'],
+    ['経口摂取の可否を診断してほしい', '経口'],
+    ['口頭試問の運用は妥当か', '口頭'],
+    ['相続の手続きを診断してほしい', '相続'],
+    ['顧客の相関を診断してほしい', '相関'],
+    ['相互評価の仕組みは妥当か', '相互'],
+    ['相当数の離脱があるか診断してほしい', '相当'],
+    ['血相を変えた投稿を診断してほしい', '血相'],
+    ['世相の変化を診断してほしい', '世相'],
+    ['入門課程の内容は妥当か', '入門'],
+    ['名門校の選抜方式を診断してほしい', '名門'],
+    ['門戸の開き方は妥当か', '門戸'],
+    ['関門の設定を見直す必要はないか', '関門'],
+    ['門限の運用は妥当か', '門限'],
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), 'counsel',
+      `紛れ語 "${why}" が産物と誤読された — PRODUCT_FALSE_FRIENDS に ${why} が無い`);
+  }
+});
+
+/**
+ * **S-1: `denude` の剥ぎは線形でなければならない (ReDoS)。**
+ *
+ * ⚠️ 実測(quality 相): ファイル名の剥ぎ `[A-Za-z0-9_.-]+\.(?:js|…)` は
+ *    **非一致の全ての開始位置から語幹を伸ばし直す** —— 計算量は入力長の二乗。
+ *      "x"*100000 → 4946 ms / "x"*200000 → 22698 ms (倍率 ×3.99)
+ *    `chooseScale` は `synod.js` の入り口で**神託の生文字列**を受ける。
+ *    長い願い文一本で楽園の玄関が 11 秒止まった。
+ *
+ * この門は**時間で裁く**。緩い閾値(1 秒)を置くのは、遅い機械で偽の赤を出さず、
+ * かつ **二乗の再発は必ず捕らえる**ためである(二乗なら 100KB で 5 秒を超える)。
+ */
+test('denude / chooseScale は長い願い文でも線形時間である (S-1 / ReDoS)', () => {
+  const LIMIT_MS = 1000;
+  for (const [why, wish] of [
+    ['100KB の非一致文字列', 'x'.repeat(100000)],
+    ['100KB のドット反復', 'a.'.repeat(50000)],
+    ['100KB のハイフン反復', 'a-'.repeat(50000)],
+    ['100KB のバッククォート未閉じ', '`' + 'a'.repeat(100000)],
+    ['100KB の engine 名 + 長文', 'conclave ' + 'x'.repeat(100000)],
+  ]) {
+    const t = process.hrtime.bigint();
+    forge.chooseScale(wish);
+    const ms = Number(process.hrtime.bigint() - t) / 1e6;
+    assert.ok(ms < LIMIT_MS,
+      `${why} で ${ms.toFixed(0)}ms 掛かった — 剥ぎの正規表現が破滅的バックトラックに戻っている ` +
+      '(ファイル名の剥ぎの先頭後読み `(?<![A-Za-z0-9_.-])` が消えていないか見よ)');
+  }
+});
+
+test('剥ぎの結果は後読みを足しても一字も変わらない (S-1 の正しさ)', () => {
+  // 後読みは**開始位置を語頭に固定するだけ**で、剥ぐ対象を変えてはならない
+  for (const [wish, want] of [
+    ['graph/forge.js の道選びを直す', 'graph/ の道選びを直す'],
+    ['README.md を直す', 'を直す'],
+    ['x.tsx を y.ts に直す', 'を に直す'],
+    ['my-file_2.test.js を消す', 'を消す'],
+    ['foo.jsx は剥がない', 'foo.jsx は剥がない'],
+    ['.github/workflows/ci.yml に段を足す', '.github/workflows/ に段を足す'],
+  ]) {
+    assert.strictEqual(forge.denude(wish), want, `剥ぎの結果が変わった: ${wish}`);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
 // 2. 道の形 — 産まない道であること
 // ══════════════════════════════════════════════════════════════════════
 console.log('\n諐問の道 — 何も創らないことの証明:');
