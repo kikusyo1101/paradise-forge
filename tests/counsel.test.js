@@ -267,20 +267,177 @@ test('admit の裁定は chooseScale と一致する (AC-17 / paradise.test.js:8
  *
  * ゆえに語彙は静的に書き、**この門が照合する**。engine が増えたら赤くなって
  * 人に知らせる —— 語彙に一語足す仕事が生まれるのは、正しい代である。
+ *
+ * ⚠️ **rework 相で門の形が変わった**(AC-31)。語彙は一枚の表ではなく
+ *    **強い名 / 弱い名の二枚**になった。engine が増えたとき、人は
+ *    「どちらへ載せるか」を選ばねばならない —— それが選ばせたい問いである。
+ *    世間一般の語と衝突する名を強い名へ置けば、世間の願いが reform へ攫われる。
  */
-test('ENGINE_NAMES が graph/*.js の名を網羅している (第22条 / 設計 §1.5)', () => {
+test('ENGINE_NAMES が graph/*.js の名を網羅している — 強い名か弱い名のどちらかに (第22条 / 設計 §1.5)', () => {
   const names = fs.readdirSync(path.join(ROOT, 'graph'))
     .filter(f => f.endsWith('.js'))
     .map(f => f.slice(0, -3))
     .filter(n => n.length >= 4 && /^[a-z][a-z-]*$/.test(n));
-  const vocab = new Set(forge.ENGINE_NAMES.split('|'));
-  const missing = names.filter(n => !vocab.has(n));
+  const strong = new Set(forge.ENGINE_NAMES_STRONG.split('|'));
+  const weak = new Set(forge.ENGINE_NAMES_WEAK.split('|'));
+  const missing = names.filter(n => !strong.has(n) && !weak.has(n));
   assert.deepStrictEqual(missing, [],
-    `engine が増えたのに道選びの語彙が知らない: ${missing.join(', ')} — forge.js の ENGINE_NAMES に足せ`);
+    `engine が増えたのに道選びの語彙が知らない: ${missing.join(', ')} — ` +
+    'forge.js の ENGINE_NAMES_STRONG か ENGINE_NAMES_WEAK のどちらかに足せ' +
+    '(世間一般の語と衝突するなら WEAK へ)');
+  // 二分であること — 同じ名が両方に居れば、どちらの規則で裁かれるか読めない
+  const both = [...strong].filter(n => weak.has(n));
+  assert.deepStrictEqual(both, [], `強い名と弱い名の両方に居る: ${both.join(', ')} — 二分は排他でなければならない`);
+  // 束ねた表は二つの和である(`ENGINE_NAMES` を読む他の門・文書のため)
+  assert.deepStrictEqual(new Set(forge.ENGINE_NAMES.split('|')), new Set([...strong, ...weak]),
+    'ENGINE_NAMES が強弱の和でない — 網羅の照合が嘘になる');
   // 逆向き: 禁則の語が紛れ込んでいないか (L-4)
   for (const forbidden of ['ledger', '台帳']) {
-    assert.ok(!vocab.has(forbidden),
+    assert.ok(!strong.has(forbidden) && !weak.has(forbidden),
       `ENGINE_NAMES に ${forbidden} が入った — 「台帳の毒を直す」が quick から reform へ攫われる`);
+  }
+  /**
+   * **世間一般の語を強い名へ置いてはならない** (AC-31 / rework 相の核心)。
+   *
+   * 実測した 10 件の誤射は全てこの形であった。名指しで禁じる ——
+   * engine が増えたとき、人がうっかり `vendor` を強い名へ戻す道を塞ぐ。
+   */
+  for (const common of ['identity', 'vendor', 'contract', 'census', 'pulse', 'deploy',
+    'domains', 'workflow', 'ci', 'atlas', 'upstream', 'derived', 'lessons', 'workspace']) {
+    assert.ok(!strong.has(common),
+      `世間一般の語 "${common}" が強い名に入った — 「a ${common} management app」が reform へ攫われる`);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// 1c. **逆向きの誤着** — 世間の願いを reform へ攫わない (AC-31 / rework 相)
+//
+// ⚠️ これは build 相が**直したつもりで新しく生んだ病**である。
+//    `ENGINE_NAMES` を一枚の表にして `REFORM_RE` に流し込んだ結果、
+//    `workflow` `identity` `vendor` `ci` … という**世間一般の語**を踏んだだけの
+//    創造の願いが、楽園の engine を改造する 11 相の道へ拉い去られた。
+//    誤着を直して別の誤着を生む —— requirements が名指しで禁じた振る舞いそのもの。
+//
+//    設計 §1.5 はこの穴を見落としていた。「engine の名を網羅せよ」とは言ったが、
+//    「engine の名の**半分は世間の語である**」とは言わなかった。
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n道選び — 世間の願いを reform へ攫わない (AC-31):');
+
+/** 教主が HEAD 3b726f5 で実測した 10 件。当たった弱い名を括弧に記す。 */
+const WORLDLY_MEASURED = [
+  ['build a workflow automation app for my team', 'workflow'],
+  ['an identity verification service for startups', 'identity'],
+  ['a vendor management dashboard', 'vendor'],
+  ['build a contract review tool', 'contract'],
+  ['make a census data explorer', 'census'],
+  ['a pulse oximeter tracking app', 'pulse'],
+  ['deploy a static site for my blog', 'deploy'],
+  ['atlas という名の地図アプリを作れ', 'atlas'],
+  ['CIに合格するためのアプリが欲しい', 'ci'],
+  ['顧客のワークフローを管理するアプリが欲しい', 'ワークフロー'],
+];
+
+/**
+ * 本走行の神官が自ら考えた 14 件。実測の 10 件だけでは、
+ * **その 10 語だけを特別扱いする実装**でも門が緑になってしまう(第21条)。
+ * 弱い名の全てと、冠詞の各形(a/an/the/my/our/your/their)を踏ませる。
+ */
+const WORLDLY_OWN = [
+  ['a domains registrar comparison site', 'domains'],
+  ['the upstream supplier tracker we discussed', 'upstream'],
+  ['our derived metrics dashboard for sales', 'derived'],
+  ['a lessons booking app for tutors', 'lessons'],
+  ['your workspace booking tool for the office', 'workspace'],
+  ['their identity card printing service', 'identity'],
+  ['make a pulse survey app for employees', 'pulse'],
+  ['build a vendor invoice scanner', 'vendor'],
+  ['create a contract expiry reminder', 'contract'],
+  ['a census tract map viewer', 'census'],
+  ['build an atlas of local hiking trails', 'atlas'],
+  ['ベンダー管理アプリが欲しい', 'vendor(和)'],
+  ['社内のワークフローを描く業務アプリを作って', 'ワークフロー'],
+  ['deploy キーを配るだけの小さな画面が欲しい', 'deploy'],
+];
+
+for (const [wish, why] of [...WORLDLY_MEASURED, ...WORLDLY_OWN]) {
+  test(`"${wish}" は reform でない — 弱い名 ${why} に道を奪われない (AC-31)`, () => {
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform',
+      `世間の創造の願いが engine 改修の 11 相へ攫われた(当たった弱い名: ${why})`);
+    // 何であるかも名乗る — 黙って通さない(第37条)
+    assert.ok(['standard', 'full'].includes(got),
+      `創造の道のいずれかであるべき (got=${got})`);
+  });
+}
+
+/**
+ * **弱い名も、楽園を名指していれば reform に留まる** —— 逆向きの証明。
+ *
+ * 門を「弱い名は常に reform でない」に倒せば上の 24 件は緑になるが、
+ * それは弱い名を語彙から消したのと同じで、`CI に ledger --audit を追加する` が死ぬ。
+ * ゆえに**両向きを撃つ**(第36条: 門は消すのではなく分ける)。
+ */
+test('弱い名も建造の動詞を伴えば reform に留まる (AC-31 の逆向き)', () => {
+  for (const wish of [
+    'CI に ledger --audit を追加する',
+    'ci に一段の門を足す',
+    'workflow に再試行の口を設ける',
+    'census に fix の口を足す',
+    'add a retry flag to the deploy engine',
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), 'reform',
+      `弱い名が建造の動詞を伴っているのに reform を名乗らない — 語彙を消したのと同じ: ${wish}`);
+  }
+  // 強い名は単独で名乗る(建造の動詞が無くても)
+  assert.strictEqual(forge.chooseScale('gauge に fingerprint を確かめる口を設ける'), 'reform');
+  assert.strictEqual(forge.isReformSubject('conclave の毒を除く'), true,
+    '強い名が単独で楽園を名指せなくなった');
+});
+
+/**
+ * **冠詞の除外そのもの**を撃つ。`isReformSubject` の単体である。
+ *
+ * `a vendor` は世間の物を一つ指す語法であり、楽園の器官の名指しではない。
+ * ただし **冠詞を伴わない `vendor` に建造の動詞**が付けば、それは楽園の話でありうる。
+ */
+test('冠詞の直後の弱い名は楽園を名指さない (AC-31)', () => {
+  for (const art of ['a', 'an', 'the', 'my', 'our', 'your', 'their']) {
+    assert.strictEqual(forge.isReformSubject(`add a flag to ${art} vendor page`), false,
+      `冠詞 "${art}" の直後の弱い名が楽園と誤読された`);
+  }
+  // 冠詞が無ければ、建造の動詞を伴って楽園を名指す
+  assert.strictEqual(forge.isReformSubject('add a flag to vendor'), true,
+    '冠詞なしの弱い名が建造の動詞を伴っても楽園を名指さない — 除外が効きすぎている');
+  // ⚠️ 語末の `a` を冠詞と誤読してはならない(後読みの先頭 `\b` が守る)
+  assert.strictEqual(forge.isReformSubject('media workflow に口を足す'), true,
+    '"media" の末尾の a が冠詞と誤読された — 後読みの \\b が消えている');
+});
+
+/**
+ * **冠詞の除外だけが守っている 6 件** —— 門を黙らせないための実測 (第21条)。
+ *
+ * ⚠️ 上の 24 件は **どれも建造の動詞を持たない**。ゆえに冠詞の除外を消しても
+ *    `BUILD_RE` の伴需が独りで守り、**門は一本も鳴らない**(故障注入で実測)。
+ *    黙る門は門ではない。ゆえに **建造の動詞を持ちながら世間の願いである**形で撃つ ——
+ *    「自分のアプリの vendor 画面に一段足す」は楽園の改革ではない。
+ *    この 6 件は冠詞の除外が死ねば即座に赤くなる。
+ */
+test('冠詞の直後の弱い名は、建造の動詞を伴っても reform でない (AC-31 / 冠詞の除外の単独証明)', () => {
+  for (const [wish, why] of [
+    ['add a dark mode toggle to my vendor dashboard', 'my vendor'],
+    ['add CSV export to our census explorer app', 'our census'],
+    ['extend the workflow builder in my todo app', 'the workflow'],
+    ['add a filter to the vendor list screen', 'the vendor'],
+    ['enable dark mode in their identity card app', 'their identity'],
+    ['add a search box to my atlas of hiking trails', 'my atlas'],
+  ]) {
+    // 前提の確認 — 建造の動詞を確かに持っている(持たなければ門は別の理由で緑になる)
+    assert.ok(forge.BUILD_RE.test(forge.denude(wish)),
+      `この門の前提が崩れた — 建造の動詞を持たない例では冠詞の除外を撃てない: ${wish}`);
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform',
+      `冠詞の除外が死んでいる — "${why}" が楽園の器官と誤読された`);
+    assert.ok(['standard', 'full'].includes(got), `創造の道のいずれかであるべき (got=${got})`);
   }
 });
 
@@ -510,18 +667,22 @@ test('COUNSEL_RE を空にすると判定は崩れる(門が効いている証�
   /**
    * 諐問の願いが、諐問でなくなる。
    *
-   * ⚠️ **期待値が `standard` から `reform` へ動いた理由**(第57条 —
-   * 門を緑にするために期待値を実装へ倒したのではない):
-   *   reform 走行『route-misfire』の FR-04 が `REFORM_RE` に engine の固有名を加え、
-   *   その中に **`CI`** が入った。ゆえに「現状の**CI**の健全性を監査してほしい」は
-   *   諐問の語彙を失えば「楽園の CI の話」として **reform** が拾う。
-   *   これは `CI に ledger --audit を追加する` → reform (AC-03) と**同じ語彙の帰結**であり、
-   *   語彙を足した以上この落ち先が動くのは必然である。
+   * ⚠️ **期待値が二度動いた。両方とも語彙を足し引きした必然の帰結である**
+   * (第57条 — 門を緑にするために期待値を実装へ倒したのではない):
+   *
+   *   1. `standard` → `reform`: reform 走行『route-misfire』の FR-04 が
+   *      `REFORM_RE` に engine の固有名を加え、その中に **`CI`** が入った。
+   *   2. `reform` → `standard`: 同走行の **rework 相** が engine 名を
+   *      強い名と弱い名に割り、**`CI` は弱い名になった**(AC-31)。弱い名は
+   *      建造の動詞を伴って初めて楽園を名指す。「現状の CI の健全性を
+   *      監査してほしい」に建造の動詞は無いので、諐問の語彙を失えば
+   *      **世間の願い**として `standard` へ落ちる —— これが正しい姿である。
+   *      1. の落ち先(reform)こそが、世間の願いを engine 改修へ攫う病だった。
    *
    * **門の主張は一字も緩めていない** —— 「語彙を潰せば counsel でなくなる」を撃ち続ける。
    * 落ち先を `notStrictEqual('counsel')` で誤魔化さず、**どこへ落ちるかまで名指しする**。
    */
-  assert.strictEqual(broken.chooseScale('現状のCIの健全性を監査してほしい'), 'reform',
+  assert.strictEqual(broken.chooseScale('現状のCIの健全性を監査してほしい'), 'standard',
     '語彙を潰しても counsel のままなら、COUNSEL_RE は判定に効いていない');
   assert.strictEqual(broken.chooseScale('楽園のエンジンを監査してほしい'), 'reform',
     '語彙を潰せば主題優先は消え、楽園の話は reform へ落ちる');

@@ -370,15 +370,114 @@ node graph/forge.js scale "楽園の自己診断に絞り込みの口を設け�
 
 ---
 
-**AC 総数: 30**
+## 3.6 欠陥C — **逆向きの誤着**: 世間一般の願いが reform へ拉い去られる
+
+> ⚠️ **これは設計時に見逃された穴である。**
+> design §1.5 は「`ENGINE_NAMES` は `graph/*.js` の名から測って作れ」「engine が増えたら
+> 門が赤くなって人に知らせよ」とまでは言った。だが **「engine の名の半分は世間一般の語である」**
+> とは一言も言わなかった。ゆえに build 相は `identity` `vendor` `contract` `census` `pulse`
+> `deploy` `domains` `workflow` `ci` `atlas` を**強い固有名と同じ表に並べ**、
+> `REFORM_RE` に `\b(?:ENGINE_NAMES)\b` として流し込んだ。
+>
+> 結果、**世間並みの創造の願いが engine 改修の 11 相へ攫われた**。教主の実測(HEAD `3b726f5`):
+>
+> | 願い | 落ちた先 | 当たった弱い名 |
+> |---|---|---|
+> | `build a workflow automation app for my team` | reform | workflow |
+> | `an identity verification service for startups` | reform | identity |
+> | `a vendor management dashboard` | reform | vendor |
+> | `build a contract review tool` | reform | contract |
+> | `make a census data explorer` | reform | census |
+> | `a pulse oximeter tracking app` | reform | pulse |
+> | `deploy a static site for my blog` | reform | deploy |
+> | `atlas という名の地図アプリを作れ` | reform | atlas |
+> | `CIに合格するためのアプリが欲しい` | reform | ci |
+> | `顧客のワークフローを管理するアプリが欲しい` | reform | ワークフロー |
+>
+> 神が「ベンダー管理アプリが欲しい」と命じて楽園の engine を改造する道が立ち上がる ——
+> **§3 の欠陥Aと同じ重さの病を、正反対に生んだ**だけである。本 requirements が
+> §2 で名指しで禁じた「**誤着を直して別の誤着を生む**」そのものであり、
+> ゆえに build 相は差し戻された(rework)。
+
+**修正の形**: `ENGINE_NAMES` を **強い名 / 弱い名の二枚**に割る。
+
+* **強い名** (`ENGINE_NAMES_STRONG`) — 楽園固有で世間の願い文に現れない
+  (`conclave` `clergy` `codex` `forge` `gauge` `synod` `ordain` `spawn-trace` …)。
+  **単独で reform を名乗ってよい。**
+* **弱い名** (`ENGINE_NAMES_WEAK` / `ENGINE_NAMES_WEAK_JA`) — 世間一般の語と衝突する
+  (`identity` `vendor` `contract` `census` `pulse` `deploy` `domains` `workflow` `ci`
+  `atlas` `upstream` `derived` `lessons` `workspace` `ワークフロー`)。
+  **(1) 建造の動詞(`BUILD_RE`)を伴い、かつ (2) 英語の冠詞
+  (a/an/the/my/our/your/their)の直後でない** 時にのみ reform を名乗る。
+
+`REFORM_RE` の**強い抽象名は一語も減らしていない**(楽園/paradise/憲法/engine/門/
+自己診断/走行帳/オーケストレーション/神官/枢機卿…)。`ワークフロー` 一語だけが
+強い抽象名の側から弱い名の側へ移った —— それは engine の器官名ではなく世間の語だからである。
+`isCounsel` / `denude` / `PRODUCT_*` / `DOC_STRONG_RE` / `chooseScale` の**判定順は一段も動かしていない**。
+3 段目の述語が `REFORM_RE.test(d)` から `isReformSubject(d)` に替わっただけである。
+
+---
+
+**AC-31** 世間一般の願いが reform へ攫われない(欠陥Cの修正 / 回帰防止)
+```
+node tests/counsel.test.js
+```
+期待: 上の実測 10 件と、rework 相の神官が自ら考えた 14 件 —— 計 **24 件が
+`standard` または `full` に着き、`reform` でない**ことを門が断定する。
+門は `notStrictEqual('reform')` で誤魔化さず、**落ち先まで名指しする**(第37条)。
+
+**AC-32** 弱い名も、楽園を名指していれば reform に留まる(**逆向きの証明** / 第36条)
+```
+node tests/counsel.test.js
+```
+期待: `CI に ledger --audit を追加する` / `ci に一段の門を足す` /
+`workflow に再試行の口を設ける` / `census に fix の口を足す` /
+`add a retry flag to the deploy engine` が **すべて reform**。
+強い名は単独で名乗る(`gauge に fingerprint を確かめる口を設ける` → reform)。
+**註**: この AC が無ければ「弱い名は常に reform でない」に倒して AC-31 を緑にできてしまう。
+それは弱い名を語彙から消したのと同じで、欠陥Aの修正を殺す。
+
+**AC-33** 冠詞の除外が**単独で**効いている(黙る門を作らない / 第21条)
+```
+node tests/counsel.test.js
+```
+期待: `add a dark mode toggle to my vendor dashboard` /
+`add CSV export to our census explorer app` /
+`extend the workflow builder in my todo app` ほか計 **6 件が reform でない**。
+**註**: AC-31 の 24 件は**どれも建造の動詞を持たない**ので、冠詞の除外を消しても
+`BUILD_RE` の伴需が独りで守り門は黙る(rework 相の故障注入で実測)。
+ゆえに **建造の動詞を持ちながら世間の願いである**形で別に撃つ。
+
+**AC-34** `ENGINE_NAMES` 網羅の門が**二分に合わせて**更新されている(design §1.5 の改版)
+```
+node tests/counsel.test.js
+```
+期待: `graph/*.js` の名(4 文字以上・小文字)が **強い名か弱い名のどちらかに載っている**。
+加えて —— (a) 同じ名が両方に居ない(排他)、(b) `ENGINE_NAMES` が二つの和である、
+(c) `ledger`/`台帳` がどちらにも無い(L-4)、(d) **世間一般の 14 語が強い名の側に無い**。
+engine が増えたら赤くなり、人に「**どちらへ載せるか**」を選ばせる。
+
+**AC-35** 欠陥Cの修正が**故障注入で鳴る**(第21条 / 第57条)
+三つの変異それぞれで `node tests/counsel.test.js` が赤くなること:
+| 変異 | 期待 |
+|---|---|
+| (a) 弱い名を強い名の表に戻す | 赤くなる |
+| (b) 冠詞の除外(後読み)を消す | 赤くなる |
+| (c) `isReformSubject` から `BUILD_RE` の伴需を消す | 赤くなる |
+**註**: 何本赤くなったかを rework 相が実測で書く。手で数を書かない(第22条)。
+
+---
+
+**AC 総数: 35**
 内訳 — 欠陥Aの修正 5 (AC-01〜05) / 回帰防止 4 (AC-06〜09) / 既存の門の保存 8 (AC-10〜17) /
-欠陥Bの修正 9 (AC-18〜26) / engine の健全性 4 (AC-27〜30)
+欠陥Bの修正 9 (AC-18〜26) / engine の健全性 4 (AC-27〜30) /
+**欠陥C(逆向きの誤着)の修正 5 (AC-31〜35)**
 
 ---
 
 ## 4. 完了条件
 
-**AC-01 から AC-30 のすべてが期待通りである**こと。ただし:
+**AC-01 から AC-35 のすべてが期待通りである**こと。ただし:
 * 撃てなかった AC(AC-22 の倉不在 / AC-26 の git 除去不能)は
   **skip を声に出して記録する**。緑と数えてはならない(第37条)。
 * **AC-16(全走)を撃たずに完了と称してはならない。** 6 分は払うべき代である。

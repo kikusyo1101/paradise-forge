@@ -312,13 +312,57 @@ function denude(wish) {
  *    `台帳の毒を直す` が quick から reform へ攫われた(回帰防止の一件)。
  *    「CI に ledger --audit を追加する」は **`CI`** の方で reform に着けばよい。
  *
+ * ── 強い名と弱い名に割る (AC-31 / rework 相が塞いだ逆向きの誤着) ────────
+ *
+ * ⚠️ **engine の固有名を一枚の表にして `REFORM_RE` に流し込んだのが病であった。**
+ * 実測(HEAD 3b726f5): `build a workflow automation app for my team` /
+ * `an identity verification service for startups` / `a vendor management dashboard` /
+ * `deploy a static site for my blog` / `CIに合格するためのアプリが欲しい` …
+ * **世間並みの創造の願い 10 件が、engine の名を踏んだというだけで reform(11相)へ攫われた。**
+ * 神が「ベンダー管理アプリが欲しい」と命じて楽園の engine を改造する道が立つのは、
+ * 直そうとした誤着と**同じ重さの病を正反対に生んだ**だけである。
+ *
+ * ゆえに名を二つに割る:
+ *
+ *   **強い名** (`ENGINE_NAMES_STRONG`) —— 楽園固有で、世間の願い文に現れない。
+ *     `conclave` `clergy` `codex` `forge` `gauge` `synod` `ordain` `spawn-trace` …
+ *     これらは **単独で reform を名乗ってよい**。
+ *
+ *   **弱い名** (`ENGINE_NAMES_WEAK`) —— 世間一般の語と衝突する。
+ *     `identity` `vendor` `contract` `census` `pulse` `deploy` `workflow` `ci` `atlas` …
+ *     これらは **(1) 建造の動詞(`BUILD_RE`)を伴い、かつ (2) 英語の冠詞
+ *     (a/an/the/my/our/your/their) の直後でない** 時にのみ reform を名乗る。
+ *     「CI に ledger を追加する」は (1)(2) を満たすので reform に留まり、
+ *     「a vendor management dashboard」は (1) を欠くので創造の道へ着く。
+ *
+ * ⚠️ **`lessons` を強い名に置いてはならない**(教主の試案から替えた一語)。
+ *    `a lessons booking app for tutors` は世間並みの創造の願いであり、
+ *    `lessons` は日常語の複数形である。同じ理由で `workspace` も弱い名に置く。
+ *
  * `COUNSEL_JA` と同じく **string** で持つ。`REFORM_RE` の源に埋め込むためである。
  */
-const ENGINE_NAMES = 'abode|apply-guards|apply-hooks|apply-models|apply-seat|apply-spawn|atlas|' +
-  'branch-guard|build-identity-catalog|census|check-agents|clergy|codex|conclave|contract|critic|' +
-  'daily-guard|deploy|derived|domains|export-state|forge|gauge|graph-engine|hermetic|identity|' +
-  'lessons|orchestrator|ordain|pulse|spawn-trace|synod|upstream|vendor|verdict|visual-verify|' +
-  'wiring|workspace|ci|workflow';
+const ENGINE_NAMES_STRONG = 'abode|apply-guards|apply-hooks|apply-models|apply-seat|apply-spawn|' +
+  'branch-guard|build-identity-catalog|check-agents|clergy|codex|conclave|critic|daily-guard|' +
+  'export-state|forge|gauge|graph-engine|hermetic|orchestrator|ordain|spawn-trace|synod|verdict|' +
+  'visual-verify|wiring';
+
+/** 世間一般の語と衝突する engine 名(英語)。単独では reform を名乗れない。 */
+const ENGINE_NAMES_WEAK = 'atlas|census|ci|contract|deploy|derived|domains|identity|lessons|' +
+  'pulse|upstream|vendor|workflow|workspace';
+
+/**
+ * 弱い名の日本語。**`\b` を使ってはならない**(L-3 と同じ理由)。
+ * `ワークフロー` は旧実装で `REFORM_RE` の強い抽象名の側に居たが、
+ * 「顧客のワークフローを管理するアプリが欲しい」が reform へ攫われた(実測)。
+ * 世間の語であるから弱い名の側へ移す。
+ */
+const ENGINE_NAMES_WEAK_JA = 'ワークフロー';
+
+/**
+ * 網羅の門(`tests/counsel.test.js` / 設計 §1.5)が読む、二つを束ねた表。
+ * **判定には使わない** —— 判定は強弱それぞれの規則が別々に行う。
+ */
+const ENGINE_NAMES = ENGINE_NAMES_STRONG + '|' + ENGINE_NAMES_WEAK;
 
 /**
  * 神託が「楽園そのもの」を指しているか。
@@ -329,13 +373,42 @@ const ENGINE_NAMES = 'abode|apply-guards|apply-hooks|apply-models|apply-seat|app
  *
  * 抽象名(楽園/エンジン/門)だけでは足りない —— 実測で
  * `gauge に fingerprint を確かめる口を設ける` が standard へ落ちた。
- * ゆえに **engine の固有名**(`ENGINE_NAMES`)と、engine の器官を指す
- * 日本語(ワークフロー/自己診断/走行帳)を源に足す。
+ * ゆえに **engine の強い固有名**(`ENGINE_NAMES_STRONG`)を源に足す。
+ *
+ * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(自己診断/走行帳/門/憲法…)。
+ *    rework 相で動かしたのは `ワークフロー` 一語だけで、それは弱い名の側へ移した。
  */
 const REFORM_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|' +
   '門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|' +
-  '枢機卿|cardinal|神官|priest|ワークフロー|自己診断|走行帳)' +
-  `|\\b(?:${ENGINE_NAMES})\\b`, 'i');
+  '枢機卿|cardinal|神官|priest|自己診断|走行帳)' +
+  `|\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
+
+/**
+ * 弱い名 —— **英語の冠詞の直後に在るものは数えない**。
+ *
+ * `a vendor` / `an identity` / `the workflow` / `my atlas` は
+ * 「世間の物を一つ指す」語法であって、楽園の器官の名指しではない。
+ * 後読み `(?<!\b(?:a|an|the|my|our|your|their)\s)` の **先頭の `\b` は必須**である:
+ * これが無いと `media workflow` の `a ` が冠詞と誤読され、除外が効きすぎる。
+ */
+const REFORM_WEAK_RE = new RegExp(
+  `(?:${ENGINE_NAMES_WEAK_JA})` +
+  `|(?<!\\b(?:a|an|the|my|our|your|their)\\s)\\b(?:${ENGINE_NAMES_WEAK})\\b`, 'i');
+
+/**
+ * 願いの**対象が楽園自身**か (AC-31)。
+ *
+ * 強い名は単独で名乗る。弱い名は **建造の動詞を伴って初めて**名乗る ——
+ * 「engine を改造せよ」と言っていないのに engine の名を踏んだだけの願いは、
+ * 世間の創造物への願いである。
+ *
+ * `chooseScale` の**判定順は一段も動かしていない**。3段目で呼ばれる述語が
+ * `REFORM_RE.test(d)` からこの関数に替わっただけである。
+ */
+function isReformSubject(d) {
+  if (REFORM_RE.test(d)) return true;
+  return REFORM_WEAK_RE.test(d) && BUILD_RE.test(d);
+}
 
 /**
  * 諐問の語彙 — 「創れ」ではなく「答えよ」と言っている願い。
@@ -508,7 +581,9 @@ function chooseScale(wish) {
   //   中で自ら剥ぐ(`denude` は冪等なので二重に剥いでも害は無い)。
   if (isCounsel(wish)) return 'counsel';
   // 対象が楽園自身なら、創造物の道ではなく改革の道を行く(第23条)。
-  if (REFORM_RE.test(d)) return 'reform';
+  // ★ 述語は `isReformSubject` —— 強い名は単独で、弱い名は建造の動詞を伴って
+  //   初めて楽園を名指す(AC-31)。**判定の段は一段も動かしていない。**
+  if (isReformSubject(d)) return 'reform';
   const quickJa = /一行|修正|バグ|直す|直して|直し|タイポ|誤字|微調整/;
   const quickEn = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick)\b/;
   const fullJa = /製品|システム|アプリ|プラットフォーム|全体/;
@@ -666,4 +741,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, ENGINE_NAMES };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_WEAK_RE, isReformSubject, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };
