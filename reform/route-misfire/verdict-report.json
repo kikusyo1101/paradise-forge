@@ -1,0 +1,157 @@
+{
+  "slug": "route-misfire",
+  "produces": "artifact",
+  "wish": "楽園の forge の道選びと workspace の門が誤着する欠陥を engine から直す",
+  "branch": "reform/route-misfire",
+  "head": "e60677b",
+  "measuredIn": "verdict 相が自分の手で走らせた実出力のみ。教主・他相の報告は一切写していない (第27条)。Windows / git-bash (MSYS)、作業樹 C:/Users/kikus/Documents/workspace/paradise、単独走行",
+
+  "build": "pass",
+  "buildEvidence": {
+    "note": "楽園はコンパイル工程を持たない。ゆえに build は「全ての常駐 engine の門が自分の目で緑を返すか」で裁いた。以下は tribunal が実際に走らせた exit である。",
+    "gates": {
+      "node tests/paradise.test.js": "exit 0 — Paradise self-test: 471 passed, 0 failed (background / ✓行 584 / ✗行 0)",
+      "node tests/counsel.test.js": "exit 0 — Counsel self-test: 134 passed, 0 failed",
+      "node tests/abandoned-run.test.js": "exit 0 — abandoned-run: 33 passed, 0 failed",
+      "node graph/census.js check": "exit 0 — every number the paradise claims about itself is true (background)",
+      "node graph/codex.js check": "exit 0 — 索引は本文と一致している (60 条)",
+      "node graph/wiring.js check": "exit 0 — engine 39 / 内の辺 73、門 19 本すべてに走らせる者が居る",
+      "node graph/workspace.js check": "exit 0 — 創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし",
+      "node graph/derived.js check": "exit 0 — no test depends on derived content",
+      "node graph/conclave.js audit": "exit 0 — 見捨てられた走行 1 (sovereign-abode、本走行とは別) / 全 12",
+      "node graph/critic.js review reform/route-misfire --lessons graph/lessons.json --self": "exit 1 — 38 GAP。reflect §1.1 が全件『語の出現で裁く偽の赤』と実物照合のうえ裁いた"
+    }
+  },
+
+  "tests": {
+    "passed": 471,
+    "failed": 0,
+    "total": 471,
+    "command": "node tests/paradise.test.js  (引数なし全走 / background)",
+    "lastLine": "Paradise self-test: 471 passed, 0 failed",
+    "exit": 0,
+    "checkMarks": 584,
+    "crossMarks": 0,
+    "note": "tribunal が自分で background に投げて得た実出力。✓行 584 / ✗行 0 は log の grep -c による実測。"
+  },
+
+  "security": {
+    "issues": 0,
+    "secrets": 0,
+    "assessed": true,
+    "secretScan": {
+      "command": "git diff main...HEAD --name-only | grep -v '^reform/' | xargs grep -hEic \"(api[_-]?key|secret|password|passwd|token)[[:space:]]*[:=][[:space:]]*[\\\"'][A-Za-z0-9/_+=-]{12,}|BEGIN .*PRIVATE KEY\"",
+      "scannedFiles": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "tests/abandoned-run.test.js", "tests/counsel.test.js"],
+      "result": "SECRETS_FOUND=0"
+    },
+    "note": "出荷を止めるべき未解決の security 欠陥は 0 である。security 相が挙げた HIGH-1(isCreationsVault が倉の子を倉と名乗り緑を騙った)と S-1(denude の O(n^2) ReDoS)は、どちらも本走行の中で修理され治癒が実測済みである。以下は受容した残債であり、隠していない。",
+    "acceptedRisks": [
+      {
+        "id": "V-2",
+        "severity": "LOW",
+        "claim": "GIT_DIR 細工で isCreationsVault の判定を両向きに曲げられる",
+        "whyNotBlocking": "攻撃者は既にローカルで env を制御できる立場。かつ目印ファイル(.paradise-creations)が本物の倉を守る。緑を騙る向きには倒れない"
+      },
+      {
+        "id": "V-3",
+        "severity": "INFO",
+        "claim": "TOCTOU は成立する",
+        "whyNotBlocking": "同じ権限で倉を直接消す方が早い。脅威模型の外"
+      }
+    ]
+  },
+
+  "spec": {
+    "satisfied": false,
+    "unmet": [
+      "F-1 (reflect 相が実測で発見): requirements §3.6 が名指しで禁じた『誤着を直して別の誤着を生む』を、本走行が強い名の側で再発させた。ENGINE_NAMES_STRONG の 26 語が BUILD_RE の伴需を課されず REFORM_RE で無条件に reform を名乗るため、世間の創造の願い 21/21 が reform へ攫われる。同じ 21 件を main (c216014) で撃つと 0/21 であり、これは本走行が作った回帰である。日本語の願いには限定詞の除外が原理的に効かず、強い名の防壁が一枚も存在しない (13/13 が攫われた)",
+      "F-4 (同): AC-31/32/33 のコーパス全 29 件と AC-35 の変異 3 件がすべて弱い名の枝だけを狙っており、強い名の枝を一度も撃っていない。ゆえに counsel.test.js 134 件・paradise.test.js 471 件が全緑のまま F-1 を素通しした。門が守ると主張する面の半分が無防備である"
+    ],
+    "acceptanceTotal": 35,
+    "acceptancePassed": 28,
+    "acceptanceNoGate": 7,
+    "acceptanceFailed": 0,
+    "note": "verify 相の AC 逐一実測では 達成 28 / 未達 0 / 検められない 0 / 門が無い 7 であった。だが AC の逐一照合は『AC が撃つ面』しか見ない。reflect 相が AC の外側を自作の探針 42 件 (A群10/B群21/C群11) で撃ち、requirements §3.6 の禁止そのものへの違反 (F-1) を実測で発見した。AC が全て緑であることと spec が満たされていることは同じではない (第16条)。ゆえに satisfied=false を宣言する。",
+    "measuredRegression": {
+      "probe": "A群=楽園の改修(reform が正解) 10件 / B群=世間の創造・強い名を含む(reform は誤り) 21件 / C群=世間の創造・弱い名を含む(reform は誤り) 11件",
+      "main": { "head": "c216014", "A群誤着": 6, "B群誤着": 0, "C群誤着": 0, "total": "6/42" },
+      "HEAD": { "head": "e60677b", "A群誤着": 0, "B群誤着": 21, "C群誤着": 0, "total": "21/42" },
+      "reading": "本走行は A群 6件を治した (6→0)。同時に B群 0件を 21件に悪化させた (0→21)。差し引きの総数は 6→21 で悪化している",
+      "examples": [
+        "gauge calibration tracker -> reform (main: standard)",
+        "codex manuscript viewer -> reform (main: full)",
+        "synod 会議の日程調整アプリを作れ -> reform (main: full)",
+        "forge 鍛冶屋の在庫管理アプリを作って -> reform (main: full)"
+      ]
+    },
+    "openGaps": [
+      "『門が無い』7件 (AC-30 / AC-26 / AC-35 / AC-16 / AC-22 / AC-19 / AC-29)。どれも今この瞬間は緑だが回帰を捕らえる門が無い。AC-30 が最も重い — forge.js の CLI (scale 口) を子プロセスで撃つ門が 0 本であり、本走行は forge.js を大きく書き換えた。tribunal は『別の走行へ送る』と裁いた (reflect §4)",
+      "F-2: denude がファイル名を剥ぐとき判定の材料そのものを消す。'forge.js の道選びを直せ' が standard へ落ちる (main でも同じ — 本走行の産物ではないが本走行の主題そのもの)",
+      "F-3: AC-34 の網羅の門が n.length >= 4 で kg を黙って除外し、kg が語彙表に無いまま永久に緑 (main でも同じ)"
+    ]
+  },
+
+  "diff": {
+    "files": 13,
+    "implementationFiles": 6,
+    "implementationList": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "tests/abandoned-run.test.js", "tests/counsel.test.js"],
+    "note": "git diff main...HEAD --name-only の実測。残る 7 本は reform/route-misfire/ の記録"
+  },
+
+  "performance": {
+    "article": 38,
+    "before": {
+      "head": "c216014 (main)",
+      "tests": 469,
+      "skipped": 2,
+      "testDeclarations": 57,
+      "routeProbeNG": "6/42",
+      "sourcedFrom": "git clone --no-hardlinks --branch main による複製で tribunal が実測"
+    },
+    "after": {
+      "head": "e60677b",
+      "tests": 471,
+      "skipped": 0,
+      "testDeclarations": 94,
+      "routeProbeNG": "21/42",
+      "measuredBy": "tribunal",
+      "command": "node tests/paradise.test.js (background)"
+    },
+    "statement": "門は 469→471 に増え test() 宣言は 57→94 に増えた。だが道選びの正しさは 6/42 誤着 → 21/42 誤着 へ悪化した。門の数の増加は振る舞いの改善を意味しない(第38条は成果物の数だけでなく振る舞いにも課される)。"
+  },
+
+  "trajectory": {
+    "score": 70,
+    "complete": false,
+    "phasesTotal": 11,
+    "phasesDone": 9,
+    "domainsTotal": 6,
+    "domainsRatified": 5,
+    "firstPassRate": 1,
+    "reworkCount": 1,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "durationMs": 179276658,
+    "tier1": 9,
+    "tier2": 0,
+    "tier3": 0,
+    "noTier": 0,
+    "unobservable": 0,
+    "tier3Ratio": 0,
+    "command": "node graph/gauge.js score reform/route-misfire/conclave.json --json",
+    "note": "gauge.js が run-state から決定的に導いた実数をそのまま写した。手で estimate した数は一つも無い。complete=false / phasesDone 9 は reflect と verdict が未 done だからである(本判定がその 2 本にあたる)。score 70 は floor 60 を上回るので trajectory 自体は REWORK の理由にならない。"
+  },
+
+  "repairsThatCreatedNewDefects": {
+    "count": 5,
+    "rate": "5/5 = 100%",
+    "list": [
+      { "repair": "欠陥A (engine 改修が counsel/standard へ攫われる) を直した", "created": "欠陥C — 世間の願いが reform へ拉い去られる", "foundBy": "教主" },
+      { "repair": "欠陥B (env 残留で偽の赤) を直した", "created": "HIGH-1 — isCreationsVault が倉の子を倉と名乗り毒を見逃し緑を騙った", "foundBy": "security 相" },
+      { "repair": "FR-02 の denude (ファイル名剥ぎ)", "created": "S-1 — O(n^2) ReDoS", "foundBy": "security 相" },
+      { "repair": "欠陥B の修理が workspace.js check の経路を増やした", "created": "V-1 — 壊れた走行帳一つで check が uncaught TypeError で死に、engine を守る三つの検めが全て沈黙した", "foundBy": "verify 相" },
+      { "repair": "欠陥C (弱い名の誤着) を直した", "created": "F-1 — 強い名 21 語が世間の願いを攫う", "foundBy": "reflect 相 (本走行の tribunal)" }
+    ],
+    "note": "5 件中 4 件は出荷前に修理され治癒が実測された。5 件目 (F-1) は未修理であり、これが spec.satisfied=false の根拠である。"
+  }
+}
