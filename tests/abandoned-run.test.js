@@ -654,6 +654,80 @@ test('B-14 [MED-1]: PARADISE_CREATIONS の細工した値で例外を出さな�
   }
 });
 
+/**
+ * **B-16 [V-1]** — 壊れた形の走行帳一つで `check` が**走り切らずに死ぬ**のを禁じる。
+ *
+ * verify 相の実測(修理前): 次の四つで `workspace.js check` が
+ * uncaught TypeError を投げて EXIT=1 で落ちた ——
+ *   `null` / `{"domains":"x"}` / `{"domains":[null]}` / `{"domains":[{"phases":[null]}]}`
+ * どれも `JSON.parse` は**通る**ので `catch { continue; }` の網に掛からない。
+ *
+ * 害は「壊れた走行帳を見逃す」ではない。**engine を守る三つの検めが全て沈黙する** ——
+ * creations の混入も、住所の直書きも、印字されないまま落ちる。
+ * 倉に一つ壊れた JSON を置くだけで `check` を無力化できた(第37条の別の顔)。
+ *
+ * ⚠️ この門は「投げないこと」だけを撃つのではない。**正しい走行帳を今まで通り
+ *    拾うこと**(最後の一件)も同時に撃つ —— さもなくば `strayRuns` を
+ *    `return []` に倒して緑にできてしまう(第21条)。
+ */
+test('B-16 [V-1]: 壊れた形の走行帳で走査が死なない — 壊れた JSON 一つで門を無力化できない', () => {
+  const shapes = [
+    ['null', 'null'],
+    ['配列', '[1,2,3]'],
+    ['数値', '42'],
+    ['文字列', '"reform"'],
+    ['真偽', 'true'],
+    ['domains:null', '{"meta":{"scale":"reform"},"domains":null}'],
+    ['domains:"x"', '{"meta":{"scale":"reform"},"domains":"x"}'],
+    ['domains:7', '{"meta":{"scale":"reform"},"domains":7}'],
+    ['domains:[null]', '{"meta":{"scale":"reform"},"domains":[null]}'],
+    ['domains:["x"]', '{"meta":{"scale":"reform"},"domains":["x"]}'],
+    ['phases:null', '{"meta":{"scale":"reform"},"domains":[{"phases":null}]}'],
+    ['phases:"x"', '{"meta":{"scale":"reform"},"domains":[{"phases":"x"}]}'],
+    ['phases:[null]', '{"meta":{"scale":"reform"},"domains":[{"phases":[null]}]}'],
+    ['phases:[1,2]', '{"meta":{"scale":"reform"},"domains":[{"phases":[1,2]}]}'],
+    ['meta:"x"', '{"meta":"reform","domains":[]}'],
+    ['meta:null', '{"meta":null,"domains":[]}'],
+    ['壊れた JSON', '{"meta":'],
+    ['空ファイル', ''],
+    ['二進のごみ', '\u0000\u0000binary'],
+  ];
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'b16-'));
+  try {
+    const repo = path.join(d, 'paradise');
+    const store = path.join(d, 'vault');
+    fs.mkdirSync(path.join(repo, 'reform'), { recursive: true });
+    fs.mkdirSync(store, { recursive: true });
+    for (const [label, body] of shapes) {
+      const slug = path.join(store, 'reform-probe');
+      fs.mkdirSync(slug, { recursive: true });
+      fs.writeFileSync(path.join(slug, 'conclave.json'), body);
+      let threw = null, r = null;
+      try { r = workspace.strayRuns(repo, { env: { PARADISE_CREATIONS: store } }); }
+      catch (e) { threw = `${e.constructor.name}: ${e.message}`; }
+      assert.strictEqual(threw, null,
+        `走行帳が ${label} の形のとき strayRuns が投げた — 壊れた JSON 一つで ` +
+        `check が走り切らず、混入も住所の直書きも検められない (${threw})`);
+      assert.ok(Array.isArray(r), `${label}: 配列以外を返した`);
+      fs.rmSync(slug, { recursive: true, force: true });
+    }
+    // ⚠️ 逆向き — 真っ当な走行帳は今まで通り拾う。
+    //    さもなくば strayRuns を `return []` に倒して上の断定を全て緑にできる。
+    const ok = path.join(store, 'reform-genuine');
+    fs.mkdirSync(ok, { recursive: true });
+    fs.writeFileSync(path.join(ok, 'conclave.json'), JSON.stringify({
+      meta: { scale: 'reform' },
+      domains: [{ status: 'ratified', phases: [{ artifactPath: 'graph/forge.js' }] }],
+    }));
+    const hit = workspace.strayRuns(repo, { env: { PARADISE_CREATIONS: store } });
+    assert.strictEqual(hit.length, 1, '真っ当な流出を拾えなくなった — 形の守りが走査を殺した');
+    assert.strictEqual(hit[0].slug, 'reform-genuine');
+    assert.deepStrictEqual(hit[0].marks, ['scale', 'slug', 'artifact'],
+      '三つの印が全て立たない — 形の守りが判定を変えた');
+    assert.strictEqual(hit[0].ratified, 1, 'ratified の数え方が変わった');
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 // 欠陥C — 段が着地したという **真の進捗** を記す口が engine に無かった (鼓動 / beat)
 // ══════════════════════════════════════════════════════════════════════════

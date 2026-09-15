@@ -274,6 +274,23 @@ const REFORM_MARKS = [
 const ENGINE_PATH_RE = /(^|[\\/])(graph|tests|overlay|hooks|\.github|dashboard)[\\/]|(^|[\\/])(CONSTITUTION|CONSTITUTION\.INDEX|CLAUDE|README)\.md$/;
 
 /**
+ * 走行帳の形を信じない —— **配列であるものだけを配列として扱う**(V-1 / 第37条)。
+ *
+ * ⚠️ verify 相の実測で `workspace.js check` が**四つの形で落ちた**
+ *    (uncaught TypeError / EXIT=1): `null` / `domains:"x"` /
+ *    `domains:[null]` / `phases:[null]` —— どれも `JSON.parse` は通るので
+ *    `catch { continue; }` の網に掛からない。`run.domains || []` は
+ *    文字列 `"x"` を素通しにし、`[null]` の要素は `null` のまま回った。
+ *
+ *    害は「壊れた走行帳を見逃す」ではない。**門が走り切らずに死ぬ** ——
+ *    creations の混入も住所の直書きも印字されないまま落ちる。
+ *    壊れた走行帳一つで、engine を守る三つの検めが全て沈黙する。
+ *    第37条「見なかったことを見たことにするな」の別の顔である。
+ *    門: `B-16`(`tests/abandoned-run.test.js`)。
+ */
+const asArray = (v) => (Array.isArray(v) ? v : []);
+
+/**
  * reform の走行が **engine を改めたのに、走行帳だけ創造物の倉に居る** のを検める。
  *
  * `strayCreations()` の**逆向き**である。あちらは「創造物が楽園に紛れ込む」を見た。
@@ -290,20 +307,28 @@ function strayRuns(repoRoot = REPO_ROOT, opts = {}) {
     if (led.where !== 'creations') continue;
     let run;
     try { run = JSON.parse(fs.readFileSync(led.path, 'utf8')); } catch { continue; }
+    // `null` / 数値 / 文字列 / 配列 —— JSON.parse は通すが走行帳ではない。
+    if (!run || typeof run !== 'object' || Array.isArray(run)) run = {};
     const marks = [];
-    if (run && run.meta && String(run.meta.scale) === 'reform') marks.push('scale');
+    if (run.meta && typeof run.meta === 'object' && String(run.meta.scale) === 'reform') marks.push('scale');
     if (/^reform[-_]/i.test(led.slug)) marks.push('slug');
     const arts = [];
-    for (const d of (run.domains || [])) for (const p of (d.phases || [])) if (p.artifactPath) arts.push(String(p.artifactPath));
+    for (const d of asArray(run.domains)) {
+      if (!d || typeof d !== 'object') continue;
+      for (const p of asArray(d.phases)) {
+        if (!p || typeof p !== 'object') continue;
+        if (p.artifactPath) arts.push(String(p.artifactPath));
+      }
+    }
     // 倉の中を指す道は creation の成果物である。engine を指す道だけを咎める。
     const hits = arts.filter(a => !a.includes(SIBLING_NAME) && ENGINE_PATH_RE.test(a));
     if (hits.length) marks.push('artifact');
     if (!marks.length) continue;
-    const ds = run.domains || [];
+    const ds = asArray(run.domains);
     out.push({
       path: led.path, slug: led.slug, marks,
       why: REFORM_MARKS.filter(m => marks.includes(m.id)).map(m => m.why).join(' / '),
-      ratified: ds.length ? ds.filter(d => d.status === 'ratified').length : null,
+      ratified: ds.length ? ds.filter(d => d && d.status === 'ratified').length : null,
       total: ds.length || null,
       engineArtifacts: hits.slice(0, 5),
     });
