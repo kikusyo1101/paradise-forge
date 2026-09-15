@@ -477,6 +477,184 @@ test('B-11: init は倉の根に目印を置く — 読む側だけを作らな�
 });
 
 // ══════════════════════════════════════════════════════════════════════════
+// **quality 相(security)が実測で見つけた穴** — 既に緑になったものを疑った結果
+//
+// 欠陥B の修理は「倉か否か」で裁きを分ける。だが **「倉か」の判定そのもの**が
+// 甘ければ、攻撃者(あるいは不注意な env)は裁きを黙らせられる。撃って確かめた。
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * **倉の替え玉を自分で組む**(CI の盲点を塞ぐ土台)。
+ *
+ * ⚠️ この関数が在る理由そのものが教訓である。
+ *    かつて B-12 は「本物の兄弟倉が在れば撃つ、無ければ skip」だった。
+ *    GitHub Actions の checkout に兄弟倉は**無い**。ゆえに CI では B-12 は
+ *    **永久に黙り**、HIGH-1(toplevel 突合の消失)の再発を誰も捕まえなかった ——
+ *    実測の変異試験で `toplevel 突合を消す` 変異だけが 8 件中ただ一つ生存した。
+ *    「実在するものに依存する門」は「実在しない場所で死ぬ門」である(第37条)。
+ *
+ * ゆえに倉の印(git remote が paradise-creations で終わる)を持つ本物の git 倉を
+ * Temp に建て、その中に子・孫を掘る。**本物の倉が一切無くてもこの門は鳴る。**
+ * @returns {{dir,vault,kid,grand,cleanup}|null} git が無い機械では null
+ */
+function vaultFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-nest-'));
+  // ⚠️ 名では裁かない(L-11)。本物と違う名を与えて、印だけで認めさせる
+  const vault = path.join(dir, 'some-vault-name');
+  const kid = path.join(vault, 'pomodoro');
+  const grand = path.join(kid, 'src');
+  const cleanup = () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} };
+  fs.mkdirSync(grand, { recursive: true });
+  try {
+    execFileSync('git', ['-C', vault, 'init', '-q'], { stdio: 'pipe' });
+    execFileSync('git', ['-C', vault, 'remote', 'add', 'origin',
+      'https://github.com/kikusyo1101/paradise-creations.git'], { stdio: 'pipe' });
+  } catch { cleanup(); return null; }
+  return { dir, vault, kid, grand, cleanup };
+}
+
+test('B-12 [HIGH-1]: 倉の**子**を指しても倉と名乗らない — git は .git を親へ遡る', () => {
+  /**
+   * ⚠️ 実測された穴: `git -C <倉>/pomodoro config --get remote.origin.url` は
+   *    **倉の remote をそのまま返す**。ゆえに倉の子・孫・`.git` の中まで、
+   *    9 件のサブディレクトリ全てが `isCreationsVault=true` を名乗った。
+   *
+   *    結果 `PARADISE_CREATIONS=<倉>/pomodoro` を指した `check` は、
+   *    倉の根を一度も走査しないまま **「✓ … reform 走行帳の流出なし」** を印字した ——
+   *    skip の第三の記号(·)ではなく **緑を騙った**(第37条)。
+   *    実測: 倉の根に流出を仕込むと EXIT=1 で鳴り、子を指すと EXIT=0 で「流出なし」。
+   *
+   * 修理: `rev-parse --show-toplevel` が返す**最上位**と、渡された道が一致すること。
+   *
+   * ⚠️ **この門は本物の倉に依存しない。** 替え玉を自分で組む(vaultFixture)。
+   *    本物を見る断定は下の B-12b に分けた —— 在れば撃ち、無ければそこだけ退く。
+   */
+  const fx = vaultFixture();
+  if (!fx) H.skip('git が使えない機械 — 替え玉の倉を建てられない');
+  try {
+    // 根は倉である(印 1 が生きている)
+    assert.strictEqual(workspace.isCreationsVault(fx.vault), true,
+      '替え玉の倉の**根**を倉と認めない — 印 1(git remote)が死んでいる');
+    // 子・孫・.git はいずれも倉ではない(git が .git を親へ遡っても騙されない)
+    for (const inner of [fx.kid, fx.grand, path.join(fx.vault, '.git')]) {
+      assert.strictEqual(workspace.isCreationsVault(inner), false,
+        `倉の内側 ${path.relative(fx.vault, inner)} が倉と名乗った — git が .git を親へ遡っている。` +
+        'isCreationsVault から rev-parse --show-toplevel での突合が消えていないか見よ');
+    }
+    // そして `check` は、子を指されたら **skip を声に出す**(緑を騙らない)
+    let out = '', code = 0;
+    try {
+      out = execFileSync(process.execPath, [WS, 'check'], {
+        encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: fx.kid },
+      });
+    } catch (e) { code = e.status; out = (e.stdout || '') + (e.stderr || ''); }
+    assert.strictEqual(code, 0, `倉の子を指しただけで赤が出た:\n${out}`);
+    assert.ok(/検めなかった/.test(out),
+      `倉の子を倉と誤認し、走査しないまま「流出なし」と断じた — 緑を騙っている(第37条):\n${out}`);
+  } finally { fx.cleanup(); }
+});
+
+test('B-12b [HIGH-1・実物]: 本物の倉でも根と子を取り違えない', () => {
+  /**
+   * B-12 は替え玉で CI でも鳴る。ここは**本物**に対する追認である ——
+   * 在れば撃ち、無ければ**この断定だけ**を声に出して退く(第37条)。
+   * 片方が skip しても HIGH-1 の門そのものは B-12 が守り続ける。
+   */
+  if (!fs.existsSync(REAL_VAULT)) H.skip(`本物の創造物の倉が無い: ${REAL_VAULT}`);
+  assert.strictEqual(workspace.isCreationsVault(REAL_VAULT), true, '倉の根を倉と認めない');
+
+  const kids = fs.readdirSync(REAL_VAULT)
+    .map(n => path.join(REAL_VAULT, n))
+    .filter(p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } })
+    .filter(p => !fs.existsSync(path.join(p, workspace.VAULT_MARKER)));
+  if (!kids.length) H.skip('目印を持たない子ディレクトリが倉に無い');
+  for (const kid of kids) {
+    assert.strictEqual(workspace.isCreationsVault(kid), false,
+      `倉の子 ${path.basename(kid)} が倉と名乗った — git が .git を親へ遡っている。` +
+      'rev-parse --show-toplevel での突合が消えていないか見よ');
+  }
+});
+
+test('B-15 [LOW-1]: 緑は「どの倉を検めたか」を名乗る — 別の場所の緑を本物と誤読させない', () => {
+  /**
+   * 残っていた問いを撃った結果 (security 相):
+   *   **攻撃者が Temp に目印 `.paradise-creations` を置けば流出の門を黙らせられるか?**
+   *   → **黙らせられない**。実測で偽倉に走行帳を仕込むと EXIT=1 で鳴った。
+   *     env が指した場所を素直に走査するだけであり、走査は正しく働く。
+   *
+   * だが**緑の文言が場所を言わなかった**。
+   *   「✓ … reform 走行帳の流出なし」だけでは、読んだ人は**本物の倉を検めた**と読む。
+   *   実際には Temp の空の偽倉を検めただけということが在りうる。
+   *   これは黙る (skip) でも騙る (false green) でもないが、**曖昧な緑**である。
+   *   第37条の精神 —— 見なかったことを見たことにするな —— に従い、緑は場所を名乗る。
+   */
+  const fx = vaultFixture();
+  if (!fx) H.skip('git が使えない機械 — 替え玉の倉を建てられない');
+  try {
+    const out = execFileSync(process.execPath, [WS, 'check'], {
+      encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: fx.vault },
+    });
+    assert.ok(/流出なし/.test(out), `替え玉の倉は綺麗なのに緑が出ない:\n${out}`);
+    assert.ok(out.includes(fx.vault),
+      `緑が「どの倉を検めたか」を名乗っていない — 別の場所の緑を本物と誤読させる:\n${out}`);
+  } finally { fx.cleanup(); }
+});
+
+test('B-13 [MED-2]: git remote の印だけでも倉と認める — 目印を消して黙らせられない', () => {
+  /**
+   * ⚠️ 故障注入で生存した変異(N4): `git remote` の印を `return false` に倒しても、
+   *    どの門も鳴らなかった。B-10 は本物の倉を撃つが、本物の倉は**目印を持っている**ので
+   *    印 1(git remote)が死んでも印 2 が拾い、門は黙る。
+   *    すなわち **印 1 は門に守られていなかった**。
+   *
+   * ここでは **目印を持たない本物の clone** を模して印 1 単独を撃つ。
+   */
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-remote-'));
+  const repo = path.join(d, 'some-other-name');   // ⚠️ 名では裁かない(L-11)
+  fs.mkdirSync(repo);
+  try {
+    try {
+      execFileSync('git', ['-C', repo, 'init', '-q'], { stdio: 'pipe' });
+      execFileSync('git', ['-C', repo, 'remote', 'add', 'origin',
+        'https://github.com/kikusyo1101/paradise-creations.git'], { stdio: 'pipe' });
+    } catch { H.skip('git が使えない機械'); }
+    assert.ok(!fs.existsSync(path.join(repo, workspace.VAULT_MARKER)),
+      '前提が崩れた — 目印を置いていないこと');
+    assert.strictEqual(workspace.isCreationsVault(repo), true,
+      '目印が無く git remote だけの倉を認めない — 印 1 が死んでいる');
+    // 逆向き: remote が別物なら倉ではない
+    execFileSync('git', ['-C', repo, 'remote', 'set-url', 'origin',
+      'https://github.com/kikusyo1101/paradise-forge.git'], { stdio: 'pipe' });
+    assert.strictEqual(workspace.isCreationsVault(repo), false,
+      '楽園本体の remote を持つ倉を創造物の倉と認めた — 印 1 が緩すぎる');
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('B-14 [MED-1]: PARADISE_CREATIONS の細工した値で例外を出さない (注入面)', () => {
+  /**
+   * `isCreationsVault` は `execFileSync('git', [...])` を呼ぶ。配列渡しなので
+   * シェルは介在しないが、**道そのものが git のオプションに見える**場合や、
+   * 改行・NUL・UNC が混じる場合に **投げずに false を返す**ことを撃つ。
+   * 投げれば `check` が死に、門は「走らなかった」のに誰も気づかない。
+   */
+  const evil = [
+    'C:/tmp\nrm -rf /', 'C:/tmp; calc.exe', 'C:/tmp & calc.exe', 'C:/tmp/`calc`',
+    'C:/tmp/$(calc)', 'C:/tmp|calc', '--upload-pack=calc.exe', '-c protocol.ext.allow=always',
+    '--exec-path=C:/evil', '\\\\no-such-host-xyz\\share', 'C:/tmp/\0evil', '../../../../',
+  ];
+  for (const v of evil) {
+    let threw = false, r = null;
+    try { r = workspace.isCreationsVault(v); } catch { threw = true; }
+    assert.strictEqual(threw, false, `isCreationsVault(${JSON.stringify(v)}) が投げた — check が死ぬ`);
+    assert.strictEqual(typeof r, 'boolean', `真偽以外を返した: ${JSON.stringify(v)}`);
+    // resolve() 経由でも投げない
+    let threw2 = false;
+    try { workspace.resolve({ env: { PARADISE_CREATIONS: v } }); } catch { threw2 = true; }
+    assert.strictEqual(threw2, false, `resolve(PARADISE_CREATIONS=${JSON.stringify(v)}) が投げた`);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 // 欠陥C — 段が着地したという **真の進捗** を記す口が engine に無かった (鼓動 / beat)
 // ══════════════════════════════════════════════════════════════════════════
 /**

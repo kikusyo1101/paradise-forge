@@ -129,7 +129,26 @@ function isCreationsVault(root) {
     const url = execFileSync('git', ['-C', root, 'config', '--get', 'remote.origin.url'], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-    return new RegExp(`/${SIBLING_NAME}(\\.git)?$`).test(url.replace(/\\/g, '/'));
+    if (!new RegExp(`/${SIBLING_NAME}(\\.git)?$`).test(url.replace(/\\/g, '/'))) return false;
+    /**
+     * ⚠️ **git は `.git` を親方向に遡る**(security 相 / HIGH-1)。
+     *
+     * ゆえに `git -C <倉>/pomodoro config --get remote.origin.url` は
+     * **倉の remote をそのまま返す** —— 倉の子・孫・`.git` の中まで、
+     * 全てが「倉である」と名乗った(実測: 9 件のサブディレクトリ全て true)。
+     *
+     * 結果、`PARADISE_CREATIONS=<倉>/pomodoro` を指すと `check` は
+     * 倉の根を走査しないまま **「✓ … reform 走行帳の流出なし」** を印字した ——
+     * skip の第三の記号(·)ではなく、**緑を騙った**。実測で流出を仕込んで確認:
+     * 倉の根を指せば EXIT=1 で鳴り、子を指せば EXIT=0 で「流出なし」と言った。
+     *
+     * 印 1 は「git 倉の**最上位**が paradise-creations である」を意味せねばならない。
+     * `rev-parse --show-toplevel` で実際の最上位を得て、渡された道と突き合わせる。
+     */
+    const top = execFileSync('git', ['-C', root, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return path.resolve(top) === path.resolve(root);
   } catch { return false; }
 }
 
@@ -342,8 +361,18 @@ if (require.main === module) {
       }
     }
     if (stray.length === 0 && hard.length === 0 && runs.length === 0) {
+      /**
+       * ⚠️ **緑は「何を検めたか」を名乗る** (security 相 / LOW-1)。
+       * `PARADISE_CREATIONS` に細工した道 —— 例えば攻撃者が Temp に目印
+       * `.paradise-creations` を置いただけの空の場所 —— を渡されると、`check` は
+       * その偽の倉を素直に走査して「流出なし」と緑を出す(実測: EXIT=0)。
+       * 走査そのものは正しい(env を信じる設計であり、env を書ける者は既に
+       * ファイルを書ける)。だが**どの倉を検めたかを言わない緑**は、
+       * 読んだ人に「本物の倉を検めた」と誤読させる。第37条は「見なかったことを
+       * 見たことにするな」と言う —— **別の場所を見たなら、その場所を名乗れ**。
+       */
       console.log('✓ 楽園に創造物の混入なし・住所の直書きなし' +
-        (judgeRuns ? '・reform 走行帳の流出なし' : ' (走行帳の流出は上記のとおり未検査)'));
+        (judgeRuns ? `・reform 走行帳の流出なし (検めた倉: ${r.root})` : ' (走行帳の流出は上記のとおり未検査)'));
       process.exit(0);
     }
     if (runs.length) {
