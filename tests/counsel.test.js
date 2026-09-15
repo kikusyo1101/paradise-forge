@@ -531,6 +531,265 @@ test('限定詞付きの世間の願い(道まるごと)が reform へ落ちな�
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════
+// 1e. **F-1 / F-4** — tribunal が BLOCK を出した回帰と、それを素通しした門の穴
+//
+// tribunal(reflect §2.1 / verdict §2）が実測した:
+//   main c216014 → 強い名の世間の願いが reform へ攫われた: **0 件**
+//   HEAD ec0694c → **54 件**(教主の 10 件 / tribunal の 19 件 / 26 語網羅の 25 件)
+// **本走行が main に無かった病を作った。**
+//
+// **なぜ AC-31/32/33 の門が鳴らなかったか(F-4)**: 29 件のコーパスが
+// **全て弱い名**であり、強い名が 0 件だった。門は守るべき面の半分を一度も見ていない。
+// ゆえにここで**強い名側のコーパスを門にする**。
+//
+// ⚠️ 上の 1d(R-4)の 9 件は**どれも英語で限定詞を伴う**。
+//    日本語の願いには限定詞が無いので、R-4 の門は日本語の面を一件も撃っていなかった。
+//    以下の門は **日本語・限定詞なし**の面を正面から撃つ。
+// ══════════════════════════════════════════════════════════════════════
+console.log('\n道選び — F-1: 強い名が世間の願いを攫う(教主と tribunal が実測した回帰):');
+
+/**
+ * **教主が main と HEAD の両方で実測した 10 件**(そのまま門にする / AC-36)。
+ * main では 0/10、HEAD では 10/10 が reform へ攫われた。
+ */
+const PONTIFF_STRONG_WORLDLY = [
+  ['gauge calibration tracker', 'gauge'],
+  ['forge 鍛冶屋の在庫管理アプリを作って', 'forge'],
+  ['synod 教会会議の議事録アプリ', 'synod'],
+  ['critic 映画批評サイトを作れ', 'critic'],
+  ['verdict 裁判の記録を管理するツール', 'verdict'],
+  ['clergy 聖職者名簿アプリが欲しい', 'clergy'],
+  ['abode 不動産アプリを作って', 'abode'],
+  ['hermetic 密封容器の在庫管理', 'hermetic'],
+  ['conclave ボードゲームのスコア表アプリ', 'conclave'],
+  ['ordain 儀式の手順書アプリが欲しい', 'ordain'],
+];
+for (const [wish, why] of PONTIFF_STRONG_WORLDLY) {
+  test(`"${wish}" は reform でない — 強い名 ${why} が限定詞なしで道を奪わない (AC-36 / 教主の実測)`, () => {
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform',
+      `強い名 "${why}" が世間の願いを engine 改修の 11 相へ攫った — ` +
+      'isReformSubject の強い名の枝が改変の動詞を課していない(F-1 の回帰)');
+  });
+}
+
+/**
+ * **強い名 26 語の網羅**(AC-37 / F-4 の本体)。
+ *
+ * ⚠️ tribunal は 26 語のうち **12 語しか撃っていない**と名乗った(reflect W-3)。
+ *    撃っていない 14 語は「安全」ではなく「見ていない」である(第37条)。
+ *    ゆえにここで **`ENGINE_NAMES_STRONG` の全語について一件ずつ**世間の願いを撃つ。
+ *
+ * ⚠️ この表は `ENGINE_NAMES_STRONG` と**照合される**(下の門)。
+ *    強い名を足したのにここへ願いを足さなければ赤くなる ——
+ *    **コーパスが表に追いつかない**という F-4 の再演を機械が止める。
+ */
+const STRONG_WORLDLY_EVERY_NAME = {
+  'abode': 'abode 不動産アプリを作って',
+  'apply-guards': 'apply-guards という警備員シフト管理アプリが欲しい',
+  'apply-hooks': 'apply-hooks 釣り針通販サイトを作れ',
+  'apply-models': 'apply-models ファッションモデル事務所の名簿アプリ',
+  'apply-seat': 'apply-seat 劇場の座席予約サイトを作って',
+  'apply-spawn': 'apply-spawn 養殖場の稚魚管理アプリが欲しい',
+  'branch-guard': 'branch-guard 支店の警備記録管理ツールを作れ',
+  'build-identity-catalog': 'build-identity-catalog 名刺カタログ印刷サイト',
+  'check-agents': 'check-agents 不動産仲介業者の評価サイトを作って',
+  'clergy': 'clergy 聖職者名簿アプリが欲しい',
+  'codex': 'codex 写本閲覧サイトを作れ',
+  'conclave': 'conclave ボードゲームのスコア表アプリ',
+  'critic': 'critic 映画批評サイトを作れ',
+  'daily-guard': 'daily-guard 日替わり当番表アプリが欲しい',
+  'export-state': 'export-state 輸出申告書の作成ツールを作って',
+  'forge': 'forge 鍛冶屋の在庫管理アプリを作って',
+  'gauge': 'gauge calibration tracker',
+  'graph-engine': 'graph-engine 折れ線グラフ描画ライブラリのデモサイト',
+  'hermetic': 'hermetic 密封容器の在庫管理',
+  'orchestrator': 'orchestrator 楽団の演奏会管理アプリ',
+  'ordain': 'ordain 儀式の手順書アプリが欲しい',
+  'spawn-trace': 'spawn-trace 産卵地の追跡記録サイトを作れ',
+  'synod': 'synod 教会会議の議事録アプリ',
+  'verdict': 'verdict 裁判の記録を管理するツール',
+  'visual-verify': 'visual-verify 目視検査の記録アプリが欲しい',
+  'wiring': 'wiring 電気配線工事の見積アプリを作って',
+};
+
+test('強い名のコーパスが ENGINE_NAMES_STRONG を過不足なく覆っている (AC-37 / F-4)', () => {
+  const table = forge.ENGINE_NAMES_STRONG.split('|');
+  const corpus = Object.keys(STRONG_WORLDLY_EVERY_NAME);
+  const uncovered = table.filter(n => !corpus.includes(n));
+  assert.deepStrictEqual(uncovered, [],
+    `強い名が表に在るのにコーパスが撃っていない: ${uncovered.join(', ')} — ` +
+    'F-4(門が守る面の半分を一度も撃たない)の再演である。' +
+    'tests/counsel.test.js の STRONG_WORLDLY_EVERY_NAME に世間の願いを一件足せ');
+  const stale = corpus.filter(n => !table.includes(n));
+  assert.deepStrictEqual(stale, [],
+    `コーパスが表に無い名を撃っている: ${stale.join(', ')} — 表から消えた名の門は嘘をつく`);
+  // 撃った願いの中に、その名が実際に含まれていること(第16条: 名指しは呼び出しではない)
+  for (const [name, wish] of Object.entries(STRONG_WORLDLY_EVERY_NAME)) {
+    assert.ok(wish.toLowerCase().includes(name.toLowerCase()),
+      `コーパスの願いが強い名 "${name}" を含まない — その名を撃っていない: ${wish}`);
+  }
+});
+
+for (const [name, wish] of Object.entries(STRONG_WORLDLY_EVERY_NAME)) {
+  test(`"${wish}" は reform でない — 強い名 ${name}(26 語網羅) (AC-37)`, () => {
+    const got = forge.chooseScale(wish);
+    assert.notStrictEqual(got, 'reform',
+      `強い名 "${name}" が世間の願いを reform へ攫った(F-1)`);
+  });
+}
+
+/**
+ * **逆向きの証明**(AC-38 / 第36条: 門は消すのではなく分ける)。
+ *
+ * ⚠️ 上の門は「強い名を語彙から消す」ことで全て緑にできる。それでは欠陥A
+ *    (engine 改修の願いが standard/counsel へ落ちる)が甦る。
+ *    ゆえに **強い名が改変の動詞を伴えば今まで通り reform である**ことを撃つ。
+ *
+ * ⚠️ **`除く` の側を落としてはならない** —— `conclave の毒を除く` は
+ *    `BUILD_RE` を一語も持たない。強い名の枝に `BUILD_RE` だけを課せば死ぬ。
+ *    これが `MEND_RE` が存在する理由である。
+ */
+test('強い名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)', () => {
+  // (a) 建造の動詞(BUILD_RE)
+  for (const wish of [
+    'gauge に fingerprint を確かめる口を設ける',
+    'codex に検めの口を足す',
+    'synod に警告の一段を足す',
+    'conclave に再試行の口を設ける',
+    'forge の道選びに一段足す',
+    'verdict に閾値の口を設ける',
+  ]) {
+    assert.strictEqual(forge.chooseScale(wish), 'reform',
+      `強い名が建造の動詞を伴っているのに reform を名乗らない — 語彙を消したのと同じ: ${wish}`);
+  }
+  // (b) 除去・修繕の動詞(MEND_RE) — BUILD_RE を一語も持たない
+  //     ⚠️ `見直` は COUNSEL_JA にも居るので counsel が先に立つ(判定順は動かせない)。
+  //        ゆえに **counsel の語彙と重ならない動詞**で撃つ —— そうでなければ
+  //        `chooseScale` まで通らず、MEND_RE の枝を撃てていないことになる。
+  for (const wish of [
+    'conclave の毒を除く',
+    'forge の道選びを修正する',
+    'codex の索引を書き換える',
+    'gauge の重みを直す',
+    'synod の待ちを潰す',
+    'verdict の閾値を書き換える',
+  ]) {
+    assert.ok(!forge.BUILD_RE.test(forge.denude(wish)),
+      `この門の前提が崩れた — 建造の動詞を持つ例では MEND_RE を撃てない: ${wish}`);
+    assert.strictEqual(forge.isReformSubject(forge.denude(wish)), true,
+      `強い名 + 除去/修繕の動詞が楽園を名指さない — MEND_RE が死んでいる: ${wish}`);
+    assert.strictEqual(forge.chooseScale(wish), 'reform',
+      `述語は真なのに道が reform でない — 前段の語彙が奪っている: ${wish}`);
+  }
+  assert.strictEqual(forge.isReformSubject('conclave の毒を除く'), true,
+    '強い名が改変の動詞を伴っても楽園を名指せなくなった');
+});
+
+/**
+ * **強い名の枝の二条件が、それぞれ単独で効いている**(AC-39 / 第21条: 黙る門を作らない)。
+ *
+ * ⚠️ F-4 の教訓: 条件が二つ在るとき、片方だけで緑になる例しか持たない門は、
+ *    もう片方を消しても鳴らない。ゆえに**どちらか一方だけが守っている例**を持つ。
+ */
+test('強い名の枝は限定詞の除外と動詞の伴需の両方を要る (AC-39 / 黙る門を作らない)', () => {
+  // (i) 動詞の伴需だけが守っている — 限定詞は無い(日本語)
+  //     限定詞の除外を消しても、動詞が無いので依然 reform でない
+  for (const wish of ['forge 鍛冶屋の在庫管理アプリを作って', 'gauge calibration tracker']) {
+    assert.ok(forge.REFORM_STRONG_RE.test(forge.denude(wish)),
+      `前提が崩れた — 限定詞の除外が既にこの願いを落としている(動詞の伴需を撃てない): ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `動詞の伴需が死んでいる — ${wish}`);
+  }
+  // (ii) 限定詞の除外だけが守っている — 建造の動詞は在る(英語)
+  for (const wish of ['add a gauge widget to my car dashboard', 'add a critic score to my movie app']) {
+    assert.ok(forge.BUILD_RE.test(forge.denude(wish)),
+      `前提が崩れた — 動詞の伴需が既にこの願いを落としている(限定詞の除外を撃てない): ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `限定詞の除外が死んでいる — ${wish}`);
+  }
+});
+
+/**
+ * **抽象名は無条件のままである**(AC-40 / F-1 の修理が広がりすぎていないこと)。
+ *
+ * ⚠️ 強い名に動詞を課すついでに**抽象名にも課せば**、
+ *    `楽園の自己診断に絞り込みの口を設ける` 系は生き残るが
+ *    `楽園はどうあるべきか` のような動詞なき改革の名指しが死ぬ。
+ *    抽象名(楽園/門/engine/憲法/走行帳)は楽園以外を指さないので**無条件で真**である。
+ */
+test('抽象名は今まで通り無条件で楽園を名指す (AC-40 / 修理が広がりすぎていない)', () => {
+  for (const abstract of ['楽園', 'paradise', '憲法', 'engine', 'ハーネス', '走行帳', '自己診断']) {
+    assert.strictEqual(forge.isReformSubject(`${abstract}のこと`), true,
+      `抽象名 "${abstract}" が無条件で楽園を名指さなくなった — F-1 の修理が抽象名まで縛った`);
+  }
+  assert.strictEqual(forge.chooseScale('楽園の自己診断に絞り込みの口を設ける'), 'reform');
+  assert.strictEqual(forge.chooseScale('門に監査の一段を足す'), 'reform');
+});
+
+/**
+ * **`MEND_RE` が世間の創造の動詞を含んでいない**(AC-41 / F-1 が戻らないこと)。
+ *
+ * ⚠️ `MEND_RE` に `作れ` / `欲しい` / `build` / `create` を一語でも足せば、
+ *    `forge 鍛冶屋の在庫管理アプリを作って` が reform へ戻る —— F-1 そのものである。
+ *    表そのものを撃つ(実装の中身を直に見る門・第16条)。
+ */
+test('MEND_RE に世間の創造の動詞が紛れていない (AC-41 / F-1 の再発防止)', () => {
+  for (const verb of ['作れ', '作って', '作る', 'ほしい', '欲しい', 'つくって', '実装', '開発', '構築']) {
+    assert.ok(!forge.MEND_RE.test(verb),
+      `MEND_RE が世間の創造の動詞 "${verb}" を含む — 強い名の枝が F-1 へ戻る`);
+  }
+  for (const verb of ['build', 'create', 'make', 'implement', 'develop']) {
+    assert.ok(!forge.MEND_RE.test(`${verb} an app`),
+      `MEND_RE が世間の創造の動詞 "${verb}" を含む — 強い名の枝が F-1 へ戻る`);
+  }
+  // 逆向き: 改める動詞は確かに入っている(表を空にして緑にしていないこと)
+  for (const verb of ['除く', '直す', '修正', '見直', 'fix the gate', 'remove the poison']) {
+    assert.ok(forge.MEND_RE.test(verb), `MEND_RE から改変の動詞 "${verb}" が落ちた`);
+  }
+});
+
+/**
+ * **`MEND_RE` は `COUNSEL_JA` と重なる語を持つ**(AC-41 の隣 / 正直な名乗り)。
+ *
+ * ⚠️ `見直` `改善` は `COUNSEL_JA` にも居る。判定順で counsel が reform より先に立つので、
+ *    `gauge を見直して報告してほしい` は **counsel** に着く —— これは**正しい**
+ *    (「報告してほしい」と言われている)。
+ *    だが `gauge の重みを見直す` も counsel に着く —— **これは MEND_RE のせいではなく、
+ *    counsel の語彙が先に拾っているためである**。
+ *
+ * この門は**その事実を固定する**。将来 counsel の語彙が変われば赤くなり、
+ * 人は「強い名の枝が拾うべきだったか」を問い直す。
+ * **黙って振る舞いが変わるより、赤くなって問われる方がよい**(第21条)。
+ */
+test('MEND_RE と COUNSEL_JA の重なりは counsel が先に取る(判定順の帰結を固定)', () => {
+  // counsel の語彙と重なる動詞 — counsel が先に立つ(判定順は動かしていない)
+  assert.strictEqual(forge.chooseScale('gauge を見直して報告してほしい'), 'counsel',
+    '報告を求める願いが counsel を失った — 判定順が動いた');
+  assert.strictEqual(forge.chooseScale('gauge の重みを見直す'), 'counsel',
+    'counsel の語彙 "見直" が先に拾う振る舞いが変わった — ' +
+    '強い名の枝がこれを拾うべきなら、counsel の語彙から外す判断が要る');
+  // 重ならない動詞なら強い名の枝まで届く
+  assert.strictEqual(forge.chooseScale('gauge の重みを直す'), 'reform',
+    'counsel と重ならない改変の動詞まで counsel に奪われた');
+});
+
+/**
+ * **`MEND_RE` は二乗で膨れない**(S-1 と同じ病を新しい正規表現に持ち込んでいないこと)。
+ *
+ * ⚠️ security 相の U-1 は「`REFORM_RE` 等の ReDoS を計測していない」と名乗った。
+ *    本相は**新しく足した `MEND_RE` だけ**は計る —— 足した者が計らねば誰も計らない。
+ */
+test('MEND_RE が病的な入力で二乗に膨れない (S-1 と同じ病を持ち込まない)', () => {
+  for (const unit of ['直', 'fi', '除', 'remove']) {
+    const t0 = process.hrtime.bigint();
+    forge.MEND_RE.test(unit.repeat(100000));
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    assert.ok(ms < 200, `MEND_RE が "${unit}"×100000 に ${ms.toFixed(1)}ms 掛かった — 交替が暴走している`);
+  }
+});
+
 /**
  * **R-2: 強い産物名にも紛れ語が在る。**
  *

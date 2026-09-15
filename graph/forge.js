@@ -409,11 +409,29 @@ const DETERMINER_LOOKBEHIND =
  *    **12 件の世間の願いが強い名を踏んで reform へ攫われた**(main では full/standard)。
  *    強い名も**普通名詞として使われうる**。限定詞の直後なら世間の物である。
  *    ただし限定詞を伴わない `conclave の毒を除く` は今まで通り楽園を名指す。
+ *
+ * ── **抽象名と強い固有名を別の定数へ割る**(F-1 / tribunal の BLOCK) ────────
+ *
+ * ⚠️ 両者を一本の `REFORM_RE` に混ぜ、`isReformSubject` がそれを
+ *    `if (REFORM_RE.test(d)) return true;` で受けたのが病であった。
+ *    抽象名(楽園/門/engine)は**無条件で真**でよい —— それらは楽園以外を指さない。
+ *    だが**強い固有名は限定詞の除外一枚しか防壁を持たなかった**。
+ *    **日本語に冠詞は無い。ゆえに日本語の願いに対して防壁は事実上ゼロだった。**
  */
-const REFORM_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|' +
+/** 楽園そのものを指す**抽象名**。これらは無条件で楽園を名指す(減らしてはならない)。 */
+const REFORM_ABSTRACT_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|' +
   '門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|' +
-  '枢機卿|cardinal|神官|priest|自己診断|走行帳)' +
-  `|${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
+  '枢機卿|cardinal|神官|priest|自己診断|走行帳)', 'i');
+
+/** engine の**強い固有名** —— 限定詞の直後は数えない。 */
+const REFORM_STRONG_RE = new RegExp(
+  `${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
+
+/**
+ * 後方互換のための束ね(旧い読み手と設計文書が名指す)。
+ * **判定には使わない** —— 判定は `isReformSubject` が二枝を別々に裁く。
+ */
+const REFORM_RE = new RegExp(`${REFORM_ABSTRACT_RE.source}|${REFORM_STRONG_RE.source}`, 'i');
 
 /**
  * 弱い名 —— **限定詞の直後に在るものは数えない**。
@@ -428,17 +446,50 @@ const REFORM_WEAK_RE = new RegExp(
   `|${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_WEAK})\\b`, 'i');
 
 /**
- * 願いの**対象が楽園自身**か (AC-31)。
+ * **楽園を改める動詞** (F-1)。`BUILD_RE`(足す側)の対になる**除く側**である。
  *
- * 強い名は単独で名乗る。弱い名は **建造の動詞を伴って初めて**名乗る ——
- * 「engine を改造せよ」と言っていないのに engine の名を踏んだだけの願いは、
- * 世間の創造物への願いである。
+ * ⚠️ なぜ強い名に `BUILD_RE` だけを課せないか: `conclave の毒を除く` は
+ *    **建造ではなく除去**であり、`BUILD_RE` を一語も持たない。だがこれは
+ *    紛れもなく楽園の改革であり、reform を名乗らねばならない
+ *    (`counsel.test.js` が二箇所で撃っている)。
+ *    ゆえに強い名には **`BUILD_RE` ∪ `MEND_RE`** という**より広い動詞集合**を課す。
  *
- * `chooseScale` の**判定順は一段も動かしていない**。3段目で呼ばれる述語が
- * `REFORM_RE.test(d)` からこの関数に替わっただけである。
+ * ⚠️ **世間の創造の動詞(`作れ`/`欲しい`/`build`/`create`)を入れてはならない。**
+ *    それを入れた瞬間 `forge 鍛冶屋の在庫管理アプリを作って` が reform へ戻る ——
+ *    それが F-1 そのものである。ここに在るのは**既に在る物を改める**動詞だけである。
+ */
+const MEND_JA = '直す|直し|直せ|直して|修正|修復|改修|改善|改める|改め|除く|除去|取り除|' +
+  '塞ぐ|塞い|潰す|削る|削除|外す|替える|置き換え|書き換え|整える|見直';
+const MEND_EN = '\\b(?:fix|repair|remove|refactor|rewrite|patch|harden|migrate|drop|deprecate)\\b';
+const MEND_RE = new RegExp(`${MEND_JA}|${MEND_EN}`, 'i');
+
+/**
+ * 願いの**対象が楽園自身**か (AC-31 / AC-36)。
+ *
+ * 三枝である。**枝ごとに課す条件が違い、どの枝も無条件ではない**:
+ *
+ *   1. **抽象名** (`REFORM_ABSTRACT_RE`) —— 楽園/門/engine/憲法/走行帳 …
+ *      これらは楽園以外を指さないので**無条件**で真。
+ *   2. **強い固有名** (`REFORM_STRONG_RE`) —— conclave/forge/gauge/synod …
+ *      **限定詞の直後でなく、かつ改変の動詞(`BUILD_RE` ∪ `MEND_RE`)を伴う**時のみ真。
+ *   3. **弱い名** (`REFORM_WEAK_RE`) —— vendor/census/workflow …
+ *      **限定詞の直後でなく、かつ `BUILD_RE` を伴う**時のみ真。
+ *
+ * ⚠️ **枝 2 の動詞の伴需が F-1 の修理である。** build/rework/quality 相の実装は
+ *    枝 1 と枝 2 を一本の `REFORM_RE` に混ぜ、`if (REFORM_RE.test(d)) return true;`
+ *    で受けていた。すなわち強い名 26 語は**限定詞の除外一枚だけ**で守られていた。
+ *    **日本語に冠詞は無い**ので、日本語の願いに対する防壁は事実上ゼロであった。
+ *    実測(tribunal reflect §2.1 / 教主): main 0/54 → HEAD 54/54 が reform へ攫われた。
+ *
+ * ⚠️ **枝 3 の `BUILD_RE` を `MEND_RE` へ広げてはならない。** 弱い名は世間の語と
+ *    衝突するので、`fix the vendor page` が楽園の改革と誤読される。
+ *    **強い名の方が証拠として強いから、許す動詞集合も広い** —— これが非対称の根拠である。
+ *
+ * `chooseScale` の**判定順は一段も動かしていない**。
  */
 function isReformSubject(d) {
-  if (REFORM_RE.test(d)) return true;
+  if (REFORM_ABSTRACT_RE.test(d)) return true;
+  if (REFORM_STRONG_RE.test(d) && (BUILD_RE.test(d) || MEND_RE.test(d))) return true;
   return REFORM_WEAK_RE.test(d) && BUILD_RE.test(d);
 }
 
@@ -796,4 +847,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_ABSTRACT_RE, REFORM_STRONG_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, MEND_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };
