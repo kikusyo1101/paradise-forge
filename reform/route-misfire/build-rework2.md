@@ -403,9 +403,48 @@ reflect §2.4 が名指した通り、**471 本は F-1 の面を一度も見て�
 
 ### F. `census.js fix` → `check`(background)
 
-生出力は §4.1 に記す。
+```
+$ node graph/census.js fix
+  (作り物の走行帳の警告 — 門が読む fixture のもので、実の帳ではない)
+  ⚠️ ledger line skipped (corrupt): <<<<<<< HEAD… / ======= / >>>>>>> A…
+  ⚠️ ledger line skipped (too deep, > 64): {"ts":"2026-01-01T…","slug":"deep",…}
+  ⚠️ ledger unreadable, recording anyway: EISDIR: illegal operation on a directory, read
+nothing to fix
+  ✓ 書き換えた数は、その主張の目で読み直して実測と一致する
+CENSUS_FIX_EXIT=0
 
-### G. その他の門(自分で撃った)
+$ node graph/census.js check
+═══════ 🔢 CENSUS CHECK ═══════
+  ✓ every number the paradise claims about itself is true
+═══════════════════════════════
+CENSUS_CHECK_EXIT=0
+```
+
+**`nothing to fix`** —— README の数は一字も動いていない。
+新しい門は `counsel.test.js` 側に建てたので `paradise.test.js` の本数(471)が変わらず、
+README が主張する数も変わらなかった。**手で数を書いていない**(第22条)。
+
+### G. 未 commit の作業木を commit
+
+```
+$ git status --short           ← commit 前
+ M graph/forge.js
+ M reform/route-misfire/design.md
+ M reform/route-misfire/requirements.md
+ M tests/counsel.test.js
+?? reform/route-misfire/build-rework2.md
+?? reform/route-misfire/conclave.json      ← 掟により触らない(untracked が正しい)
+?? reform/route-misfire/forge.dag.json     ← 同上
+
+$ git commit …
+3311290 fix(forge,tests): build 相 rework2 — F-1(強い名の無条件通過)と F-4(片面のコーパス)を塞ぐ
+```
+
+**commit hash: `3311290`**(ブランチ `reform/route-misfire`)。
+**push も PR もしていない。main へは一字も commit していない。**
+`conclave.json` / `forge.dag.json` は掟どおり untracked のまま残した。
+
+### H. その他の門(自分で撃った)
 
 ```
 $ node graph/codex.js check      → ✓ 索引は本文と一致している (60 条)   EXIT=0
