@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 3,
       "phases": [
         {
@@ -120,7 +120,7 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
           "artifactPath": "graph/forge.js",
           "dispatchedAt": null,
@@ -135,9 +135,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "tests/counsel.test.js",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -412,6 +412,21 @@
       "ts": "2026-09-16T04:54:11.335Z",
       "event": "domain-rework",
       "detail": "Construction (建造) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 3); un-ratified construction"
+    },
+    {
+      "ts": "2026-09-16T05:39:02.486Z",
+      "event": "done",
+      "detail": "build → graph/forge.js"
+    },
+    {
+      "ts": "2026-09-16T05:39:02.534Z",
+      "event": "done",
+      "detail": "prove → tests/counsel.test.js"
+    },
+    {
+      "ts": "2026-09-16T05:39:02.580Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
     }
   ],
   "spawnTrace": {
@@ -484,6 +499,15 @@
         "rank": null,
         "at": "2026-09-16T03:43:58.915Z",
         "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-d8b17474",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T05:39:02.390Z",
+        "kind": "observed"
       }
     ],
     "prove": [
@@ -521,6 +545,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-16T03:43:58.960Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-d8b17474",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T05:39:02.438Z",
         "kind": "observed"
       }
     ],
@@ -620,17 +653,17 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 4 件の起動を観測: architect, architect, architect, architect"
+        "序列1: 5 件の起動を観測: architect, architect, architect, architect, architect"
       ],
-      "at": "2026-09-16T03:43:59.006Z"
+      "at": "2026-09-16T05:39:02.485Z"
     },
     "prove": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 4 件の起動を観測: tdd-guide, tdd-guide, tdd-guide, tdd-guide"
+        "序列1: 5 件の起動を観測: tdd-guide, tdd-guide, tdd-guide, tdd-guide, tdd-guide"
       ],
-      "at": "2026-09-16T03:43:59.054Z"
+      "at": "2026-09-16T05:39:02.534Z"
     },
     "review": {
       "declared": 1,

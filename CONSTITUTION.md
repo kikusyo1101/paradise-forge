@@ -1484,10 +1484,13 @@ way to change what "complete" means.
     **名は engine を指しうるが、engine を意味しない**(`gauge` は車の計器でもある)。
 
     (b) **弱い印は片方向にではなく、両方向に誤る。これが見分け方である。**
-    `車のアプリに gauge の表示を追加する` は reform へ攫われ、
-    `graph/forge.js の道選びを直す` は standard へ落ちた。
+    engine の固有名を道選びの印に据えたとき、`車のアプリに gauge の表示を追加する`
+    型の世間の願いは reform へ攫われ、同時に `gauge に確かめる口を設ける` 型の
+    楽園の願いは standard へ落ちた —— **同じ一つの印が、同時に両側へ誤った。**
     **一方向にしか誤らない印は閾値がずれているだけである。
     両方向に誤る印は、印そのものが問いに足りていない。**
+    *(この二つの向きを四度測り直した表は `reform/route-misfire/requirements.md` §8.2–8.3
+    に在る。条文は数を抱えない —— 数は走行の記録に置き、条文は道を指す。)*
 
     (c) **治療は閾値の調整ではなく、印を強めることである** ——
     **強い印とは、問いと同じ広さの答えを返す印である。**
@@ -1523,9 +1526,14 @@ way to change what "complete" means.
     条件を足して抜ける形ではない。**捨てた印は、実測と門のコーパスを添えて
     次の走行へ申し送れ。黙って消すのは隠蔽である**(第37条)。
 
-    **これを強制する門**: `graph/forge.js` の `REFORM_RE`(楽園の抽象名のみ)、
-    `graph/workspace.js` の `isCreationsVault`、回帰は `tests/counsel.test.js` と
-    `tests/abandoned-run.test.js` の `B-12`。
+    **これを強制する門**: `graph/forge.js` の `REFORM_RE` —— **楽園の抽象名だけ**を持つ。
+    engine の固有名は (h) に従い本走行から撃ち捨てられ、`REFORM_RE` の註が四度の回帰を記す。
+    `graph/workspace.js` の `isCreationsVault` は `rev-parse --show-toplevel` で
+    最上位と渡された道を突き合わせる(印の広さを問いの広さに合わせる = (c) の実施)。
+    回帰は `tests/counsel.test.js`(抽象名の両方向・engine 名の世間側 26 語・器の 37 語)と
+    `tests/abandoned-run.test.js` の `B-12`(替え玉の倉を自ら建てるので、
+    兄弟倉の無い CI でも鳴る = (d) の実施)。
+    **捨てた印の実測と門のコーパスは `reform/route-misfire/requirements.md` §8 に在る。**
 ## The Verdict Law
 
 | Verdict | Condition | Action |

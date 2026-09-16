@@ -910,3 +910,266 @@ EXIT=0                    ← 巻き添えで死んでいない
 
 **⚠️ 安全性の面では BLOCK 相当の欠陥を一件も見つけていない。**
 **本走行を止めるべき理由は安全性ではなく、review §R3-0 / §R3-6.2 の正しさの欠陥である。**
+
+---
+
+# 【四周目】security — 撤去で新しい危険が生まれていないか
+
+## S4-0. 結論(先に述べる)
+
+**撤去は危険を減らしただけである。新しい危険はゼロ。**
+
+| 問い | 実測 |
+|---|---|
+| 残った正規表現の ReDoS | **危険 0 件**。10,000 字で最大 **0.581 ms** |
+| HIGH-1 の修理 | **生きている**(倉の子・孫・`.git` すべて false / 緑を騙らない) |
+| S-1 の修理(`denude` の後読み) | **生きている**(200,000 字で二乗の兆候なし) |
+| V-1 の修理(壊れた走行帳) | **生きている**(11 形すべて crash=0 かつ毒を見逃さない) |
+| exports から消えた名を外から参照する者 | **ゼロ** —— 14 名すべて `undefined`、残る出現は註のみ |
+
+---
+
+## S4-1. ReDoS の再測 —— 表が減ったので楽になっているはず、を**確かめた**
+
+### 撃った対象(実装の全表面)
+
+`forge.js` の名前付き正規表現 **9 本** + 公開された述語 6 本 + `PRODUCT_FALSE_FRIENDS`:
+
+```
+const REFORM_RE   const COUNSEL_RE   const BUILD_RE   const CREATE_RE   const DOC_RE
+const PRODUCT_RE  const PRODUCT_STRONG_RE  const DOC_STRONG_RE  const DIAGRAM_RE
+
+denude / chooseScale / isCounsel / isReformSubject / isCartography / wantsProduct
+PRODUCT_FALSE_FRIENDS
+```
+
+**三周目は 3 表(`MEND_RE` / `WORLDLY_VESSEL_RE` / `STRONG_BOUND_RE`)が余分に在った。**
+四度目の撤去でそれらは消えた —— **撃つべき面が 3 本減った。**
+
+### 病的な入力 8 形 x N=50,000 と N=100,000(二乗の検め)
+
+比が ~2.0 なら線形、~4.0 なら二乗。**閾値: 100,000 字で 500ms 超、または比 3.0 超かつ 50ms 超。**
+
+```
+  x*N (英字)                   a.b*N (ファイル名の頭)      "門"*N (抽象名)
+  "-a "*N (フラグ)              "`"*N (バッククォート)      "相"*N (一字の産物名)
+  "機能"*N                     A-Z0-9_.- 混在
+
+危険(>500ms または 二乗の比>3.0 かつ >50ms): 0 件
+```
+
+**8 形 x 14 の呼び口 = 112 通りを撃って、一件も 20ms を超えなかった**
+(20ms 超は印字する仕掛けだが、一行も印字されなかった)。
+
+### 実務上限(10,000 字)での `chooseScale` の実測
+
+```
+  x*N (英字)                   0.096 ms
+  a.b*N (ファイル名の頭)        0.264 ms
+  "門"*N (抽象名)              0.076 ms
+  "-a "*N (フラグ)              0.581 ms   ← 最悪
+  "`"*N (バッククォート)        0.202 ms
+  "相"*N (一字の産物名)         0.094 ms
+  "機能"*N                     0.181 ms
+  A-Z0-9_.- 混在               0.458 ms
+```
+
+**最悪でも 0.581 ms。** 三周目が測った 3 表の分がまるごと消えたので、
+**攻撃面は減っただけで増えていない。**
+
+### S-1 の修理そのもの —— `denude` の後読みは生きているか
+
+```js
+s = s.replace(/(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]+\.(?:js|json|…)\b/gi, ' ');
+//            ^^^^^^^^^^^^^^^^^^^^ この後読みが無いと入力長の二乗になる
+```
+
+実装の該当行は **`graph/forge.js:304` に一字も変わらず在る**(git diff で確認)。
+上の ReDoS 測定で `A-Z0-9_.- 混在` を 100,000 字撃って 20ms 未満 ——
+**後読みが働いている証拠**(外すと三周目の実測で 22,698 ms であった)。
+
+---
+
+## S4-2. HIGH-1 / S-1 / V-1 の修理を**全て再撃**
+
+### HIGH-1 —— git が `.git` を親へ遡る穴
+
+`git remote origin` が `paradise-creations` で終わる**本物の git 倉**を Temp に建て、
+根・子・孫・`.git`・別の子を撃った:
+
+```
+  isCreationsVault(<根>)          = true     ← 倉そのものだけが true
+  isCreationsVault(/pomodoro)     = false
+  isCreationsVault(/pomodoro/sub) = false
+  isCreationsVault(/.git)         = false
+  isCreationsVault(/reform-poison)= false
+
+  根を指す(毒あり)  EXIT=1  ✗ reform の走行帳が創造物の倉に居る (1 件)  [slug,artifact]
+  子を指す          EXIT=0  · 走行帳の流出は検めなかった — …\\pomodoro は創造物の倉ではない
+  → OK: HIGH-1 の修理は生きている(緑を騙らず skip で退いた)
+```
+
+**`rev-parse --show-toplevel` の突合が生きている。**
+かつての穴は「子を指すと倉の根を一度も走査しないまま『流出なし』と緑を騙る」であった。
+実測で**その文字列が出ないこと**を確かめた。
+
+### V-1 —— 壊れた走行帳で門が死ぬ
+
+**11 形**(三周目の 4 形から 7 形増やした)を、**隣に本物の毒を置いた状態で**撃った:
+
+```
+  形                                                         EXIT crash 毒検出
+  null                                                        1    0     1
+  {"domains":"x"}                                             1    0     1
+  {"domains":[null]}                                          1    0     1
+  {"phases":[null]}                                           1    0     1
+  [1,2,3]                                                     1    0     1
+  {"domains":[{"phases":"y"}]}                                1    0     1
+  "str"                                                       1    0     1
+  42                                                          1    0     1
+  {"meta":"x","domains":[{"phases":[{"artifactPath":123}]}]}  1    0     1
+  {"domains":[{"phases":[null,{"artifactPath":null}]}]}       1    0     1
+  {"meta":null,"domains":null}                                1    0     1
+```
+
+**「隣に毒を置く」のが四周目の新しい撃ち方である。** 三周目は「死なないこと」だけを
+撃っていた。四周目は **「壊れた一つが後続の検めを沈黙させないこと」** ——
+これが V-1 の本当の害である —— を 11 形すべてで確かめた。
+
+### `asArray` の守り(実装)
+
+```js
+const asArray = (v) => (Array.isArray(v) ? v : []);
+if (!run || typeof run !== 'object' || Array.isArray(run)) run = {};
+```
+
+`graph/workspace.js` に**一字も変わらず在る**(四度目の diff は `workspace.js` を触っていない)。
+
+### 門としての生存
+
+```
+  ✓ B-1  [故障注入]: 創造物の倉に居る reform の走行帳を名指しする
+  ✓ B-10 [逆]: 本物の倉では今まで通り裁く (第37条 / AC-20・22)
+  ✓ B-11: init は倉の根に目印を置く — 読む側だけを作らない (FR-11 / 第57条)
+  ✓ B-12 [HIGH-1]: 倉の**子**を指しても倉と名乗らない — git は .git を親へ遡る
+  ✓ B-12b [HIGH-1・実物]: 本物の倉でも根と子を取り違えない
+  ✓ B-13 [MED-2]: git remote の印だけでも倉と認める — 目印を消して黙らせられない
+  ✓ B-14 [MED-1]: PARADISE_CREATIONS の細工した値で例外を出さない (注入面)
+  ✓ B-15 [LOW-1]: 緑は「どの倉を検めたか」を名乗る
+  ✓ B-16 [V-1]: 壊れた形の走行帳で走査が死なない
+abandoned-run: 33 passed, 0 failed
+```
+
+**B-12 は替え玉の倉を自ら建てる**ので、兄弟倉の無い CI でも鳴る(第60条(d) の実施)。
+
+---
+
+## S4-3. **撤去で新しい危険が生まれていないか** —— 死んだ名の生きた参照を狩る
+
+### 消えた 14 名を `graph/ tests/ .github/ overlay/ dashboard/ hooks/` 全域で探した
+
+```
+名                            全一致  生きた参照
+ABSTRACT_FALSE_FRIENDS          2        0
+DETERMINER_LOOKBEHIND           1        0
+ENGINE_NAMES                   10        0
+ENGINE_NAMES_STRONG             4        0
+ENGINE_NAMES_WEAK               1        0
+ENGINE_NAMES_WEAK_JA            0        0
+MEND_RE                         6        0
+mendsParadise                   1        0
+namesParadiseAbstractly         1        0
+REFORM_ABSTRACT_RE              0        0
+REFORM_STRONG_RE                2        0
+REFORM_WEAK_RE                  1        0
+STRONG_BOUND_RE                 1        0
+WORLDLY_VESSEL_RE               4        0
+```
+
+**全一致 34 件はすべて `*` / `//` で始まる註の行である。** 一件も実行されない。
+
+### 機械で裏を取った —— **外から触れないことを直に撃つ**
+
+```
+  forge.ABSTRACT_FALSE_FRIENDS  = undefined  (撤去済 / 外から触れない)
+  forge.DETERMINER_LOOKBEHIND   = undefined  (撤去済 / 外から触れない)
+  forge.ENGINE_NAMES            = undefined  (撤去済 / 外から触れない)
+  forge.ENGINE_NAMES_STRONG     = undefined  (撤去済 / 外から触れない)
+  forge.ENGINE_NAMES_WEAK       = undefined  (撤去済 / 外から触れない)
+  forge.ENGINE_NAMES_WEAK_JA    = undefined  (撤去済 / 外から触れない)
+  forge.MEND_RE                 = undefined  (撤去済 / 外から触れない)
+  forge.mendsParadise           = undefined  (撤去済 / 外から触れない)
+  forge.namesParadiseAbstractly = undefined  (撤去済 / 外から触れない)
+  forge.REFORM_ABSTRACT_RE      = undefined  (撤去済 / 外から触れない)
+  forge.REFORM_STRONG_RE        = undefined  (撤去済 / 外から触れない)
+  forge.REFORM_WEAK_RE          = undefined  (撤去済 / 外から触れない)
+  forge.STRONG_BOUND_RE         = undefined  (撤去済 / 外から触れない)
+  forge.WORLDLY_VESSEL_RE       = undefined  (撤去済 / 外から触れない)
+```
+
+⚠️ **この作法が重要である**: `grep` は「名が見えるか」しか答えない —— 弱い印である(第60条(a))。
+**`typeof forge.<名>` は「外から触れるか」に直に答える** —— 問いと同じ広さの答えを返す強い印。
+両方を撃って初めて「参照が死んでいる」と言える。
+
+### 残った危険の面 —— 増えたか減ったか
+
+| 面 | c6b5ba9 | HEAD | 向き |
+|---|---|---|---|
+| 名前付き正規表現 | 12 本 | **9 本** | 減 |
+| 公開された export | 35 | **21** | 減 |
+| 述語の枝 | `isReformSubject` に 3 枝 | **1 枝** | 減 |
+| 表(語彙の集合) | `ENGINE_NAMES` 系 6 + 他 | **`PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS` のみ** | 減 |
+| `graph/workspace.js` | 428 行 | **428 行**(不変) | ± |
+
+**攻撃面はどの軸でも減った。撤去が生んだ新しい危険はゼロである。**
+
+---
+
+## S4-4. 注入面の再確認 —— `PARADISE_CREATIONS` は今も安全か
+
+```
+  存在しない道                   EXIT=0  · 創造物の倉が存在しない: … (source=env)
+  創造物の倉でないディレクトリ     EXIT=0  · … は創造物の倉ではない
+  倉の子(HIGH-1)                EXIT=0  · … は創造物の倉ではない
+  git 無し(PATH を潰す)         isCreationsVault=false / **例外を投げない**(NFR-02)
+```
+
+`git` を PATH から消して `isCreationsVault` を呼んでも `ENOENT` は外へ出ない ——
+`execFileSync` の例外は握り潰されている。**AC-26 を実機で再現した**(三周目は再現していなかった)。
+
+---
+
+## S4-5. 新しい所見(重い順)
+
+### 【中】`DOC_STRONG_RE` が export されていない —— 表を直に撃つ門が建てられない
+
+欠陥A の核心は「`診断` と `監査` だけが二つの顔を持つ」という**表の形**である。
+だがその表は `module.exports` に無いので、**「表に語を足したのにコーパスを足さない」を
+機械で捕まえる門が建てられない**(第60条(f) が要求する照合ができない)。
+現在は振る舞いの門だけが守っている。**次の走行が `DOC_STRONG_RE` を触るなら export せよ。**
+`PRODUCT_FALSE_FRIENDS` は export されており、四周目は **67 語を表ごと直に撃てた** ——
+この差が「撃てる門」と「撃てない門」を分けている。
+
+### 【低】`isCartography` に `wantsProduct` の打ち消しが無い(危険ではないが同型の病)
+
+`isCartography` は 1 段目に立つので、`一門の家系図を作れるアプリが欲しい` が
+`cartography` へ攫われる(`家系図` の「図を」が弱い印に当たり、
+`DIAGRAM_FALSE_FRIENDS` に `家系図` が無い)。**main も同じなので回帰ではない。**
+security の面ではなく道選びの面なので `requirements.md` §8.8.2 へ申し送った。
+
+### 【情報】撤去は security の観点では**純粋な改善**である
+
+表が 3 本消え、枝が 3 → 1 になり、export が 35 → 21 になった。
+**ReDoS の面も、誤用の面も、保守の面もすべて狭くなった。**
+
+---
+
+## S4-6. 【四周目】自分が見ていないこと(第37条)
+
+1. **CI の裸の機械で撃っていない**(掟により push していない)。
+2. **`graph/workspace.js` のソースを行単位で差分検査していない** ——
+   「四度目の diff が触っていない」を git で確かめ、振る舞いを 15 通り撃って代えた。
+3. **秘密の混入・依存の脆弱性は撃っていない**(本走行は engine の内部ロジックのみを触る)。
+4. **ReDoS は 8 形しか撃っていない。** 三周目は 11 形撃った。減った理由は
+   **撃つべき表が 3 本消えたから**だが、「消えた表に固有だった形」は再現していない。
+5. **並行実行・競合状態は一切撃っていない**(`workspace.js` は同期 API のみ)。
