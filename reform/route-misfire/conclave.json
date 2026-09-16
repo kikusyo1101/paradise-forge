@@ -1,0 +1,684 @@
+{
+  "meta": {
+    "wish": "楽園の forge の道選びと workspace の門が誤着する欠陥を engine から直す",
+    "scale": "reform",
+    "created": "2026-09-13T12:26:59.518Z",
+    "constitution": [
+      "Spec is the source of truth — code serves the spec, not the reverse.",
+      "Every phase is gated — no phase advances on unverified assumptions.",
+      "Independent work runs in parallel; dependent work runs in order.",
+      "Verification precedes judgment; judgment precedes shipping.",
+      "Evidence-based memory — only what actually happened is remembered.",
+      "No secrets in code; security is reviewed, never assumed."
+    ],
+    "gates": [
+      "discover",
+      "specify",
+      "design",
+      "prove",
+      "verify",
+      "reflect",
+      "verdict"
+    ],
+    "produces": "artifact"
+  },
+  "created": "2026-09-13T12:26:59.590Z",
+  "epoch": {
+    "tier": "v1",
+    "at": "2026-09-13T12:26:59.591Z"
+  },
+  "domains": [
+    {
+      "seq": 0,
+      "cardinal": "discovery",
+      "domain": "Discovery (調査)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "discover",
+          "agent": "market-researcher",
+          "goal": "楽園自身を実測せよ: 楽園の forge の道選びと workspace の門が誤着する欠陥を engine から直す。憶測を書くな。全ての門(tests/paradise.test.js, check-agents, census, apply-models verify, deploy check, upstream impact)を実際に走らせ、critic.js review graph --self をかけ、欠陥を**数**にして出す。「〜のはず」は証拠ではない",
+          "deps": [],
+          "gate": true,
+          "artifact": "findings.md",
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/route-misfire/discovery.md",
+          "dispatchedAt": "2026-09-13T12:27:01.720Z",
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "pontiff",
+      "pdca": "plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search"
+    },
+    {
+      "seq": 1,
+      "cardinal": "requirements",
+      "domain": "Requirements (要件)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "specify",
+          "agent": "requirements-analyst",
+          "goal": "実測された欠陥から、直すべきものを選び受入条件を書く。artifact でなく pipeline を直すこと(第9条)。「この門が、この入力で、こう鳴る」まで具体化する",
+          "deps": [
+            "discover"
+          ],
+          "gate": true,
+          "artifact": "requirements.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "reform/route-misfire/requirements.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:discovery",
+      "pdca": "plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps"
+    },
+    {
+      "seq": 2,
+      "cardinal": "architecture",
+      "domain": "Architecture (設計)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "design",
+          "agent": "architect",
+          "goal": "機構を設計する: どの engine を、どう変えるか。憲法に条を足すべきか。既存の門との重複・矛盾はないか。**この変更で嘘になる既存の門**を洗い出す(依存関係を変えたら、古い前提を符号化した門を全て読み直す)",
+          "deps": [
+            "specify"
+          ],
+          "gate": true,
+          "artifact": "design.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "reform/route-misfire/design.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:requirements",
+      "pdca": "plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise"
+    },
+    {
+      "seq": 3,
+      "cardinal": "construction",
+      "domain": "Construction (建造)",
+      "status": "active",
+      "reworks": 3,
+      "phases": [
+        {
+          "id": "build",
+          "agent": "architect",
+          "goal": "engine を実装し、憲法条を追記し、CLAUDE.md/README の該当箇所を更新する",
+          "deps": [
+            "design"
+          ],
+          "gate": false,
+          "artifact": "implementation",
+          "status": "rework",
+          "attempts": 0,
+          "artifactPath": "graph/forge.js",
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "prove",
+          "agent": "tdd-guide",
+          "goal": "**門を、わざと壊して鳴るか試す。** 実在しない名を仕込む/腐った数を仕込む/上流を隠すなど、欠陥を意図的に注入し、門がそれを名指しで捕らえることを回帰テストで固定する。健全な系で緑になるだけの門は証明されていない",
+          "deps": [
+            "build"
+          ],
+          "gate": true,
+          "artifact": "tests",
+          "status": "rework",
+          "attempts": 0,
+          "artifactPath": null,
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:quality",
+      "pdca": "plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green"
+    },
+    {
+      "seq": 4,
+      "cardinal": "quality",
+      "domain": "Quality (品質)",
+      "status": "active",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "review",
+          "agent": "code-reviewer",
+          "goal": "機構の質を審査する。教主の実装を、教主でない者が読む(第11条)。設計意図と実装の乖離、命名、既存 engine との一貫性",
+          "deps": [
+            "build",
+            "prove"
+          ],
+          "gate": false,
+          "artifact": "review.md",
+          "status": "rework",
+          "attempts": 1,
+          "artifactPath": null,
+          "dispatchedAt": "2026-09-13T14:13:29.825Z",
+          "resumes": 0
+        },
+        {
+          "id": "security",
+          "agent": "security-reviewer",
+          "goal": "秘密の混入、任意コード実行、パス走査、CI 権限の過剰付与を検める。楽園の engine は開発者の環境で走る — 危害の射程は creations より広い",
+          "deps": [
+            "build"
+          ],
+          "gate": false,
+          "artifact": "security-report.md",
+          "status": "rework",
+          "attempts": 1,
+          "artifactPath": null,
+          "dispatchedAt": "2026-09-13T14:13:29.825Z",
+          "resumes": 0
+        },
+        {
+          "id": "docs",
+          "agent": "doc-updater",
+          "goal": "CLAUDE.md の門一覧・憲法表、README の該当節を更新し、`node graph/census.js check` が通ることを確認する(第22条)",
+          "deps": [
+            "build"
+          ],
+          "gate": false,
+          "artifact": "docs",
+          "status": "rework",
+          "attempts": 1,
+          "artifactPath": null,
+          "dispatchedAt": "2026-09-13T14:13:29.825Z",
+          "resumes": 0
+        },
+        {
+          "id": "verify",
+          "agent": "verification-loop",
+          "goal": "全門を通常環境と**素の環境**(PARADISE_UPSTREAM=/nonexistent CLAUDE_HOME=/nonexistent)の両方で走らせる。片方でも赤なら未完(第20条)",
+          "deps": [
+            "review",
+            "security",
+            "prove"
+          ],
+          "gate": true,
+          "artifact": "verification-report",
+          "status": "rework",
+          "attempts": 0,
+          "artifactPath": null,
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "executor",
+      "pdca": "plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass"
+    },
+    {
+      "seq": 5,
+      "cardinal": "tribunal",
+      "domain": "Tribunal (断罪機関)",
+      "status": "active",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "reflect",
+          "agent": "self-critic",
+          "goal": "敵対的自己批評: node graph/critic.js review graph --self --lessons graph/lessons.json。この改修が生んだ**新しい盲点**を探す。門を足したなら、その門自身は誰が見張るのか",
+          "deps": [
+            "verify",
+            "docs"
+          ],
+          "gate": true,
+          "artifact": "critique.md",
+          "status": "rework",
+          "attempts": 0,
+          "artifactPath": null,
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "verdict",
+          "agent": "creation-judge",
+          "goal": "楽園の改革を裁く: SHIP / REWORK / BLOCK。裁いた上で PR を出す — マージは神のみ",
+          "deps": [
+            "reflect"
+          ],
+          "gate": true,
+          "artifact": "verdict",
+          "status": "rework",
+          "attempts": 0,
+          "artifactPath": null,
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "god",
+      "pdca": "reflect (adversarial self-critique) precedes verdict (SHIP/REWORK/BLOCK)"
+    }
+  ],
+  "history": [
+    {
+      "ts": "2026-09-13T12:26:59.591Z",
+      "event": "convene",
+      "detail": "6 domains, 11 phases"
+    },
+    {
+      "ts": "2026-09-13T12:27:01.721Z",
+      "event": "dispatch",
+      "detail": "discover"
+    },
+    {
+      "ts": "2026-09-13T12:51:17.787Z",
+      "event": "ratify",
+      "detail": "Discovery (調査) ratified by pontiff"
+    },
+    {
+      "ts": "2026-09-13T12:51:17.898Z",
+      "event": "ratify",
+      "detail": "Requirements (要件) ratified by cardinal:discovery"
+    },
+    {
+      "ts": "2026-09-13T12:51:18.009Z",
+      "event": "ratify",
+      "detail": "Architecture (設計) ratified by cardinal:requirements"
+    },
+    {
+      "ts": "2026-09-13T12:51:40.589Z",
+      "event": "done",
+      "detail": "discover → reform/route-misfire/discovery.md"
+    },
+    {
+      "ts": "2026-09-13T12:51:40.647Z",
+      "event": "done",
+      "detail": "specify → reform/route-misfire/requirements.md"
+    },
+    {
+      "ts": "2026-09-13T12:51:40.700Z",
+      "event": "done",
+      "detail": "design → reform/route-misfire/design.md"
+    },
+    {
+      "ts": "2026-09-13T13:37:57.687Z",
+      "event": "done",
+      "detail": "build → graph/forge.js"
+    },
+    {
+      "ts": "2026-09-13T13:37:57.738Z",
+      "event": "done",
+      "detail": "prove → tests/counsel.test.js"
+    },
+    {
+      "ts": "2026-09-13T13:37:57.788Z",
+      "event": "domain-rework",
+      "detail": "Construction (建造) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 1)"
+    },
+    {
+      "ts": "2026-09-13T14:13:29.650Z",
+      "event": "done",
+      "detail": "build → graph/forge.js"
+    },
+    {
+      "ts": "2026-09-13T14:13:29.706Z",
+      "event": "done",
+      "detail": "prove → tests/counsel.test.js"
+    },
+    {
+      "ts": "2026-09-13T14:13:29.763Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-13T14:13:29.825Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-15T13:31:03.998Z",
+      "event": "done",
+      "detail": "review → reform/route-misfire/review.md"
+    },
+    {
+      "ts": "2026-09-15T13:31:04.049Z",
+      "event": "done",
+      "detail": "security → reform/route-misfire/security-report.md"
+    },
+    {
+      "ts": "2026-09-15T13:31:04.098Z",
+      "event": "done",
+      "detail": "docs → reform/route-misfire/docs.md"
+    },
+    {
+      "ts": "2026-09-15T14:14:56.197Z",
+      "event": "done",
+      "detail": "verify → reform/route-misfire/verify.md"
+    },
+    {
+      "ts": "2026-09-15T14:14:56.249Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-15T15:03:16.232Z",
+      "event": "done",
+      "detail": "reflect → reform/route-misfire/reflect.md"
+    },
+    {
+      "ts": "2026-09-15T15:03:16.283Z",
+      "event": "done",
+      "detail": "verdict → reform/route-misfire/verdict.md"
+    },
+    {
+      "ts": "2026-09-15T15:03:16.334Z",
+      "event": "domain-rework",
+      "detail": "Construction (建造) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 2); un-ratified construction, quality"
+    },
+    {
+      "ts": "2026-09-15T15:40:22.276Z",
+      "event": "done",
+      "detail": "build → graph/forge.js"
+    },
+    {
+      "ts": "2026-09-15T15:40:22.324Z",
+      "event": "done",
+      "detail": "prove → tests/counsel.test.js"
+    },
+    {
+      "ts": "2026-09-15T15:40:22.367Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-16T03:43:59.007Z",
+      "event": "done",
+      "detail": "build → graph/forge.js"
+    },
+    {
+      "ts": "2026-09-16T03:43:59.055Z",
+      "event": "done",
+      "detail": "prove → tests/counsel.test.js"
+    },
+    {
+      "ts": "2026-09-16T03:43:59.103Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-16T04:54:11.335Z",
+      "event": "domain-rework",
+      "detail": "Construction (建造) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 3); un-ratified construction"
+    }
+  ],
+  "spawnTrace": {
+    "discover": [
+      {
+        "phase": "discover",
+        "agent": "market-researcher",
+        "toolUseId": "sa-0-f5e7abe7",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T12:51:40.434Z",
+        "kind": "observed"
+      }
+    ],
+    "specify": [
+      {
+        "phase": "specify",
+        "agent": "requirements-analyst",
+        "toolUseId": "sa-0-f5e7abe7",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T12:51:40.484Z",
+        "kind": "observed"
+      }
+    ],
+    "design": [
+      {
+        "phase": "design",
+        "agent": "architect",
+        "toolUseId": "sa-0-f5e7abe7",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T12:51:40.534Z",
+        "kind": "observed"
+      }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-c183b73e",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T13:37:57.592Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-1d3d6365",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T14:13:29.539Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-80c90dd8",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T15:40:22.193Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-62ece825",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T03:43:58.915Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-c183b73e",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T13:37:57.637Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-1d3d6365",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-13T14:13:29.593Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-80c90dd8",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T15:40:22.232Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-62ece825",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T03:43:58.960Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-774acba5",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T13:31:03.853Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-774acba5",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T13:31:03.899Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-774acba5",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T13:31:03.945Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-5b7eaa20",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T14:14:56.150Z",
+        "kind": "observed"
+      }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "sa-0-06886683",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T15:03:16.129Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "sa-0-06886683",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-15T15:03:16.179Z",
+        "kind": "observed"
+      }
+    ]
+  },
+  "tierTrace": {
+    "discover": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: market-researcher"
+      ],
+      "at": "2026-09-13T12:51:40.589Z"
+    },
+    "specify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: requirements-analyst"
+      ],
+      "at": "2026-09-13T12:51:40.647Z"
+    },
+    "design": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-13T12:51:40.699Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 4 件の起動を観測: architect, architect, architect, architect"
+      ],
+      "at": "2026-09-16T03:43:59.006Z"
+    },
+    "prove": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 4 件の起動を観測: tdd-guide, tdd-guide, tdd-guide, tdd-guide"
+      ],
+      "at": "2026-09-16T03:43:59.054Z"
+    },
+    "review": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: code-reviewer"
+      ],
+      "at": "2026-09-15T13:31:03.998Z"
+    },
+    "security": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: code-reviewer"
+      ],
+      "at": "2026-09-15T13:31:04.048Z"
+    },
+    "docs": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: code-reviewer"
+      ],
+      "at": "2026-09-15T13:31:04.097Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: verification-loop"
+      ],
+      "at": "2026-09-15T14:14:56.197Z"
+    },
+    "reflect": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: self-critic"
+      ],
+      "at": "2026-09-15T15:03:16.231Z"
+    },
+    "verdict": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: creation-judge"
+      ],
+      "at": "2026-09-15T15:03:16.282Z"
+    }
+  }
+}
