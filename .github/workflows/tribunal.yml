@@ -175,6 +175,13 @@ jobs:
         # 対角の合計と**非対角の各セルが 0** を両方 assert する。
         run: node tests/route-matrix.test.js
 
+      - name: 💳 Route debt — 未払いの誤着が黙って直っていないか (AC-7 / 第16条)
+        # **これは xfail の門である。** PARA-10/PARA-11 は本走行で直さないと裁定した
+        # (reform/judgment-triad/requirements.md §3.4)。黙って外せば緩めたことに
+        # なるので、**誤った振る舞いを誤りのまま凍らせる**。誰かが直した日に
+        # この門が赤くなり、「debt.md から外して本コーパスへ昇格させよ」と教える。
+        run: node tests/route-debt.test.js
+
       - name: ⚖️ Ratify guard — 仕事をせずに祝福できないか (PARA-6 / 第37条)
         # 旧実装は 17 相すべて pending・成果物 0 件のまま `domains ratified: 6/6` を
         # 成立させ、`conclave.js audit` はそれを `closed` として ✓ で通していた。
