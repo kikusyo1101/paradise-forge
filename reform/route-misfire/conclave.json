@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,9 +162,9 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "rework",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/route-misfire/review.md",
           "dispatchedAt": "2026-09-13T14:13:29.825Z",
           "resumes": 0
         },
@@ -177,9 +177,9 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "rework",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/route-misfire/security-report.md",
           "dispatchedAt": "2026-09-13T14:13:29.825Z",
           "resumes": 0
         },
@@ -192,9 +192,9 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "rework",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/route-misfire/docs.md",
           "dispatchedAt": "2026-09-13T14:13:29.825Z",
           "resumes": 0
         },
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/route-misfire/verify.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -236,10 +236,10 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "rework",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/route-misfire/reflect.md",
+          "dispatchedAt": "2026-09-16T06:57:20.574Z",
           "resumes": 0
         },
         {
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/route-misfire/verdict.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -427,6 +427,46 @@
       "ts": "2026-09-16T05:39:02.580Z",
       "event": "ratify",
       "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-16T06:26:04.434Z",
+      "event": "done",
+      "detail": "review → reform/route-misfire/review.md"
+    },
+    {
+      "ts": "2026-09-16T06:26:04.482Z",
+      "event": "done",
+      "detail": "security → reform/route-misfire/security-report.md"
+    },
+    {
+      "ts": "2026-09-16T06:26:04.529Z",
+      "event": "done",
+      "detail": "docs → reform/route-misfire/docs.md"
+    },
+    {
+      "ts": "2026-09-16T06:26:04.576Z",
+      "event": "done",
+      "detail": "verify → reform/route-misfire/verify.md"
+    },
+    {
+      "ts": "2026-09-16T06:26:04.624Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-16T06:57:20.575Z",
+      "event": "dispatch",
+      "detail": "reflect"
+    },
+    {
+      "ts": "2026-09-16T06:57:27.424Z",
+      "event": "done",
+      "detail": "reflect → reform/route-misfire/reflect.md"
+    },
+    {
+      "ts": "2026-09-16T06:57:27.474Z",
+      "event": "done",
+      "detail": "verdict → reform/route-misfire/verdict.md"
     }
   ],
   "spawnTrace": {
@@ -566,6 +606,15 @@
         "rank": null,
         "at": "2026-09-15T13:31:03.853Z",
         "kind": "observed"
+      },
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-85061158",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T06:26:04.250Z",
+        "kind": "observed"
       }
     ],
     "security": [
@@ -576,6 +625,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-15T13:31:03.899Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "security",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-85061158",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T06:26:04.293Z",
         "kind": "observed"
       }
     ],
@@ -588,6 +646,15 @@
         "rank": null,
         "at": "2026-09-15T13:31:03.945Z",
         "kind": "observed"
+      },
+      {
+        "phase": "docs",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-85061158",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T06:26:04.336Z",
+        "kind": "observed"
       }
     ],
     "verify": [
@@ -598,6 +665,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-15T14:14:56.150Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "verify",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-85061158",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T06:26:04.384Z",
         "kind": "observed"
       }
     ],
@@ -669,33 +745,33 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: code-reviewer"
+        "序列1: 2 件の起動を観測: code-reviewer, code-reviewer"
       ],
-      "at": "2026-09-15T13:31:03.998Z"
+      "at": "2026-09-16T06:26:04.433Z"
     },
     "security": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: code-reviewer"
+        "序列1: 2 件の起動を観測: code-reviewer, code-reviewer"
       ],
-      "at": "2026-09-15T13:31:04.048Z"
+      "at": "2026-09-16T06:26:04.482Z"
     },
     "docs": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: code-reviewer"
+        "序列1: 2 件の起動を観測: code-reviewer, code-reviewer"
       ],
-      "at": "2026-09-15T13:31:04.097Z"
+      "at": "2026-09-16T06:26:04.528Z"
     },
     "verify": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: verification-loop"
+        "序列1: 2 件の起動を観測: verification-loop, code-reviewer"
       ],
-      "at": "2026-09-15T14:14:56.197Z"
+      "at": "2026-09-16T06:26:04.576Z"
     },
     "reflect": {
       "declared": 1,
@@ -703,7 +779,7 @@
       "lines": [
         "序列1: 1 件の起動を観測: self-critic"
       ],
-      "at": "2026-09-15T15:03:16.231Z"
+      "at": "2026-09-16T06:57:27.423Z"
     },
     "verdict": {
       "declared": 1,
@@ -711,7 +787,7 @@
       "lines": [
         "序列1: 1 件の起動を観測: creation-judge"
       ],
-      "at": "2026-09-15T15:03:16.282Z"
+      "at": "2026-09-16T06:57:27.474Z"
     }
   }
 }

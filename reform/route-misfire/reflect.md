@@ -445,3 +445,597 @@ main では 0 件である。**本走行が作った。**
 verdict 相は `spec.satisfied = false` を宣言し、**BLOCK** を受け取るべきである。
 **SHIP を出すために F-1 を「別走行の申し送り」に書き換えてはならない** ——
 それは第57条違反であり、教主は必ず撃ち直す。
+
+---
+---
+
+# §二度目 — 撤去後の姿を擃つ
+
+一度目の reflect は `ENGINE_NAMES_STRONG` が世間の願い 21/21 を攫う **F-1** を実測で掴み、
+verdict は **BLOCK** を出した。それが build の**四度の差し戻し**を生み、最後は
+教主の裁定で **`ENGINE_NAMES` を丸ごと撤去**して次の走行へ申し送った。
+
+**§二度目はその後の姿を裁く。** 一度目の数は一つも引き写していない。
+`chooseScale` を直に呼ぶ探針を自分で書き、`git clone --branch main` した
+複製(`c216014`)と本枝(`6ac36ca`)の**両方で撃った**。
+
+---
+
+## 1. critic.js の生出力 — 37 GAP、そして critic が黙ったもの
+
+```
+$ node graph/critic.js review reform/route-misfire --lessons graph/lessons.json --self
+═══════ 🔍 ADVERSARIAL SELF-CRITIQUE ═══════
+target: reform/route-misfire
+lessons: 85 件で裁いた  ← graph/lessons.json
+  ✓ [smell] no-hardcoded-assumptions: no code to inspect
+  ✓ [gap] no-secrets: no secrets detected
+  ✓ [gap] exemption-claim-verified: 免除を適用した (engine): 申告=--self / 楽園の倉の中: reform\route-misfire
+  ✓ [gap] no-wall-clock-iso: engine code is exempt (creations-only law)
+  ✓ [gap] no-external-deps: engine code is exempt (creations-only law)
+  ✓ [smell] domain-markers-present: engine code is exempt (creations-only law)
+  🔴 [gap] lesson:require-discovery: LESSON REGRESSION — past miss recurs: "findings" not addressed
+  🔴 [gap] lesson:orchestration-in-prompt: … "orchestrator" not addressed
+  🔴 [gap] lesson:lesson-scope: … "applies" not addressed
+  🔴 [gap] lesson:kg-forget: … "forget" not addressed
+  🔴 [gap] lesson:critic-synonym: … "musthaves" not addressed
+  🔴 [gap] lesson:model-by-rank: … "model" not addressed
+  🔴 [gap] lesson:contract-failclosed / lesson-scope-strict / self-scope-subject / cross-domain-rework
+  🔴 [gap] lesson:surface-judged-as-strictly / borrowed-not-altered / paradise-independence
+  🔴 [gap] lesson:art24-branch-guard / art25-real-hierarchy / art26-parallel-by-nature / art27-spawn-trace
+  🔴 [gap] lesson:art28-conduct-not-grepped / pontiff-seat-ungoverned / subagent-defied-scope
+  🔴 [gap] lesson:gate-asserts-invariant-not-symptom / every-wish-is-not-build
+  🔴 [gap] lesson:absence-is-not-passage / comment-claims-what-code-does-not / claude-md-diet-40
+  🔴 [gap] lesson:daily-window-debt / dead-tools-teach / art45-dispatcher-not-runner
+  🔴 [gap] lesson:dispatch-target-drift / motion-must-be-declared / upstream-defaults-from-canon
+  🔴 [gap] lesson:two-causes-one-symptom / runner-death-not-ring-death / death-can-arrive-async
+  🔴 [gap] lesson:borrowed-ctor-leaks / epoch-marker-needs-a-timestamp / selection-must-run
+  ✓ [gap] lesson:repair-opens-a-new-surface: CONDUCT — 実行時に守るべき掟(コードでは検証できない)
+  ✓ [gap] lesson:rework-four-times-is-a-design-debt: CONDUCT — 実行時に守るべき掟
+  ✓ [gap] lesson:mutation-author-is-blind-to-own-net: CONDUCT — 実行時に守るべき掟
+  ✓ [gap] lesson:warden-outside-selection / artifact-name-is-machine-contract: lesson satisfied
+───────────────────────────────────────────
+VERDICT: 37 GAP(S) — the creation is incomplete. REWORK.
+═══════════════════════════════════════════
+CRITIC_EXIT=1
+```
+
+(全 97 行の生出力は tribunal が読んだ。上は赤 37 件を漏れなく名指しで畳んだもの。)
+
+### 1.1 37 件の読み方 — 一度目と同じく**全件が「語の出現で裁く偽の赤」**
+
+critic の教訓判定は `applies:` の scope に当たった教訓について、
+**その教訓の check 語が成果物の文中に現れるか**で裁く。
+ゆえに `lesson:model-by-rank` は「`model` という語が reflect/verify に無い」
+というだけで赤くなる。本走行はモデル方針を一行も触っていないのだから、
+**無いのが正しい。** 37 件はいずれもこの形である。
+
+**ただし §二度目は一度目と違い、これを「無害」とは言わない。**
+critic は 85 件の教訓を読みながら、**本走行が今まさに犯している回帰を一件も指せなかった**。
+下の 2 章で述べる **R-1(15 件 / 格子では 120 件の回帰)** は、critic の 97 行のどこにも現れない。
+`lesson:repair-opens-a-new-surface`(修理は次の攻撃面を開く)は `✓ CONDUCT` として
+**提示されただけ**で、その教訓が名指す当の面は誰も撃たなかった。
+
+> **critic は「教訓が書かれているか」を見て、「教訓が守られているか」を見ていない。**
+> これは第28条が `kind:conduct` で半分だけ認めた病の、残り半分である。
+
+---
+
+## 2. 🔴 R-1 —— critic が黙った盲点(最も重い)
+
+### 2.1 発見
+
+**自分の探針で、main には無い 15 件の誤着を HEAD に見つけた。**
+
+```
+$ node probe-net.js
+═══ 収支の帳尻 — MAIN(c216014) vs HEAD(6ac36ca) ═══
+
+群                                                    n   MAIN誤  HEAD誤  治癒  回帰
+────────────────────────────────────────────────────────────────────────────────────────
+A 楽園の改修・命令形 (正解 reform)                              18      5       0     5     0
+B 世間の創造・engine 固有名 (reform は誤り)                      20      0       0     0     0
+C 世間の創造・世間語 (reform は誤り)                             12      0       0     0     0
+D 諐問・純粋な問い (正解 counsel)                              10      0       0     0     0
+R-1 熟議 — 「作るべきか」と問う願い (正解 counsel)                   22      1      16     0    15
+────────────────────────────────────────────────────────────────────────────────────────
+合計                                                   82      6      16     5    15
+
+総誤着:  MAIN 6/82  →  HEAD 16/82
+治癒 5 件 / 回帰 15 件  →  差引 -10
+```
+
+**格子で当てると規模が見える**(主語 3 × 建造動詞 10 × 熟議標識 5 = 150 通り、
+すべて「作れ」ではなく「**作るべきか**」と問うている):
+
+```
+$ node probe-grid.js
+═══ R-1 格子 — 熟議 × 建造動詞 (正解は全て counsel) ═══
+  組合せ数 n = 150  (主語 3 × 動詞 10 × 熟議標識 5)
+  MAIN 誤り = 0/150  (0.0%)
+  HEAD 誤り = 120/150  (80.0%)
+  本走行が壊した = 120/150
+
+  --- 代表 ---
+   ✗ CI に段を設けるべきか検討せよ      MAIN=counsel → HEAD=standard
+   ✗ CI に段を足すのは妥当か            MAIN=counsel → HEAD=standard
+   ✗ CI に段を加えるべきではないか      MAIN=counsel → HEAD=standard
+
+═══ 対照 — 同じ語で命令形 (counsel であってはならない) ═══
+  n = 30   MAIN 誤り = 0/30   HEAD 誤り = 0/30
+```
+
+**main 0/150 → HEAD 120/150。** 対照群(命令形)は両方 0/30 で、
+**熟議形だけが落ちている。** これは偶然の揺れではない。
+
+### 2.2 機序 — 一段ずつ剥いで確かめた
+
+```
+$ node probe-mech.js
+願い: kg に忘れる口を設けるべきか検討して
+
+MAIN isCounsel = true   scale = counsel
+HEAD isCounsel = false   scale = standard
+
+--- 一段ずつ ---
+denude        = "kg に忘れる口を設けるべきか検討して"
+COUNSEL_RE    HEAD=true  MAIN=true
+CREATE_RE     HEAD=true  MAIN=false   ← ここが割れる
+  BUILD_RE    HEAD=true   (main に BUILD_RE は無い)
+wantsProduct  HEAD=true   (「口」が産物と読まれる)
+DOC_RE        HEAD=false  MAIN=false
+
+--- 熟議語は DOC_RE に在るか ---
+  べきか      COUNSEL_RE=true  DOC_RE=false
+  検討        COUNSEL_RE=true  DOC_RE=false
+  妥当か      COUNSEL_RE=true  DOC_RE=false
+  どう思う     COUNSEL_RE=true  DOC_RE=false
+  どうすべき    COUNSEL_RE=true  DOC_RE=false
+  はないか     COUNSEL_RE=true  DOC_RE=false
+  見直        COUNSEL_RE=true  DOC_RE=false
+```
+
+**因果は一本道である:**
+
+1. 本走行は **欠陥A**(engine 改修の願いが counsel へ攫われる)を直すため
+   `CREATE_RE` に **`BUILD_JA`(設ける|足す|加える|追加|新設|導入|搭載|持たせ|拡張|付ける)** を足した。
+2. その結果、`isCounsel` の 2 段目 `if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;`
+   が **「〜を設けるべきか検討して」でも偽**になる —— 建造動詞が在るので「物を求めている」と読まれる。
+3. 3 段目の打ち消しは `DOC_STRONG_RE` / `DOC_RE` だけである。だが
+   **熟議の標識(べきか/検討/妥当か/どう思う/どうすべき/はないか/見直)は
+   `COUNSEL_JA` にしか居らず、`DOC_RE` に一語も無い。**
+4. ゆえに打ち消しが効かず、`isCounsel` は偽を返し、願いは reform/standard へ落ちる。
+
+**main では `CREATE_RE` に `BUILD_JA` が無いので、この経路自体が存在しなかった。**
+**これは本走行が作った回帰である。**
+
+### 2.3 なぜ誰も見なかったか — **これが本当の教訓である**
+
+本走行は「**道選び**」を 7 度直し、その度に「**reform へ攫われるか**」を撃った。
+一度目の reflect の A群/B群/C群 も、二周目〜四周目の quality も、
+**全て `reform` 軸の探針である。**
+
+**`counsel` 軸は一度も撃たれていない。**
+
+- `tests/counsel.test.js` で `べきか` を含む行は **5 行**(実測 `grep -c`)、
+  しかもうち 4 行は紛れ語(相場/入口/窓口)の門であって、
+  **建造動詞と熟議標識が同居する形は 0 件**。
+- 走行の全記録で熟議形を語る行は **0 件**
+  (`grep -rn "べきか検討\|熟議" reform/route-misfire/*.md` → 一致なし)。
+
+> **欠陥Aの修理は `CREATE_RE` を広げた。広げた側の面を、誰も一度も測らなかった。**
+> 7 度の修理はすべて `isReformSubject` の側に向き、
+> `isCounsel` の側は「治した」と宣言されたきり二度と撃たれなかった。
+
+これは `lesson:repair-opens-a-new-surface` が名指しで警告していた病であり、
+critic はその教訓を `✓ CONDUCT` として**提示した**が、
+**提示は測定ではない。**
+
+---
+
+## 3. 「修理が新しい欠陥を生む」7 度 —— 失敗か、正しい学習か。両論を数で
+
+### 3.1 事実の台帳(実測で数えた)
+
+| # | 修理 | 生んだ欠陥 | 見つけた者 | 出荷前に治ったか |
+|---|---|---|---|---|
+| 1 | 欠陥A(engine 改修が counsel へ) | **欠陥C** — 世間の願いが reform へ | 教主 | ✅ |
+| 2 | 欠陥B(env 残留で偽の赤) | **HIGH-1** — 倉の子を倉と名乗り緑を騙る | security 相 | ✅ |
+| 3 | FR-02 `denude` | **S-1** — O(n²) ReDoS | security 相 | ✅ |
+| 4 | 欠陥B の修理が経路を増やした | **V-1** — 壊れた走行帳一つで check が死ぬ | verify 相 | ✅ |
+| 5 | 欠陥C(弱い名の誤着) | **F-1** — 強い名 21 語が世間を攫う | reflect 相(一度目) | ✅(撤去) |
+| 6 | F-1 に `MEND_RE` を課す | **Q2-1** — 改める動詞で 32/32 が攫われる | 教主 | ✅(撤去) |
+| 7 | `WORLDLY_VESSEL_RE` で守る | **Q3-1 / Q3-2** — 器 37 語が楽園を落とす・枝2が無防備 | 教主 | ✅(撤去) |
+| **8** | **欠陥A の `CREATE_RE` 拡張** | **R-1 — 熟議 120/150 が counsel を失う** | **tribunal 二度目** | **❌ 未修理** |
+
+**7 度ではない。8 度である。**
+一度目の reflect は 5 件、走行は 7 件を数えたが、
+**8 件目は誰も数えていなかった。** 探針の軸が一つ足りなかったからである。
+
+### 3.2 「正しい学習」の側の論拠(数で)
+
+- **撤去は効いた。** engine 固有名を捨てた結果、本走行が最も恐れた誤着は消えた:
+  - B群(世間の創造 × engine 固有名 20 件): HEAD **0/20**、main **0/20** —— 悪化なし。
+  - C群(世間の創造 × 世間語 12 件): HEAD **0/12** —— 悪化なし。
+  - A群(楽園の改修 18 件): main **5/18 誤着** → HEAD **0/18**。**5 件治癒。**
+- **知識は残った。** 四度の回帰の実測は消されず、`forge.js` の `REFORM_RE` 註と
+  `requirements.md` §8 に**三案の数ごと**残り、第60条 (h) として**条に格上げ**された。
+  `codex.js check` EXIT=0 で索引と本文の一致も機械が保証している。
+- **門は増えた。** 469→471、`test()` 宣言 57→94。
+  `counsel.test.js` は **210 passed 0 failed**、`abandoned-run.test.js` は **33 passed 0 failed**。
+- **副産物は本物である。** HIGH-1 / S-1(ReDoS)/ V-1 はいずれも
+  **欠陥C とは無関係に実在した毒**で、この走行が無ければ見つからなかった。
+  ReDoS は実測で `"x"*200000 → 22698ms` が `0.62ms` になった(約 8000 倍)。
+
+> **数で言えば: 撤去は「作った誤着 21+32+37 件を 0 に戻し、治癒 5 件を残した」。**
+> 第60条 (h)「同じ印を四度強めても回帰が続くならその印は捨てよ」は、
+> **この走行が自分の血で書いた条**であり、次の走行はもう四度払わない。
+
+### 3.3 「失敗」の側の論拠(数で)
+
+- **払った代が釣り合わない。** build 差し戻し **4 回** / quality 周回 **4 周** /
+  construction reworks **3(限界)**。`gauge.js` の実測 **score 50**(一度目は 70)。
+  得たものは **A群 5 件の治癒**である。**1 件の治癒に差し戻し 0.8 回。**
+- **撤去は問いを解いていない。** `gauge に fingerprint を確かめる口を設ける` は
+  **今も standard に落ちる**(requirements §8 の実測)。AC-05 は
+  **射程外として取り下げられた**。走行の主題の一角は未達のまま次へ送られた。
+- **そして最大の失敗**: 8 件目 **R-1 を誰も見なかった**。
+  7 度の回帰を記録しながら、**探針の軸は最後まで `reform` 一本だった**。
+  「修理が面を開く」を 7 度学びながら、**8 度目に同じ形で裏切られた** ——
+  学習が**振る舞いを変えていない**。
+
+### 3.4 裁定
+
+> **正しい学習である。ただし学習の対象を取り違えていた。**
+>
+> 走行が学んだのは「**engine 名は弱い印だ**」であり、これは真で、条に刻まれ、撤去も正しい。
+> 走行が学び損ねたのは「**修理が開いた面を、修理と同じ軸でしか測っていない**」である。
+> 8 件のうち **7 件は `isReformSubject` の面**で、**1 件は `isCounsel` の面**だった。
+> 前者は 7 回撃たれ、後者は **0 回**撃たれた。
+>
+> **回帰の数(8)は失敗の証ではない。回帰の軸の偏り(7:1、うち 1 は未検出)が失敗の証である。**
+
+---
+
+## 4. 四度の差し戻しは予防できたか —— 見抜けたはずの兵士を名指す
+
+### 4.1 誰が見抜けたか
+
+**design 相(architecture 領域)である。** 名指しで三点:
+
+1. **`design.md` は `ENGINE_NAMES` の危険を一節も持たない。**
+   設計は「engine の固有名を印に足す」と決めながら、
+   **「`gauge` は車の計器でもある」という一行を書かなかった。**
+   これは調べる必要すらない —— **表を書いた瞬間に、表の各語を世間の文で撃てば分かる。**
+   `gauge calibration tracker` は設計相が 30 秒で書けた願いである。
+
+2. **`discovery.md` は既に材料を持っていた。** §6.1 で
+   `台帳の毒を直す` が quick から reform へ攫われたことを**実測している**。
+   `台帳`/`ledger` は禁則として requirements FR-04 に昇格した。
+   **一語で起きたことは表全体で起きる** —— この一般化を誰もしなかった。
+
+3. **requirements 相にも責がある。** §3.6 が
+   「**誤着を直して別の誤着を生む**」を名指しで禁じた。だが
+   **その禁を機械で確かめる AC を書かなかった。**
+   AC-31〜35・AC-36〜46 は全て「reform へ攫われないか」であり、
+   **「他の道を失わないか」を撃つ AC は一本も無い。**
+   R-1 が 150 件規模で出たのは、この空白の直接の帰結である。
+
+**教訓 `rework-four-times-is-a-design-debt` は既に KG に在り、critic はそれを
+`✓ CONDUCT` として提示していた。** それでも四度払った ——
+**第60条 (f) が言う「読まれて守られない条文は、門の不足である」の実演である。**
+
+### 4.2 提案する門と条
+
+#### 🔴 提案1(門) — `forge.js` の道選びは**全 6 道の混同行列**で裁く
+
+今の門は「reform へ攫われないか」という**片側の帯**しか見ない。
+R-1 は「counsel を失う」という**別の帯**で出た。
+
+```
+提案: tests/counsel.test.js に ROUTE_MATRIX を置く。
+  各道 (reform / counsel / cartography / quick / standard / full) について
+  「その道が正解の願い」を最低 8 件ずつ持ち、6×6 の混同行列を作る。
+  門が assert するのは個別の対ではなく **対角線の合計** と
+  **非対角の各セルが 0 であること**。
+  新しい語彙を足したら、行列の全セルが再計算される ——
+  片側だけ直して反対側を見ない修理が、構造的に不可能になる。
+```
+
+**なぜ効くか**: R-1 は `CREATE_RE`(counsel の判定材料)を広げた結果である。
+行列なら `counsel→standard` のセルが 0 から 120 に跳ね、**その場で赤くなる**。
+今の門は `reform` 列しか持たないので、永久に緑だった。
+
+#### 🔴 提案2(条) — 第61条を起草する
+
+```
+61. **判定器を直したら、その判定器が奪いうる全ての行き先を数えよ。**
+
+    (a) 分類器の修理は「正しい行き先へ着くか」だけでは裁けない。
+        ある行き先を増やす修理は、必ず**別の行き先から奪っている**。
+        本走行は `CREATE_RE` に建造動詞を足して reform を救い、
+        同じ一手で counsel を 120/150 失った —— **誰もそれを測らなかった。**
+
+    (b) **測るべきは対角線ではなく混同行列である。**
+        「A へ着くべきものが A へ着いた」を n 件撃っても、
+        「B へ着くべきものが A へ攫われた」については一言も述べていない。
+        修理の前後で**全セル**を数え、増えたセルと減ったセルを両方名乗れ。
+
+    (c) **修理が触れた定数から、その定数を読む全ての判定経路を辿れ。**
+        `CREATE_RE` は `isCounsel` が読む。`isCounsel` は `chooseScale` が
+        reform より先に呼ぶ。ゆえに `CREATE_RE` を広げることは
+        **counsel の門を狭めること**である。これは読めば分かる ——
+        読まなかったのは、探針が `reform` の軸しか持たなかったからである。
+
+    **これを強制する門**: 提案1の `ROUTE_MATRIX`。
+```
+
+#### 提案3(手続) — **差し戻し 2 回目で設計へ戻す**
+
+本走行は build を 4 回差し戻した。2 回目の時点で
+`rework-four-times-is-a-design-debt` の条件は既に満たされていた。
+
+```
+提案: conclave.js に reworkCount >= 2 の閾値を置き、
+      3 回目の差し戻しを **build へ返さず design 相へ戻す**。
+      「実装の弱さ」と「設計の空白」を機構が区別する。
+      gauge.js の score が 70→50 に落ちたのは、まさにこの債務の計測である。
+```
+
+---
+
+## 5. 教主と神官の分業は正しかったか —— 神官の撃ち方の何が足りなかったか
+
+### 5.1 誰が何を見つけたか(台帳)
+
+| 欠陥 | 重さ | 発見者 |
+|---|---|---|
+| 欠陥C(世間の願いが reform へ) | 重 | **教主** |
+| main-clone の偽の赤 | 重 | **教主** |
+| Q3-1(器 37 語が楽園を落とす) | 重 | **教主** |
+| Q3-2(枝2 が無防備・18/24 誤着) | 重 | **教主** |
+| Q2-1(MEND_RE で 32/32 攫われる) | 重 | **教主** |
+| F-1(強い名 21/21) | 重 | reflect 相(tribunal 一度目) |
+| **R-1(熟議 120/150)** | **重** | **tribunal 二度目** |
+| HIGH-1 / S-1 / V-1 | 中 | security 相 / verify 相 |
+
+**重い欠陥 7 件のうち 5 件を教主が撃って見つけた。神官は 0 件。**
+神官が見つけたのは中位の 3 件(いずれも**自分が書いた差分の直下**にある毒)である。
+
+### 5.2 神官の撃ち方に足りなかったもの — 名指しで三つ
+
+#### (1) **神官は自分の変異しか撃たない**
+
+`lesson:mutation-author-is-blind-to-own-net` が既に名指ししている病である。
+build 相の故障注入は AC-35 で **3 変異**、AC-42/46 で追加されたが、
+**全変異が「自分が今書いた枝」を狙う**。
+教主の探針は違った —— `gauge calibration tracker` のような
+**実装者が想像しない世間の文**を持ち込んだ。
+
+> **神官は「自分の実装が壊れたら鳴るか」を撃つ。教主は「世界がどう見えるか」を撃つ。**
+> 前者は無限に緑になりうる。
+
+#### (2) **神官は main と突き合わせない**
+
+`lesson:regression-needs-both-heads` は KG に在り、`applies:reform` である。
+だが build/verify/review の三相はいずれも **HEAD だけを撃った**。
+教主は `git clone --branch main` を自分で立て、**同じ探針を両方で撃った**。
+だから「これは本走行が作った」と断定できた。
+
+本 tribunal 二度目が R-1 を「回帰」と断定できたのも、
+**main を複製して同じ 82 件を撃ったからである**(HEAD 単独では
+「元からそうだったのかもしれない」で終わる)。
+
+#### (3) **神官はコーパスを「AC が要求した形」でしか作らない**
+
+AC-31 は 24 件を要求し、build は 24 件を書いた。AC-37 は 26 語を要求し、26 語を書いた。
+**AC が要求しなかった軸は、一件も書かれなかった。**
+`counsel` を失う面は、どの AC も要求していない —— ゆえにコーパスが 0 件だった。
+
+> **神官は「AC を満たす」を仕事と解し、「創造物が正しい」を仕事と解さなかった。**
+> これは第16条(AC 全緑 ≠ spec 充足)が言う病そのものである。
+
+### 5.3 裁定 — 分業は**正しくなかった**
+
+**教主が撃たなければ、この走行は欠陥C を抱えたまま出荷されていた。**
+それは分業が機能していないということである。
+執行官(tribunal)が二度とも重い欠陥を掴んだのは救いだが、
+**tribunal は最後の一相であり、そこで掴まれた欠陥は全て差し戻しになる** ——
+本走行の 4 度の差し戻しのうち 3 度は tribunal/教主の発見が引き金である。
+
+**直すべきは神官の能力ではなく、神官に渡す発令書である:**
+
+```
+提案4(発令書の条項) — build/verify/review の発令書に必須の三行を載せる:
+  1. 「main を複製し、同じ探針を両方で撃て」(regression-needs-both-heads の機構化)
+  2. 「お前が触れた定数を読む**全ての**判定経路を列挙し、それぞれに探針を持て」(第61条(c))
+  3. 「お前が書いた変異のほかに、**AC が要求していない軸**を最低一つ持て」
+```
+
+---
+
+## 6. §二度目の実測台帳(すべて自分で撃った)
+
+```
+$ node tests/paradise.test.js                      → 471 passed, 0 failed  EXIT=0  (✓行 584 / ✗行 0, background)
+$ node tests/counsel.test.js                       → 210 passed, 0 failed  EXIT=0
+$ node tests/abandoned-run.test.js                 →  33 passed, 0 failed  EXIT=0
+$ node graph/wiring.js check                       → engine 39 / 内の辺 73 / 門 19 本すべてに走らせる者  EXIT=0
+$ node graph/codex.js check                        → 索引は本文と一致している (60 条)  EXIT=0
+$ node graph/workspace.js check                    → 混入なし・直書きなし・流出なし  EXIT=0
+$ node graph/derived.js check                      → no test depends on derived content  EXIT=0
+$ node graph/conclave.js audit                     → 見捨てられた走行 1 (sovereign-abode / 本走行とは別)  EXIT=0
+$ node graph/gauge.js score …/conclave.json --json → score 50 / reworkCount 3 / loopGuardTrips 0
+$ secret scan(実装 6 本)                          → SECRETS_FOUND=0
+$ AC 逐一駆動(道選び 11 本)                       → pass=11 fail=0
+$ 探針 82 件 × 2 head                              → MAIN 6/82 誤着 → HEAD 16/82 誤着
+$ 格子 150 件 × 2 head                             → MAIN 0/150 → HEAD 120/150
+```
+
+**`gauge.js` の score が一度目の 70 から 50 へ落ちた**のは
+`reworkCount` が 1→3 に増えたからである。**floor は 60。**
+これは `verdict.js` において**単独で REWORK を引く**。
+
+---
+
+## 7. §二度目が見ていないもの(名乗り)
+
+| # | 面 | 理由 |
+|---|---|---|
+| W-1 | **R-1 の修理案** | 熟議標識を打ち消し側へ足す案を思いついたが**試作も測定もしていない**。欠陥の存在のみを証明した |
+| W-2 | **R-1 の英語側の全域** | 英語は 2 件しか撃っていない(`should we add…` / `is it wise…`)。`\b` 境界が効くので日本語より軽い可能性が高いが**測っていない** |
+| W-3 | **quick / full / cartography を失う面** | R-1 は counsel の面で見つけた。同じ機序が他の道でも起きうるが、**混同行列を作っていない**(だから提案1を出した) |
+| W-4 | **critic の 37 件の一件ずつの実物照合** | 一度目と同じく、同型であることと代表数件の照合で断じた。残りは読んでいない |
+| W-5 | **実 GitHub Actions 上の挙動** | 掟により push しない |
+| W-6 | **Windows 以外の機械** | 本機は Windows/MSYS のみ |
+| W-7 | **`forge.js` の CLI 口(AC-30 の債務)** | 一度目が「別の走行へ送る」と裁いた。**今も門は 0 本**であり、`chooseScale` を直に呼んだ。CLI との割れは未検証 |
+
+---
+
+## 8. 次の走行への発令(順序どおり)
+
+1. **R-1 を直す** —— 熟議の標識(べきか/検討/妥当か/どう思う/どうすべき/はないか/見直)が
+   在るとき、建造動詞は「物を求めている」の証拠にならない。
+   `isCounsel` の 2 段目より前に**熟議の関門**を置くのが素直だが、
+   **`楽園の門を直すべきか` が reform を失わないか**を必ず両方向で撃つこと(第60条(b))。
+2. **提案1の `ROUTE_MATRIX` を建てる** —— これが無い限り、次の修理も片側しか見ない。
+3. **第61条を起草する** —— `codex.js index --write` → `codex.js check` を忘れるな。
+4. **AC-30(`forge.js` CLI 口の門)** —— 三度目の申し送りになる。もう送るな。
+5. **F-2 / F-3** —— `denude` の自傷・網羅の門の 4 文字未満除外。どちらも main から在る。
+
+---
+
+## 9. 追補 —— critic そのものの盲点を二つ実測した
+
+§1〜§8 を書き終えたあと、`lessons.json` の件数を確かめようとして**別の欠陥を二つ掴んだ**。
+どちらも **R-1 とは独立**で、**critic 自身の構造の問題**である。
+
+### 9.1 🔴 盲点② —— `lessons.json` が腐っており、critic は 14 件を知らずに裁いていた
+
+`kg.js remember` は KG(`graph/kg-store/`、**`.gitignore` されている**)に刻む。
+critic が読むのは `graph/lessons.json` であり、これは `lessons.js export` が**生成する**。
+**この走行は一度も export を走らせていなかった。**
+
+```
+$ node graph/lessons.js export --out graph/lessons.json     # tribunal 二度目が走らせた
+$ git diff --stat graph/lessons.json
+ graph/lessons.json | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 112 insertions(+)
+
+  OLD=85  →  NEW=99   (+14)
+```
+
+**増えた 14 件のうち 10 件は、この走行自身が刻んだ教訓である**:
+
+```
+  + both-branches-of-a-rule              ← 一度目の tribunal が刻んだ
+  + regression-needs-both-heads          ← 〃
+  + corpus-blind-to-its-own-half         ← 〃
+  + strength-of-evidence-sets-the-gate   ← 〃
+  + mutate-the-gate-not-only-the-impl    ← 〃
+  + corpus-machine-checked-against-table ← 〃
+  + restore-path-must-be-verified        ← 〃
+  + filter-in-a-gate-is-a-silent-exemption
+  + gate-red-needs-a-mouth-not-a-wider-gate
+  + child-stdout-exit-truncation
+  + classifier-repair-steals-from-another-road  ← §二度目が刻んだ
+  + gate-needs-confusion-matrix-not-a-column    ← 〃
+  + conduct-lesson-presented-is-not-enforced    ← 〃
+  + removal-is-a-legitimate-outcome             ← 〃
+```
+
+> **一度目の tribunal は 4 件の教訓を刻み、「critic が永久に検め続ける」と書いた。**
+> **critic は一度もそれを読んでいなかった。**
+> §1 で走らせた critic は `lessons: 85 件で裁いた` と名乗っており、
+> 走行自身の教訓 7 件は**その 85 件の外に居た**。
+
+これは `lesson:art29-derived-not-truth`(生成物は真実の写しであって真実ではない)の
+**裏返しの病**である。あちらは「生成物の中身を前提にするな」と言い、
+こちらは「**生成物を再生成しないと、原本に刻んだ知識が門に届かない**」と言う。
+`derived.js check` は EXIT=0 —— **生成物への依存は無いが、生成物の鮮度は誰も見ていない。**
+
+**提案5(門)**: `kg.js remember lesson` を呼んだ走行は
+`lessons.js export` を走らせたか —— `lessons.json` の件数と KG の lesson 件数を
+突き合わせる門を建てよ。ずれていれば赤くする。
+**知識を刻んだのに門に届いていない状態は、刻んでいないのと同じである。**
+
+### 9.2 🔴 盲点③ —— reform 走行の自己審査は scope を宣言せず、自分の教訓を自分で握り潰す
+
+`lessons.json` を 99 件に直して critic を撃ち直しても、**GAP は 37 のままだった**。
+理由を実装で追った(`graph/critic.js:583`):
+
+```js
+const DEFAULT_SELF_SCOPES = ['paradise-internal', 'orchestration'];
+function selfScopeSubject(dir) { … `.paradise-scopes` で上書き可 … }
+```
+
+`--self` の走行は既定で **`paradise-internal` と `orchestration` しか名乗らない**。
+だが本走行が刻んだ教訓の scope は **`forge` / `gate` / `reform`** である。
+ゆえに:
+
+```
+  ✓ lesson:classifier-repair-steals-from-another-road: lesson out of scope here (applies: forge)
+  ✓ lesson:gate-needs-confusion-matrix-not-a-column:   lesson out of scope here (applies: gate)
+  ✓ lesson:corpus-blind-to-its-own-half:               lesson out of scope here (applies: gate)
+  ✓ lesson:regression-needs-both-heads:                lesson out of scope here (applies: reform)
+  ✓ lesson:both-branches-of-a-rule:                    lesson out of scope here (applies: forge)
+  …  計 14 件が「射程外」として **緑**になった
+```
+
+**`reform/route-misfire` は forge を書き換えた走行であり、門を建てた走行であり、reform の走行である。**
+それが `forge` / `gate` / `reform` の教訓を「射程外」と言って素通りさせた。
+
+**実測で確かめた** —— `.paradise-scopes` に 5 語を宣言して撃ち直す:
+
+```
+$ printf 'paradise-internal\norchestration\nforge\ngate\nreform\n' > reform/route-misfire/.paradise-scopes
+$ node graph/critic.js review reform/route-misfire --lessons graph/lessons.json --self
+VERDICT: 39 GAP(S)          ← 37 から 2 件増えた
+
+$ node diff-critic.js
+既定: 99 教訓 / scope宣言後: 99 教訓
+  lesson:corpus-blind-to-its-own-half   ✓ → 🔴
+  lesson:restore-path-must-be-verified   ✓ → 🔴
+判定が変わった教訓 = 2 / 新たに赤くなった = 2
+赤の総数: 既定 37  →  scope宣言後 39
+```
+
+**そして新たに赤くなった一件が `corpus-blind-to-its-own-half` である:**
+
+> 「門のコーパスが規則の片枝しか含まないなら、門は永久に緑のまま面の半分を素通しする。
+>  **コーパスは規則の枝ごとに数えて示せ。**」
+
+**これは R-1 そのものである。** AC-31〜46 のコーパスは `reform` の枝しか持たず、
+`counsel` の枝を 0 件しか持たなかった —— ゆえに 120/150 が素通りした。
+
+> **一度目の tribunal はこの教訓を正しく刻んだ。**
+> **そして走行はそれを、scope の既定値によって自分で握り潰し、同じ病を再発させた。**
+
+`lesson:self-scope-subject`(自己審査ではスコープの主語を宣言せよ・沈黙を合格と誤るな)は
+KG に在り、critic は **`🔴` で名指ししていた**(§1 の出力の一行)。
+**赤が出ていたのに、誰もそれを scope の宣言に繋げなかった。**
+
+**提案6(門)**: `--self` の走行が `.paradise-scopes` を持たないとき、
+`DEFAULT_SELF_SCOPES` へ黙って落とすな。
+**その走行が触れたファイルから scope を導け**(`graph/forge.js` を触ったなら `forge`、
+`tests/*.test.js` を触ったなら `gate`、`reform/` に住むなら `reform`)。
+導けないなら**声に出して名乗らせ、緑にするな**(第37条・第60条(d))。
+
+**本 tribunal は `.paradise-scopes` を置かなかった。**
+`git status` に残さず削除した —— **tribunal は裁く相であり、建てる相ではない**(一度目の §4 の裁定を踏襲)。
+**欠陥の存在を実測で証明し、次の走行へ渡す。**
+
+### 9.3 三つの盲点の重さの順
+
+| # | 盲点 | 重さ | 影響 | critic は言ったか |
+|---|---|---|---|---|
+| **R-1** | 熟議の願いが counsel を失う(格子 main 0/150 → HEAD 120/150) | **最重** | **神の願いが誤った道へ着く。出荷を止める breach** | ❌ 一言も |
+| **盲点②** | `lessons.json` が腐り、走行自身の教訓 10 件が門に届いていなかった | 重 | **刻んだ知識が一件も検められない。学習機構そのものの空転** | ❌(自分が被害者なので構造的に言えない) |
+| **盲点③** | `--self` の既定 scope が走行自身の教訓 14 件を射程外にする | 重 | **R-1 を捕らえたはずの `corpus-blind-to-its-own-half` を握り潰した** | ⚠️ `self-scope-subject` を 🔴 で名指ししていたが、誰も繋げなかった |
+
+**②と③は連鎖している。** ②(export 忘れ)で 14 件が存在せず、
+仮に②を直しても③(scope の既定値)で同じ 14 件が射程外になる。
+**二重の網で、走行自身の教訓は門に一度も届かなかった。**
+
+**そして③を直せば、R-1 の型は `corpus-blind-to-its-own-half` の赤として鳴った。**
+この走行は**自分を救う知識を既に持っており、二つの機構の不備でそれを自分に届けられなかった。**
