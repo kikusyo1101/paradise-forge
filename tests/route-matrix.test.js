@@ -168,6 +168,20 @@ w('standard', 'make a url shortener service');
  * 掟どおり **門ではなくコーパスの札を直した**(判定器は一行も触れていない)。
  */
 w('standard', 'build a calorie tracker cli tool');
+/**
+ * ★ PARA-7 / PARA-9 (reform/judgment-triad)。**部分機能の枝**である。
+ * 「サイト」は産物全体の名でもあり、その一部が載る場所の名でもある ——
+ * 語彙の表に `サイト` を足す形(候補 C1)は、この 5 件を **5/5 full へ攫った**。
+ * 第60条(b): 規則を足したら**両枝**を持て。full の枝(下の 8 件)と対である。
+ */
+w('standard', 'レシピサイトの並び替えを実装して');
+w('standard', 'サイトの検索機能を実装して');
+w('standard', '通販サイトのクーポン計算を作る');
+w('standard', 'add a sort option to the recipe site');
+w('standard', 'implement pagination for the site listing');
+// PARA-9 の対の枝: **図を作る産物**を求めていない、図そのものの部分機能。
+w('standard', '組織図を編集できるツールを作る');
+w('standard', '系統図を出力するコマンドを実装して');
 
 // ── full: 製品規模 ──────────────────────────────────────────────────
 w('full', '健康診断アプリが欲しい');
@@ -178,6 +192,25 @@ w('full', '読書記録のプラットフォームが欲しい');
 w('full', 'build a calorie tracker application');
 w('full', 'launch an mvp dashboard product');
 w('full', 'build an end-to-end saas platform');
+/**
+ * ★ PARA-7 (reform/judgment-triad)。**産物全体の枝**である。
+ * web の産物語彙は `fullJa`/`fullEn` に一語も無く、これらは既定の standard へ
+ * 黙って落ちていた(第16条)。判定器は語彙ではなく **創造動詞の目的語**で分ける。
+ */
+w('full', 'ECサイトを作れ');
+w('full', '社内ポータルサイトを作れ');
+w('full', '予約サイトを作りたい');
+w('full', 'コーポレートサイトが欲しい');
+w('full', '通販サイトを構築して');
+w('full', 'ニュースポータルのウェブサイトが欲しい');
+w('full', 'build an e-commerce site');
+/**
+ * ★ PARA-9 の的。`isCartography` に打ち消しが無かったため、図を作る**アプリ**の
+ * 願いが図一枚で返されていた。
+ * ⚠️ `一門の家系図を作れるアプリが欲しい`(「一**門**」が `REFORM_RE` に当たる方)は
+ *    **残債 PARA-10** であり、ここには足さない。`tests/route-debt.test.js` が凍らせている。
+ */
+w('full', '家系図を作れるアプリが欲しい');
 
 // ══════════════════════════════════════════════════════════════════════
 // 行列を組む
@@ -333,7 +366,10 @@ const SELF_SRC = require('fs').readFileSync(__filename, 'utf8');
 
 test('W-1 [門番]: コーパスは宣言された下限を保つ — 一行落とせば鳴る', () => {
   // M11 対策。件数の**下限を凍らせる**(上限は凍らせない — 足すのは常に善である)。
-  const FLOOR = { counsel: 42, cartography: 9, reform: 11, quick: 8, standard: 9, full: 8 };
+  // ★ reform/judgment-triad: PARA-7/PARA-9 の的 15 件(standard 7 / full 8)を足した。
+  //   **足したら FLOOR も同じ commit で上げる**(AC-6)—— 門番が守るのは「減らさないこと」
+  //   だけなので、的を足して FLOOR を据え置けば、その 15 件は明日黙って消せる。
+  const FLOOR = { counsel: 42, cartography: 9, reform: 11, quick: 8, standard: 16, full: 16 };
   for (const [r, n] of Object.entries(FLOOR)) {
     const have = CORPUS.filter(c => c.route === r).length;
     assert.ok(have >= n,
@@ -341,7 +377,7 @@ test('W-1 [門番]: コーパスは宣言された下限を保つ — 一行落�
       'コーパスを削って緑にするのは門の骨抜きである(第21条)。' +
       '意図して減らすなら FLOOR も同じ commit で下げ、理由を書け。');
   }
-  assert.ok(CORPUS.length >= 87, `コーパス総数が ${CORPUS.length} 件に減っている(下限 87)`);
+  assert.ok(CORPUS.length >= 102, `コーパス総数が ${CORPUS.length} 件に減っている(下限 102)`);
 });
 
 test('W-2 [門番]: 格子は 3 × 10 × 5 = 150 通りを保つ — 配列を空にすれば鳴る', () => {
