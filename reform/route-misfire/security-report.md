@@ -298,3 +298,298 @@ $ node graph/workspace.js check
 | U-6 | **Windows 以外の機械** | 全ての実測は Windows/MSYS で行った。`path.resolve` の大文字小文字の扱いや、POSIX での symlink 解決の差は見ていない。 |
 | U-7 | **CI で実際に赤くなること** | 兄弟倉の無い**複製**で B-12 が赤くなることは実測した。だが **GitHub Actions 上で実際に走らせてはいない**(掟により push しない)。CI の node 版・git 版の差は未検証。 |
 | U-8 | **`denude` 以外の入力経路の長さの上限** | 神託の文に 100000 字が来る経路が実在するかは調べていない。ReDoS の修理は正しいが、**元の到達可能性は測っていない**。 |
+
+---
+---
+
+# 【二周目】security — 新しい正規表現と三枝化した述語を撃つ
+
+> 相: `security`(quality 領域・**二周目**)/ 対象: `git diff ec0694c..HEAD` が足した RE と述語
+> 一周目は 8 本の RE を線形と確かめたが、**二度目の build が足した RE は未測定**であった(U-1 の残り)。
+> 本節の全ての数は**二周目の security が自分の手で撃った生出力**である(第27条)。
+
+---
+
+## 0. 件数
+
+| 重篤 | 件数 | 名 |
+|---|---|---|
+| **HIGH** | **0** | (新規の HIGH 無し) |
+| MED | 0 | — |
+| LOW | 0 | — |
+| **回帰の確認** | **3/3 生存** | HIGH-1 / S-1 / V-1 の修理は**今も生きている** |
+
+> ⚠️ **「security に問題無し」ではない。** 本節が撃ったのは **ReDoS と回帰**である。
+> review §1 が見つけた **`MEND_RE` の誤着 32/32** は道選びの正しさの問題であって
+> security の問題ではないが、**同じ RE が原因**である ——
+> **速さが線形であることは、意味が正しいことを何も保証しない。**
+
+---
+
+## 1. 新しい正規表現の ReDoS —— **全て線形。二乗の兆候なし**
+
+### 1.1 何を撃ったか
+
+一周目の U-1 は「`denude` の 4 本だけを計り、`REFORM_RE` 等は計測していない」と名乗り、
+verify 相 §3.1 が 8 本を撃って線形と確かめた。
+**二度目の build が足した / 割った RE は、その 8 本に含まれていない**:
+
+| RE | 新設か | 一周目に計ったか |
+|---|---|---|
+| `MEND_RE` | **新設** | いいえ(build 相が粗く計ったのみ) |
+| `REFORM_ABSTRACT_RE` | **分割で新生** | いいえ |
+| `REFORM_STRONG_RE` | **分割で新生** | いいえ |
+| `REFORM_RE`(束ね) | 形が変わった | 一周目の形とは別物 |
+| `isReformSubject` | **三枝化** | いいえ(述語全体は未測定) |
+
+### 1.2 悪意の形 × 大きさ の全表(生出力)
+
+**8 種の悪意の形**を作った。各形は交替の枝の**接頭辞を最大限に繰り返す** ——
+バックトラックを誘う古典的な形である。
+
+```
+RE                   | shape              | 10KB | 100KB | 200KB | 比(200/10)
+--------------------------------------------------------------------------------------------
+MEND_RE              | prefix-直           |    0.10 |   0.18 |   0.34 | 3.3x
+MEND_RE              | prefix-fi          |    0.05 |   0.17 |   0.61 | 12.6x
+MEND_RE              | almost-fix         |    0.01 |   0.08 |   0.16 | 17.2x
+MEND_RE              | det-then-name      |    0.01 |   0.07 |   0.15 | 15.3x
+MEND_RE              | near-strong        |    0.01 |   0.09 |   0.16 | 20.5x
+MEND_RE              | near-abstract      |    0.02 |   0.39 |   0.37 | 21.3x
+MEND_RE              | boundary-spam      |    0.00 |   0.04 |   0.04 | 16.2x
+MEND_RE              | mixed-adversarial  |    0.00 |   0.05 |   0.20 | 96.1x
+REFORM_ABSTRACT_RE   | prefix-直           |    0.06 |   0.21 |   0.37 | 6.2x
+REFORM_ABSTRACT_RE   | prefix-fi          |    0.05 |   0.38 |   0.51 | 11.1x
+REFORM_ABSTRACT_RE   | almost-fix         |    0.01 |   0.11 |   0.26 | 21.8x
+REFORM_ABSTRACT_RE   | det-then-name      |    0.00 |   0.05 |   0.12 | 30.5x
+REFORM_ABSTRACT_RE   | near-strong        |    0.01 |   0.11 |   0.27 | 21.2x
+REFORM_ABSTRACT_RE   | near-abstract      |    0.02 |   0.24 |   0.41 | 22.8x
+REFORM_ABSTRACT_RE   | boundary-spam      |    0.00 |   0.03 |   0.06 | 20.0x
+REFORM_ABSTRACT_RE   | mixed-adversarial  |    0.02 |   0.32 |   0.39 | 25.0x
+REFORM_STRONG_RE     | prefix-直           |    0.09 |   0.08 |   0.15 | 1.6x
+REFORM_STRONG_RE     | prefix-fi          |    0.11 |   0.44 |   0.82 | 7.5x
+REFORM_STRONG_RE     | almost-fix         |    0.02 |   0.18 |   0.44 | 18.9x
+REFORM_STRONG_RE     | det-then-name      |    0.00 |   0.02 |   0.24 | 75.2x
+REFORM_STRONG_RE     | near-strong        |    0.02 |   0.21 |   0.45 | 23.1x
+REFORM_STRONG_RE     | near-abstract      |    0.00 |   0.06 |   0.12 | 32.8x
+REFORM_STRONG_RE     | boundary-spam      |    0.00 |   0.02 |   0.04 | 17.0x
+REFORM_STRONG_RE     | mixed-adversarial  |    0.02 |   0.20 |   0.39 | 20.6x
+REFORM_RE_bundle     | prefix-直           |    0.19 |   0.19 |   0.55 | 2.8x
+REFORM_RE_bundle     | prefix-fi          |    0.16 |   0.58 |   1.16 | 7.4x
+REFORM_RE_bundle     | almost-fix         |    0.03 |   0.27 |   0.59 | 18.0x
+REFORM_RE_bundle     | det-then-name      |    0.00 |   0.02 |   0.11 | 23.9x
+REFORM_RE_bundle     | near-strong        |    0.03 |   0.28 |   0.60 | 20.8x
+REFORM_RE_bundle     | near-abstract      |    0.02 |   0.23 |   0.57 | 28.8x
+REFORM_RE_bundle     | boundary-spam      |    0.00 |   0.02 |   0.04 | 18.4x
+REFORM_RE_bundle     | mixed-adversarial  |    0.03 |   0.55 |   0.67 | 19.8x
+REFORM_WEAK_RE       | prefix-直           |    0.09 |   0.07 |   0.14 | 1.7x
+REFORM_WEAK_RE       | prefix-fi          |    0.10 |   0.47 |   0.97 | 9.7x
+REFORM_WEAK_RE       | almost-fix         |    0.02 |   0.20 |   0.42 | 21.1x
+REFORM_WEAK_RE       | det-then-name      |    0.02 |   0.19 |   0.44 | 21.2x
+REFORM_WEAK_RE       | near-strong        |    0.02 |   0.20 |   0.43 | 22.2x
+REFORM_WEAK_RE       | near-abstract      |    0.00 |   0.06 |   0.11 | 24.2x
+REFORM_WEAK_RE       | boundary-spam      |    0.00 |   0.02 |   0.07 | 34.6x
+REFORM_WEAK_RE       | mixed-adversarial  |    0.02 |   0.19 |   0.50 | 28.3x
+--------------------------------------------------------------------------------------------
+最遅(200KB): REFORM_RE_bundle / prefix-fi = 1.16ms
+最悪の伸び率: MEND_RE / mixed-adversarial = 96.1x
+判定(粗い一回計測): ⚠️ 二乗の疑い
+```
+
+### 1.3 ⚠️ **「96.1x」は偽の赤であった** —— 自分の計測を疑って撃ち直した
+
+**粗い一回計測は「二乗の疑い」を出した。だがこれは計測器の分解能の産物である。**
+`MEND_RE / mixed-adversarial` の 10KB は **0.00ms**(分解能以下)であり、
+**0 で割った比は意味を持たない。**
+
+**ゆえに「入力を倍にした時の伸び」を 20 回平均 × 5 段で測り直した**
+(二乗なら 4x / 線形なら 2x になるはずである):
+
+```
+入力を倍にした時の時間の伸び(二乗なら 4x / 線形なら 2x)
+ MEND_RE             50KB=0.000ms 100KB=0.000ms 200KB=0.000ms 400KB=0.000ms 800KB=0.000ms
+                     倍率: 0.56x 0.80x 2.38x 2.47x
+ REFORM_ABSTRACT_RE  50KB=0.067ms 100KB=0.135ms 200KB=0.271ms 400KB=0.571ms 800KB=1.088ms
+                     倍率: 2.01x 2.01x 2.10x 1.91x
+ REFORM_STRONG_RE    50KB=0.076ms 100KB=0.157ms 200KB=0.318ms 400KB=0.571ms 800KB=1.265ms
+                     倍率: 2.08x 2.02x 1.95x 2.04x
+```
+
+**倍率は全て 2.0x 前後である。完全な線形。二乗の兆候は無い。**
+`MEND_RE` が 0.000ms なのは、`mixed-adversarial` の入力が**先頭付近で必ず当たる**ため
+(`直` が 1 文字目に在る)—— 最悪計算量を測れていない形だった。
+**800KB でも `REFORM_STRONG_RE` が 1.265ms。実害は無い。**
+
+> **教訓(自分への)**: **粗い一回計測の「比」は、分母が分解能以下なら嘘をつく。**
+> 一周目の security 相が S-1 を見つけたのは**倍率で見た**からであった。
+> 本相も最初の表で「二乗の疑い」と書きかけた —— **自分の測定器を疑う一段が要る。**
+
+### 1.4 三枝化した `isReformSubject` と `chooseScale` の全段(生出力)
+
+RE 単体だけでなく、**三枝を順に通す述語全体**と、**denude を含む実際の到達経路**も撃った:
+
+```
+--- isReformSubject 全体(三枝) ---
+  isReformSubject | prefix-直           |    0.04 |   0.24 |   0.48
+  isReformSubject | prefix-fi          |    0.10 |   1.09 |   2.05
+  isReformSubject | almost-fix         |    0.05 |   0.51 |   1.01
+  isReformSubject | det-then-name      |    0.03 |   0.26 |   0.58
+  isReformSubject | near-strong        |    0.05 |   0.51 |   1.17
+  isReformSubject | near-abstract      |    0.02 |   0.28 |   0.55
+  isReformSubject | boundary-spam      |    0.01 |   0.08 |   0.17
+  isReformSubject | mixed-adversarial  |    0.05 |   0.49 |   0.96
+
+--- chooseScale 全段(denude 含む・実際の到達経路) ---
+  chooseScale     | prefix-直           |    0.53 |   1.05 |   2.22
+  chooseScale     | prefix-fi          |    0.42 |   2.61 |   4.92
+  chooseScale     | almost-fix         |    0.13 |   1.27 |   2.58
+  chooseScale     | det-then-name      |    0.19 |   3.58 |   6.33
+  chooseScale     | near-strong        |    0.13 |   1.27 |   2.72
+  chooseScale     | near-abstract      |    0.12 |   1.14 |   2.24
+  chooseScale     | boundary-spam      |    0.24 |   2.30 |   6.80
+  chooseScale     | mixed-adversarial  |    0.19 |   1.83 |   3.89
+```
+
+**最悪でも 200KB で 6.80ms。** 10KB→200KB(20 倍)で時間も 20〜28 倍 —— **線形**である。
+**三枝化は ReDoS を持ち込んでいない。**
+
+> **一件の正直**: 枝が三つになったので、**楽園を名指さない入力は三枝すべてを通る**
+> (最悪経路が長くなった)。二枝時代との直接比較は撃っていないが、
+> **絶対値が 200KB で 1ms 台なので実害の域に無い。**
+
+---
+
+## 2. 回帰の確認 —— 一周目の HIGH-1 / S-1 / V-1 は**今も生きている**
+
+一周目が直した 3 件を**再撃した**。「直したはず」を信じない(第27条)。
+
+### 2.1 HIGH-1 —— 倉の**子**を倉と名乗らないか(生出力)
+
+```
+$ (isCreationsVault を本物の倉とその子に対して撃つ)
+  isCreationsVault 在り = true
+  倉の根        -> true
+  倉の子 .claude -> false (false が正しい = HIGH-1 の修理が生きている)
+  倉の子 .github -> false (false が正しい = HIGH-1 の修理が生きている)
+  .git の中     -> false (false が正しい)
+```
+
+**生きている。** `rev-parse --show-toplevel` の突合(第60条(c) が名指した強い印)は今も働いている。
+
+### 2.2 S-1 —— `denude` の O(n²) が戻っていないか(生出力)
+
+```
+$ (denude をファイル名を大量に含む入力で計る)
+  denude 50KB = 1.09ms
+  denude 100KB = 1.18ms
+  denude 200KB = 1.52ms
+  denude 400KB = 3.25ms
+```
+
+**生きている。** 50KB→400KB(8 倍)で 1.09→3.25ms(**3 倍**)—— 線形以下。
+二乗なら 64 倍(約 70ms)になるはずである。
+
+### 2.3 V-1 —— 壊れた走行帳で `check` が死なないか(生出力)
+
+`PARADISE_CREATIONS` で仮倉を指し、`conclave.json` に **5 種の毒**を入れて撃った:
+
+```
+=== V-1 回帰: 壊れた走行帳で check が死なないか ===
+  帳={"broken                           EXIT=0 OK(例外なし)
+  帳=null                               EXIT=0 OK(例外なし)
+  帳=[]                                 EXIT=0 OK(例外なし)
+  帳={"phases":null}                    EXIT=0 OK(例外なし)
+  帳={"phases":{"a":{"status":null}}}   EXIT=0 OK(例外なし)
+```
+
+**生きている。** uncaught TypeError で三つの検めが沈黙する病は再発していない。
+
+---
+
+## 3. 一周目の U-1〜U-8 のうち、二周目で新たに撃てたもの
+
+| # | 一周目の名乗り | 二周目 |
+|---|---|---|
+| **U-1** | `forge.js` の他の RE の ReDoS | **12/15 まで進んだが完了していない**。verify 相が 8 本、**本相が新しい 5 本 + 既存 7 本を倍率で撃ち直した**(§1/§3.1)。**`PRODUCT_STRONG_RE` / `DOC_STRONG_RE` / `DIAGRAM_FALSE_FRIENDS` の 3 本は export されておらず撃てなかった**(§3.2) |
+| U-2 | 他の engine の env 注入面 | **撃っていない**(本走行が触っていない engine の面) |
+| U-3 | `strayRuns()` の走査の安全性 | 一周目に verify 相が撃ち V-1 を発見・修理。**本相は V-1 の回帰のみ再撃**(§2.3) |
+| U-4 | TOCTOU | **撃っていない**(一周目に V-3 として許容済み。状況は変わっていない) |
+| U-5 | git 設定経由 | **撃っていない**(一周目に V-2 として名乗り済み) |
+| U-6 | Windows 以外の機械 | **撃っていない**(本機は Windows/MSYS のみ) |
+| U-7 | CI で実際に赤くなること | **撃っていない**(掟により push しない) |
+| U-8 | `denude` の入力長の到達可能性 | **撃っていない**。ただし §1 で 800KB まで線形と確かめたので、**到達可能でも実害が無い**ことは示せた |
+
+### 3.1 U-1 の到達点 —— **12/15 を計った。残り 3 本は export されておらず撃てない**
+
+「全部撃った」という主張は、**表と撃ったものを照合して**初めて真になる
+(build 相が AC-37 で学んだ形である)。`forge.js` の RE 定数を**機械で数えた**:
+
+```
+$ grep -cE "^const [A-Z_]+ *= *(new RegExp|/)" graph/forge.js
+15
+```
+
+**15 本在る。** 一本ずつ帰属を確かめた:
+
+| RE | 誰が計ったか |
+|---|---|
+| `REFORM_RE`(束ね) | **二周目 security**(§1.2) |
+| `REFORM_ABSTRACT_RE` | **二周目 security**(§1.2 / §1.3 の倍率) |
+| `REFORM_STRONG_RE` | **二周目 security**(§1.2 / §1.3 の倍率) |
+| `REFORM_WEAK_RE` | 一周目 verify §3.1 + **二周目 security** |
+| `MEND_RE` | build 相(粗く)+ **二周目 security**(§1.2) |
+| `COUNSEL_RE` / `BUILD_RE` / `CREATE_RE` / `DOC_RE` / `DIAGRAM_RE` / `PRODUCT_RE` / `PRODUCT_FALSE_FRIENDS` | 一周目 verify §3.1 + **二周目 security が倍率で撃ち直した**(下記) |
+| **`PRODUCT_STRONG_RE`** | ⚠️ **誰も計っていない** |
+| **`DOC_STRONG_RE`** | ⚠️ **誰も計っていない** |
+| **`DIAGRAM_FALSE_FRIENDS`** | ⚠️ **誰も計っていない** |
+
+**既存 7 本を倍率で撃ち直した生出力**(一周目は「線形」と結論したが、本相は倍率で再確認した):
+
+```
+  COUNSEL_RE              100KB=0.179 200KB=0.339 400KB=0.668 800KB=1.337  倍率: 1.89x 1.97x 2.00x
+  BUILD_RE                100KB=0.133 200KB=0.264 400KB=0.525 800KB=1.079  倍率: 1.99x 1.99x 2.06x
+  CREATE_RE               100KB=0.197 200KB=0.390 400KB=0.783 800KB=1.559  倍率: 1.98x 2.01x 1.99x
+  DOC_RE                  100KB=0.126 200KB=0.239 400KB=0.482 800KB=0.959  倍率: 1.91x 2.02x 1.99x
+  DIAGRAM_RE              100KB=0.101 200KB=0.205 400KB=0.406 800KB=0.811  倍率: 2.02x 1.98x 2.00x
+  PRODUCT_RE              100KB=0.000 200KB=0.000 400KB=0.000 800KB=0.000  倍率: 0.37x 0.60x 0.90x
+  PRODUCT_FALSE_FRIENDS   100KB=0.209 200KB=0.416 400KB=0.827 800KB=1.671  倍率: 1.99x 1.99x 2.02x
+```
+
+**全て 2.0x 前後。線形。**(`PRODUCT_RE` は先頭で当たるので 0.000ms —— **測れていない**。S2-1 と同じ形)
+
+### 3.2 ⚠️ **U-1 は完了していない** —— 撃てない 3 本が在る
+
+```
+$ (module.exports に在るか確かめた)
+  PRODUCT_STRONG_RE        export=false
+  DOC_STRONG_RE            export=false
+  DIAGRAM_FALSE_FRIENDS    export=false
+```
+
+**この 3 本は `module.exports` に無いので、外から掴めない。** ゆえに**撃てなかった**。
+
+**「撃っていないので安全」とは書かない**(第37条)。3 本とも `PRODUCT_FALSE_FRIENDS`
+(線形と確かめた)と**同じ形の交替表**なので同じく線形である**見込み**は高いが、
+`DOC_STRONG_RE` は一周目の review §8 が「日英非対称」を名指した RE でもあり、
+**見込みで済ませてよい根拠は無い。**
+
+> **これは一周目の U-1 が「`forge.js` の他の正規表現」と書いた時、
+> 表を数えずに書いたことの帰結である。** 一周目の verify は 8 本を撃って
+> 「全て線形。危険なし」と結論したが、**当時から 15 本在った**。
+> **数えずに「他の」と書けば、網羅は永久に確かめられない。**
+> これは AC-37 が機械照合で解いた問題と**同じ形**であり、
+> **security 側には同じ機械照合が無い。**
+
+---
+
+## 4. 【二周目】見ていない項目(名乗り)
+
+| # | 面 | 残る疑い |
+|---|---|---|
+| S2-1 | **`MEND_RE` の最悪計算量を測れていない** | `mixed-adversarial` は先頭で当たるので**照合が即座に成功する**。**「当たらないが惜しい」長い入力**(全枝の接頭辞を持ち、どれも完成しない形)を `MEND_RE` 専用に設計していない。他の RE は 2.0x の線形を確かめたが、**`MEND_RE` だけは 0.000ms で測れていない** |
+| S2-2 | **正規表現エンジンの実装依存** | Node v24 の V8 で測った。他の版・他のエンジン(RE2 等)では特性が違いうる |
+| S2-3 | **入力が 800KB を超える経路** | 800KB まで撃った。それ以上は撃っていない |
+| S2-4 | **`admit()` / `explainAdmit()` / `buildDag()` の計算量** | 道選びの RE だけを撃った。**DAG 構築側は一度も計っていない** |
+| S2-5 | **並行実行下の挙動** | 単一プロセス・単一スレッドで測った。同時多発の負荷は撃っていない |
+| S2-6 | **U-2 / U-4 / U-5 / U-6 / U-7** | §3 の表のとおり、二周目でも撃っていない |
+| S2-7 | **`MEND_RE` の誤着が security 事象か** | 本相は「否」と裁いた(道選びの正しさの問題)。だが **`reform` は 11 相を走らせる最も重い道**であり、世間の願いが誤って 11 相を起動することを**資源の消尽と読む余地は在る**。**その角度からは撃っていない** |
