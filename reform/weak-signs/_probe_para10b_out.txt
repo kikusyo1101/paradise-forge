@@ -1,0 +1,114 @@
+═══ 種M: 語中に埋没した印(機械的に消せる) 13 件 ═══
+  [種M] "engine"@14  "build a civil engineering estimate app"
+          \bengine\b が偽 = 語中に埋没  -> reform
+  [種M] "門"@1  "一門の家系図を作れるアプリが欲しい"
+          「一門の」= 複合語の一部 / ⚠ PRODUCT_FALSE_FRIENDS には無い  -> reform
+  [種M] "門"@1  "専門店の在庫を管理するシステムを作って"
+          「専門店」= 複合語の一部 / 既存 PRODUCT_FALSE_FRIENDS にも一致 "専門"  -> reform
+  [種M] "門"@1  "部門別の売上を集計するコマンドを実装して"
+          「部門別」= 複合語の一部 / 既存 PRODUCT_FALSE_FRIENDS にも一致 "部門"  -> reform
+  [種M] "門"@1  "名門校の受験対策アプリが欲しい"
+          「名門校」= 複合語の一部 / 既存 PRODUCT_FALSE_FRIENDS にも一致 "名門"  -> reform
+  [種M] "門"@1  "入門講座の進捗を記録する機能を実装して"
+          「入門講」= 複合語の一部 / 既存 PRODUCT_FALSE_FRIENDS にも一致 "入門"  -> reform
+  [種M] "gate"@12  "implement a gateway timeout retry helper"
+          \bgate\b が偽 = 語中に埋没  -> reform
+  [種M] "gate"@23  "build an app to investigate delegate voting records"
+          \bgate\b が偽 = 語中に埋没  -> reform
+  [種M] "gate"@24  "create a script to aggregate the daily sales rows"
+          \bgate\b が偽 = 語中に埋没  -> reform
+  [種M] "gate"@16  "implement a navigate-back button for the wizard"
+          \bgate\b が偽 = 語中に埋没  -> reform
+  [種M] "self-improve"@12  "implement a self-improvement streak counter"
+          \bself-improve\b が偽 = 語中に埋没  -> reform
+  [種M] "self-improve"@8  "build a self-improvement journal app"
+          \bself-improve\b が偽 = 語中に埋没  -> reform
+  [種M] "priest"@8  "build a priesthood directory app for the diocese"
+          \bpriest\b が偽 = 語中に埋没  -> reform
+
+═══ 種H: 独立語だが意味が世間のもの(機械的には消せない) 32 件 ═══
+  [種H] "楽園"@3  "常夏の楽園を巡るリゾート予約アプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "楽園"@0  "楽園ビーチの写真を並べる機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "paradise"@21  "build a fan wiki for paradise lost"
+          \bparadise\b が真 = 独立語  -> reform
+  [種H] "paradise"@32  "i want a travel booking app for paradise island resorts"
+          \bparadise\b が真 = 独立語  -> reform
+  [種H] "ハーネス"@3  "登山用ハーネスの通販サイトを作れ"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "ハーネス"@2  "安全ハーネスの点検記録を付ける機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "harness"@45  "implement an inventory importer for climbing harness stock"
+          \bharness\b が真 = 独立語  -> reform
+  [種H] "harness"@15  "build a safety harness inspection app"
+          \bharness\b が真 = 独立語  -> reform
+  [種H] "憲法"@3  "日本国憲法の条文を検索できるアプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "constitution"@43  "create a full-text search index for the us constitution"
+          \bconstitution\b が真 = 独立語  -> reform
+  [種H] "constitution"@8  "build a constitution quiz app for students"
+          \bconstitution\b が真 = 独立語  -> reform
+  [種H] "engine"@19  "implement a search engine result parser"
+          \bengine\b が真 = 独立語  -> reform
+  [種H] "engine"@35  "create a listing page for used car engine parts"
+          \bengine\b が真 = 独立語  -> reform
+  [種H] "エンジン"@2  "検索エンジンの順位を追うアプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "エンジン"@0  "エンジンオイルの交換履歴を記録する機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "パイプライン"@2  "石油パイプラインの保守記録システムを作って"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "パイプライン"@3  "データパイプラインの実行ログを表示する機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "pipeline"@18  "implement a sales pipeline stage filter"
+          \bpipeline\b が真 = 独立語  -> reform
+  [種H] "pipeline"@28  "build a crm app with a deal pipeline view"
+          \bpipeline\b が真 = 独立語  -> reform
+  [種H] "自己改善"@0  "自己改善の習慣を記録するアプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "自己改善"@0  "自己改善のチェックリスト機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "オーケストレーション"@4  "コンテナオーケストレーションの監視ダッシュボードを作って"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "オーケストレーション"@3  "音楽のオーケストレーション譜面を印刷する機能を実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "orchestration"@23  "implement a kubernetes orchestration status widget"
+          \borchestration\b が真 = 独立語  -> reform
+  [種H] "orchestration"@18  "build a container orchestration cost dashboard product"
+          \borchestration\b が真 = 独立語  -> reform
+  [種H] "枢機卿"@5  "カトリック枢機卿の一覧を引けるアプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "枢機卿"@0  "枢機卿の選挙結果を取り込むコマンドを実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "cardinal"@12  "implement a cardinal direction compass widget"
+          \bcardinal\b が真 = 独立語  -> reform
+  [種H] "cardinal"@40  "build a birdwatching app for spotting a cardinal"
+          \bcardinal\b が真 = 独立語  -> reform
+  [種H] "神官"@3  "神社の神官の当番表を管理するアプリが欲しい"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "神官"@0  "神官の装束の在庫を数えるコマンドを実装して"
+          独立した語として当たっている(意味が世間のもの)  -> reform
+  [種H] "priest"@19  "implement a parish priest schedule importer"
+          \bpriest\b が真 = 独立語  -> reform
+
+種M=13 / 種H=32 / 合計=45
+
+═══ 参考: 既存の守りとの対比 ═══
+PRODUCT_RE / PRODUCT_STRONG_RE は `PRODUCT_FALSE_FRIENDS` で守られている。
+REFORM_RE には紛れ語の表が **存在しない**(forge.js に REFORM_FALSE_FRIENDS は無い):
+  grep -c "REFORM_FALSE_FRIENDS" graph/forge.js = 0
+  isReformSubject の本体 = function isReformSubject(d) { return REFORM_RE.test(d); }
+
+  「門」の複合語が PRODUCT_FALSE_FRIENDS に載っているか:
+    一門: PRODUCT_FALSE_FRIENDS=false  REFORM_RE=true
+    専門: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    部門: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    名門: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    入門: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    門下: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    関門: PRODUCT_FALSE_FRIENDS=true  REFORM_RE=true
+    水門: PRODUCT_FALSE_FRIENDS=false  REFORM_RE=true
+    城門: PRODUCT_FALSE_FRIENDS=false  REFORM_RE=true
+    門松: PRODUCT_FALSE_FRIENDS=false  REFORM_RE=true
+    門出: PRODUCT_FALSE_FRIENDS=false  REFORM_RE=true

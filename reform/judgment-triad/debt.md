@@ -24,8 +24,16 @@
 
 | 札 | 名 | 願い | 現状の道 | 正解の道 | 原因 |
 |----|----|------|---------|---------|------|
-| **PARA-10** | `REFORM_RE の弱い印「門」` | `一門の家系図を作れるアプリが欲しい` | `reform` | `full` | `REFORM_RE` の `門` が「一**門**」に当たり、楽園の改修でない願いが改革の道へ落ちる |
-| **PARA-11** | `PRODUCT_FALSE_FRIENDS の文全体無効化` | `相関図を描けるアプリを作って` | `cartography` | `full` | 「**相関**図」が紛れ語に当たり、`PRODUCT_FALSE_FRIENDS` が**文全体**を無効化するので、同じ文の「アプリ」まで巻き添えで死ぬ |
+
+> ✅ **PARA-10 / PARA-11 は `reform/weak-signs` で払われた(2026-09-17)。**
+> 二件は `tests/route-matrix.test.js` の本コーパスへ `full` として昇格し、
+> `W-1` の FLOOR も同じ commit で上がった。残る種H の射程は
+> `reform/weak-signs/reach.md` が 32 件を名指しで凍らせている。
+
+**表は空だが、見出し行は残す。** `tests/route-debt.test.js` の `readDebtTable()` は
+`| **PARA-n** |` で始まる行だけを数えるので、見出しだけなら 0 行と数えられ、
+門の `DEBT.length === 0` と一致する(D-4 / D-5)。
+**次の残債が生まれたらここへ足せ** —— 帳と門は同じ commit で動かせ。
 
 **現状の道は推定ではない。** 本走行の判定器(C2a + D5)を当てた状態で実測した値である
 (`node tests/route-debt.test.js` が毎回これを撃ち直す)。

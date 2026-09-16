@@ -1,0 +1,53 @@
+曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X4spec.js  (原文と異なるか: YES)
+本物の graph/forge.js は読み取りのみ。
+
+forge: C:\Users\kikus\Documents\workspace\paradise\graph\forge.js
+コーパス件数: 172  (道ごと: counsel=19, cartography=15, reform=15, quick=15, standard=59, full=49)
+  内訳: 前走行 gate/new = 101 / 残債 debt = 2 / 本走行 P10 = 41 / 本走行 P11 = 24 / 本走行 P11c = 4
+
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          12           0          47           0      59
+full                     0           0           7           0           1          41      49
+
+対角の合計: 152 / 172  (誤着 20 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 12 件
+      ・build a fan wiki for paradise lost   (new/P10)
+      ・implement an inventory importer for climbing harness stock   (new/P10)
+      ・create a full-text search index for the us constitution   (new/P10)
+      ・implement a search engine result parser   (new/P10)
+      ・create a listing page for used car engine parts   (new/P10)
+      ・implement a sales pipeline stage filter   (new/P10)
+      ・自己改善のチェックリスト機能を実装して   (new/P10)
+      ・implement a kubernetes orchestration status widget   (new/P10)
+      ・枢機卿の選挙結果を取り込むコマンドを実装して   (new/P10)
+      ・implement a cardinal direction compass widget   (new/P10)
+      ・神官の装束の在庫を数えるコマンドを実装して   (new/P10)
+      ・implement a parish priest schedule importer   (new/P10)
+
+  [full → reform] : 7 件
+      ・i want a travel booking app for paradise island resorts   (new/P10)
+      ・build a safety harness inspection app   (new/P10)
+      ・build a constitution quiz app for students   (new/P10)
+      ・build a crm app with a deal pipeline view   (new/P10)
+      ・自己改善の習慣を記録するアプリが欲しい   (new/P10)
+      ・build a container orchestration cost dashboard product   (new/P10)
+      ・build a birdwatching app for spotting a cardinal   (new/P10)
+
+  [full → standard] : 1 件
+      ・コンテナオーケストレーションの監視ダッシュボードを作って   (new/P10)
+
+非ゼロの非対角セル数: 3 / 30   誤着の総数: 20
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+ユニークな願い: 172 / 総行数 172
+OLD(前走行分) 行数=101  ユニーク=101
+

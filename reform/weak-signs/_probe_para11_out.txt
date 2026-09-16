@@ -1,0 +1,127 @@
+PRODUCT_STRONG_RE = アプリ|ツール|コマンド|画面|機能|フラグ|オプション|エンドポイント|ボタン|一段|ページ|タイマー|\b(?:app|tool|command|flag|option|cli|api|endpoint|button|screen|feature|toggle)\b
+(⚠ PRODUCT_STRONG_RE / DIAGRAM_FALSE_FRIENDS は module.exports に無い — 原文から読んだ)
+PRODUCT_FALSE_FRIENDS = 人口|窓口|入口|出口|河口|口調|口座|口コミ|口頭|蛇口|傷口|経口|悪口|糸口|火口|裏口|非常口|改札口|相場|相談|相手|位相|真相|様相|手相|首相|外相|相続|相関|相互|相当|相対|相応|血相|世相|門前|専門|部門|門下|…
+DIAGRAM_FALSE_FRIENDS = /意図|地図|図書|合図|構図|図々|壮図|企図/
+wantsProduct = function wantsProduct(w) { if (PRODUCT_FALSE_FRIENDS.test(w)) return false; if (PRODUCT_STRONG_RE.test(w)) return true; return PRODUCT_RE.test(w) && !PRODUCT_FALSE_FRIENDS.test(w); }
+
+═══ 2(b) PRODUCT_FALSE_FRIENDS の文全体無効化 — 紛れ語 × 強い産物名 24 件 ═══
+
+  ok  "人口動態のアプリが欲しい"
+        紛れ語="人口"  強い産物名="アプリ"  wantsProduct=false  -> full  (正解 full)
+  ok  "相談窓口のツールを作る"
+        紛れ語="相談"  強い産物名="ツール"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "入口の混雑を表示する画面を実装して"
+        紛れ語="入口"  強い産物名="画面"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "口コミ投稿のアプリが欲しい"
+        紛れ語="口コミ"  強い産物名="アプリ"  wantsProduct=false  -> full  (正解 full)
+  ok  "口座残高を取り込むコマンドを実装して"
+        紛れ語="口座"  強い産物名="コマンド"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "非常口の点検を記録する機能を実装して"
+        紛れ語="非常口"  強い産物名="機能"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "相場を追うアプリが欲しい"
+        紛れ語="相場"  強い産物名="アプリ"  wantsProduct=false  -> full  (正解 full)
+  ok  "相談予約のボタンを実装して"
+        紛れ語="相談"  強い産物名="ボタン"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "相続の手続きを進めるアプリが欲しい"
+        紛れ語="相続"  強い産物名="アプリ"  wantsProduct=false  -> full  (正解 full)
+  ok  "相互リンクを集めるツールを作る"
+        紛れ語="相互"  強い産物名="ツール"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "真相究明メモの画面を実装して"
+        紛れ語="真相"  強い産物名="画面"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "首相の発言を集めるアプリが欲しい"
+        紛れ語="首相"  強い産物名="アプリ"  wantsProduct=false  -> full  (正解 full)
+  ✗   "専門店のサイトが欲しい"
+        紛れ語="専門"  強い産物名=なし  wantsProduct=false  -> reform  (正解 full)
+  ✗   "部門別の集計コマンドを実装して"
+        紛れ語="部門"  強い産物名="コマンド"  wantsProduct=false  -> reform  (正解 standard)
+  ✗   "名門校の受験対策アプリが欲しい"
+        紛れ語="名門"  強い産物名="アプリ"  wantsProduct=false  -> reform  (正解 full)
+  ✗   "入門講座の進捗を記録する機能を実装して"
+        紛れ語="入門"  強い産物名="機能"  wantsProduct=false  -> reform  (正解 standard)
+  ✗   "門限を知らせるタイマーを実装して"
+        紛れ語="門限"  強い産物名="タイマー"  wantsProduct=false  -> reform  (正解 standard)
+  ✗   "登竜門コンテストの投票アプリが欲しい"
+        紛れ語="登竜門"  強い産物名="アプリ"  wantsProduct=false  -> reform  (正解 full)
+  ok  "腎機能の数値を記録するアプリが欲しい"
+        紛れ語="腎機能"  強い産物名="機能"  wantsProduct=false  -> full  (正解 full)
+  ok  "認知機能テストの画面を実装して"
+        紛れ語="知機能"  強い産物名="機能"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "一段落したタスクを片付けるアプリが欲しい"
+        紛れ語="一段落"  強い産物名="一段"  wantsProduct=false  -> full  (正解 full)
+  ok  "画面越しの通話を録画するツールを作る"
+        紛れ語="画面越"  強い産物名="画面"  wantsProduct=false  -> standard  (正解 standard)
+  ok  "タイマー競技の記録アプリが欲しい"
+        紛れ語="タイマー競技"  強い産物名="タイマー"  wantsProduct=false  -> full  (正解 full)
+  ok  "機能性表示食品の一覧を出すコマンドを実装して"
+        紛れ語="機能性"  強い産物名="機能"  wantsProduct=false  -> standard  (正解 standard)
+
+  誤着: 6/24 件
+
+  ── 参考: 紛れ語を削ってから強い名を探した場合の wantsProduct ──
+     現在 false → 削れば true になる願い: 23/24
+
+═══ 2(c) DIAGRAM_FALSE_FRIENDS(isCartography)の同型の病 ═══
+
+  isCartography の該当行:
+    const onlyWeak = !<強い作図語>.test(wish);
+    if (onlyWeak && DIAGRAM_FALSE_FRIENDS.test(wish)) return false;
+  → 打ち消しは **onlyWeak(弱い印「図に/図を」だけで当たった場合)に限定** されている。
+  → つまり「強い作図語 + 紛れ語」の文は殺されない **はず**。実測で確かめる:
+
+  ok  "意図を汲んで相関図を描いてほしい"  紛れ語="意図"  isCartography=true  -> cartography  (正解 cartography)
+  ok  "地図データの構成図を作れ"  紛れ語="地図"  isCartography=true  -> cartography  (正解 cartography)
+  ok  "図書館の蔵書の関連図を可視化して"  紛れ語="図書"  isCartography=true  -> cartography  (正解 cartography)
+  ok  "構図の良し悪しを系統図にして"  紛れ語="構図"  isCartography=true  -> cartography  (正解 cartography)
+  ok  "合図の流れをフロー図にして"  紛れ語="合図"  isCartography=true  -> cartography  (正解 cartography)
+  ok  "意図を汲んで実装せよ"  紛れ語="意図"  isCartography=false  -> standard  (正解 standard)
+  ok  "地図の縮尺を切り替える機能を実装して"  紛れ語="地図"  isCartography=false  -> standard  (正解 standard)
+  ok  "図書の貸出を記録するツールを作る"  紛れ語="図書"  isCartography=false  -> standard  (正解 standard)
+
+  誤着: 0/8 件
+
+  ── ただし isCartography は PRODUCT_FALSE_FRIENDS を **打ち消しの条件** に使っている ──
+    if (!PRODUCT_FALSE_FRIENDS.test(wish) && PRODUCT_STRONG_RE.test(wish)) return false;
+    → 紛れ語が在ると「産物を求めている」打ち消しが効かず、図一枚で返る。実測:
+
+  ✗   "一門の家系図を作れるアプリが欲しい"  PRODUCT紛れ語=なし  isCartography=false  -> reform  (正解 full)
+  ✗   "相関図を描けるアプリを作って"  PRODUCT紛れ語="相関"  isCartography=true  -> cartography  (正解 full)
+  ✗   "専門分野の系統図を編集できるアプリが欲しい"  PRODUCT紛れ語="専門"  isCartography=true  -> cartography  (正解 full)
+  ✗   "人口分布の構成図を出力するツールを作る"  PRODUCT紛れ語="人口"  isCartography=true  -> cartography  (正解 standard)
+  ✗   "窓口の導線を図示するコマンドを実装して"  PRODUCT紛れ語="窓口"  isCartography=true  -> cartography  (正解 standard)
+  ✗   "相場の推移を可視化するツールを作る"  PRODUCT紛れ語="相場"  isCartography=true  -> cartography  (正解 standard)
+
+  誤着: 6/6 件
+
+═══ 2(d) isCounsel の経路(wantsProduct を呼ぶ 3 箇所) ═══
+
+  isCounsel = function isCounsel(wish) { const w = denude(wish); if (!COUNSEL_RE.test(w)) return false; if (!CREATE_RE.test(w) && !wantsProduct(w)) return true; if (isDeliberation(w)) return true; if (DOC_STRONG_RE.test(w)) return true; return DOC_RE.test(w) && !wantsProduct(w); }
+
+  wantsProduct が **false** であることに命を預けている counsel の願い
+  (= 削ってから探す形にすると true に転じ、counsel を失う恐れがある願い):
+
+  ok  "人口動態を調査して報告してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "腎機能の低下を診断してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "相場を分析して所見をくれ"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "楽園の構造を調査して報告してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "二つの案の比較表がほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "楽園のエンジンを監査してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "窓口の対応品質を調査して報告してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "専門店の客足を分析して所見をくれ"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "部門別の残業を集計して報告してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "認知機能の検査結果を診断してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "相談件数の推移を分析してほしい"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+  ok  "入門講座の効果を検討して"  -> counsel  (正解 counsel)
+        wantsProduct 現在=false  削ってから探すと=false  変わらない
+
+  wantsProduct の値が変わる願い: 0/12 件

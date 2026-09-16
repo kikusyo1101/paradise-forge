@@ -1,0 +1,258 @@
+[
+ {
+  "wish": "常夏の楽園を巡るリゾート予約アプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "楽園ビーチの写真を並べる機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a fan wiki for paradise lost",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "i want a travel booking app for paradise island resorts",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "登山用ハーネスの通販サイトを作れ",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "安全ハーネスの点検記録を付ける機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement an inventory importer for climbing harness stock",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a safety harness inspection app",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "日本国憲法の条文を検索できるアプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "create a full-text search index for the us constitution",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a constitution quiz app for students",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement a search engine result parser",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "create a listing page for used car engine parts",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "検索エンジンの順位を追うアプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "エンジンオイルの交換履歴を記録する機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "石油パイプラインの保守記録システムを作って",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "データパイプラインの実行ログを表示する機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement a sales pipeline stage filter",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a crm app with a deal pipeline view",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "自己改善の習慣を記録するアプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "自己改善のチェックリスト機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "コンテナオーケストレーションの監視ダッシュボードを作って",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "音楽のオーケストレーション譜面を印刷する機能を実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement a kubernetes orchestration status widget",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a container orchestration cost dashboard product",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "カトリック枢機卿の一覧を引けるアプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "枢機卿の選挙結果を取り込むコマンドを実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement a cardinal direction compass widget",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "build a birdwatching app for spotting a cardinal",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "神社の神官の当番表を管理するアプリが欲しい",
+  "want": "full",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "神官の装束の在庫を数えるコマンドを実装して",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ },
+ {
+  "wish": "implement a parish priest schedule importer",
+  "want": "standard",
+  "got": "reform",
+  "kind": "H",
+  "tag": "P10",
+  "src": "new"
+ }
+]

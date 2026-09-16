@@ -1,0 +1,40 @@
+射程帳の候補(X4′ の残余): 32 件  (種H 32 / 種M 0)
+
+═══ ② 基準線(main そのもの)での受け入れ帳 ═══
+  受け入れ帳 140 件 + 射程帳 32 件 = 172 (コーパス 172)
+  受け入れ帳の対角: 120 / 140   非ゼロ非対角セル: 4 / 30
+    [full→reform] 8 件
+    [full→cartography] 2 件
+    [standard→reform] 7 件
+    [standard→cartography] 3 件
+      ・full->reform  "一門の家系図を作れるアプリが欲しい"
+      ・full->cartography  "相関図を描けるアプリを作って"
+      ・full->reform  "専門店のサイトが欲しい"
+      ・standard->reform  "部門別の集計コマンドを実装して"
+      ・full->reform  "名門校の受験対策アプリが欲しい"
+      ・standard->reform  "入門講座の進捗を記録する機能を実装して"
+      ・standard->reform  "門限を知らせるタイマーを実装して"
+      ・full->reform  "登竜門コンテストの投票アプリが欲しい"
+      ・full->cartography  "専門分野の系統図を編集できるアプリが欲しい"
+      ・standard->cartography  "人口分布の構成図を出力するツールを作る"
+      ・standard->cartography  "窓口の導線を図示するコマンドを実装して"
+      ・standard->cartography  "相場の推移を可視化するツールを作る"
+      ・full->reform  "build a civil engineering estimate app"
+      ・standard->reform  "implement a gateway timeout retry helper"
+      ・full->reform  "build an app to investigate delegate voting records"
+      ・standard->reform  "create a script to aggregate the daily sales rows"
+      ・standard->reform  "implement a navigate-back button for the wizard"
+      ・standard->reform  "implement a self-improvement streak counter"
+      ・full->reform  "build a self-improvement journal app"
+      ・full->reform  "build a priesthood directory app for the diocese"
+  受け入れ帳の道ごとの件数: counsel=19, cartography=15, reform=15, quick=15, standard=42, full=34
+  射程帳の道ごとの件数:   counsel=0, cartography=0, reform=0, quick=0, standard=17, full=15
+  射程帳で今なお誤着: 32 / 32 (xfail の門はこれを凍らせる)
+
+═══ ③ X4″ を当てたときの受け入れ帳 ═══
+  受け入れ帳 140 件 + 射程帳 32 件 = 172 (コーパス 172)
+  受け入れ帳の対角: 140 / 140   非ゼロ非対角セル: 0 / 30
+  受け入れ帳の道ごとの件数: counsel=19, cartography=15, reform=15, quick=15, standard=42, full=34
+  射程帳の道ごとの件数:   counsel=0, cartography=0, reform=0, quick=0, standard=17, full=15
+  射程帳で今なお誤着: 32 / 32 (xfail の門はこれを凍らせる)
+

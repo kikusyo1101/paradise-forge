@@ -825,16 +825,19 @@ for (const [verb, wish] of Object.entries(MEND_WORLDLY_EVERY_VERB)) {
  *    代わりに **main と同じ振る舞いであること**だけを撃つ ——
  *    すなわち「本走行はこの面を悪化させていない」の断定である。
  */
-test('「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)', () => {
-  // ⚠️ main でも HEAD でも reform に着く。**これは既知の未解決である**
-  //    (`requirements.md` の「別の走行への申し送り」§一字の抽象名 を読め)。
-  //    この門が守るのは「**悪化していない**」ことだけである。
+/**
+ * ⚠️ この門は reform/weak-signs で **xfail から正の門へ昇格した**。
+ *    以前は「main と同じく reform へ落ちる」ことを凍らせていた(= 誤りの記録)。
+ *    `REFORM_FALSE_FRIENDS` が「門」の複合語を語境界として扱うようになったので、
+ *    **世間の「門」は楽園を名乗らない**ことを直に撃つ形に書き換えた。
+ *    実測(reform/weak-signs/design.md §4.1): 二件とも reform → quick。
+ */
+test('「門」の紛れ語は楽園を名乗らない (AC-45 / PARA-10 を払った)', () => {
   for (const wish of ['専門店の棚の傾きを直したい', '部門別の売上の誤りを直したい']) {
-    assert.strictEqual(forge.chooseScale(wish), 'reform',
-      `「門」の紛れ語の振る舞いが main から変わった — 良くなったなら門を書き換え、` +
-      `悪くなったなら直せ: ${wish}`);
+    assert.strictEqual(forge.chooseScale(wish), 'quick',
+      `「門」の紛れ語が楽園の改修の道へ攫われた — PARA-10 の回帰: ${wish}`);
   }
-  // 逆向き: 本物の門は今まで通り無条件で楽園を名指す
+  // 逆向き: 本物の門は今まで通り無条件で楽園を名指す(第60条(b): 規則を足したら両枝を持て)
   for (const wish of ['門に監査の一段を足す', '門の判定を書き換える', '門を強化する']) {
     assert.strictEqual(forge.chooseScale(wish), 'reform',
       `本物の門が reform を失った — ${wish}`);

@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "slug": "weak-signs",
+    "wish": "楽園の道選びに残る二つの弱い印を直す (PARA-10 / PARA-11)",
+    "scale": "reform",
+    "branch": "reform/weak-signs",
+    "commits": ["47a5dff"]
+  },
+  "produces": "artifact",
+  "build": "pass",
+  "tests": {
+    "passed": 720,
+    "failed": 0,
+    "total": 720,
+    "detail": {
+      "paradise.test.js": "471 passed, 0 failed",
+      "counsel.test.js": "210 passed, 0 failed",
+      "route-matrix.test.js": "13 passed, 0 failed (コーパス 102→122、非対角 30 セルすべて 0)",
+      "ratify-guard.test.js": "9 passed, 0 failed",
+      "route-debt.test.js": "4 passed, 0 failed (D-1/D-2 統合による設計どおりの減)",
+      "reform-sign.test.js": "6 passed, 0 failed (新設)",
+      "reform-reach.test.js": "6 passed, 0 failed (新設)"
+    },
+    "note": "門 25 本すべてに走らせる者が居る (wiring.js check exit 0)。conclave.js audit は 0/0/全14 exit 0。すべて本物のリポジトリで一つずつ逐次に走らせた"
+  },
+  "security": {
+    "issues": 0,
+    "secrets": 0,
+    "method": "git diff HEAD~1 -- graph/ tests/ .github/ の追加行を password|secret|token|api_key|eval(|child_process|exec(|process.env|require(http で走査 → 当たり 0 件。新設 2 門も exec/eval/child_process/fs.rm/unlink を一つも持たない",
+    "assessment": [
+      "本 commit は正規表現の判定器と門と文書のみを動かす。外部入力を実行する口・秘密・鍵・外部通信は 0 件",
+      "REFORM_FALSE_FRIENDS は 21 語すべてが「門」を含む 3 字以下の日本語で、英語混入 0 件。門番 (reform-sign S-3) が機械で撃つ",
+      "wantsProduct / isCartography の『削ってから探す』は String.replace による純関数で、正規表現は定数から source を読む。ReDoS を招く入れ子量化は無い",
+      "教主が独立に検算: REFORM_RE の 20 語は一語も落ちず (counsel.test.js:652 が無改変で通る)、語中埋没 7 例はすべて塞がった"
+    ]
+  },
+  "lint": { "status": "pass", "warnings": 0 },
+  "spec": {
+    "satisfied": true,
+    "unmet": [],
+    "acceptance": [
+      { "id": "AC-1", "pass": true, "desc": "種M(語中埋没)は 0 件 — 全件直す", "evidence": "reform-sign 6/6。教主の独立検算で gateway/delegate/aggregate/navigate/engineering/priesthood/self-improvement の 7 例すべてが REFORM_RE に当たらない" },
+      { "id": "AC-2", "pass": true, "desc": "PARA-11 の族 4 件が直る", "evidence": "『相関図を描けるアプリを作って』→ full(旧 cartography)。教主が直接撃って確認" },
+      { "id": "AC-3", "pass": true, "desc": "紛れ語表の全項が「門」を含み英語を含まない(表を膨らませる道を塞ぐ)", "evidence": "reform-sign S-3 が機械で撃つ。教主の検算でも 21 項・「門」を含まない項 0・英語混入 0・4字超 0" },
+      { "id": "AC-4", "pass": true, "desc": "射程帳 32 件が誤着のまま凍る(xfail)", "evidence": "reform-reach 6/6。reach.md に 32 行の表" },
+      { "id": "AC-5", "pass": true, "desc": "受け入れ帳 140/140・非対角 30 セルすべて 0", "evidence": "route-matrix 13/0、対角 counsel 42/cartography 9/reform 11/quick 8/standard 26/full 26 = 122、非対角 全 30 セル 0" },
+      { "id": "AC-6", "pass": true, "desc": "的と FLOOR が判定器と同じ commit", "evidence": "単一 commit 47a5dff に graph/forge.js と tests/route-matrix.test.js が同時に載る。FLOOR standard 16→26 / full 16→26 / 総数 102→122(上げただけ)" },
+      { "id": "AC-8", "pass": true, "desc": "C2(素朴な wantsProduct 打ち消し)を採らない", "evidence": "『楽園の相の系統図を描いてほしい』→ cartography を教主が確認。強い産物名だけで打ち消す形を維持" },
+      { "id": "AC-9", "pass": true, "desc": "AC-45 を quick の等号へ書き換える(|| true・notStrictEqual への緩和・札削除は禁止)", "evidence": "counsel 210/0。git diff の hunk は 828 行以降の 3 つのみ" },
+      { "id": "AC-10", "pass": true, "desc": "counsel.test.js:652-671 を無改変で通す", "evidence": "git diff HEAD~1 -U0 の hunk は @@-828 / @@-833 / @@-837 のみ、652-671 に重なる hunk 0 件" },
+      { "id": "AC-11", "pass": true, "desc": "残債を払ったので debt.md の 2 行を消し、門は次の受け皿として残す", "evidence": "route-debt 4/0 exit 0。debt.md の L27・L28 削除、DEBT 空でも D-4/D-5 が門番として働く" },
+      { "id": "AC-12", "pass": true, "desc": "新設した門はすべて結線される(第44条)", "evidence": "node graph/wiring.js check → ✓ 門 25 本すべてに走らせる者が居る(23→25)" },
+      { "id": "AC-14", "pass": true, "desc": "README の数を手で書かない(第22条)", "evidence": "node graph/census.js fix → nothing to fix、README.md は commit に含まれず" }
+    ]
+  },
+  "diff": { "files": 62 },
+  "trajectory": {
+    "score": 100,
+    "complete": true,
+    "phasesTotal": 11,
+    "phasesDone": 11,
+    "domainsTotal": 6,
+    "domainsRatified": 6,
+    "firstPassRate": 1,
+    "reworkCount": 0,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "note": "第27条に従い tribunal を ratify した後に gauge.js score --json を撃ち直した確定値"
+  },
+  "critic": {
+    "verdict": "the critic found nothing (107 件の教訓で裁いた). Proceed to judgment.",
+    "command": "node graph/critic.js review graph --self --lessons graph/lessons.json"
+  },
+  "loosened_gates": "なし — || true 0 件、閾値は上げただけ、的の削除 0 件、CLAUDE.md 無改変。reform-reach.test.js の notStrictEqual は緩和ではなく別の面(表が文の骨を削っていないか)を撃つ検査で、『reform のまま』は R-1 が等号で撃っている",
+  "debts": [
+    "射程帳 32 件(種H = 同音異義)は原理的に弱い印では塞げないため reach.md に凍結。tests/reform-reach.test.js が xfail で撃ち、誰かが直した瞬間に赤くなる"
+  ],
+  "honest_notes": [
+    "設計相の paradise.test.js 差分測定が一度『exit=2 / 0.0秒 / 集計行なし』で走らずに「✗ 0 本」を出した。教主が偽の緑として差し戻し、計測器に健全性判定(集計行あり・N≥471・所要>60秒)を入れさせた",
+    "次にその判定が写しに対して不当だった(写しは .git 不在で 2 件が skip を名乗るため 469 passed + 2 skipped = 471)。教主が生ファイルから直接検算し、両群とも 469+2=471・✗ 0 本・試験群に X4″ が確かに当たっていることを確認して測定を成立させた",
+    "discovery の最有力候補 X4 は requirements 相で却下された。紛れ語表 41 語のうち『常夏の楽園』『検索エンジン』『カトリック枢機卿』が種H の的そのものの逐語暗記であり第60条違反だったため。剥がした X4″(表は「門」の複合語 21 語のみ)は耐久 44/48 で X4 の 43/48 より良く、表も短い",
+    "教主の見立てが二つ実測で覆った: (1)「神官・枢機卿は安全そう」→ REFORM_RE の 20 印すべてに実在の紛れ語があった (2)「英語の印は大丈夫」→ \\b を一つも持たず gate が gateway/delegate/aggregate/navigate に 4/4 埋もれていた(残債表に無かった病)"
+  ]
+}

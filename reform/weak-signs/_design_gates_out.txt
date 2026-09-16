@@ -1,0 +1,69 @@
+
+════════════════════════════════════════════════════════════════════════════════════════
+【判定器 = base】  REFORM_FALSE_FRIENDS を持つ: false  (base なら false / x4pp なら true)
+════════════════════════════════════════════════════════════════════════════════════════
+
+── node tests/reform-sign.test.js ──  exit=1
+    ✗ S-1 [種M]: 語中に埋没した印は楽園を名乗らない (AC-1 / 日 8 + 英 8)
+        印が語中に埋没したまま楽園を名乗った(PARA-10 の回帰): 一門の家系図を作れるアプリが欲しい
+          日本語は REFORM_FALSE_FRIENDS が、英語は REFORM_EN の \b が語境界を担う。どちらかが壊れている
+        
+        true !== false
+        
+    ✗ S-2 [PARA-11]: 紛れ語は同じ文の強い産物名を巻き添えにしない (AC-2)
+        紛れ語が文全体を無効化し、同じ文の強い産物名まで死んだ(PARA-11 の回帰): 相関図を描けるアプリを作って
+          wantsProduct は「紛れ語の一致箇所を**削ってから**強い名を探す」形であること。`if (PRODUCT_FALSE_FRIENDS.test(w)) return false;` を先頭に戻すと必ずここが鳴る
+        
+        false !== true
+        
+    ✗ S-3 [門番 / 第60条]: 紛れ語表は「門」の複合語だけを持つ (AC-3)
+        REFORM_FALSE_FRIENDS が export されていない —— 表を門から検められない
+    ✓ S-4 [逆向き]: 楽園の願いは reform を失わない (AC-5 / 第60条(b))
+    ✗ S-5 [作図]: 図を作る産物は図そのものではない (AC-8 / 枝E)
+        紛れ語が isCartography の打ち消しを殺し、図一枚で返された: 専門用語の関連図を描けるアプリが欲しい
+          isCartography も wantsProduct と**同じ形**(削ってから強い名を探す)であること
+        + actual - expected
+        
+        + 'cartography'
+        - 'full'
+        
+    ✓ S-6 [諐問]: 紛れ語を含む諐問の願いは counsel を失わない (AC-8 / 枝D / NFR-7)
+  
+  Reform sign self-test: 2 passed, 4 failed
+
+── node tests/reform-reach.test.js ──  exit=1
+    ✓ R-1 [射程]: 種H の 32 件は今なお reform へ誤着する
+    ✓ R-2 [射程]: 射程帳の的が standard へ落ちていない — 表が文の骨を削っていないか
+    ✗ R-3 [射程]: 32 件はすべて種H である — 塞げるものを逃がしていない
+        Cannot read properties of undefined (reading 'source')
+    ✓ R-4 [門番]: reach.md が実在し、32 件を名指しで載せている
+    ✓ R-5 [門番]: reach.md の願いは、この門が撃っている願いと一字一句同じ
+    ✓ R-6 [門番]: 射程帳は既存門のコーパスを一件も攫っていない (第21条)
+  
+  Reform reach self-test: 5 passed, 1 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+【判定器 = x4pp】  REFORM_FALSE_FRIENDS を持つ: true  (base なら false / x4pp なら true)
+════════════════════════════════════════════════════════════════════════════════════════
+
+── node tests/reform-sign.test.js ──  exit=0
+    ✓ S-1 [種M]: 語中に埋没した印は楽園を名乗らない (AC-1 / 日 8 + 英 8)
+    ✓ S-2 [PARA-11]: 紛れ語は同じ文の強い産物名を巻き添えにしない (AC-2)
+    ✓ S-3 [門番 / 第60条]: 紛れ語表は「門」の複合語だけを持つ (AC-3)
+    ✓ S-4 [逆向き]: 楽園の願いは reform を失わない (AC-5 / 第60条(b))
+    ✓ S-5 [作図]: 図を作る産物は図そのものではない (AC-8 / 枝E)
+    ✓ S-6 [諐問]: 紛れ語を含む諐問の願いは counsel を失わない (AC-8 / 枝D / NFR-7)
+  
+  Reform sign self-test: 6 passed, 0 failed
+
+── node tests/reform-reach.test.js ──  exit=0
+    ✓ R-1 [射程]: 種H の 32 件は今なお reform へ誤着する
+    ✓ R-2 [射程]: 射程帳の的が standard へ落ちていない — 表が文の骨を削っていないか
+    ✓ R-3 [射程]: 32 件はすべて種H である — 塞げるものを逃がしていない
+    ✓ R-4 [門番]: reach.md が実在し、32 件を名指しで載せている
+    ✓ R-5 [門番]: reach.md の願いは、この門が撃っている願いと一字一句同じ
+    ✓ R-6 [門番]: 射程帳は既存門のコーパスを一件も攫っていない (第21条)
+  
+  Reform reach self-test: 6 passed, 0 failed
+
+写しの根: C:\Users\kikus\AppData\Local\Temp\ws_newgates  (本物の tests/ graph/ には何も作っていない)
