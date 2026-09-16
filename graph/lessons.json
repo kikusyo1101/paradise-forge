@@ -822,5 +822,37 @@
     "applies": "gate",
     "kind": "mechanism",
     "ts": "2026-09-16T07:46:28.313Z"
+  },
+  {
+    "id": "matrix-gate-only-sees-declared-rows",
+    "label": "混同行列の門は宣言した行しか守らない",
+    "check": "ROUTE_MATRIX 門は過去 5 形の回帰を一つも捕らえなかった(実測: 欠陥C/F-1/Q2-1/Q3-1/Q3-2 の全変異で exit 0・13 passed 0 failed)。理由は行列の軸が正解の道であって願いの母集団ではないこと — コーパスに世間の願い × engine 名が 0 件なので、その面が何処へ着こうが全セルが動かない。実測: 欠陥C 変異で世間の願い 9/10 が reform へ誤着したのに ROUTE_MATRIX は黙り、counsel.test.js だけが 106 failed で鳴いた。逆に DELIBERATION を殺すと ROUTE_MATRIX のみ 4 failed で counsel は 210/0 で黙った。二つの門は別の面を守っており、どちらも単独では網ではない。混同行列を建てたら『この行列が守る面』と『守らない面』を列挙し、守らない面を持つ門を名指しで隣に置け|check",
+    "applies": null,
+    "kind": "mechanism",
+    "ts": "2026-09-16T08:21:34.448Z"
+  },
+  {
+    "id": "scope-withdrawal-needs-both-columns",
+    "label": "射程外化は両列の数で裁け",
+    "check": "AC が達成不能になったとき『未達』と『射程外』を分けるのは、達成した場合に失う数を測ったか否かである。実測: AC-03/AC-05 型は engine 固有名だけで楽園を名指す願いで、HEAD は 26/26 が reform へ着かない。だが main も 26/26 着かず(回帰ではない)、撤去前の 6a4e3f4 は 3/26 まで下げた代わりに世間の願い 7/18 を reform へ攫った。すなわち『AC を緑にする』ことと『世間の誤着 7 件を甦らせる』ことが同値である。射程外化を正当と宣言するには (1) main と同じか良いこと (2) 達成すると別の面で何件失うか の二つを数で示せ。片方だけでは値切りと区別できない|check",
+    "applies": null,
+    "kind": "mechanism",
+    "ts": "2026-09-16T08:21:50.178Z"
+  },
+  {
+    "id": "mutation-lab-is-a-clone-not-the-worktree",
+    "label": "故障注入は複製の中で撃て",
+    "check": "復旧経路を検めるより復旧を要らなくする方が強い。実測: 作業木の graph/forge.js を変異させる走者がログ名に / を含む変異名(Q3-1/Q3-2)を使い path が壊れて ENOENT で落ち、finally を持たなかったため Temp の絶対パスを require する変異が作業木に残った。commit していれば他の機械で即死する。git clone --no-hardlinks で複製を立て、その中だけで変異を撃てば、走者がどこで落ちても作業木は一字も汚れない。変異の名は必ず path に使える文字へ正規化し、書き換えは try/finally で包め|check",
+    "applies": null,
+    "kind": "mechanism",
+    "ts": "2026-09-16T08:21:50.230Z"
+  },
+  {
+    "id": "redundant-vocabulary-outlives-its-repair",
+    "label": "修理が足した語彙は、面が消えても残る",
+    "check": "神官の申告『M9 は今も黙す』は真であった。実測: CREATE_RE から BUILD_JA(設ける|足す|加える|追加|新設|導入|搭載|持たせ|拡張|付ける)を抜いても、欠陥A の本旨 15/15・世間の建造 30/30・熟議 20/20・楽園の改修 10/10 が一件も動かず、route-matrix 13/0・counsel 210/0 が共に緑のままである。BUILD_JA が CREATE_RE で担っていた仕事は、後から建った DELIBERATION_RE と isReformSubject の抽象名枝が全て引き受けている。ゆえに欠陥A の修理の一部は今や余剰であり、かつこの余剰こそが R-1(熟議が counsel を失う)を生んだ当の語彙である。修理を撤去する相は、撤去した印だけでなく『その修理が他の定数へ足した語彙』も面ごと測り直せ — 生き残った語彙は害だけを残して役目を終えていることがある|check",
+    "applies": null,
+    "kind": "mechanism",
+    "ts": "2026-09-16T08:22:03.731Z"
   }
 ]

@@ -604,3 +604,295 @@ GAP 37  →  39
 | V-9 | **scope を正しく宣言した場合の 39 件の一件ずつの照合** | 2 件の差分(`corpus-blind-to-its-own-half` / `restore-path-must-be-verified`)のみ実物と突き合わせた。残り 37 件は §5 と同じく同型と判断した |
 | V-10 | **`lessons.json` を 99 件に直したことの副作用** | `derived.js check` は EXIT=0 を保ったが、CI 上で lessons を再生成する裁定ジョブとの相互作用は**測っていない**(`lesson:art29-derived-not-truth` が名指しする面) |
 | V-11 | **提案5/6 の実装可能性** | どちらも試作していない。**欠陥の存在のみを証明した** |
+
+---
+
+# §三度目 — 環の最後の判決
+
+> **tribunal 三度目 / verdict 相。** construction は reworks=3(限界)に達している。
+> **これ以上差し戻せば環は blocked になる。**
+> 前相: [`reflect.md` §三度目](./reflect.md) / 報告書: [`verdict-report.json`](./verdict-report.json)
+
+---
+
+## 判決
+
+```
+$ node graph/verdict.js judge reform/route-misfire/verdict-report.json
+═══════════ ⚖️  VERDICT ═══════════
+⚠️  REWORK
+Fixable defects — loop back and repair, then re-judge.
+
+Defects (REWORK):
+  ⚠️  trajectory score 50 below floor 60 — 荒れた走行は改善ではない (Art. 38)
+
+Passed:
+  ✓ build passes
+  ✓ 471/471 tests pass
+  ✓ no security issues
+  ✓ spec satisfied
+═══════════════════════════════════
+VERDICT_EXIT=1
+```
+
+# ⚠️ **REWORK**(exit 1)
+
+**二度目の BLOCK(exit 2)は解けた。** `spec satisfied` が ✓ に転じ、breach は 0 件である。
+**残る欠陥は一つ、`trajectory score 50 < floor 60` のみ。**
+
+**数は一切曲げていない。** 第57条により、曲げれば教主は必ず撃ち直す。
+
+---
+
+## 1. 二度目からの変化 —— 何が解けたか
+
+| | 二度目 (6ac36ca) | **三度目 (577949e)** |
+|---|---|---|
+| **判決** | 🔴 **BLOCK** (exit 2) | ⚠️ **REWORK** (exit 1) |
+| breach | `spec not satisfied: R-1` | **0 件** |
+| defects | (breach が優先し表示されず) | `trajectory 50 < 60` の **1 件** |
+| `spec.satisfied` | `false` | **`true`** |
+| 格子 150 通り | HEAD **120/150 誤着** | **0/150**(route-matrix M-6 が緑) |
+| 門 | 471 / 210 / 33 | 471 / 210 / 33 / **13** / **8** |
+| 走らせる者を持つ門 | 19 | **21** |
+| 条 | 60 | **61** |
+
+**BLOCK は解けた。** R-1 の治癒を、本相が両 head の探針で独立に実測した(§2)。
+
+---
+
+## 2. なぜ `spec.satisfied = true` か —— 数で述べる
+
+### 2.1 二度目の BLOCK 根拠(R-1)は治癒した
+
+```
+                              main(c216014)   HEAD(577949e)
+格子 150 通り(熟議 × 建造動詞)      0/150          0/150   ← 二度目は 120/150
+熟議 30 件(建造動詞10 × 文型3)      0/30           0/30
+英語の熟議 8 件                    2/8            0/8    ← ✓ 改善 -2
+対照: 命令形 30 通り                0/30           0/30   ← 誤射していない
+```
+
+**故障注入で門が本当に働くことを確かめた**(複製の中で):
+
+```
+DELIBERATION_RE を空にする → route-matrix 9 passed 4 failed
+  M-2[対角] / M-3[非対角] / M-4[R-1名指し] / M-6[格子150] が鳴った
+  非対角セル: counsel→reform 9 件 , counsel→standard 22 件 , counsel→full 1 件
+  ※ 同じ変異に対し counsel.test.js は 210/0 で黙る
+```
+
+### 2.2 AC は緑である
+
+```
+  ✓ AC-01 / AC-02 / AC-03 / AC-04 / AC-06 / AC-07 / AC-08 / AC-09 / AC-12
+  ⊘ AC-05 (🔴 射程外・取り下げ済み)
+  AC 生駆動: pass=9 fail=0 射程外=1
+```
+
+### 2.3 8 度の回帰は 8/8 が今の門で捕らえられる
+
+二度目は「8 件中 7 件が治癒、8 件目(R-1)が未修理」であった。**8 件目も塞がれた。**
+
+---
+
+## 3. AC-03 型 2 件の裁定 —— **選択肢 1(射程外へ格下げ)**
+
+**教主の見立てと同じ結論に達したが、盲従ではない。**
+選択肢 2(未達として数え BLOCK/REWORK を出す)の側から**四つの数を当てて反証を試み、四つとも選択肢 1 を支持した。**
+
+| # | 根拠 | 数 |
+|---|---|---|
+| 1 | **回帰ではない** | `CI に ledger --audit を追加する`: main=counsel → HEAD=**standard**(✓ 改善)<br>`conclave の毒を除く`: main=standard → HEAD=standard(**= 同じ**)<br>**第38条の前後比較で悪化 0 件** |
+| 2 | **AC-03 は既に改訂済みで緑** | 期待値は build 相四度目で「`counsel` でない」へ改訂。生駆動 **pass=9 fail=0** |
+| 3 | **門が assert している断言である** | `tests/counsel.test.js:875` が `conclave の毒を除く` に対し `isReformSubject=false` / `chooseScale !== 'reform'` を**機械で assert**。未達と呼ぶことは**緑の門を赤と呼ぶ**ことである |
+| 4 | **選択肢 2 の代価**(★ 教主の報告に無い数) | 下表 |
+
+### 3.1 根拠 4 —— 決定打
+
+「AC を緑にせよ」は「engine 固有名を印に戻せ」と**同値**である。代価を測った:
+
+```
+engine 名 26 語 × 「に検めの口を設ける」が reform へ着かない数:
+    main            = 26/26      ← main も全て着かない
+    HEAD (撤去後)   = 26/26      ← main と同じ = 回帰ではない
+    撤去前 6a4e3f4  =  3/26      ← 印が在れば 23 件が着く
+
+世間の願い × engine 名 18 件 が reform へ誤着する数:
+    main            =  0/18
+    撤去前 6a4e3f4  =  7/18      ← 印が在ると 7 件が攫われる (= Q3-2)
+    HEAD (撤去後)   =  0/18
+```
+
+**「AC 23 件を緑にする」ことと「世間の誤着 7 件(Q3-2)を甦らせる」ことは同じ操作である。**
+第60条(b) が言う「両方向に誤る印」そのものであり、
+**選択肢 2 は「四度差し戻された修理をもう一度やれ」と言うに等しい。**
+
+**裁定: 射程外へ格下げ。未達として数えず、これを理由に BLOCK / REWORK を出さない。**
+`requirements.md` §8.9 に実測と共に残した。
+
+---
+
+## 4. REWORK の唯一の理由 —— `trajectory score 50`
+
+### 4.1 数の内訳(`graph/gauge.js` の式を読んで確かめた)
+
+```js
+// graph/gauge.js:15
+score = 100 − 10×rework − 5×retryOverhead − 15×loopGuardTrips − 20×(complete ? 0 : 1)
+```
+
+```
+100
+ − 10 × 3   (reworkCount=3)          = −30   ← 四度の差し戻しの負債。実在する
+ −  5 × 0   (retryOverhead=0)        =   0
+ − 15 × 0   (loopGuardTrips=0)       =   0
+ − 20 × 1   (complete=false)         = −20   ← domainsRatified 5/6
+─────────────────────────────────────────
+                                        50   (floor 60)
+```
+
+### 4.2 **−20 は「tribunal 領域がまだ批准されていない」ことだけを意味する**
+
+反実仮想を**走行帳の複製**に対して測った(**本物の走行帳には一字も触れていない**):
+
+```
+$ (複製の domains[5].status を 'ratified' にして)
+$ node graph/gauge.js score <複製> --json
+{"score":70,"complete":true,"domainsRatified":6,"reworkCount":3,...}
+
+$ node graph/gauge.js score reform/route-misfire/conclave.json --json   # 本物
+{"score":50,"complete":false,"domainsRatified":5,"reworkCount":3,...}
+
+$ (本物の走行帳を確認) tribunal status = active     ← 無傷
+```
+
+**tribunal 領域が批准されれば score は 70 となり floor 60 を超える。**
+**そして判決は `spec satisfied` / `471/471` / `no security issues` / `trajectory 70` の
+四つ全てが ✓ となり SHIP になる。**
+
+### 4.3 **本相は自分で批准しない。** —— これが第57条である
+
+**`verdict.js` が REWORK を出した理由を、判決を出す当人が消しにいくのは
+「数を曲げる」ことそのものである。** ゆえに本相は:
+
+* **走行帳を書き換えていない**(tribunal は `active` のまま)
+* **`verdict-report.json` の `trajectory` は `gauge.js --json` の出力をそのまま写した**
+  (`score: 50` / `complete: false` / `reworkCount: 3`)
+* **REWORK をそのまま報告する**
+
+**批准は本相の権能ではない。** `ratify` は領域を所有する者が下す。
+**教主が `node graph/conclave.js ratify` で tribunal を批准すれば、
+同じ報告書が再判決で SHIP(exit 0)を返す。** その判断を教主に委ねる。
+
+### 4.4 **reworkCount=3 の −30 は消えない。そして消すべきではない**
+
+**仮に tribunal が批准されても score は 70 であり、100 ではない。**
+四度の差し戻しは実在した負債であり、`gauge.js` は run-state から決定的にそれを導いている。
+**この −30 を消す道は存在しないし、存在してはならない**(第38条: 荒れた走行は改善ではない)。
+
+---
+
+## 5. **BLOCK を出さない理由** —— 今この枝の欠陥か、次の走行の題か
+
+**本判決は BLOCK ではない。breach は 0 件である。**
+だが reflect §三度目 が実測で見つけたものを、
+**「今この枝で直さねばならぬ欠陥」と「次の走行へ送るべき題」に別ける**(教主の命による)。
+
+### 5.1 **今この枝の欠陥** —— **0 件**
+
+| 候補 | なぜ「今の欠陥」ではないか |
+|---|---|
+| AC-03 型 2 件 | main と同じか良い。回帰ではない(§3) |
+| `ROUTE_MATRIX` が 5 形を捕らえない | **面は無防備ではない** —— 5 形すべてを `counsel.test.js` が捕らえる(106/82/37/5/5 failed)。門は両方緑であり、**振る舞いは正しい** |
+| `CREATE_RE` の `BUILD_JA` が余剰 | **撤去しても 75/75 の願いが一件も動かない**。害が現に出ていない |
+| critic が三度黙った | critic 自身の欠陥であって、本走行の成果物の欠陥ではない |
+| AC-30(CLI 口の門) | 三度の tribunal がいずれも「別の走行へ」と裁いた |
+
+**ゆえに `spec.satisfied = true` であり、差し戻すべき実装の欠陥は無い。**
+
+### 5.2 **次の走行へ送る題** —— 5 件(優先順)
+
+1. **`ROUTE_MATRIX` の註と第61条の散文を直す。**
+   「片側だけ直す修理が構造的に不可能になる」は**実測で偽**である(5 形 0/5)。
+   第33条(散文が機構を騙る)であり、**散文が嘘をついている間は、次の走行が
+   「行列が在るから安全」と誤信する。** これが最も危険な負債である。
+2. **行列のコーパスに「世間の願い × engine 名」の行を足す。**
+   標準の 9 件・full の 8 件は engine 固有名を一語も含まない。
+   この行を足せば、5 形は行列でも鳴るようになる。
+3. **`CREATE_RE` から `BUILD_JA` を撤去する。**
+   M9 実測 75/75 不動。**R-1(8 度目の回帰)を生んだ当の語彙であり、今は何の仕事もしていない。**
+4. **critic を「語の出現」から実質判定へ。** 三度連続で本物を外している。
+5. **AC-05 / FR-04** —— engine 固有名を印にする題。`requirements` §8 と §8.9.4 の数から始めよ。
+
+### 5.3 なぜ 1〜3 を今やらないか
+
+**本走行は「修理が新しい欠陥を生む」を 8/8 = 100% で実演した。**
+そして **reworks=3 は construction の限界であり、差し戻せば環は blocked になる。**
+
+> **tribunal は裁く相であり、建てる相ではない。**
+
+**無審査の修理を最後の環でねじ込むことは、9 度目の回帰を招く最も確実な手である。**
+特に 3(`BUILD_JA` 撤去)は **振る舞いを一件も変えない** —— すなわち**急ぐ理由が数の上に無い。**
+
+---
+
+## 6. 通った門(隠さず記す / 第37条)
+
+| 門 | 実測 | EXIT |
+|---|---|---|
+| `tests/paradise.test.js`(全走・background) | **471 passed, 0 failed** | 0 |
+| `tests/counsel.test.js` | **210 passed, 0 failed** | 0 |
+| `tests/abandoned-run.test.js` | **33 passed, 0 failed** | 0 |
+| `tests/route-matrix.test.js`(第61条の新しい門) | **13 passed, 0 failed** | 0 |
+| `tests/lesson-export.test.js`(盲点②の新しい門) | **8 passed, 0 failed** | 0 |
+| `graph/wiring.js check` | ✓ 門 **21 本**すべてに走らせる者が居る (第44条) | 0 |
+| `graph/codex.js check` | ✓ 索引は本文と一致している (**61 条**) | 0 |
+| `graph/census.js fix` | nothing to fix / ✓ 書き換えた数は実測と一致する | 0 |
+| `graph/census.js check` | (background) | 0 |
+| `graph/lessons.js export` | 教訓 103 → **107** (+4) | 0 |
+| secret scan | **SECRETS_FOUND=0** | — |
+
+**`verdict.js` はこの四つを `Passed` に数えた**:
+`build passes` / `471/471 tests pass` / `no security issues` / **`spec satisfied`**。
+
+**本走行が確かに治したもの**(実測済み・否定しない):
+
+* 欠陥A —— 本旨 11 件の誤着 **3/11 → 0/11**
+* 欠陥B / HIGH-1 / S-1(ReDoS) / V-1 —— いずれも修理・門を据えた
+* 欠陥C / F-1 / Q2-1 / Q3-1 / Q3-2 —— `ENGINE_NAMES` 撤去で世間の誤着 **0/18**
+* **R-1 —— 熟議の願いの誤着 格子 120/150 → 0/150**、英語の熟議 **2/8 → 0/8**
+* 門 469→471 / 走らせる者を持つ門 19→**21** / 条 60→**61** / 教訓 85→**107**
+
+---
+
+## 7. 教主への申し送り(この判決をどう扱うか)
+
+**本判決は REWORK(exit 1)であり、差し戻すべき実装の欠陥は 0 件である。**
+REWORK の唯一の理由は **tribunal 領域が未批准であること(−20)** と
+**四度の差し戻しの負債(−30)** の合算が floor を 10 点下回ることである。
+
+**取りうる道は二つ。どちらも本相の権能を超える:**
+
+1. **tribunal を批准して撃ち直す** —— `node graph/conclave.js ratify`(または相当の口)で
+   tribunal 領域を批准すれば `complete=true` となり **score 70 ≥ floor 60**。
+   **同じ報告書のまま SHIP(exit 0)になる。**
+   ただし**本相は自分でこれをしない** —— 判決を出す当人が判決の理由を消すのは第57条違反である。
+2. **REWORK として受ける** —— 四度の差し戻しの負債(−30)を
+   「この走行は荒れていた」という事実として受け入れ、環を閉じずに置く。
+
+**どちらを選ぶかは教主の裁量である。本相は数をそのまま差し出す。**
+
+---
+
+## 8. 本判決が見ていないもの(名乗り / 第37条)
+
+* **AC は 10 本しか生駆動していない**(全 47 本)。残りは verify 相の実測を引き写していない。
+* **`ratify` の口を撃っていない。** §7 の道 1 が実際に SHIP を返すかは、
+  走行帳の複製に対する `gauge.js` の再計算(score 70)からの**推論**である。
+* **`BUILD_JA` 撤去後の全走 471 を確かめていない**(counsel 210 / route-matrix 13 のみ)。
+* **強い名 26 語を一文型でしか撃っていない。**
+* **`workspace.js check` / `derived.js check` / `conclave.js audit` を今回は撃っていない**
+  (二度目が撃って EXIT=0 を得ているが、**本相は自分の目で見ていない**)。
+* **本相は自傷を一度犯した** —— 作業木の `graph/forge.js` を変異させたまま走者が落ちた。
+  教主が止め、復旧して hash で照合した(reflect §三度目 8.1)。**commit はしていない。**

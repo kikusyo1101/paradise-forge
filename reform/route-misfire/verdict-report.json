@@ -3,26 +3,26 @@
   "produces": "artifact",
   "wish": "楽園の forge の道選びと workspace の門が誤着する欠陥を engine から直す",
   "branch": "reform/route-misfire",
-  "head": "6ac36ca",
-  "revision": "二度目 (tribunal 再走)。一度目 (head e60677b) は BLOCK。その後 build が四度差し戻され、ENGINE_NAMES は丸ごと撤去された。本報告書はその後の姿を裁く。旧版は git 履歴に残る。",
-  "measuredIn": "tribunal 二度目が自分の手で走らせた実出力のみ。一度目の報告書・教主の報告・他相の報告は一切写していない (第27条)。main は git clone --no-hardlinks --branch main による複製 (c216014) を自分で立て、同じ探針を両 head で撃った。Windows / git-bash (MSYS)、作業樹 C:/Users/kikus/Documents/workspace/paradise",
+  "head": "577949e",
+  "revision": "三度目 (tribunal 三度目・環の最後)。一度目 (e60677b) は BLOCK / 二度目 (6ac36ca) も BLOCK。二度目が名指した R-1 は build 相 R-1 修理 (577949e) で塞がれ、DELIBERATION_RE・ROUTE_MATRIX 門・lesson-export 門・第61条が建った。本報告書はその後の姿を裁く。旧版は git 履歴に残る。",
+  "measuredIn": "tribunal 三度目が自分の手で走らせた実出力のみ。教主の報告・神官の申告・他相の報告は一切写していない (第27条)。main は git clone --no-hardlinks --branch main による複製 (c216014) を自分で立てた。変異実験は git clone --no-hardlinks --branch reform/route-misfire による複製 ($LOCALAPPDATA/Temp/mutlab) の中だけで行った (経緯は reflect §三度目 8.1 に正直に記した)。Windows / git-bash (MSYS)、作業樹 C:/Users/kikus/Documents/workspace/paradise",
 
   "build": "pass",
   "buildEvidence": {
-    "note": "楽園はコンパイル工程を持たない。ゆえに build は「常駐 engine の門が自分の目で緑を返すか」で裁いた。以下は tribunal 二度目が実際に走らせた exit である。",
+    "note": "楽園はコンパイル工程を持たない。ゆえに build は「常駐 engine の門が自分の目で緑を返すか」で裁いた。以下は tribunal 三度目が実際に走らせた exit である。",
     "gates": {
-      "node tests/paradise.test.js": "exit 0 — Paradise self-test: 471 passed, 0 failed (background / ✓行 584 / ✗行 0)",
+      "node tests/paradise.test.js": "exit 0 — Paradise self-test: 471 passed, 0 failed (background)",
       "node tests/counsel.test.js": "exit 0 — Counsel self-test: 210 passed, 0 failed",
       "node tests/abandoned-run.test.js": "exit 0 — abandoned-run: 33 passed, 0 failed",
-      "node graph/census.js fix": "exit 0 — nothing to fix / ✓ 書き換えた数は実測と一致する (background)",
-      "node graph/census.js check": "exit 0 — every number the paradise claims about itself is true (background)",
-      "node graph/codex.js check": "exit 0 — 索引は本文と一致している (60 条)",
-      "node graph/wiring.js check": "exit 0 — engine 39 / 内の辺 73、門 19 本すべてに走らせる者が居る",
-      "node graph/workspace.js check": "exit 0 — 混入なし・住所の直書きなし・reform 走行帳の流出なし",
-      "node graph/derived.js check": "exit 0 — no test depends on derived content",
-      "node graph/conclave.js audit": "exit 0 — 見捨てられた走行 1 (sovereign-abode、本走行とは別) / 全 12",
-      "node graph/critic.js review reform/route-misfire --lessons graph/lessons.json --self": "exit 1 — 37 GAP(lessons: 99 件で裁いた ※ tribunal 二度目が lessons.js export を走らせて 85→99 に直した後の数)。reflect §二度目 1.1 が全件『語の出現で裁く偽の赤』と裁いたうえで、critic が本走行の実在する回帰 R-1 を一件も指せなかったことを盲点として名指した",
-      "node graph/lessons.js export --out graph/lessons.json": "exit 0 — 教訓 85 → 99 (+14)。本走行は一度も export を走らせておらず、自分が刻んだ教訓 10 件が critic に届いていなかった(reflect §二度目 9.1)"
+      "node tests/route-matrix.test.js": "exit 0 — Route matrix self-test: 13 passed, 0 failed (第61条の新しい門)",
+      "node tests/lesson-export.test.js": "exit 0 — Lesson export self-test: 8 passed, 0 failed (盲点②の新しい門)",
+      "node graph/census.js fix": "exit 0 (background)",
+      "node graph/census.js check": "exit 0 (background)",
+      "node graph/codex.js check": "exit 0 — ✓ 索引は本文と一致している (61 条)",
+      "node graph/wiring.js check": "exit 0 — ✓ 門 21 本すべてに走らせる者が居る (第44条) / 宙吊りの参照は無い",
+      "node graph/gauge.js score --json": "exit 0 — score 50 / reworkCount 3 / loopGuardTrips 0 / phasesDone 11/11",
+      "node graph/lessons.js export --out graph/lessons.json": "exit 0 — 教訓 103 → 107 (+4)。tribunal 三度目が刻んだ 4 件を門へ届けた (AC-55 / 盲点②の教訓を守った)",
+      "node graph/critic.js review reform/route-misfire --lessons graph/lessons.json --self": "exit 1 — 39 GAP(lessons: 107 件で裁いた)。reflect §三度目 1.1 が全件『語の出現で裁く偽の赤』と裁いたうえで、critic が三度連続で本走行の実在する欠陥を一件も指せなかったことを盲点として名指した (一度目 F-1 / 二度目 R-1 / 三度目 ROUTE_MATRIX の 0/5)"
     }
   },
 
@@ -33,9 +33,7 @@
     "command": "node tests/paradise.test.js  (引数なし全走 / background)",
     "lastLine": "Paradise self-test: 471 passed, 0 failed",
     "exit": 0,
-    "checkMarks": 584,
-    "crossMarks": 0,
-    "note": "tribunal 二度目が自分で background に投げて得た実出力。✓行 584 / ✗行 0 は log の grep -c による実測。"
+    "note": "tribunal 三度目が自分で background に投げて得た実出力。加えて全走の射程外に在る 4 本の門も自分で撃った: counsel 210/0 / abandoned-run 33/0 / route-matrix 13/0 / lesson-export 8/0。"
   },
 
   "security": {
@@ -44,11 +42,11 @@
     "assessed": true,
     "secretScan": {
       "command": "git diff main...HEAD --name-only | grep -v '^reform/' | xargs grep -hEc \"(api[_-]?key|secret|password|passwd|token)[[:space:]]*[:=][[:space:]]*[\\\"'][A-Za-z0-9/_+=-]{12,}|BEGIN .*PRIVATE KEY\" | awk '{s+=$1} END{print s+0}'",
-      "scannedFiles": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "tests/abandoned-run.test.js", "tests/counsel.test.js"],
-      "perFile": {"CONSTITUTION.INDEX.md": 0, "CONSTITUTION.md": 0, "graph/forge.js": 0, "graph/workspace.js": 0, "tests/abandoned-run.test.js": 0, "tests/counsel.test.js": 0},
-      "result": "SECRETS_FOUND=0"
+      "scannedFiles": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "graph/lessons.json", "tests/abandoned-run.test.js", "tests/counsel.test.js", "tests/route-matrix.test.js", "tests/lesson-export.test.js"],
+      "result": "SECRETS_FOUND=0",
+      "note": "二度目から新しく増えた実装は tests/route-matrix.test.js と tests/lesson-export.test.js の二本(いずれも門)である。"
     },
-    "note": "出荷を止めるべき未解決の security 欠陥は 0 である。security 相が挙げた HIGH-1(isCreationsVault が倉の子を倉と名乗り緑を騙った)と S-1(denude の O(n^2) ReDoS)は、どちらも本走行の中で修理され治癒が実測済みである。R-1 は道選びの誤りであって security 欠陥ではない — ゆえに spec の側で数える。",
+    "note": "出荷を止めるべき未解決の security 欠陥は 0 である。security 相が挙げた HIGH-1(isCreationsVault が倉の子を倉と名乗り緑を騙った)と S-1(denude の O(n^2) ReDoS)は、どちらも本走行の中で修理され治癒が実測済みである。二度目が spec の側で数えた R-1 は build 相 R-1 修理で塞がれ、本 tribunal が独立に治癒を実測した。",
     "acceptedRisks": [
       {
         "id": "V-2",
@@ -66,66 +64,113 @@
   },
 
   "spec": {
-    "satisfied": false,
-    "unmet": [
-      "R-1 (tribunal 二度目が実測で発見。critic は黙った): requirements §3.6 が名指しで禁じた『誤着を直して別の誤着を生む』を、本走行が counsel の側で犯している。欠陥A を直すため CREATE_RE に BUILD_JA(設ける|足す|加える|追加|新設|導入|搭載|持たせ|拡張|付ける)を足した結果、isCounsel の 2 段目 `!CREATE_RE.test(w) && !wantsProduct(w)` が偽になり、3 段目の打ち消し(DOC_STRONG_RE / DOC_RE)には熟議の標識(べきか|検討|妥当か|どう思う|どうすべき|はないか|見直)が一語も無いため、『CI に段を設けるべきか検討せよ』型の願いが counsel を失う。格子実測 主語3×建造動詞10×熟議標識5=150通りで main(c216014) 0/150 に対し HEAD(6ac36ca) 120/150。対照の命令形 30 件は両 head とも 0/30 で、熟議形だけが落ちている。main に BUILD_JA は存在しないので、これは本走行が作った回帰である"
-    ],
-    "acceptanceTotal": 46,
-    "acceptanceDriven": 11,
-    "acceptanceDrivenPassed": 11,
+    "satisfied": true,
+    "unmet": [],
+    "acceptanceTotal": 47,
+    "acceptanceDriven": 10,
+    "acceptanceDrivenPassed": 9,
     "acceptanceDrivenFailed": 0,
-    "note": "tribunal 二度目は道選びの AC 11 本(AC-01/02/03/04/06/07/08/09/12 と AC-36 相当 10 件・AC-40 相当 20 件)を自分で生駆動し pass=11 fail=0 を得た。残る AC は verify 相の実測(達成 28 / 未達 0 / 門が無い 7)を引き写していない — 本 tribunal は AC の外側を自作の探針 82 件 + 格子 150 件で撃ち、requirements §3.6 の禁止そのものへの違反 (R-1) を実測で発見した。AC が全て緑であることと spec が満たされていることは同じではない (第16条)。ゆえに satisfied=false を宣言する。",
-    "measuredRegression": {
-      "probe": "tribunal 二度目が自作。A群=楽園の改修・命令形(reform が正解) 18件 / B群=世間の創造・engine 固有名を含む(reform は誤り) 20件 / C群=世間の創造・世間語(reform は誤り) 12件 / D群=諐問・純粋な問い(counsel が正解) 10件 / R-1群=熟議『作るべきか』(counsel が正解) 22件",
-      "main": { "head": "c216014", "A群誤": 5, "B群誤": 0, "C群誤": 0, "D群誤": 0, "R-1群誤": 1, "total": "6/82" },
-      "HEAD": { "head": "6ac36ca", "A群誤": 0, "B群誤": 0, "C群誤": 0, "D群誤": 0, "R-1群誤": 16, "total": "16/82" },
-      "reading": "本走行は A群 5 件を治した (5→0)。engine 固有名の撤去により B群・C群は両 head とも 0 で悪化なし。だが R-1 群を 1→16 に悪化させた。差し引きは 治癒 5 / 回帰 15 = -10 で悪化している",
-      "grid": {
-        "design": "主語3 × 建造動詞10 × 熟議標識5 = 150 通りの全組合せ。すべて『作れ』ではなく『作るべきか』と問うており、正解は全て counsel",
-        "main": "0/150 誤り (0.0%)",
-        "HEAD": "120/150 誤り (80.0%)",
-        "control": "同じ主語・動詞で命令形にした 30 件は MAIN 0/30 / HEAD 0/30 — 熟議形だけが落ちている"
-      },
-      "examples": [
-        "CI に段を設けるべきか検討せよ -> HEAD standard (main: counsel)",
-        "conclave に再開の口を足すべきか検討せよ -> HEAD standard (main: counsel)",
-        "憲法に条を足すべきかどう思う -> HEAD reform (main: counsel)",
-        "kg に忘れる口を設けるべきではないか -> HEAD standard (main: counsel)",
-        "should we add a resume flag to conclave? advise me -> HEAD standard (main: counsel)"
-      ]
+    "acceptanceOutOfScope": 1,
+    "note": "tribunal 三度目は道選びの AC 10 本 (AC-01/02/03/04/05/06/07/08/09/12) を自分で生駆動し pass=9 fail=0 射程外=1 を得た。AC-05 は requirements §3.1 で ~~取り消し線~~ + 🔴 射程外 と明記され §8 へ申し送り済みであり、未達ではなく取り下げである。二度目が satisfied=false とした根拠 (R-1) は build 相 R-1 修理で塞がれ、本 tribunal が独立に治癒を実測した — 格子 150 通り・熟議 30 件・英語熟議 8 件すべてで main と同等以上である。",
+
+    "whyR1IsHealed": {
+      "claim": "二度目の BLOCK 根拠 R-1 (熟議の願いが counsel を失う) は治癒した",
+      "measuredBy": "tribunal 三度目が main 複製 (c216014) と HEAD 複製 (577949e) の両方へ同じ探針を撃った",
+      "grid150": "route-matrix M-6 [格子150] が緑 (13 passed 0 failed) — 主語3 × 建造動詞10 × 熟議標識5 = 150 通りすべてが counsel へ着く。二度目は HEAD 120/150 が誤着していた",
+      "deliberation30": "熟議 30 件 (建造動詞10 × 文型3): main 0/30 → HEAD 0/30 (同じ)",
+      "deliberationEn8": "英語の熟議 8 件: main 2/8 → HEAD 0/8 (✓ 改善 -2 — 'is it worth adding an endpoint here' / 'review whether introducing a new tool is a good idea' が standard → counsel へ直った)",
+      "control30": "route-matrix M-7 [対照30] が緑 — 同じ語の命令形 30 通りは counsel へ誤射されていない (熟議の規則が命令まで拾う形に化けていない)",
+      "faultInjection": "DELIBERATION_RE を空にする変異を複製に打つと route-matrix が 9 passed 4 failed で鳴き、非対角セルを名指しした (counsel→reform 9 件 / counsel→standard 22 件 / counsel→full 1 件)。counsel.test.js はこの変異に対し 210/0 で黙る — 新しい門が本当に働いている証である"
     },
-    "learningMachineryWasIdle": {
-      "note": "tribunal 二度目が実測。走行が刻んだ教訓は、二重の網で門に一度も届いていなかった。どちらも R-1 とは独立の欠陥である。",
-      "blindSpot2_staleLessons": {
-        "claim": "critic が読む graph/lessons.json は lessons.js export の生成物だが、本走行は一度も export を走らせていなかった",
-        "measured": "node graph/lessons.js export --out graph/lessons.json → git diff --stat で +112 行 / 教訓 85 → 99 (+14)",
-        "impact": "増えた 14 件のうち 10 件は本走行自身が刻んだ教訓 (both-branches-of-a-rule / regression-needs-both-heads / corpus-blind-to-its-own-half / strength-of-evidence-sets-the-gate / mutate-the-gate-not-only-the-impl / corpus-machine-checked-against-table / restore-path-must-be-verified ほか)。一度目の tribunal は『critic が永久に検め続ける』と書いたが、critic は一度も読んでいなかった (§1 の出力は lessons: 85 件で裁いた と名乗っている)"
+
+    "ac03TypeAdjudication": {
+      "verdict": "選択肢 1 —— 射程外へ格下げし、requirements §8.9 に実測と共に残す。未達として数えない",
+      "subjects": ["CI に ledger --audit を追加する", "conclave の毒を除く"],
+      "note": "教主の見立ても選択肢 1 であったが盲従していない。選択肢 2 (未達として数え BLOCK/REWORK を出す) の側から四つの数を当てて反証を試み、四つとも選択肢 1 を支持した。特に根拠 4 は教主の報告に無い数であり本 tribunal が独立に測った。",
+      "ground1_notARegression": {
+        "measured": "main 複製 (c216014) と HEAD 複製 (577949e) へ同じ探針",
+        "CI に ledger --audit を追加する": "main=counsel → HEAD=standard (✓ 改善 — 調査の道へ攫われなくなった)",
+        "conclave の毒を除く": "main=standard → HEAD=standard (= 同じ — 回帰ではない)",
+        "reading": "第38条の前後比較で悪化は 0 件。spec.satisfied=false が意味する『本走行が spec に背いた』に当たらない"
       },
-      "blindSpot3_selfScopeDefault": {
-        "claim": "graph/critic.js:583 の DEFAULT_SELF_SCOPES は ['paradise-internal','orchestration'] のみ。本走行が刻んだ教訓の scope は forge / gate / reform であり、14 件が『out of scope』として緑になる",
-        "measured": "reform/route-misfire/.paradise-scopes に paradise-internal/orchestration/forge/gate/reform の 5 語を宣言して撃ち直すと GAP 37 → 39。判定が変わった教訓は 2 件で、どちらも ✓ → 🔴",
-        "newlyRed": ["lesson:corpus-blind-to-its-own-half", "lesson:restore-path-must-be-verified"],
-        "impact": "新たに赤くなった corpus-blind-to-its-own-half は『門のコーパスが規則の片枝しか含まないなら門は永久に緑のまま面の半分を素通しする』と述べており、これは R-1 そのものである。一度目の tribunal がこの教訓を正しく刻み、走行は scope の既定値によってそれを自分で握り潰し、同じ病を再発させた",
-        "notRepaired": ".paradise-scopes は実測の後に削除した。tribunal は裁く相であり建てる相ではない — 欠陥の存在を証明し次の走行へ渡す"
+      "ground2_acIsGreen": {
+        "claim": "AC-03 の期待値は build 相四度目で『counsel でない』へ改訂済みであり、生駆動で緑である",
+        "measured": "AC 生駆動 pass=9 fail=0 射程外=1",
+        "detail": "✓ AC-03 ≠counsel HEAD=standard / main=counsel — 本旨 (フラグ名 --audit に道を奪わせない) は達成された。reform へ着かないのは AC-05 / FR-04 の題であり、requirements §3.1 で ~~取り消し線~~ + 🔴 射程外 と明記のうえ §8 へ申し送り済み"
       },
-      "chain": "②と③は連鎖している。② (export 忘れ) で 14 件が存在せず、仮に②を直しても③ (scope の既定値) で同じ 14 件が射程外になる。この走行は自分を救う知識を既に持っており、二つの機構の不備でそれを自分に届けられなかった"
+      "ground3_gateAssertsIt": {
+        "claim": "`conclave の毒を除く` は未達の AC ではなく、門が機械で assert している断言である",
+        "measured": "tests/counsel.test.js:875 の AC-38 逆向きの門: isReformSubject=false / chooseScale=standard (!== 'reform' を assert)",
+        "reading": "これを未達と数えることは、緑の門を赤と呼ぶことである (第21条の逆向きの違反)"
+      },
+      "ground4_costOfOption2": {
+        "claim": "『AC を緑にせよ』は『engine 固有名を印に戻せ』と同値である。その代価を測った",
+        "engineNameWishes": {
+          "probe": "engine 名 26 語 × 「に検めの口を設ける」",
+          "main": "reform へ着かない 26/26",
+          "HEAD": "reform へ着かない 26/26 (main と同じ)",
+          "beforeRemoval_6a4e3f4": "reform へ着かない 3/26 (印が在れば 23 件が着く)"
+        },
+        "worldlyWishes": {
+          "probe": "世間の願い × engine 名 18 件",
+          "main": "reform へ誤着 0/18",
+          "beforeRemoval_6a4e3f4": "reform へ誤着 7/18 (= Q3-2 そのもの)",
+          "HEAD": "reform へ誤着 0/18"
+        },
+        "reading": "『AC 23 件を緑にする』ことと『世間の誤着 7 件 (Q3-2) を甦らせる』ことは同じ操作である。第60条(b) の『両方向に誤る印』そのものであり、選択肢 2 は四度差し戻された修理をもう一度やれと言うに等しい"
+      }
     },
-    "whyGatesStayedGreen": "AC-31〜AC-46 の全コーパスが reform 列だけを持ち、counsel 行が 0 件である。tests/counsel.test.js で『べきか』を含む行は 5 行(grep -c 実測)、うち 4 行は紛れ語(相場/入口/窓口)の門であり、建造動詞と熟議標識が同居する形は 0 件。ゆえに paradise 471/471・counsel 210/210・census/codex/wiring/workspace/derived が全て EXIT=0 のまま、120/150 の誤着が HEAD に在る。門は鳴らなかったのではない — 門はその面を一度も見ていない",
+
+    "gateNetMeasured": {
+      "note": "tribunal 三度目が過去の実装 (git show <commit>:graph/forge.js) を複製の isReformSubject へ委譲させ、今の門の組みが過去 5 形の回帰を捕らえるかを実測した。作業木は一字も変異させていない。",
+      "ROUTE_MATRIX_caught": "0/5 —— 欠陥C / F-1 / Q2-1 / Q3-1 / Q3-2 のすべてに対し exit 0 (13 passed 0 failed) で黙った",
+      "counselTest_caught": "5/5 —— 106 failed / 82 failed / 37 failed / 5 failed / 5 failed",
+      "R1_control": "逆向き: DELIBERATION_RE を殺すと ROUTE_MATRIX のみ exit 1 (9 passed 4 failed)、counsel.test は 210/0 で黙る",
+      "diseaseMeasured": {
+        "欠陥C 変異": "世間の願い 9/10 が reform へ (HEAD 無傷 1/10)",
+        "F-1 変異": "engine 名 × 日本語 7/10 が reform へ (HEAD 無傷 0/10)",
+        "Q2-1 変異": "改める動詞 7/10 が reform へ (HEAD 無傷 0/10)",
+        "Q3-1 変異": "楽園の願い 1/8 を取りこぼす (HEAD 無傷 0/8)",
+        "Q3-2 変異": "枝2 の誤着 7/8 が reform へ (HEAD 無傷 0/8)"
+      },
+      "mechanism": "行列のコーパス 87 件の standard(9)/full(8) は engine 固有名を一語も含まない。『世間の願い × engine 名』の母集団が行列に 0 件なので、その面が何処へ着いても 36 セルが一つも動かない。行列の軸は道であって願いの母集団ではない",
+      "eightRegressionsCovered": "8/8 —— 8 度の回帰はすべて今の門の組みで捕らえられる。ただし重なりは 0 件である (counsel.test だけが 5 件 / ROUTE_MATRIX だけが 1 件 / 他の門が 2 件)。どちらか一本を落とせばその面は即座に無防備になる",
+      "proseIsFalse": "tests/route-matrix.test.js 冒頭の註と第61条の『片側だけ直す修理が構造的に不可能になる』は実測で偽である (第33条: 散文が機構を騙る)。次の走行が第一に直すべき散文であり、今この枝の欠陥ではない (振る舞いは正しく門は両方緑)"
+    },
+
+    "m9Adjudication": {
+      "claim": "神官の申告『M9 は今も黙す』(CREATE_RE から BUILD_JA を抜いても誤着が増えない) は真か",
+      "verdict": "真。ただし『欠陥A の修理が無駄だった』ではなく『役目を終えた』",
+      "measured": {
+        "欠陥A の本旨 15 件": "HEAD 0/15 → M9 0/15",
+        "世間の建造 30 件": "HEAD 0/30 → M9 0/30",
+        "熟議 20 件": "HEAD 0/20 → M9 0/20",
+        "楽園の改修 10 件": "HEAD 0/10 → M9 0/10",
+        "route-matrix": "M9 変異下でも EXIT=0 (13 passed 0 failed)",
+        "counsel.test": "M9 変異下でも EXIT=0 (210 passed 0 failed)"
+      },
+      "whyNotWasted": "当時は必要だった。main (c216014) は denude も DELIBERATION_RE も持たず、欠陥A の本旨 11 件のうち 3 件を落としていた (『楽園の自己診断に絞り込みの口を設ける』『門に監査の一段を足す』が counsel へ攫われ、『健康診断アプリが欲しい』が counsel へ)。その仕事は後から建った DELIBERATION_RE と isReformSubject の抽象名枝が引き受けた",
+      "theIrony": "この余剰こそが R-1 (8 度目の回帰) を生んだ当の語彙である。CREATE_RE の BUILD_JA が isCounsel の 2 段目を殺し、熟議の願いが counsel を失った",
+      "whyNotRemovedHere": "撤去は振る舞いを一件も変えない (75/75 が不動) ので急ぐ理由が数の上に無い。本走行は『修理が新しい欠陥を生む』を 8/8 = 100% で実演しており、無審査の撤去を reworks=3 の最後の環でねじ込むのは 9 度目を招く。次の走行への申し送りとして requirements §8.9.6 に記した"
+    },
+
     "openGaps": [
-      "AC-30: forge.js の CLI (scale 口) を子プロセスで撃つ門が 0 本。一度目の tribunal が『別の走行へ送る』と裁いたが、今も門は 0 本である。三度目の申し送りになる",
-      "AC-05: 『gauge に fingerprint を確かめる口を設ける』は今も standard に落ちる。ENGINE_NAMES 撤去に伴い射程外として取り下げられた。走行の主題の一角が未達のまま残る",
+      "次の走行へ: ROUTE_MATRIX の註と第61条の散文が実測と食い違う (『構造的に不可能』は偽 / 5 形 0/5)。散文を直し、行列へ『世間の願い × engine 名』の行を足せ",
+      "次の走行へ: CREATE_RE から BUILD_JA を撤去せよ (M9 実測 75/75 不動)。R-1 を生んだ語彙であり、今は何の仕事もしていない",
+      "次の走行へ: critic が三度連続で本走行の実在する欠陥を指せなかった (一度目 F-1 / 二度目 R-1 / 三度目 ROUTE_MATRIX 0/5)。判定が『語の出現』である限り四度目も外す",
+      "次の走行へ: AC-05 / FR-04 — engine 固有名を印にする題。requirements §8 と §8.9.4 の数から始めよ",
+      "次の走行へ: AC-30 — forge.js の CLI (scale 口) を子プロセスで撃つ門が 0 本。三度の tribunal がいずれも『別の走行へ』と裁いた。四度目の申し送りになる",
+      "次の走行へ: 盲点③ — critic.js の DEFAULT_SELF_SCOPES が走行自身の教訓を射程外にする (二度目が実測。今も未修理)",
       "F-2: denude がファイル名を剥ぐとき判定の材料そのものを消す (main でも同じ — 本走行の産物ではない)",
       "F-3: AC-34 の網羅の門が n.length >= 4 で kg を黙って除外 (main でも同じ)"
     ]
   },
 
   "diff": {
-    "files": 21,
-    "implementationFiles": 6,
-    "implementationList": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "tests/abandoned-run.test.js", "tests/counsel.test.js"],
-    "insertions": 12684,
-    "deletions": 27,
-    "note": "git diff main...HEAD --name-only / --stat の実測。残る 15 本は reform/route-misfire/ の記録"
+    "files": 22,
+    "implementationFiles": 9,
+    "implementationList": ["CONSTITUTION.INDEX.md", "CONSTITUTION.md", "graph/forge.js", "graph/workspace.js", "graph/lessons.json", "tests/abandoned-run.test.js", "tests/counsel.test.js", "tests/route-matrix.test.js", "tests/lesson-export.test.js"],
+    "note": "git diff main...HEAD --name-only の実測。二度目 (6 本) から tests/route-matrix.test.js (395 行) / tests/lesson-export.test.js (217 行) / graph/lessons.json の 3 本が増えた。残りは reform/route-misfire/ の記録"
   },
 
   "performance": {
@@ -135,23 +180,40 @@
       "tests": 469,
       "skipped": 2,
       "counselTests": 51,
-      "counselTestDeclarations": 37,
-      "routeProbeNG": "6/82",
-      "gridNG": "0/150",
-      "sourcedFrom": "git clone --no-hardlinks --branch main による複製で tribunal 二度目が自分で実測 (全走・counsel 走・探針すべて)"
+      "gates": 19,
+      "articles": 60,
+      "lessons": "export されておらず 85 件で腐っていた",
+      "欠陥A の本旨 11 件の誤着": "3/11",
+      "英語の熟議 8 件の誤着": "2/8",
+      "熟議 30 件の誤着": "0/30",
+      "世間の願い × engine 名 18 件の誤着": "0/18",
+      "engine 名 26 語が reform へ着かない数": "26/26",
+      "sourcedFrom": "git clone --no-hardlinks --branch main による複製で tribunal 三度目が自分で実測"
     },
     "after": {
-      "head": "6ac36ca",
+      "head": "577949e",
       "tests": 471,
       "skipped": 0,
       "counselTests": 210,
-      "counselTestDeclarations": 68,
-      "routeProbeNG": "16/82",
-      "gridNG": "120/150",
-      "measuredBy": "tribunal 二度目",
-      "command": "node tests/paradise.test.js (background) / node tests/counsel.test.js / 自作探針 probe-net.js・probe-grid.js"
+      "routeMatrixTests": 13,
+      "lessonExportTests": 8,
+      "gates": 21,
+      "articles": 61,
+      "lessons": 107,
+      "欠陥A の本旨 11 件の誤着": "0/11",
+      "英語の熟議 8 件の誤着": "0/8",
+      "熟議 30 件の誤着": "0/30",
+      "世間の願い × engine 名 18 件の誤着": "0/18",
+      "engine 名 26 語が reform へ着かない数": "26/26",
+      "measuredBy": "tribunal 三度目",
+      "command": "node tests/paradise.test.js (background) / counsel / route-matrix / lesson-export / 自作探針を両複製へ"
     },
-    "statement": "門は 469→471 に増え、counsel の門は 51→210 に、その test() 宣言は 37→68 に増えた。楽園の改修の誤着は 5/18→0/18 に治り、engine 固有名の撤去により世間の創造 32 件は両 head とも 0 で悪化していない。だが熟議の願いの誤着は 1/22→16/22、格子では 0/150→120/150 へ悪化した。門の数の増加は振る舞いの改善を意味しない(第38条は成果物の数だけでなく振る舞いにも課される)。"
+    "statement": "門は 469→471、走らせる者を持つ門は 19→21、条は 60→61、counsel の門は 51→210 に増えた。振る舞いでは 欠陥A の本旨が 3/11→0/11、英語の熟議が 2/8→0/8 へ改善し、熟議 30 件と世間の願い 18 件は両 head とも 0 で悪化していない。engine 名 26 語が reform へ着かないのは main と同じ 26/26 であり、これは ENGINE_NAMES 撤去 (教主の命令) による意図した射程の縮小であって回帰ではない — 印を戻せば世間の誤着 7/18 が甦る (requirements §8.9.4)。第38条は成果物の数だけでなく振る舞いにも課されるが、本走行は両方で悪化 0 件である。二度目の報告書が記した gridNG 0/150 → 120/150 の悪化は、本 tribunal の実測では 0/150 → 0/150 に治っている。",
+    "regressionRatePerRepair": {
+      "repairsThatCreatedNewDefects": "8 件",
+      "healedBeforeShipping": "8/8 — 8 件目 (R-1) も build 相 R-1 修理で塞がれ、本 tribunal が治癒を実測した",
+      "note": "二度目は 7/8 であった。R-1 の修理が新しい回帰を生んでいないことを、格子150・熟議30・英語熟議8・対照30・世間18 の全面で両 head へ撃って確かめた"
+    }
   },
 
   "trajectory": {
@@ -165,7 +227,7 @@
     "reworkCount": 3,
     "retryOverhead": 0,
     "loopGuardTrips": 0,
-    "durationMs": 239427883,
+    "durationMs": 243636599,
     "tier1": 11,
     "tier2": 0,
     "tier3": 0,
@@ -173,29 +235,35 @@
     "unobservable": 0,
     "tier3Ratio": 0,
     "command": "node graph/gauge.js score reform/route-misfire/conclave.json --json",
-    "note": "gauge.js が run-state から決定的に導いた実数をそのまま写した。手で estimate した数は一つも無い。一度目は score 70 / reworkCount 1 であった。四度の差し戻しを経て reworkCount は 3(construction の限界)に達し、score は 70→50 へ落ちた。floor は 60 であり、これは単独で REWORK を引く — 荒れた走行は改善ではない(第38条)。phasesDone 11/11 は本判決が reflect/verdict を done にした後の再測である(tier 1 で宣言)。complete=false / domainsRatified 5/6 は tribunal 領域が BLOCK により批准されないことを表す。"
+    "note": "gauge.js が run-state から決定的に導いた実数をそのまま写した。手で estimate した数は一つも無い。一度目は score 70 / reworkCount 1、二度目は score 50 / reworkCount 3 であった。reworkCount 3 は construction の限界であり、score 50 は floor 60 を下回る — これは単独で REWORK を引く。数を曲げるのは第57条違反であるゆえ、そのまま書く (第37条)。荒れた走行は改善ではない (第38条)。complete=false / domainsRatified 5/6 は tribunal 領域が未批准であることを表す。"
   },
 
   "repairsThatCreatedNewDefects": {
     "count": 8,
     "rate": "8/8 = 100%",
+    "healedRate": "8/8 = 100% (三度目の実測。二度目は 7/8)",
     "list": [
-      { "repair": "欠陥A (engine 改修が counsel/standard へ攫われる) を直した", "created": "欠陥C — 世間の願いが reform へ拉い去られる", "foundBy": "教主", "healed": true },
-      { "repair": "欠陥B (env 残留で偽の赤) を直した", "created": "HIGH-1 — isCreationsVault が倉の子を倉と名乗り毒を見逃し緑を騙った", "foundBy": "security 相", "healed": true },
-      { "repair": "FR-02 の denude (ファイル名剥ぎ)", "created": "S-1 — O(n^2) ReDoS", "foundBy": "security 相", "healed": true },
-      { "repair": "欠陥B の修理が workspace.js check の経路を増やした", "created": "V-1 — 壊れた走行帳一つで check が uncaught TypeError で死に、engine を守る三つの検めが全て沈黙した", "foundBy": "verify 相", "healed": true },
-      { "repair": "欠陥C (弱い名の誤着) を直した", "created": "F-1 — 強い名 26 語が世間の願い 21/21 を攫う", "foundBy": "reflect 相 (tribunal 一度目)", "healed": "撤去" },
-      { "repair": "F-1 に MEND_RE (改める動詞) を課した", "created": "Q2-1 — 改める動詞は世間の願いにも同頻度で現れ 32/32 が攫われる", "foundBy": "教主", "healed": "撤去" },
-      { "repair": "WORLDLY_VESSEL_RE (世間の器の表) で守った", "created": "Q3-1 — 表に在る器 37 語すべてが楽園の願いを落とす / Q3-2 — 枝2(建造)に器の守りが無く 18/24 が世間へ誤着", "foundBy": "教主", "healed": "撤去" },
-      { "repair": "欠陥A のため CREATE_RE に BUILD_JA を足した (この修理だけは撤去の対象外として残った)", "created": "R-1 — 熟議の願いが counsel を失う。main 0/150 → HEAD 120/150", "foundBy": "tribunal 二度目", "healed": false }
+      { "repair": "欠陥A (engine 改修が counsel/standard へ攫われる) を直した", "created": "欠陥C — 世間の願いが reform へ拉い去られる", "foundBy": "教主", "healed": true, "gateThatCatchesIt": "counsel.test.js (変異実測 106 failed)" },
+      { "repair": "欠陥B (env 残留で偽の赤) を直した", "created": "HIGH-1 — isCreationsVault が倉の子を倉と名乗り毒を見逃し緑を騙った", "foundBy": "security 相", "healed": true, "gateThatCatchesIt": "paradise.test.js / workspace.js check" },
+      { "repair": "FR-02 の denude (ファイル名剥ぎ)", "created": "S-1 — O(n^2) ReDoS", "foundBy": "security 相", "healed": true, "gateThatCatchesIt": "counsel.test.js (速さの門)" },
+      { "repair": "欠陥B の修理が workspace.js check の経路を増やした", "created": "V-1 — 壊れた走行帳一つで check が uncaught TypeError で死に、engine を守る三つの検めが全て沈黙した", "foundBy": "verify 相", "healed": true, "gateThatCatchesIt": "abandoned-run.test.js (33/0)" },
+      { "repair": "欠陥C (弱い名の誤着) を直した", "created": "F-1 — 強い名 26 語が世間の願い 21/21 を攫う", "foundBy": "reflect 相 (tribunal 一度目)", "healed": "撤去", "gateThatCatchesIt": "counsel.test.js (変異実測 82 failed)" },
+      { "repair": "F-1 に MEND_RE (改める動詞) を課した", "created": "Q2-1 — 改める動詞は世間の願いにも同頻度で現れ 32/32 が攫われる", "foundBy": "教主", "healed": "撤去", "gateThatCatchesIt": "counsel.test.js (変異実測 37 failed)" },
+      { "repair": "WORLDLY_VESSEL_RE (世間の器の表) で守った", "created": "Q3-1 — 表に在る器 37 語すべてが楽園の願いを落とす / Q3-2 — 枝2(建造)に器の守りが無く 18/24 が世間へ誤着", "foundBy": "教主", "healed": "撤去", "gateThatCatchesIt": "counsel.test.js (変異実測 5 failed)" },
+      { "repair": "欠陥A のため CREATE_RE に BUILD_JA を足した", "created": "R-1 — 熟議の願いが counsel を失う。main 0/150 → HEAD(6ac36ca) 120/150", "foundBy": "tribunal 二度目", "healed": true, "healedBy": "build 相 R-1 修理 (577949e): DELIBERATION_RE を新設し isCounsel の 1.5 段目に据えた。tribunal 三度目が格子150/熟議30/英語熟議8 で治癒を実測", "gateThatCatchesIt": "ROUTE_MATRIX のみ (変異実測 4 failed / counsel.test は 210/0 で黙る)" }
     ],
-    "note": "8 件中 7 件は出荷前に修理または撤去され治癒が実測された。8 件目 (R-1) は未修理であり、これが spec.satisfied=false の根拠である。走行は 7 件までを数えていたが、8 件目は誰も数えていなかった — 7 件はすべて isReformSubject の面で、R-1 だけが isCounsel の面だったからである。探針の軸が一つ足りなかった。",
+    "note": "8 件すべてが出荷前に修理または撤去され、治癒が実測された。二度目の時点では 8 件目 (R-1) が未修理で satisfied=false の根拠であった。本 tribunal は R-1 の治癒を両 head の探針で独立に確かめたうえで satisfied=true を宣言する。",
+    "gateOverlap": {
+      "counsel.test.js だけが捕らえる": 5,
+      "ROUTE_MATRIX だけが捕らえる": 1,
+      "他の門が捕らえる": 2,
+      "両方が捕らえる": 0,
+      "reading": "重なりが 0 件である。二本の門は相補であって冗長ではない — どちらか一本を落とせばその面は即座に無防備になる。『行列を建てたから安全』は実測で偽であり、行列が守らない 5 形は counsel.test.js だけが守っている"
+    },
     "axisBias": {
       "isReformSubject 面の回帰": 7,
       "isCounsel 面の回帰": 1,
-      "isReformSubject 面を撃った探針の回数": "7 度 (欠陥C / F-1 / Q2-1 / Q3-1 / Q3-2 / quality 四周 / reflect 一度目)",
-      "isCounsel 面を撃った探針の回数": "0 度",
-      "reading": "回帰の数(8)ではなく、回帰を探す軸の偏り(7:1、うち 1 は未検出)が本走行の失敗である"
+      "reading": "二度目の裁き『回帰の数(8)ではなく、回帰を探す軸の偏り(7:1)が本走行の失敗である』は支持する。三度目はその上で『門の側の偏り』も同じ形で在ることを実測した — ROUTE_MATRIX は isCounsel 面だけを、counsel.test.js は isReformSubject 面だけを守っている"
     }
   }
 }
