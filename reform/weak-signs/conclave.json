@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -120,10 +120,10 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/graph/forge.js",
+          "dispatchedAt": "2026-09-16T21:27:50.423Z",
           "resumes": 0
         },
         {
@@ -135,9 +135,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/tests/reform-sign.test.js",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,10 +162,10 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md",
+          "dispatchedAt": "2026-09-16T21:28:05.705Z",
           "resumes": 0
         },
         {
@@ -177,10 +177,10 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md",
+          "dispatchedAt": "2026-09-16T21:28:05.705Z",
           "resumes": 0
         },
         {
@@ -192,10 +192,10 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md",
+          "dispatchedAt": "2026-09-16T21:28:05.705Z",
           "resumes": 0
         },
         {
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -236,9 +236,9 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/verdict-report.json",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -312,6 +312,71 @@
       "ts": "2026-09-16T20:59:23.466Z",
       "event": "ratify",
       "detail": "Architecture (設計) ratified by cardinal:requirements"
+    },
+    {
+      "ts": "2026-09-16T21:27:50.423Z",
+      "event": "dispatch",
+      "detail": "build"
+    },
+    {
+      "ts": "2026-09-16T21:27:50.512Z",
+      "event": "done",
+      "detail": "build → C:/Users/kikus/Documents/workspace/paradise/graph/forge.js"
+    },
+    {
+      "ts": "2026-09-16T21:27:50.774Z",
+      "event": "done",
+      "detail": "prove → C:/Users/kikus/Documents/workspace/paradise/tests/reform-sign.test.js"
+    },
+    {
+      "ts": "2026-09-16T21:27:50.819Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.705Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.755Z",
+      "event": "done",
+      "detail": "review → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.799Z",
+      "event": "done",
+      "detail": "security → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.845Z",
+      "event": "done",
+      "detail": "docs → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.891Z",
+      "event": "done",
+      "detail": "verify → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md"
+    },
+    {
+      "ts": "2026-09-16T21:28:05.935Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-16T21:28:10.290Z",
+      "event": "done",
+      "detail": "reflect → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/design.md"
+    },
+    {
+      "ts": "2026-09-16T21:29:04.060Z",
+      "event": "done",
+      "detail": "verdict → C:/Users/kikus/Documents/workspace/paradise/reform/weak-signs/verdict-report.json"
+    },
+    {
+      "ts": "2026-09-16T21:29:04.118Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "spawnTrace": {
@@ -347,6 +412,94 @@
         "at": "2026-09-16T20:59:23.375Z",
         "kind": "observed"
       }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-7d03a471",
+        "parentToolUseId": null,
+        "rank": "priest",
+        "at": "2026-09-16T21:27:50.465Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "pontiff",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:27:50.554Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "pontiff",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:27:50.594Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "pontiff",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:27:50.636Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "pontiff",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:27:50.677Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "pontiff",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:27:50.729Z",
+        "kind": "observed"
+      }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:28:10.243Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "pontiff-t2",
+        "parentToolUseId": null,
+        "rank": "pontiff",
+        "at": "2026-09-16T21:28:10.330Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -373,6 +526,70 @@
         "序列1: 1 件の起動を観測: architect"
       ],
       "at": "2026-09-16T20:59:23.420Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T21:27:50.511Z"
+    },
+    "prove": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: pontiff"
+      ],
+      "at": "2026-09-16T21:27:50.773Z"
+    },
+    "review": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: pontiff"
+      ],
+      "at": "2026-09-16T21:28:05.755Z"
+    },
+    "security": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: pontiff"
+      ],
+      "at": "2026-09-16T21:28:05.799Z"
+    },
+    "docs": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: pontiff"
+      ],
+      "at": "2026-09-16T21:28:05.844Z"
+    },
+    "verify": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: pontiff"
+      ],
+      "at": "2026-09-16T21:28:05.890Z"
+    },
+    "reflect": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: self-critic"
+      ],
+      "at": "2026-09-16T21:28:10.290Z"
+    },
+    "verdict": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: creation-judge"
+      ],
+      "at": "2026-09-16T21:29:04.059Z"
     }
   }
 }
