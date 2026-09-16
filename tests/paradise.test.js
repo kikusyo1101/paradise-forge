@@ -795,7 +795,7 @@ test('a review class can send work back ACROSS domains (the great circle)', () =
 test('cross-domain rework also resets DOWNSTREAM phases in later domains', () => {
   const run = makeConclave();
   for (const [phases, card] of [[['discover'], 'discovery'], [['specify'], 'requirements'],
-                                [['design', 'detail', 'identity'], 'architecture'], [['build', 'tests'], 'construction']]) {
+                                [['design', 'detail', 'identity', 'ux'], 'architecture'], [['build', 'tests'], 'construction']]) {
     conclave.markRunning(run, phases);
     for (const p of phases) doneT1(run, p, 'tests/paradise.test.js');
     conclave.ratify(run, card);

@@ -175,6 +175,14 @@ jobs:
         # 対角の合計と**非対角の各セルが 0** を両方 assert する。
         run: node tests/route-matrix.test.js
 
+      - name: ⚖️ Ratify guard — 仕事をせずに祝福できないか (PARA-6 / 第37条)
+        # 旧実装は 17 相すべて pending・成果物 0 件のまま `domains ratified: 6/6` を
+        # 成立させ、`conclave.js audit` はそれを `closed` として ✓ で通していた。
+        # **数える対象そのものが偽造可能だった。** 四つの枝(reject / rework /
+        # blocked の相 / blocked の領域)を対で撃つ —— 片枝だけなら
+        # 「常に拒む」実装でも緑になる(第21条 壊して鳴らす)。
+        run: node tests/ratify-guard.test.js
+
       - name: 📤 Lesson export — 刻んだ教訓が門に届いているか (第61条 / 盲点②)
         # `kg.js remember lesson` は KG(.gitignore 済)に刻む。critic が読むのは
         # `lessons.js export` が**生成する** graph/lessons.json である。
