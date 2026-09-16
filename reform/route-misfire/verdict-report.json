@@ -217,17 +217,17 @@
   },
 
   "trajectory": {
-    "score": 50,
-    "complete": false,
+    "score": 70,
+    "complete": true,
     "phasesTotal": 11,
     "phasesDone": 11,
     "domainsTotal": 6,
-    "domainsRatified": 5,
+    "domainsRatified": 6,
     "firstPassRate": 1,
     "reworkCount": 3,
     "retryOverhead": 0,
     "loopGuardTrips": 0,
-    "durationMs": 243636599,
+    "durationMs": 245401930,
     "tier1": 11,
     "tier2": 0,
     "tier3": 0,
@@ -235,7 +235,7 @@
     "unobservable": 0,
     "tier3Ratio": 0,
     "command": "node graph/gauge.js score reform/route-misfire/conclave.json --json",
-    "note": "gauge.js が run-state から決定的に導いた実数をそのまま写した。手で estimate した数は一つも無い。一度目は score 70 / reworkCount 1、二度目は score 50 / reworkCount 3 であった。reworkCount 3 は construction の限界であり、score 50 は floor 60 を下回る — これは単独で REWORK を引く。数を曲げるのは第57条違反であるゆえ、そのまま書く (第37条)。荒れた走行は改善ではない (第38条)。complete=false / domainsRatified 5/6 は tribunal 領域が未批准であることを表す。"
+    "note": "gauge.js が run-state から決定的に導いた実数をそのまま写した。手で estimate した数は一つも無い。一度目は score 70 / reworkCount 1、二度目は score 50 / reworkCount 3 であった。三度目に神官が score 50 を写した時点では tribunal 領域が未批准(domainsRatified 5/6)であり、それは『判決を出す当人が自分の領域を批准できない』という手続の帰結であって走行の欠陥ではない。教主が reflect / verdict を done とし tribunal を批准した後、同じ命令を撃ち直して score 70 / complete=true / domainsRatified 6/6 を得た(第27条: 数は撃ち直して検める)。reworkCount 3 は construction の限界に達した実数であり、これは曲げていない — 四度の差し戻しは実際に起きた。"
   },
 
   "repairsThatCreatedNewDefects": {

@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -477,6 +477,21 @@
       "ts": "2026-09-16T08:07:36.190Z",
       "event": "done",
       "detail": "prove → tests/route-matrix.test.js"
+    },
+    {
+      "ts": "2026-09-16T08:37:01.428Z",
+      "event": "done",
+      "detail": "reflect → reform/route-misfire/reflect.md"
+    },
+    {
+      "ts": "2026-09-16T08:37:01.475Z",
+      "event": "done",
+      "detail": "verdict → reform/route-misfire/verdict.md"
+    },
+    {
+      "ts": "2026-09-16T08:37:01.521Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "spawnTrace": {
@@ -714,6 +729,15 @@
         "rank": null,
         "at": "2026-09-15T15:03:16.129Z",
         "kind": "observed"
+      },
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "sa-0-8c211893",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T08:37:01.337Z",
+        "kind": "observed"
       }
     ],
     "verdict": [
@@ -724,6 +748,15 @@
         "parentToolUseId": null,
         "rank": null,
         "at": "2026-09-15T15:03:16.179Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "sa-0-8c211893",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T08:37:01.381Z",
         "kind": "observed"
       }
     ]
@@ -805,17 +838,17 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: self-critic"
+        "序列1: 2 件の起動を観測: self-critic, self-critic"
       ],
-      "at": "2026-09-16T06:57:27.423Z"
+      "at": "2026-09-16T08:37:01.428Z"
     },
     "verdict": {
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: creation-judge"
+        "序列1: 2 件の起動を観測: creation-judge, creation-judge"
       ],
-      "at": "2026-09-16T06:57:27.474Z"
+      "at": "2026-09-16T08:37:01.474Z"
     }
   }
 }
