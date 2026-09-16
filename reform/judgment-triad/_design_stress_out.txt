@@ -1,0 +1,113 @@
+
+════════════════════════════════════════════════════════════════════════════
+候補 B0 — 耐久 16 件(コーパス外)
+════════════════════════════════════════════════════════════════════════════
+  ✗   [A-全体] "ECサイトの構築をお願いしたい" -> standard  (正解 full)
+  ✗   [A-全体] "ポータルサイトのリニューアルをしたい" -> standard  (正解 full)
+  ✗   [A-全体] "新しいコーポレートサイトの立ち上げ" -> standard  (正解 full)
+  ✗   [A-全体] "ウェブサイトを一から作ってほしい" -> standard  (正解 full)
+  ✗   [A-全体] "通販サイトが必要だ" -> standard  (正解 full)
+  ✗   [A-全体] "we need a new corporate website" -> standard  (正解 full)
+  ok  [A-全体] "launch a company portal" -> full  (正解 full)
+  ✗   [A-全体] "i want an online shop" -> standard  (正解 full)
+  ok  [B-部分] "ECサイトに決済の導線を追加して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトのヘッダーを実装して" -> standard  (正解 standard)
+  ok  [B-部分] "通販サイトの在庫表示を作る" -> standard  (正解 standard)
+  ok  [B-部分] "ポータルサイトのお知らせ欄を実装して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトの画像を圧縮する仕組みを作る" -> standard  (正解 standard)
+  ok  [B-部分] "add a share button to the website" -> standard  (正解 standard)
+  ok  [B-部分] "implement a login form for the portal" -> standard  (正解 standard)
+  ok  [B-部分] "build a csv export for the shop admin" -> standard  (正解 standard)
+  枝A(全体→full): 1/8   枝B(部分→full にしない): 8/8   合計 9/16
+
+════════════════════════════════════════════════════════════════════════════
+候補 C1 — 耐久 16 件(コーパス外)
+════════════════════════════════════════════════════════════════════════════
+  ok  [A-全体] "ECサイトの構築をお願いしたい" -> full  (正解 full)
+  ok  [A-全体] "ポータルサイトのリニューアルをしたい" -> full  (正解 full)
+  ok  [A-全体] "新しいコーポレートサイトの立ち上げ" -> full  (正解 full)
+  ok  [A-全体] "ウェブサイトを一から作ってほしい" -> full  (正解 full)
+  ok  [A-全体] "通販サイトが必要だ" -> full  (正解 full)
+  ok  [A-全体] "we need a new corporate website" -> full  (正解 full)
+  ok  [A-全体] "launch a company portal" -> full  (正解 full)
+  ok  [A-全体] "i want an online shop" -> full  (正解 full)
+  ✗   [B-部分] "ECサイトに決済の導線を追加して" -> full  (正解 standard)
+  ✗   [B-部分] "サイトのヘッダーを実装して" -> full  (正解 standard)
+  ✗   [B-部分] "通販サイトの在庫表示を作る" -> full  (正解 standard)
+  ✗   [B-部分] "ポータルサイトのお知らせ欄を実装して" -> full  (正解 standard)
+  ✗   [B-部分] "サイトの画像を圧縮する仕組みを作る" -> full  (正解 standard)
+  ✗   [B-部分] "add a share button to the website" -> full  (正解 standard)
+  ✗   [B-部分] "implement a login form for the portal" -> full  (正解 standard)
+  ✗   [B-部分] "build a csv export for the shop admin" -> full  (正解 standard)
+  枝A(全体→full): 8/8   枝B(部分→full にしない): 0/8   合計 8/16
+
+════════════════════════════════════════════════════════════════════════════
+候補 D1 — 耐久 16 件(コーパス外)
+════════════════════════════════════════════════════════════════════════════
+  ✗   [A-全体] "ECサイトの構築をお願いしたい" -> standard  (正解 full)
+  ✗   [A-全体] "ポータルサイトのリニューアルをしたい" -> standard  (正解 full)
+  ✗   [A-全体] "新しいコーポレートサイトの立ち上げ" -> standard  (正解 full)
+  ✗   [A-全体] "ウェブサイトを一から作ってほしい" -> standard  (正解 full)
+  ok  [A-全体] "通販サイトが必要だ" -> full  (正解 full)
+  ok  [A-全体] "we need a new corporate website" -> full  (正解 full)
+  ok  [A-全体] "launch a company portal" -> full  (正解 full)
+  ok  [A-全体] "i want an online shop" -> full  (正解 full)
+  ok  [B-部分] "ECサイトに決済の導線を追加して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトのヘッダーを実装して" -> standard  (正解 standard)
+  ok  [B-部分] "通販サイトの在庫表示を作る" -> standard  (正解 standard)
+  ok  [B-部分] "ポータルサイトのお知らせ欄を実装して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトの画像を圧縮する仕組みを作る" -> standard  (正解 standard)
+  ok  [B-部分] "add a share button to the website" -> standard  (正解 standard)
+  ok  [B-部分] "implement a login form for the portal" -> standard  (正解 standard)
+  ✗   [B-部分] "build a csv export for the shop admin" -> full  (正解 standard)
+  枝A(全体→full): 4/8   枝B(部分→full にしない): 7/8   合計 11/16
+
+════════════════════════════════════════════════════════════════════════════
+候補 D2 — 耐久 16 件(コーパス外)
+════════════════════════════════════════════════════════════════════════════
+  ok  [A-全体] "ECサイトの構築をお願いしたい" -> full  (正解 full)
+  ok  [A-全体] "ポータルサイトのリニューアルをしたい" -> full  (正解 full)
+  ok  [A-全体] "新しいコーポレートサイトの立ち上げ" -> full  (正解 full)
+  ok  [A-全体] "ウェブサイトを一から作ってほしい" -> full  (正解 full)
+  ok  [A-全体] "通販サイトが必要だ" -> full  (正解 full)
+  ok  [A-全体] "we need a new corporate website" -> full  (正解 full)
+  ok  [A-全体] "launch a company portal" -> full  (正解 full)
+  ok  [A-全体] "i want an online shop" -> full  (正解 full)
+  ok  [B-部分] "ECサイトに決済の導線を追加して" -> standard  (正解 standard)
+  ✗   [B-部分] "サイトのヘッダーを実装して" -> full  (正解 standard)
+  ✗   [B-部分] "通販サイトの在庫表示を作る" -> full  (正解 standard)
+  ✗   [B-部分] "ポータルサイトのお知らせ欄を実装して" -> full  (正解 standard)
+  ✗   [B-部分] "サイトの画像を圧縮する仕組みを作る" -> full  (正解 standard)
+  ok  [B-部分] "add a share button to the website" -> standard  (正解 standard)
+  ok  [B-部分] "implement a login form for the portal" -> standard  (正解 standard)
+  ✗   [B-部分] "build a csv export for the shop admin" -> full  (正解 standard)
+  枝A(全体→full): 8/8   枝B(部分→full にしない): 3/8   合計 11/16
+
+════════════════════════════════════════════════════════════════════════════
+候補 D4 — 耐久 16 件(コーパス外)
+════════════════════════════════════════════════════════════════════════════
+  ✗   [A-全体] "ECサイトの構築をお願いしたい" -> standard  (正解 full)
+  ✗   [A-全体] "ポータルサイトのリニューアルをしたい" -> standard  (正解 full)
+  ✗   [A-全体] "新しいコーポレートサイトの立ち上げ" -> standard  (正解 full)
+  ✗   [A-全体] "ウェブサイトを一から作ってほしい" -> standard  (正解 full)
+  ok  [A-全体] "通販サイトが必要だ" -> full  (正解 full)
+  ok  [A-全体] "we need a new corporate website" -> full  (正解 full)
+  ok  [A-全体] "launch a company portal" -> full  (正解 full)
+  ok  [A-全体] "i want an online shop" -> full  (正解 full)
+  ok  [B-部分] "ECサイトに決済の導線を追加して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトのヘッダーを実装して" -> standard  (正解 standard)
+  ok  [B-部分] "通販サイトの在庫表示を作る" -> standard  (正解 standard)
+  ok  [B-部分] "ポータルサイトのお知らせ欄を実装して" -> standard  (正解 standard)
+  ok  [B-部分] "サイトの画像を圧縮する仕組みを作る" -> standard  (正解 standard)
+  ok  [B-部分] "add a share button to the website" -> standard  (正解 standard)
+  ok  [B-部分] "implement a login form for the portal" -> standard  (正解 standard)
+  ✗   [B-部分] "build a csv export for the shop admin" -> full  (正解 standard)
+  枝A(全体→full): 4/8   枝B(部分→full にしない): 7/8   合計 11/16
+
+═══ 耐久まとめ ═══
+候補   枝A(全体)  枝B(部分)  合計
+B0        1/8        8/8     9/16
+C1        8/8        0/8     8/16
+D1        4/8        7/8     11/16
+D2        8/8        3/8     11/16
+D4        4/8        7/8     11/16

@@ -1,0 +1,18 @@
+CONCLAVE AUDIT — 見捨てられた走行 (第53条)
+════════════════════════════════════════════════════════
+✓ [paradise] claude-md-diet  domains 6/6
+✓ [paradise] conclave-resume  domains 6/6
+✓ [paradise] dashboard-living-gate  domains 6/6
+✓ [paradise] eval-gauge  domains 6/6
+✓ [paradise] gate-filter  domains 6/6
+✓ [paradise] gauge-ledger-idempotent  domains 6/6
+▶ [paradise] judgment-triad  domains 0/6
+✓ [paradise] pontiff-office  domains 6/6
+✓ [paradise] route-misfire  domains 6/6
+✓ [paradise] sovereign-abode  domains 6/6
+✓ [creations] coin  domains 6/6
+✓ [creations] habit  domains 6/6
+✓ [creations] tenbin  domains 6/6
+════════════════════════════════════════════════════════
+見捨てられた走行: 0 / 判定不能: 0 / 全 13
+EXIT=0

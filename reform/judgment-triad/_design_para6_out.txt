@@ -1,0 +1,55 @@
+錨 "if (!opts.reject) {" の出現回数: 1  (1 でなければ挿入位置が曖昧)
+
+════════════════════════════════════════════════════════════════════
+PARA-6 / R1 の四つの枝 — AC-3 の表どおりか
+════════════════════════════════════════════════════════════════════
+
+(a) --reject / 相は全て pending  [specify=pending]
+  -> 通った  {"ok":true,"reworked":["specify","ux","design","identity","detail","build","tests","review","ux-review","security","verify","reflect","verdict"],"target":"requirements"}
+  相の状態: specify=rework
+  領域の status: active
+
+(b) rework の相が在る  [specify=rework]  領域 status=pending
+  -> 拒まれた  code=RATIFY_PHASES_NOT_DONE
+  文言: cannot ratify requirements: 1 phase(s) not done: specify=rework — 済ませてから祝福せよ: node graph/conclave.js done <id> --run <f> --artifact <p>
+  領域の status(部分適用していないか): pending
+
+(c) blocked の相が在る  [specify=blocked]  領域 status=pending
+  -> 拒まれた  code=RATIFY_PHASES_NOT_DONE
+  文言: cannot ratify requirements: 1 phase(s) not done: specify=blocked — blocked の相が在る(specify)。待っても直らない。**人を呼べ**。
+  「人を呼べ」を含むか: true
+  領域の status: pending
+
+(c2) 領域そのものが blocked / 相は全て done  [specify=done]  領域 status=blocked
+  -> 拒まれた  code=RATIFY_DOMAIN_BLOCKED
+  文言: cannot ratify requirements: domain is blocked — 領域が閉塞している。3 回の差し戻しを使い切った領域は自力で祝福できない。**人を呼べ**(教主の裁可が要る)。
+  「人を呼べ」を含むか: true
+  領域の status(化けていないか): blocked
+
+(対) 相が全て done  [specify=done]
+  -> 通った  {"ok":true,"ratified":"requirements"}   領域 status -> ratified
+
+════════════════════════════════════════════════════════════════════
+CLI の口 — exit 2 と標準エラーの本文
+════════════════════════════════════════════════════════════════════
+
+$ node graph/conclave.js ratify requirements --run <f>   (相は全て pending)
+EXIT=2
+--- stderr ---
+✗ cannot ratify requirements: 1 phase(s) not done: specify=pending — 済ませてから祝福せよ: node graph/conclave.js done <id> --run <f> --artifact <p>
+  · specify = pending
+  → 未了の相を済ませてから、もう一度 ratify せよ。
+--- 台帳が汚れていないか: 領域 status=pending  相=[specify=pending]
+
+$ node graph/conclave.js ratify requirements --run <f>   (領域 status=blocked / 相は全て done)
+EXIT=2
+--- stderr ---
+✗ cannot ratify requirements: domain is blocked — 領域が閉塞している。3 回の差し戻しを使い切った領域は自力で祝福できない。**人を呼べ**(教主の裁可が要る)。
+  → 教主を呼べ。閉塞した領域は engine が自分で開けてはならない(第51条c)。
+--- 台帳が汚れていないか: 領域 status=blocked  (blocked のままなら部分適用なし)
+
+$ node graph/conclave.js ratify requirements --run <f>   (相は全て done / 領域 active)
+EXIT=0
+--- 領域 status=ratified  (ratified なら通った)
+
+曲げた conclave: C:\Users\kikus\AppData\Local\Temp\jt_para6\graph\conclave.js

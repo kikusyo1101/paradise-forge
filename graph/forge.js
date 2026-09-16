@@ -585,6 +585,17 @@ const DIAGRAM_FALSE_FRIENDS = /意図|地図|図書|合図|構図|図々|壮図|
 /** その願いは作図(図を求める)か。 */
 function isCartography(wish) {
   if (!DIAGRAM_RE.test(wish)) return false;
+  /**
+   * ★ PARA-9: **図を作る産物**は図そのものではない (reform/judgment-triad)。
+   * counsel は同じ病を `wantsProduct()` で解いているのに、cartography だけが
+   * 打ち消しを持たなかった —— 「家系図を作れるアプリが欲しい」が図一枚で返された。
+   *
+   * ⚠️ **`wantsProduct(wish)` をそのまま呼んではならない**(AC-8 / findings 5.4)。
+   *    `PRODUCT_RE` の一字の名「相」が『楽園の**相**の系統図を描いてほしい』に当たり、
+   *    既存門 tests/route-matrix.test.js のコーパスの願いが reform へ攫われる(実測 exit 1)。
+   *    ゆえに **強い産物名だけ**で打ち消す。第60条: 弱い印を打ち消しに使えば別の道を奪う。
+   */
+  if (!PRODUCT_FALSE_FRIENDS.test(wish) && PRODUCT_STRONG_RE.test(wish)) return false;
   // 「図に」「図を」だけで当たった場合、それが紛れ語の一部でないか確かめる。
   const onlyWeak = !new RegExp(`${DIAGRAM_JA.split('|').filter(w => w !== '図に' && w !== '図を').join('|')}|${DIAGRAM_EN}`, 'i').test(wish);
   if (onlyWeak && DIAGRAM_FALSE_FRIENDS.test(wish)) return false;
@@ -621,8 +632,38 @@ function chooseScale(wish) {
   const quickEn = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick)\b/;
   const fullJa = /製品|システム|アプリ|プラットフォーム|全体/;
   const fullEn = /\b(product|platform|system|app|application|saas|dashboard|end-to-end|mvp|launch)\b/;
+  /**
+   * ★ PARA-7: web の産物語彙(サイト/ウェブ/EC/通販/ポータル)は
+   * `fullJa`/`fullEn` に一語も無く、web の願いは既定の standard へ黙って落ちていた(第16条)。
+   *
+   * ⚠️ **語彙を `fullJa` に足す形(C1)を採ってはならない。** 実測で
+   *    standard の部分機能の願いを **5/5 攫った**(「サイトの検索機能を実装して」→ full)。
+   *    「サイト」は産物全体の名でもあり、その一部が載る場所の名でもある ——
+   *    語彙の表では二つの顔を分けられない(第60条)。
+   *
+   * ⚠️ **部分機能の語彙表で打ち消す形(D2)も採らない。** 表に無い部分名詞
+   *    (ヘッダー / 在庫表示 / csv export…)を取りこぼす。耐久実測で 3/8。
+   *
+   * ⚠️ **部分機能の段を full より先に置く形(D3)は既存門を赤くする。**
+   *    「読書記録のプラット**フォーム**が欲しい」の「フォーム」が部分の印に当たり、
+   *    既存門のコーパスの full の願いが standard へ落ちた(実測 route-matrix exit 1)。
+   *
+   * 採った形は **構造**である ——「創造動詞が何を**目的語**に取っているか」。
+   *   「ECサイト**を**作れ」        → 作の目的語はサイト  → full
+   *   「サイト**の**検索機能**を**実装して」→ 実装の目的語は機能 → full にしない
+   * 日本語は助詞 `を/の/に` を跨がせない(`[^をのに]{0,6}`)ことで別の目的語を退け、
+   * 英語は前置詞(for/to/of…)を跨がせないことで前置詞句の中のサイト語を退ける。
+   * 実測: 101 件コーパスで対角 101/101・非対角 0/30、コーパス外の耐久 16/16(design §2.4)。
+   */
+  const SITE = 'サイト|ウェブ|ウエブ|ホームページ|ポータル|通販|EC';
+  const siteWholeJa = new RegExp(
+    '(?:' + SITE + ')(?:を|が|は)[^をのに]{0,6}(?:作|造|構築|開発|制作|立ち上げ|新設|リニューアル|刷新|欲しい|ほしい|要る|必要)' +
+    '|(?:' + SITE + ')の(?:構築|開発|制作|作成|新設|立ち上げ|リニューアル|刷新)');
+  const siteWholeEn = /\b(?:build|create|launch|develop|make|implement|need|want|set\s+up)\b\s+(?:a|an|the|new|our|my)?\s*(?:(?!\b(?:for|to|of|in|on|with|from|into)\b)[a-z][a-z-]*\s+){0,2}(?:site|website|web[- ]?app|e-?commerce|portal|shop|store)\b/i;
   if (quickJa.test(d) || quickEn.test(w)) return 'quick';
   if (fullJa.test(d) || fullEn.test(w)) return 'full';
+  // ★ この段は `full` の**後**に置く。前に置けば `full` の願いを奪う(D3 の実測)。
+  if (siteWholeJa.test(d) || siteWholeEn.test(w)) return 'full';
   return 'standard';
 }
 

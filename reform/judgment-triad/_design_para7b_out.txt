@@ -1,0 +1,186 @@
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 B0 — C2a のみ(PARA-7 未修理)— 対照
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.B0.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           7           9      16
+
+対角の合計: 94 / 101  (誤着 7 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [full → standard] : 7 件
+      ・ECサイトを作れ   (new/PARA-7)
+      ・社内ポータルサイトを作れ   (new/PARA-7)
+      ・予約サイトを作りたい   (new/PARA-7)
+      ・コーポレートサイトが欲しい   (new/PARA-7)
+      ・通販サイトを構築して   (new/PARA-7)
+      ・ニュースポータルのウェブサイトが欲しい   (new/PARA-7)
+      ・build an e-commerce site   (new/PARA-7)
+
+非ゼロの非対角セル数: 1 / 30
+判定: 不合格
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 C1 — C2a + fullJa/fullEn にサイト語を無条件で足す(specify §2.3 の形)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.C1.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          17           5      22
+full                     0           0           0           0           0          16      16
+
+対角の合計: 96 / 101  (誤着 5 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → full] : 5 件
+      ・レシピサイトの並び替えを実装して   (new/PARA-7-partial)
+      ・サイトの検索機能を実装して   (new/PARA-7-partial)
+      ・通販サイトのクーポン計算を作る   (new/PARA-7-partial)
+      ・add a sort option to the recipe site   (new/PARA-7-partial)
+      ・implement pagination for the site listing   (new/PARA-7-partial)
+
+非ゼロの非対角セル数: 1 / 30
+判定: 不合格
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 D1 — C2a + サイト語が主題語の形だけを full にする(fullJa は触らない)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.D1.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           0          16      16
+
+対角の合計: 101 / 101  (誤着 0 件)
+
+═══ 非ゼロの非対角セル ═══
+  (無し — 全セル 0)
+
+非ゼロの非対角セル数: 0 / 30
+判定: 合格 (対角 101/101 かつ 非対角 0)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 D2 — C2a + サイト語を full の段に足すが、部分機能の印が在れば打ち消す
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.D2.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           0          16      16
+
+対角の合計: 101 / 101  (誤着 0 件)
+
+═══ 非ゼロの非対角セル ═══
+  (無し — 全セル 0)
+
+非ゼロの非対角セル数: 0 / 30
+判定: 合格 (対角 101/101 かつ 非対角 0)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 D3 — C1 + 部分機能の段を full より**先**に置き standard を返す(段の入れ替え)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.D3.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           1          15      16
+
+対角の合計: 100 / 101  (誤着 1 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [full → standard] : 1 件
+      ・読書記録のプラットフォームが欲しい   (gate)
+
+非ゼロの非対角セル数: 1 / 30
+判定: 不合格
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=1
+  ✗ M-2 [対角]: 対角線の合計がコーパスの件数と等しい — 全件が正しい道へ着く
+  ✗ M-3 [非対角]: 非対角の**各セル**が 0 — どの道も他の道を奪っていない
+  Route matrix self-test: 11 passed, 2 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════
+候補 D4 — C2a + 主題語の形 ∧ 部分機能の打ち消し(D1 ∧ D2 / 英に implement を含む)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.D4.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           0          16      16
+
+対角の合計: 101 / 101  (誤着 0 件)
+
+═══ 非ゼロの非対角セル ═══
+  (無し — 全セル 0)
+
+非ゼロの非対角セル数: 0 / 30
+判定: 合格 (対角 101/101 かつ 非対角 0)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed

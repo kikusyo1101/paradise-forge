@@ -692,6 +692,40 @@ function ratify(run, cardinal, opts = {}) {
   const d = run.domains.find(x => x.cardinal === cardinal);
   if (!d) throw new Error('no such cardinal: ' + cardinal);
   if (!opts.reject) {
+    /**
+     * ★ PARA-6 の関門 (第37条 / reform/judgment-triad AC-1〜AC-3)。
+     *
+     * 旧実装は `d.phases` を一度も見ずに `ratified` を書いた —— 実測で
+     * **17 相すべて pending・成果物 0 件のまま `domains ratified: 6/6`** が成立し、
+     * `conclave.js audit` はそれを `closed` として ✓ で通した(findings 1.2/1.4)。
+     * 拒否(`--reject`)の側だけが厳密で、祝福の側が無条件だった。
+     *
+     * ⚠️ **関門は「現在の状態」だけを見る。`run.history` を読まない**(NFR-7 / AC-4)。
+     *    歴史を裁けば過去 4 台帳 6 件が赤くなるが、その 4 本は最終的に仕事が済んでおり
+     *    直すべき嘘が現存しない。歴史の遡及検査は `audit` 側の主題である。
+     * ⚠️ **部分適用しない**(NFR-9)。throw より前に `d.status` を書かない。
+     * ⚠️ **`--reject` の枝には掛けない**(AC-3(a))。着手前の相を上流へ差し戻す
+     *    第14条の大きな環が不可能になる。「仕事が無い」ことは拒否の理由にならない。
+     */
+    if (d.status === 'blocked') {
+      const err = new Error(`cannot ratify ${cardinal}: domain is blocked — 領域が閉塞している。` +
+        `${MAX_DOMAIN_REWORK} 回の差し戻しを使い切った領域は自力で祝福できない。**人を呼べ**(教主の裁可が要る)。`);
+      err.code = 'RATIFY_DOMAIN_BLOCKED';
+      err.cardinal = cardinal;
+      throw err;
+    }
+    const notDone = d.phases.filter(p => p.status !== 'done');
+    if (notDone.length) {
+      const blocked = notDone.filter(p => p.status === 'blocked');
+      const err = new Error(`cannot ratify ${cardinal}: ${notDone.length} phase(s) not done: ` +
+        notDone.map(p => `${p.id}=${p.status}`).join(', ') +
+        (blocked.length ? ` — blocked の相が在る(${blocked.map(p => p.id).join(', ')})。待っても直らない。**人を呼べ**。`
+                        : ` — 済ませてから祝福せよ: node graph/conclave.js done <id> --run <f> --artifact <p>`));
+      err.code = 'RATIFY_PHASES_NOT_DONE';
+      err.cardinal = cardinal;
+      err.phases = notDone.map(p => ({ id: p.id, status: p.status }));
+      throw err;
+    }
     d.status = 'ratified';
     run.history.push({ ts: now(), event: 'ratify', detail: `${d.domain} ratified by ${d.reviewClass}` });
     return { ok: true, ratified: cardinal };
@@ -820,7 +854,26 @@ function main() {
     console.log(JSON.stringify(res, null, 2)); console.log('\n' + statusBoard(run));
     if (!res.ok) process.exit(1);
   } else if (cmd === 'ratify') {
-    need(); const run = load(rp); const res = ratify(run, pos[0], { reject: f.reject, from: f.from }); save(rp, run);
+    need(); const run = load(rp);
+    let res;
+    try {
+      res = ratify(run, pos[0], { reject: f.reject, from: f.from });
+    } catch (e) {
+      // ★ 関門が拒んだときは **台帳を保存しない**(NFR-9: 部分適用しない)。
+      //   exit 1 は「engine が壊れた」、exit 2 は「人がすべきことが残っている」。
+      if (e.code === 'RATIFY_PHASES_NOT_DONE' || e.code === 'RATIFY_DOMAIN_BLOCKED') {
+        console.error('✗ ' + e.message);
+        if (e.code === 'RATIFY_DOMAIN_BLOCKED') {
+          console.error('  → 教主を呼べ。閉塞した領域は engine が自分で開けてはならない(第51条c)。');
+        } else {
+          for (const p of e.phases) console.error(`  · ${p.id} = ${p.status}`);
+          console.error('  → 未了の相を済ませてから、もう一度 ratify せよ。');
+        }
+        process.exit(2);
+      }
+      throw e;
+    }
+    save(rp, run);
     console.log(JSON.stringify(res, null, 2)); console.log('\n' + statusBoard(run));
   } else if (cmd === 'status') {
     need();
