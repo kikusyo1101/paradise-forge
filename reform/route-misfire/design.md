@@ -27,13 +27,13 @@
 | `BUILD_JA` / `BUILD_EN` | 新規(`CREATE_RE` の直後) | **足す** | 建造の動詞の語彙(二つに割る。日本語に `\b` を使わない) |
 | `CREATE_RE` | 303 | **広げる** | 既存の源に `BUILD_JA` / `BUILD_EN` を足す。**既存の語は一つも消さない** |
 | `PRODUCT_RE` | 新規(`DOC_RE` の直後) | **足す** | 産物の主名詞 |
-| `ENGINE_NAMES` | 新規(`REFORM_RE` の直前) | **足す** | engine の固有名。**`graph/*.js` のファイル名から測って作る** |
-| `REFORM_RE` | 284 | **広げる** | 既存の源に `ENGINE_NAMES` を足す |
+| ~~`ENGINE_NAMES`~~ | ~~新規~~ | **🔴 射程外** | **build 相四度目で撃ち捨てた**(§1.5 / requirements §8) |
+| `REFORM_RE` | 284 | **触らない** | **main と同じ抽象名のみ。`ENGINE_NAMES` は足さない**(🔴 訂正) |
 | `isCounsel(wish)` | 314 | **書き換える** | 剥いだ文で判定し、産物の主名詞を DOC より強くする |
 | `isCartography(wish)` | 345 | **呼び側を変えるだけ** | 関数自体は触らない。`chooseScale` が剥いだ文を渡す |
 | `chooseScale(wish)` | 354 | **書き換える** | 冒頭で一度だけ剥ぎ、以降は剥いだ文で判定する |
 | `fullJa` | 366 | **狭める** | 「アプリ」を外す(**要教主の裁定** — requirements §6-1) |
-| `module.exports` | 521 | **足す** | `denude` / `PRODUCT_RE` / `BUILD_RE` を追加(門が直接撃てるように) |
+| `module.exports` | 521 | **足す** | `denude` / `PRODUCT_RE` / `BUILD_RE` / `isReformSubject` / `wantsProduct` / `PRODUCT_FALSE_FRIENDS` を追加(門が直接撃てるように)。**`ENGINE_NAMES*` 系は一つも出さない**(🔴 訂正) |
 
 **`chooseScale` の返り値の型は文字列のまま**(FR-05 / AC-12)。
 **`COUNSEL_JA` / `COUNSEL_EN` の定数名は残す**(FR-06 / AC-13)。
@@ -100,11 +100,16 @@ chooseScale(wish) -> string            // 型は変えない
 
   1. isCartography(w)         → 'cartography'
   2. isCounsel(wish)          → 'counsel'     // ★ 元の文を渡す(中で自分で剥ぐ)
-  3. REFORM_RE(拡張済).test(w) → 'reform'
+  3. isReformSubject(w)       → 'reform'      // = REFORM_RE.test(w)。main と同じ抽象名のみ
   4. quickJa.test(w) || quickEn.test(lw) → 'quick'
   5. fullJa.test(w)  || fullEn.test(lw)  → 'full'
   6. 既定                      → 'standard'
 ```
+
+> **🔴 build 相四度目の訂正**: 3 段目の `REFORM_RE(拡張済)` は
+> **`REFORM_RE`(main の抽象名のみ)に戻った**(教主の裁定 / requirements §8)。
+> **判定の段は一度も動いていない** —— 3 段目の述語の中身だけが四度動き、
+> 最後に main の形へ戻った。
 
 **順序は変えない。** 変えるのは「何を渡すか」と「各段の語彙」だけである。
 順序を動かせば `counsel.test.js:292` の「壊れ engine」門が撃っている関係
@@ -115,7 +120,26 @@ chooseScale(wish) -> string            // 型は変えない
 (`counsel.test.js` が `forge.isCounsel('検討したツールを実装して')` を直接撃つ / AC-11)。
 二重に剥ぐが `denude` は冪等なので害は無い。
 
-### 1.5 `ENGINE_NAMES` を測って作る(第22条)
+### 1.5 ~~`ENGINE_NAMES` を測って作る(第22条)~~ → **🔴 本走行の射程外**
+
+> ══════════════════════════════════════════════════════════════════════
+> **build 相四度目 / 教主の裁定で、本節の設計は丸ごと撃ち捨てられた。**
+>
+> `ENGINE_NAMES` / `ENGINE_NAMES_STRONG` / `ENGINE_NAMES_WEAK` /
+> `ENGINE_NAMES_WEAK_JA` / `DETERMINER_LOOKBEHIND` / `REFORM_STRONG_RE` /
+> `REFORM_WEAK_RE` / `REFORM_ABSTRACT_RE` / `MEND_RE` / `WORLDLY_VESSEL_RE` /
+> `STRONG_BOUND_RE` / `ABSTRACT_FALSE_FRIENDS` / `ABSTRACT_SOLO_RE` /
+> `mendsParadise` / `namesParadiseAbstractly` は **実装から消え、exports からも消えた。**
+>
+> **理由**: engine の固有名を印にする試みは **四度**行われ、**四度とも新しい回帰を生んだ**
+> (欠陥C → F-1 → Q2-1 → Q3-1/Q3-2)。三案の実測の数、四度の回帰の解剖、
+> **次の走行が引き継ぐ門のコーパス 174 件の一覧**は
+> **`requirements.md` §8「別の走行への申し送り」**に在る。**そこが次の走行の財産である。**
+>
+> **以下は歴史として残す。次の走行が「何を試みて何が壊れたか」を読むための記録である。**
+> ══════════════════════════════════════════════════════════════════════
+
+#### 1.5(歴史)当初の設計 — `ENGINE_NAMES` を測って作る(第22条)
 
 discovery §6.2 の実測: `graph/*.js` のファイル名のうち **4 文字以上で `[a-z][a-z-]*` の形**は **38 件**。
 これを回帰防止の 11 件に撃って **誤射ゼロ**だった。
@@ -475,11 +499,12 @@ README に数を書き足す必要が生じたら `node graph/census.js fix` に
 1. **`denude` が正当な願いの意味を落とす場合**を 37 件でしか撃っていない。
    バッククォート内に願いの本体を書く人は居る(「`ledger --audit` を CI に足して」)。
    その場合「ledger」も剥がれるが、`CI` が残るので reform に着く —— **実測した一例でしか確かめていない**。
-2. **`ENGINE_NAMES` 網羅の門は、engine が増えたときに人を煩わせる。**
-   新しい `graph/foo.js` を足すたび門が赤くなり、語彙に `foo` を足す作業が生まれる。
-   これが正しい代なのか(第44条の「呼ばれない門は腐る」の逆に、うるさすぎる門は無視される)は
-   実運用で測るしかない。**逃げ道として「除外リストをコード内に明示する」形**
-   (`HARDCODE_EXCLUDE_FILES` の先例)を用意しておくこと。
+2. ~~**`ENGINE_NAMES` 網羅の門は、engine が増えたときに人を煩わせる。**~~
+   **🔴 build 相四度目で門ごと削除した。** 照合の相手(`ENGINE_NAMES_STRONG`/`_WEAK`)が
+   消えたためである。代わりに **`STRONG_WORLDLY_EVERY_NAME`(26 件)を
+   `graph/*.js` の実在名と照合する門**を残した —— 「実在しない engine の名を
+   コーパスが撃っている」ときだけ赤くなる形であり、engine が増えても人を煩わせない。
+   **次の走行が engine 名を印に戻すときは、この照合を双方向に戻せ。**
 3. **`isCreationsVault` を `resolve()` の中で呼ぶと、`resolve()` が git を撃つ関数になる。**
    `resolve()` は今まで純粋にディスクしか見なかった。40 箇所以上の門が呼んでいる。
    1 回 15ms × 40 = 0.6 秒。**許容できると見たが、実測していない。**

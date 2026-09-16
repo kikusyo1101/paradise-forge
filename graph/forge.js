@@ -306,291 +306,62 @@ function denude(wish) {
 }
 
 /**
- * engine の固有名 (FR-04)。**`graph/*.js` のファイル名から測って作る** (第22条)。
- *
- * ここは静的な文字列である。`fs.readdirSync` で動的に作ってはならない ——
- * `chooseScale` は純粋な関数であるべきで、ファイルが増減するたび道選びが
- * 黙って変わるのは「測る」ではなく「揺れる」である。
- * **測るのは門の側**: `tests/counsel.test.js` が `graph/*.js` の名を読み、
- * ここに載っていない engine が生まれたら赤くなって人に知らせる。
- *
- * ⚠️ **`台帳` / `ledger` を入れてはならない** (L-4)。discovery §6.1 の実測で
- *    `台帳の毒を直す` が quick から reform へ攫われた(回帰防止の一件)。
- *    「CI に ledger --audit を追加する」は **`CI`** の方で reform に着けばよい。
- *
- * ── 強い名と弱い名に割る (AC-31 / rework 相が塞いだ逆向きの誤着) ────────
- *
- * ⚠️ **engine の固有名を一枚の表にして `REFORM_RE` に流し込んだのが病であった。**
- * 実測(HEAD 3b726f5): `build a workflow automation app for my team` /
- * `an identity verification service for startups` / `a vendor management dashboard` /
- * `deploy a static site for my blog` / `CIに合格するためのアプリが欲しい` …
- * **世間並みの創造の願い 10 件が、engine の名を踏んだというだけで reform(11相)へ攫われた。**
- * 神が「ベンダー管理アプリが欲しい」と命じて楽園の engine を改造する道が立つのは、
- * 直そうとした誤着と**同じ重さの病を正反対に生んだ**だけである。
- *
- * ゆえに名を二つに割る:
- *
- *   **強い名** (`ENGINE_NAMES_STRONG`) —— 楽園固有で、世間の願い文に現れない。
- *     `conclave` `clergy` `codex` `forge` `gauge` `synod` `ordain` `spawn-trace` …
- *     これらは **単独で reform を名乗ってよい**。
- *
- *   **弱い名** (`ENGINE_NAMES_WEAK`) —— 世間一般の語と衝突する。
- *     `identity` `vendor` `contract` `census` `pulse` `deploy` `workflow` `ci` `atlas` …
- *     これらは **(1) 建造の動詞(`BUILD_RE`)を伴い、かつ (2) 英語の冠詞
- *     (a/an/the/my/our/your/their) の直後でない** 時にのみ reform を名乗る。
- *     「CI に ledger を追加する」は (1)(2) を満たすので reform に留まり、
- *     「a vendor management dashboard」は (1) を欠くので創造の道へ着く。
- *
- * ⚠️ **`lessons` を強い名に置いてはならない**(教主の試案から替えた一語)。
- *    `a lessons booking app for tutors` は世間並みの創造の願いであり、
- *    `lessons` は日常語の複数形である。同じ理由で `workspace` も弱い名に置く。
- *
- * `COUNSEL_JA` と同じく **string** で持つ。`REFORM_RE` の源に埋め込むためである。
- */
-const ENGINE_NAMES_STRONG = 'abode|apply-guards|apply-hooks|apply-models|apply-seat|apply-spawn|' +
-  'branch-guard|build-identity-catalog|check-agents|clergy|codex|conclave|critic|daily-guard|' +
-  'export-state|forge|gauge|graph-engine|hermetic|orchestrator|ordain|spawn-trace|synod|verdict|' +
-  'visual-verify|wiring';
-
-/** 世間一般の語と衝突する engine 名(英語)。単独では reform を名乗れない。 */
-const ENGINE_NAMES_WEAK = 'atlas|census|ci|contract|deploy|derived|domains|identity|lessons|' +
-  'pulse|upstream|vendor|workflow|workspace';
-
-/**
- * 弱い名の日本語。**`\b` を使ってはならない**(L-3 と同じ理由)。
- * `ワークフロー` は旧実装で `REFORM_RE` の強い抽象名の側に居たが、
- * 「顧客のワークフローを管理するアプリが欲しい」が reform へ攫われた(実測)。
- * 世間の語であるから弱い名の側へ移す。
- */
-const ENGINE_NAMES_WEAK_JA = 'ワークフロー';
-
-/**
- * 網羅の門(`tests/counsel.test.js` / 設計 §1.5)が読む、二つを束ねた表。
- * **判定には使わない** —— 判定は強弱それぞれの規則が別々に行う。
- */
-const ENGINE_NAMES = ENGINE_NAMES_STRONG + '|' + ENGINE_NAMES_WEAK;
-
-/**
- * **限定詞の表** —— この直後に在る engine 名は、世間の物を一つ指す語法である。
- *
- * ⚠️ build/rework 相は冠詞 7 語 (`a|an|the|my|our|your|their`) しか知らなかった。
- *    quality 相の実測で **7 語では足りない**ことが判った(review R-3):
- *      `this vendor` / `that census` / `its workflow` / `his identity` /
- *      `each vendor` / `some vendor` / `every vendor` / `another vendor`
- *    —— どれも `add …` を伴うので、弱い名の規則が reform を名乗った。
- *    指示詞・所有格・数量詞は冠詞と**同じ仕事**をしている。ゆえに同じ表に置く。
- *
- * ⚠️ **先頭の `\b` は必須**である: これが無いと `media workflow` の `a ` が
- *    冠詞と誤読され、除外が効きすぎる(`counsel.test.js` が撃っている)。
- */
-const DETERMINER_LOOKBEHIND =
-  '(?<!\\b(?:a|an|the|my|our|your|their|this|that|these|those|its|his|her|' +
-  'each|every|some|any|another|no)\\s)';
-
-/**
- * 神託が「楽園そのもの」を指しているか。
+ * 神託が「楽園そのもの」を指しているか —— **楽園の抽象名だけ**で裁く。
  *
  * これが最初に判定される理由: 楽園自身への改革を quick/standard と誤ると、
  * 市場調査の神官が世間を調べに行き、己を測らない。対象を取り違えた道は、
  * どれだけ丁寧に回しても正しい場所に着かない。
  *
- * 抽象名(楽園/エンジン/門)だけでは足りない —— 実測で
- * `gauge に fingerprint を確かめる口を設ける` が standard へ落ちた。
- * ゆえに **engine の強い固有名**(`ENGINE_NAMES_STRONG`)を源に足す。
+ * ══════════════════════════════════════════════════════════════════════
+ * ⚠️ **engine の固有名(`gauge` `forge` `conclave` …)をここへ入れてはならない。**
  *
- * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(自己診断/走行帳/門/憲法…)。
- *    rework 相で動かしたのは `ワークフロー` 一語だけで、それは弱い名の側へ移した。
+ * reform 走行『route-misfire』は engine の固有名を印にしようと **四度**試み、
+ * **四度とも新しい回帰を生んだ**(教主の裁定により本走行から丸ごと撃ち捨てた):
  *
- * ⚠️ **強い名にも限定詞の除外を掛ける**(quality 相 / R-4)。build/rework 相は
- *    「強い名は世間の願い文に現れない」と裁いたが、実測が覆した ——
- *    `add a gauge widget to my car dashboard` / `add a critic score to my movie app` /
- *    `add a verdict field to my court case tracker` / `add a codex viewer to my
- *    fantasy game` / `add a clergy directory to my parish app` …
- *    **12 件の世間の願いが強い名を踏んで reform へ攫われた**(main では full/standard)。
- *    強い名も**普通名詞として使われうる**。限定詞の直後なら世間の物である。
- *    ただし限定詞を伴わない `conclave の毒を除く` は今まで通り楽園を名指す。
+ *   欠陥C  一枚の表を `REFORM_RE` に流し込む
+ *            → 世間の語(`vendor`/`workflow`/`identity`…)を踏んだ創造の願いが reform へ
+ *   F-1    強い名/弱い名に割り、強い名を無条件で通す
+ *            → 日本語に冠詞が無いため防壁ゼロ。世間の願い 54/54 が reform へ
+ *   Q2-1   強い名に `MEND_RE`(改める動詞)を課す
+ *            → 改める動詞は世間の願いにも同じ頻度で現れる。32/32 が reform へ
+ *   Q3-1/2 `WORLDLY_VESSEL_RE`(世間の器の表)で守る
+ *            → 表に在る器 37 語すべてが**楽園の願いを落とした**
+ *              (`門の判定をアプリで直す` が main=reform → HEAD=quick)。
+ *              かつ枝 2(建造)には器の守りが無く 18/24 が世間へ誤着した。
  *
- * ── **抽象名と強い固有名を別の定数へ割る**(F-1 / tribunal の BLOCK) ────────
+ * 教主が三案を試作して測った数(reform/route-misfire/requirements.md §申し送り):
  *
- * ⚠️ 両者を一本の `REFORM_RE` に混ぜ、`isReformSubject` がそれを
- *    `if (REFORM_RE.test(d)) return true;` で受けたのが病であった。
- *    抽象名(楽園/門/engine)は**無条件で真**でよい —— それらは楽園以外を指さない。
- *    だが**強い固有名は限定詞の除外一枚しか防壁を持たなかった**。
- *    **日本語に冠詞は無い。ゆえに日本語の願いに対して防壁は事実上ゼロだった。**
+ *     案                     世間への誤着      楽園の取りこぼし
+ *     3表を足した形          枝2 で 6/6        Q3-1 で 37/37 が落ちる
+ *     抽象名のみ(本実装)     0/28              9/15
+ *     main の REFORM_RE 素   2/25              8/17
+ *
+ * **engine 名を印にする限り、取りこぼしを減らせば誤着が増える。**
+ * 第60条が言う「弱い印」そのものであり、本走行の射程では強め切れない。
+ * `gauge に fingerprint を確かめる口を設ける` のように **engine の固有名だけで
+ * 楽園を名指す願い**が standard/quick へ落ちるのは**承知の上の代価**である ——
+ * 神は「楽園の」と一言添えれば reform に着く。
+ * **題は別の走行へ申し送った**(`reform/route-misfire/requirements.md` の
+ * 「別の走行への申し送り」節に四度の回帰の実測と三案の数が在る)。
+ * ══════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(楽園/門/憲法/engine…)。
+ *    これらは楽園以外を指さないので**無条件**で真でよい。
  */
-/** 楽園そのものを指す**抽象名**。これらは無条件で楽園を名指す(減らしてはならない)。 */
-const REFORM_ABSTRACT_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|' +
-  '門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|' +
-  '枢機卿|cardinal|神官|priest|自己診断|走行帳)', 'i');
+const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest)/i;
 
 /**
- * ⚠️ **抽象名の中にも「一字の名」が一つだけ在る** —— `門` である(Q2-1 の同族)。
- *    `専門店` `門前町` `名門` `部門別` `入門講座` は世間の語であり、判定の門ではない。
- *    `PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS` と**同じ作法**で守る。
- *    実測: この守りが無いと自作 MINE_H の 5 件(`gauge 専門店の…` 等)が
- *    **main でも HEAD でも** reform へ攫われる —— すなわちこれは main 由来の病である。
+ * 願いの**対象が楽園自身**か。
  *
- * ⚠️ `門` と `gate` **以外**の抽象名は多字であり紛れ語を持たないので、この守りを掛けない。
- *    掛ければ `楽園の…アプリ` のような正当な願いが死ぬ。
- *
- * ⚠️ **英語の `gate` には限定詞の除外も掛ける**(実測で 1 件が直った)。
- *    `rewrite the gate schedule board…` / `deprecate the old scoring gate in my
- *    conclave tournament site` —— `the gate` は世間の搭乗口・世間の関門である。
- *    日本語の `門` に冠詞は無いので、そちらは紛れ語と世間の器の表が受け持つ。
- */
-const ABSTRACT_SOLO_RE = new RegExp('門|' + DETERMINER_LOOKBEHIND + '\\bgate\\b', 'i');
-const ABSTRACT_FALSE_FRIENDS = new RegExp(
-  '門前|専門|部門|門下|入門|名門|門戸|関門|門限|門外|登竜門|' +
-  '\\b(?:gated|gateway|floodgate|tailgate|stargate)\\b', 'i');
-
-/** 抽象名が**楽園を**名指しているか(一字の名は紛れ語を退けたうえで)。 */
-function namesParadiseAbstractly(d) {
-  if (!REFORM_ABSTRACT_RE.test(d)) return false;
-  // 多字の抽象名(楽園/engine/憲法/走行帳…)で当たったなら、そこで決着する。
-  const multi = new RegExp(REFORM_ABSTRACT_RE.source.replace('門|gate|', ''), 'i');
-  if (multi.test(d)) return true;
-  // `門`/`gate` の一字だけで当たった場合、それが紛れ語の一部でないか確かめる。
-  // ⚠️ **世間の器の名も退ける** —— `rewrite the gate schedule board at forge airport
-  //    terminal` の `gate` は空港の搭乗口である。紛れ語の表には載らないが、
-  //    **世間の器を作る願い**である以上、楽園の門ではない(実測で 1 件が直った)。
-  if (!ABSTRACT_SOLO_RE.test(d)) return false;
-  return !ABSTRACT_FALSE_FRIENDS.test(d) && !WORLDLY_VESSEL_RE.test(d);
-}
-
-/** engine の**強い固有名** —— 限定詞の直後は数えない。 */
-const REFORM_STRONG_RE = new RegExp(
-  `${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
-
-/**
- * 後方互換のための束ね(旧い読み手と設計文書が名指す)。
- * **判定には使わない** —— 判定は `isReformSubject` が二枝を別々に裁く。
- */
-const REFORM_RE = new RegExp(`${REFORM_ABSTRACT_RE.source}|${REFORM_STRONG_RE.source}`, 'i');
-
-/**
- * 弱い名 —— **限定詞の直後に在るものは数えない**。
- *
- * `a vendor` / `an identity` / `the workflow` / `my atlas` / `this vendor` /
- * `each census` は「世間の物を一つ指す」語法であって、楽園の器官の名指しではない。
- * 表は `DETERMINER_LOOKBEHIND` に一箇所だけ住む —— 強い名と弱い名で
- * 別の表を持てば、片方にだけ語を足す誤りが生まれる(第16条)。
- */
-const REFORM_WEAK_RE = new RegExp(
-  `(?:${ENGINE_NAMES_WEAK_JA})` +
-  `|${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_WEAK})\\b`, 'i');
-
-/**
- * **楽園を改める動詞** (F-1)。`BUILD_RE`(足す側)の対になる**除く側**である。
- *
- * ⚠️ なぜ強い名に `BUILD_RE` だけを課せないか: `conclave の毒を除く` は
- *    **建造ではなく除去**であり、`BUILD_RE` を一語も持たない。だがこれは
- *    紛れもなく楽園の改革であり、reform を名乗らねばならない
- *    (`counsel.test.js` が二箇所で撃っている)。
- *    ゆえに強い名には **`BUILD_RE` ∪ `MEND_RE`** という**より広い動詞集合**を課す。
- *
- * ⚠️ **世間の創造の動詞(`作れ`/`欲しい`/`build`/`create`)を入れてはならない。**
- *    それを入れた瞬間 `forge 鍛冶屋の在庫管理アプリを作って` が reform へ戻る ——
- *    それが F-1 そのものである。ここに在るのは**既に在る物を改める**動詞だけである。
- */
-const MEND_JA = '直す|直し|直せ|直して|修正|修復|改修|改善|改める|改め|除く|除去|取り除|' +
-  '塞ぐ|塞い|潰す|削る|削除|外す|替える|置き換え|書き換え|整える|見直';
-const MEND_EN = '\\b(?:fix|repair|remove|refactor|rewrite|patch|harden|migrate|drop|deprecate)\\b';
-const MEND_RE = new RegExp(`${MEND_JA}|${MEND_EN}`, 'i');
-
-/**
- * **世間の器の名** (Q2-1 の修理 / 第60条(f))。
- *
- * 願いが「**世間の人に配る物**」を名指しているなら、そこで改められるのは
- * 楽園の器官ではなく**その世間の物**である。
- *
- * ⚠️ `PRODUCT_RE` と**別の表**である。役目が違う:
- *    `PRODUCT_RE` は「物を求めているか」(counsel との境)を裁く。
- *    ここは「**改める対象が楽園の外に在るか**」を裁く。
- *    ゆえに `PRODUCT_RE` に在る `口`/`門`/`相`/`フラグ`/`一段` —— **楽園の器官の名でもある語**
- *    —— を**一語も置いてはならない**。置いた瞬間 `門に監査の一段を足す` が死ぬ。
- *    ここに在るのは**楽園が決して名乗らない器**(掲示板/通販/予約/booking/rentals…)だけである。
- *
- * ⚠️ **`ダッシュボード`/`dashboard` を入れてはならない**(実測で門が赤くなった)。
- *    楽園自身が `dashboard/index.html` を持つ —— `ダッシュボードを生きた門にせよ` は
- *    楽園の改革であり、`counsel.test.js` が撃っている。**楽園も名乗る器は、世間の器ではない。**
- */
-const WORLDLY_VESSEL_RE = new RegExp(
-  'アプリ|サイト|ツール|掲示板|ゲーム|サービス|通販|ショップ|マッチング|シミュレータ|' +
-  'エディタ|校正|検品|予約|配車|貸出|特番|番組|教材|講座|' +
-  '\\b(?:app|site|website|tool|shop|store|storefront|marketplace|cms|viewer|picker|' +
-  'builder|planner|spreadsheet|listings|rentals|booking)\\b', 'i');
-
-/**
- * **強い名が文の主題として結ばれているか** (Q2-1 の修理 / 第60条(f))。
- *
- * 楽園の改修の願いは `conclave の毒を除く` / `gauge に fingerprint を…` のように
- * **強い名の直後に助詞が立つ**。名は「何を改めるのか」の主である。
- * 世間の願い `gauge の壊れた針を直すDIYサイトが欲しい` も `gauge の` を持つので
- * **これ一枚では足りない** —— `WORLDLY_VESSEL_RE` と組んで初めて働く(第60条(d))。
- *
- * ⚠️ 英語側は助詞を持たないので、この印は**日本語にしか立たない**。
- *    英語の世間の願いは `WORLDLY_VESSEL_RE` と限定詞の除外が受け持つ。
- *    **この非対称は測って選んだ**ものであり、design.md §1.5.1 に実測を記した。
- */
-const STRONG_BOUND_RE = new RegExp(
-  `${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b[\\s]*(?:の|に|へ|を|は|が)`, 'i');
-
-/**
- * 強い名 × **改める動詞** の願いが、**楽園を**改めようとしているか。
- *
- * ⚠️ これが Q2-1(六度目の回帰)の修理である。旧実装は
- *    `REFORM_STRONG_RE && (BUILD_RE || MEND_RE)` の一行で、**改める動詞を
- *    無条件に受けていた**。実測 —— 教主 9/10・神官 32/32・自作 44/44 の
- *    **世間の願いが reform へ攫われた**(main では 0)。
- *    第60条(f) が名指す通り、**強い枝に許した動詞集合がそのまま新しい弱い印になった**。
- *
- * ⚠️ **なぜ二条件が要るか**(第60条(d): 弱い印は強い印と組んで初めて働く):
- *    `WORLDLY_VESSEL_RE` 単独では `forge 工程表の順番を入れ替える町工場の生産管理ツール`
- *    …は落ちるが `abode drop shipping storefront builder` 系の器を持たぬ願いが残る。
- *    `STRONG_BOUND_RE` 単独では `gauge の壊れた針を直すDIYサイトが欲しい` が残る
- *    (世間の願いも `の` を持つ)。**測った数は design.md §1.5.1 の表に在る。**
- */
-function mendsParadise(d) {
-  if (WORLDLY_VESSEL_RE.test(d)) return false;
-  return STRONG_BOUND_RE.test(d);
-}
-
-/**
- * 願いの**対象が楽園自身**か (AC-31 / AC-36 / AC-43)。
- *
- * **四枝**である。**枝ごとに課す条件が違い、どの枝も無条件ではない**:
- *
- *   1. **抽象名** (`REFORM_ABSTRACT_RE`) —— 楽園/門/engine/憲法/走行帳 …
- *      これらは楽園以外を指さないので**無条件**で真。
- *      ただし一字の `門` は紛れ語を持つ —— `namesParadiseAbstractly` が守る。
- *   2. **強い固有名 × 建造の動詞** —— `codex に検めの口を足す`。
- *   2'. **強い固有名 × 改める動詞** —— **`mendsParadise` を追加で要求する**(AC-43)。
- *      改める動詞は世間の願いにも同じ頻度で現れるので、動詞だけでは印にならない。
- *   3. **弱い名** (`REFORM_WEAK_RE`) —— vendor/census/workflow …
- *      **限定詞の直後でなく、かつ `BUILD_RE` を伴う**時のみ真。
- *
- * ⚠️ **枝 2 の動詞の伴需が F-1 の修理である。** build/rework/quality 相の実装は
- *    枝 1 と枝 2 を一本の `REFORM_RE` に混ぜ、`if (REFORM_RE.test(d)) return true;`
- *    で受けていた。すなわち強い名 26 語は**限定詞の除外一枚だけ**で守られていた。
- *    **日本語に冠詞は無い**ので、日本語の願いに対する防壁は事実上ゼロであった。
- *    実測(tribunal reflect §2.1 / 教主): main 0/54 → HEAD 54/54 が reform へ攫われた。
- *
- * ⚠️ **枝 3 の `BUILD_RE` を `MEND_RE` へ広げてはならない。** 弱い名は世間の語と
- *    衝突するので、`vendor の請求書テンプレを直す` が楽園の改革と誤読される
- *    (実測 8/12 が壊れる —— review §2.1)。**AC-44 の門がこの変異を撃つ。**
- *
- * ⚠️ **非対称の根拠は「強い名の方が証拠として強いから」ではない**(Q2-4 の訂正)。
- *    実測では枝 2 に `MEND_RE` を許す方が(32/32)枝 3 に許す(8/12)より酷く壊れた。
- *    正しい根拠は **「枝 2 には守るべき正例(`conclave の毒を除く`)が在るので、
- *    動詞ではない別の印(`mendsParadise`)を足して通す」** である。
- *
+ * **一枝である。** 抽象名が当たれば真、当たらなければ偽 —— それだけである。
  * `chooseScale` の**判定順は一段も動かしていない**。
+ *
+ * ⚠️ この述語を「枝」に割ろうとするな。上の註が名指す通り、本走行は四度それを
+ *    試みて四度とも回帰を生んだ。**枝を足すなら、足した印そのものに
+ *    第60条(b) の両方向試験を課してからにせよ。**
  */
 function isReformSubject(d) {
-  if (namesParadiseAbstractly(d)) return true;
-  if (REFORM_STRONG_RE.test(d) && BUILD_RE.test(d)) return true;
-  if (REFORM_STRONG_RE.test(d) && MEND_RE.test(d) && mendsParadise(d)) return true;
-  return REFORM_WEAK_RE.test(d) && BUILD_RE.test(d);
+  return REFORM_RE.test(d);
 }
 
 /**
@@ -787,8 +558,9 @@ function chooseScale(wish) {
   //   中で自ら剥ぐ(`denude` は冪等なので二重に剥いでも害は無い)。
   if (isCounsel(wish)) return 'counsel';
   // 対象が楽園自身なら、創造物の道ではなく改革の道を行く(第23条)。
-  // ★ 述語は `isReformSubject` —— 強い名は単独で、弱い名は建造の動詞を伴って
-  //   初めて楽園を名指す(AC-31)。**判定の段は一段も動かしていない。**
+  // ★ 述語は `isReformSubject` —— **楽園の抽象名だけ**で裁く。engine の固有名は
+  //   四度の回帰を経て本走行から撃ち捨てた(`REFORM_RE` の註と requirements の申し送り)。
+  //   **判定の段は一段も動かしていない。**
   if (isReformSubject(d)) return 'reform';
   const quickJa = /一行|修正|バグ|直す|直して|直し|タイポ|誤字|微調整/;
   const quickEn = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick)\b/;
@@ -947,4 +719,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_ABSTRACT_RE, REFORM_STRONG_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, MEND_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA, WORLDLY_VESSEL_RE, STRONG_BOUND_RE, mendsParadise, namesParadiseAbstractly, ABSTRACT_FALSE_FRIENDS };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE };
