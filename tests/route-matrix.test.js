@@ -182,6 +182,29 @@ w('standard', 'implement pagination for the site listing');
 // PARA-9 の対の枝: **図を作る産物**を求めていない、図そのものの部分機能。
 w('standard', '組織図を編集できるツールを作る');
 w('standard', '系統図を出力するコマンドを実装して');
+/**
+ * ★ PARA-10 / PARA-11 (reform/weak-signs)。**残債を払ったので本コーパスへ昇格させた 10 件**
+ *   (`reform/judgment-triad/debt.md` §4 の手順 2)。
+ *
+ * ⚠️ **足したら FLOOR も同じ commit で上げる**(下の `W-1`: standard 16 → 26)。
+ *    的だけ足して FLOOR を据え置けば、この 10 件は明日黙って消せる(第21条)。
+ *
+ * 前半 7 件は **種M**(弱い印が語中に埋没していた形)——
+ * `門限` `入門` `部門` の「門」/ `gateway` の `gate` / `aggregate` `navigate` の `gate` /
+ * `self-improvement` の `self-improve` が当たり、世間の願いが改革の道へ攫われていた。
+ * 後半 3 件は **PARA-11 の族** —— `人口` `窓口` `相場` の紛れ語が
+ * `PRODUCT_FALSE_FRIENDS` で**文全体**を無効化し、同じ文の強い産物名まで殺していた。
+ */
+w('standard', '部門別の集計コマンドを実装して');
+w('standard', '入門講座の進捗を記録する機能を実装して');
+w('standard', '門限を知らせるタイマーを実装して');
+w('standard', 'implement a gateway timeout retry helper');
+w('standard', 'create a script to aggregate the daily sales rows');
+w('standard', 'implement a navigate-back button for the wizard');
+w('standard', 'implement a self-improvement streak counter');
+w('standard', '人口分布の構成図を出力するツールを作る');
+w('standard', '窓口の導線を図示するコマンドを実装して');
+w('standard', '相場の推移を可視化するツールを作る');
 
 // ── full: 製品規模 ──────────────────────────────────────────────────
 w('full', '健康診断アプリが欲しい');
@@ -207,10 +230,30 @@ w('full', 'build an e-commerce site');
 /**
  * ★ PARA-9 の的。`isCartography` に打ち消しが無かったため、図を作る**アプリ**の
  * 願いが図一枚で返されていた。
- * ⚠️ `一門の家系図を作れるアプリが欲しい`(「一**門**」が `REFORM_RE` に当たる方)は
- *    **残債 PARA-10** であり、ここには足さない。`tests/route-debt.test.js` が凍らせている。
  */
 w('full', '家系図を作れるアプリが欲しい');
+/**
+ * ★ PARA-10 / PARA-11 (reform/weak-signs)。**残債を払ったので本コーパスへ昇格させた 10 件**
+ *   (`reform/judgment-triad/debt.md` §4 の手順 2)。
+ *
+ * ⚠️ **足したら FLOOR も同じ commit で上げる**(下の `W-1`: full 16 → 26)。
+ *
+ * `一門の家系図を作れるアプリが欲しい` と `相関図を描けるアプリを作って` は
+ * **かつての残債 PARA-10 / PARA-11 そのもの**である。`tests/route-debt.test.js` が
+ * 凍らせていたが、`REFORM_FALSE_FRIENDS`(日本語側の語境界)と
+ * 「削ってから探す」形(`wantsProduct` / `isCartography`)で払われた。
+ * 残る種H の射程は `reform/weak-signs/reach.md` が 32 件を名指しで凍らせている。
+ */
+w('full', '一門の家系図を作れるアプリが欲しい');
+w('full', '相関図を描けるアプリを作って');
+w('full', '専門店のサイトが欲しい');
+w('full', '名門校の受験対策アプリが欲しい');
+w('full', '登竜門コンテストの投票アプリが欲しい');
+w('full', '専門分野の系統図を編集できるアプリが欲しい');
+w('full', 'build a civil engineering estimate app');
+w('full', 'build an app to investigate delegate voting records');
+w('full', 'build a self-improvement journal app');
+w('full', 'build a priesthood directory app for the diocese');
 
 // ══════════════════════════════════════════════════════════════════════
 // 行列を組む
@@ -369,7 +412,10 @@ test('W-1 [門番]: コーパスは宣言された下限を保つ — 一行落�
   // ★ reform/judgment-triad: PARA-7/PARA-9 の的 15 件(standard 7 / full 8)を足した。
   //   **足したら FLOOR も同じ commit で上げる**(AC-6)—— 門番が守るのは「減らさないこと」
   //   だけなので、的を足して FLOOR を据え置けば、その 15 件は明日黙って消せる。
-  const FLOOR = { counsel: 42, cartography: 9, reform: 11, quick: 8, standard: 16, full: 16 };
+  // ★ reform/weak-signs: PARA-10/PARA-11 の的 20 件(standard 10 / full 10)を足した。
+  //   残債 2 件の昇格を含む(debt.md §4 の手順 2/3)。standard 16→26 / full 16→26 /
+  //   総数 102→122。
+  const FLOOR = { counsel: 42, cartography: 9, reform: 11, quick: 8, standard: 26, full: 26 };
   for (const [r, n] of Object.entries(FLOOR)) {
     const have = CORPUS.filter(c => c.route === r).length;
     assert.ok(have >= n,
@@ -377,7 +423,7 @@ test('W-1 [門番]: コーパスは宣言された下限を保つ — 一行落�
       'コーパスを削って緑にするのは門の骨抜きである(第21条)。' +
       '意図して減らすなら FLOOR も同じ commit で下げ、理由を書け。');
   }
-  assert.ok(CORPUS.length >= 102, `コーパス総数が ${CORPUS.length} 件に減っている(下限 102)`);
+  assert.ok(CORPUS.length >= 122, `コーパス総数が ${CORPUS.length} 件に減っている(下限 122)`);
 });
 
 test('W-2 [門番]: 格子は 3 × 10 × 5 = 150 通りを保つ — 配列を空にすれば鳴る', () => {

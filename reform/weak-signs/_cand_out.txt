@@ -1,0 +1,555 @@
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 B0 — 素の main(対照)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.B0.js  (原文と異なるか: — 対照なので同一で正しい)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          24           0          32           0      59
+full                     0           2          23           0           0          24      49
+
+対角の合計: 120 / 172  (誤着 52 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 24 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 23 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 52
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=0
+  Route debt self-test: 5 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 R1 — PARA-10 除去: 弱い印「門」を撃ち捨てる
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.R1.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          14           0           1           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          21           0          35           0      59
+full                     0           2          19           0           0          28      49
+
+対角の合計: 126 / 172  (誤着 46 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [reform → standard] : 1 件
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 21 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 19 件
+
+非ゼロの非対角セル数: 5 / 30   誤着の総数: 46
+前走行 101 件コーパスのみ: 対角 100/101  ✗ 回帰: "門に監査の一段を足す"->standard(正解 reform)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=1
+  ✗ M-2 [対角]: 対角線の合計がコーパスの件数と等しい — 全件が正しい道へ着く
+  ✗ M-3 [非対角]: 非対角の**各セル**が 0 — どの道も他の道を奪っていない
+  Route matrix self-test: 11 passed, 2 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ "門に監査の一段を足す" → reform
+  ✗ "ダッシュボードを生きた門にせよ" → reform
+  ✗ "門を強化する" → reform
+  ✗ 楽園の抽象名を含む改革の願いは reform に留まる (逆向きの証明)
+  ✗ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✗ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✗ 抽象名は今まで通り無条件で楽園を名指す (AC-40 / 修理が広がりすぎていない)
+  ✗ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✗ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  ✗ 強い産物名の紛れ語が諐問の道を奪わない (R-2 / 機能・一段・画面)
+  Counsel self-test: 199 passed, 11 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-3 [残債]: 原因が消えていないことを名指しで確かめる
+  Route debt self-test: 3 passed, 2 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 R2 — PARA-10 語境界: 英語の印に \b を課す(日本語は不変)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.R2.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          20           0          36           0      59
+full                     0           2          19           0           0          28      49
+
+対角の合計: 128 / 172  (誤着 44 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 20 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 19 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 44
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=0
+  Route debt self-test: 5 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 R3 — PARA-10 紛れ語表: REFORM_FALSE_FRIENDS を削ってから印を探す
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.R3.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          12           0          44           0      59
+full                     0           2           8           0           1          38      49
+
+対角の合計: 146 / 172  (誤着 26 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 12 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 8 件
+
+  [full → standard] : 1 件
+
+非ゼロの非対角セル数: 5 / 30   誤着の総数: 26
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  Counsel self-test: 209 passed, 1 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  Route debt self-test: 4 passed, 1 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 R4 — PARA-10 文脈化: 「門」は楽園/機構の語と共起した時だけ真
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.R4.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          21           0          35           0      59
+full                     0           2          19           0           0          28      49
+
+対角の合計: 127 / 172  (誤着 45 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 21 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 19 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 45
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ "ダッシュボードを生きた門にせよ" → reform
+  ✗ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✗ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✗ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✗ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  Counsel self-test: 204 passed, 6 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-3 [残債]: 原因が消えていないことを名指しで確かめる
+  Route debt self-test: 3 passed, 2 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 R5 — PARA-10 語境界 ∧ 文脈化 (R2+R4)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.R5.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          17           0          39           0      59
+full                     0           2          15           0           0          32      49
+
+対角の合計: 135 / 172  (誤着 37 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 17 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 15 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 37
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ "ダッシュボードを生きた門にせよ" → reform
+  ✗ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✗ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✗ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✗ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  Counsel self-test: 204 passed, 6 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-3 [残債]: 原因が消えていないことを名指しで確かめる
+  Route debt self-test: 3 passed, 2 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 P1 — PARA-11 削ってから探す (debt.md §4)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.P1.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          24           0          32           0      59
+full                     0           2          23           0           0          24      49
+
+対角の合計: 120 / 172  (誤着 52 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 24 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 23 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 52
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=0
+  Route debt self-test: 5 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 P2 — PARA-11 打ち消しを弱い印に限定 (isCartography の作法)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.P2.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          24           0          32           0      59
+full                     0           2          23           0           0          24      49
+
+対角の合計: 120 / 172  (誤着 52 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+
+  [standard → reform] : 24 件
+
+  [full → cartography] : 2 件
+
+  [full → reform] : 23 件
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 52
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=0
+  Route debt self-test: 5 passed, 0 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 P3 — PARA-11 P1 + isCartography の打ち消しも揃える
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.P3.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          24           0          35           0      59
+full                     0           0          24           0           0          25      49
+
+対角の合計: 124 / 172  (誤着 48 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 24 件
+
+  [full → reform] : 24 件
+
+非ゼロの非対角セル数: 2 / 30   誤着の総数: 48
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=0
+  Counsel self-test: 210 passed, 0 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  Route debt self-test: 4 passed, 1 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 X1 — 合わせ技 R4 + P3
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X1.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          21           0          38           0      59
+full                     0           0          19           0           0          30      49
+
+対角の合計: 132 / 172  (誤着 40 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 21 件
+
+  [full → reform] : 19 件
+
+非ゼロの非対角セル数: 2 / 30   誤着の総数: 40
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ "ダッシュボードを生きた門にせよ" → reform
+  ✗ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✗ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✗ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✗ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  Counsel self-test: 204 passed, 6 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  ✗ D-3 [残債]: 原因が消えていないことを名指しで確かめる
+  Route debt self-test: 2 passed, 3 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 X2 — 合わせ技 R5 + P3
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X2.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          17           0          42           0      59
+full                     0           0          15           0           0          34      49
+
+対角の合計: 140 / 172  (誤着 32 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 17 件
+
+  [full → reform] : 15 件
+
+非ゼロの非対角セル数: 2 / 30   誤着の総数: 32
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ "ダッシュボードを生きた門にせよ" → reform
+  ✗ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✗ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✗ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✗ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  Counsel self-test: 204 passed, 6 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  ✗ D-3 [残債]: 原因が消えていないことを名指しで確かめる
+  Route debt self-test: 2 passed, 3 failed
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 X3 — 合わせ技 R3 + P3(抽象名の表を一語も消さない)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X3.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          12           0          47           0      59
+full                     0           0           8           0           1          40      49
+
+対角の合計: 151 / 172  (誤着 21 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 12 件
+
+  [full → reform] : 8 件
+
+  [full → standard] : 1 件
+
+非ゼロの非対角セル数: 3 / 30   誤着の総数: 21
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  Counsel self-test: 209 passed, 1 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  Route debt self-test: 3 passed, 2 failed
+
+候補 X4: 置換に失敗 — R3a: 置換の的が見つからない
+
+════════════════════════════════════════════════════════════════════════════════════════════
+候補 X4 — 合わせ技 R3 + R2 + P3(X3 + 英語の語境界)
+  曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X4.js  (原文と異なるか: YES)
+════════════════════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          12           0          47           0      59
+full                     0           0           7           0           1          41      49
+
+対角の合計: 152 / 172  (誤着 20 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 12 件
+
+  [full → reform] : 7 件
+
+  [full → standard] : 1 件
+
+非ゼロの非対角セル数: 3 / 30   誤着の総数: 20
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+  ── 既存門 tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存門 tests/counsel.test.js ──  exit=1
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  Counsel self-test: 209 passed, 1 failed
+
+  ── 既存門 tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  Route debt self-test: 3 passed, 2 failed

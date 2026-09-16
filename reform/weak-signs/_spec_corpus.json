@@ -1,0 +1,1034 @@
+[
+ {
+  "route": "counsel",
+  "wish": "楽園の構造を調査して報告してほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "楽園のエンジンを監査してほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "二つの案の比較表がほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "人口動態を調査して報告してほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "腎機能の低下を診断してほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "相場を分析して所見をくれ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "憲法に条を足すべきかどう思う",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "gauge に口を設けるのは妥当か",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "楽園に相を足すべきかどうすべきか",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "楽園の門を直すべきか検討して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "ポモドーロアプリに休憩の機能を足すべきか検討して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "should we add a flag to the gate? please advise",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "is it worth adding an endpoint here? give your assessment",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "compare the two approaches and advise whether to add a command",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "review whether introducing a new tool is a good idea",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "should we add a dark mode to the habit tracker? advise",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "楽園の門に一段を足すべきか。意見をくれ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "counsel",
+  "wish": "gauge に口を設けるべきか。所見がほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "楽園の位階の相関図を作れ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "オーケストレーションの相関図を作れ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "家計の流れをフロー図にして",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "楽園の相の系統図を描いてほしい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "依存の関連図を可視化して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "draw an architecture diagram of the engine",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "visualize the phase flowchart",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "楽園の位階の相関図を作るべきか検討して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "構成図を描くのは妥当か",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "組織の階層図を作って",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "データの流れを図示して",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "楽園の相の依存をダイアグラムにして",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "システム構成図を描いてくれ",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "draw a sequence diagram for the login flow",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "cartography",
+  "wish": "一族の系統図を描いてほしい",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の自己診断に fingerprint を確かめる口を設ける",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "門に監査の一段を足す",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の憲法に条を足せ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の門に一段を設けよ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の判定器を書き換えろ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の走行台帳に印を付与せよ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の相を新設する",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の門を見直すべきだ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園に監査の口を足すべきである",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "足すべきか迷ったが決めた。楽園の門に一段を足せ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "妥当か検討済み:楽園に監査の口を実装せよ",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の走行帳に鼓動の口を足せ",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の相の並びを変えよ",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の憲法の条を書き直せ",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "reform",
+  "wish": "楽園の監査の門を強化せよ",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "台帳の毒を直す",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "タイポを直して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "誤字を修正して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "一行のバグを直す",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "fix the typo in the readme",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "quick tweak to the parser",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "hotfix the broken import",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "rename the variable",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "変数名を直す",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "誤字の修正",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "色を微調整して",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "patch the broken link",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "adjust the padding",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "small tweak to the css",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "quick",
+  "wish": "typo fix in the docs",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "レシピ検索の並び替えを実現して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "写真の整頓を実装して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "読書記録の栞を作る",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "通知の仕組みを構築して",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "implement a markdown renderer",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "create a csv importer",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "develop a caching layer",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "make a url shortener service",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "build a calorie tracker cli tool",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "メモ帳の検索を実装して",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "CSV の取り込みを作る",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "build a rss reader",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "implement a pagination helper",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "create a thumbnail generator",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "standard",
+  "wish": "develop a rate limiter",
+  "src": "new",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "健康診断アプリが欲しい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "build a habit tracker app",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "ポモドーロタイマーのアプリが欲しい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "家計簿のシステムを作って",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "読書記録のプラットフォームが欲しい",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "build a calorie tracker application",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "launch an mvp dashboard product",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "build an end-to-end saas platform",
+  "src": "gate",
+  "tag": ""
+ },
+ {
+  "route": "full",
+  "wish": "ECサイトを作れ",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "社内ポータルサイトを作れ",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "予約サイトを作りたい",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "コーポレートサイトが欲しい",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "通販サイトを構築して",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "ニュースポータルのウェブサイトが欲しい",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "build an e-commerce site",
+  "src": "new",
+  "tag": "PARA-7"
+ },
+ {
+  "route": "full",
+  "wish": "一門の家系図を作れるアプリが欲しい",
+  "src": "debt",
+  "tag": "PARA-10"
+ },
+ {
+  "route": "full",
+  "wish": "家系図を作れるアプリが欲しい",
+  "src": "new",
+  "tag": "PARA-9"
+ },
+ {
+  "route": "full",
+  "wish": "相関図を描けるアプリを作って",
+  "src": "debt",
+  "tag": "PARA-11"
+ },
+ {
+  "route": "standard",
+  "wish": "組織図を編集できるツールを作る",
+  "src": "new",
+  "tag": "PARA-9"
+ },
+ {
+  "route": "standard",
+  "wish": "系統図を出力するコマンドを実装して",
+  "src": "new",
+  "tag": "PARA-9"
+ },
+ {
+  "route": "standard",
+  "wish": "レシピサイトの並び替えを実装して",
+  "src": "new",
+  "tag": "PARA-7-partial"
+ },
+ {
+  "route": "standard",
+  "wish": "サイトの検索機能を実装して",
+  "src": "new",
+  "tag": "PARA-7-partial"
+ },
+ {
+  "route": "standard",
+  "wish": "通販サイトのクーポン計算を作る",
+  "src": "new",
+  "tag": "PARA-7-partial"
+ },
+ {
+  "route": "standard",
+  "wish": "add a sort option to the recipe site",
+  "src": "new",
+  "tag": "PARA-7-partial"
+ },
+ {
+  "route": "standard",
+  "wish": "implement pagination for the site listing",
+  "src": "new",
+  "tag": "PARA-7-partial"
+ },
+ {
+  "route": "full",
+  "wish": "人口動態のアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "相談窓口のツールを作る",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "入口の混雑を表示する画面を実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "口コミ投稿のアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "口座残高を取り込むコマンドを実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "非常口の点検を記録する機能を実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "相場を追うアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "相談予約のボタンを実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "相続の手続きを進めるアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "相互リンクを集めるツールを作る",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "真相究明メモの画面を実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "首相の発言を集めるアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "専門店のサイトが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "部門別の集計コマンドを実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "名門校の受験対策アプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "入門講座の進捗を記録する機能を実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "門限を知らせるタイマーを実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "登竜門コンテストの投票アプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "腎機能の数値を記録するアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "認知機能テストの画面を実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "一段落したタスクを片付けるアプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "画面越しの通話を録画するツールを作る",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "タイマー競技の記録アプリが欲しい",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "standard",
+  "wish": "機能性表示食品の一覧を出すコマンドを実装して",
+  "src": "new",
+  "tag": "P11"
+ },
+ {
+  "route": "full",
+  "wish": "専門分野の系統図を編集できるアプリが欲しい",
+  "src": "new",
+  "tag": "P11c"
+ },
+ {
+  "route": "standard",
+  "wish": "人口分布の構成図を出力するツールを作る",
+  "src": "new",
+  "tag": "P11c"
+ },
+ {
+  "route": "standard",
+  "wish": "窓口の導線を図示するコマンドを実装して",
+  "src": "new",
+  "tag": "P11c"
+ },
+ {
+  "route": "standard",
+  "wish": "相場の推移を可視化するツールを作る",
+  "src": "new",
+  "tag": "P11c"
+ },
+ {
+  "route": "full",
+  "wish": "常夏の楽園を巡るリゾート予約アプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "楽園ビーチの写真を並べる機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "build a fan wiki for paradise lost",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "i want a travel booking app for paradise island resorts",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "登山用ハーネスの通販サイトを作れ",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "安全ハーネスの点検記録を付ける機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement an inventory importer for climbing harness stock",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a safety harness inspection app",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "日本国憲法の条文を検索できるアプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "counsel",
+  "wish": "各国の憲法の前文を比較表がほしい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "create a full-text search index for the us constitution",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a constitution quiz app for students",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a search engine result parser",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a civil engineering estimate app",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "create a listing page for used car engine parts",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "検索エンジンの順位を追うアプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "エンジンオイルの交換履歴を記録する機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a gateway timeout retry helper",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build an app to investigate delegate voting records",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "create a script to aggregate the daily sales rows",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a navigate-back button for the wizard",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "石油パイプラインの保守記録システムを作って",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "データパイプラインの実行ログを表示する機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a sales pipeline stage filter",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a crm app with a deal pipeline view",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "自己改善の習慣を記録するアプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "自己改善のチェックリスト機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a self-improvement streak counter",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a self-improvement journal app",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "コンテナオーケストレーションの監視ダッシュボードを作って",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "音楽のオーケストレーション譜面を印刷する機能を実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a kubernetes orchestration status widget",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a container orchestration cost dashboard product",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "カトリック枢機卿の一覧を引けるアプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "枢機卿の選挙結果を取り込むコマンドを実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a cardinal direction compass widget",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a birdwatching app for spotting a cardinal",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "神社の神官の当番表を管理するアプリが欲しい",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "神官の装束の在庫を数えるコマンドを実装して",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "standard",
+  "wish": "implement a parish priest schedule importer",
+  "src": "new",
+  "tag": "P10"
+ },
+ {
+  "route": "full",
+  "wish": "build a priesthood directory app for the diocese",
+  "src": "new",
+  "tag": "P10"
+ }
+]

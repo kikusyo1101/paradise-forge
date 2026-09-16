@@ -1,0 +1,95 @@
+曲げた forge: C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X4prime.js  (原文と異なるか: YES)
+
+═══ Q1. 種M 13 件 — 語境界だけで塞げるか ═══
+  ok [種M] "build a civil engineering estimate app"  isReformSubject=false  ->full
+  ok [種M] "一門の家系図を作れるアプリが欲しい"  isReformSubject=false  ->full
+  ok [種M] "専門店の在庫を管理するシステムを作って"  isReformSubject=false  ->full
+  ok [種M] "部門別の売上を集計するコマンドを実装して"  isReformSubject=false  ->standard
+  ok [種M] "名門校の受験対策アプリが欲しい"  isReformSubject=false  ->full
+  ok [種M] "入門講座の進捗を記録する機能を実装して"  isReformSubject=false  ->standard
+  ok [種M] "implement a gateway timeout retry helper"  isReformSubject=false  ->standard
+  ok [種M] "build an app to investigate delegate voting records"  isReformSubject=false  ->full
+  ok [種M] "create a script to aggregate the daily sales rows"  isReformSubject=false  ->standard
+  ok [種M] "implement a navigate-back button for the wizard"  isReformSubject=false  ->standard
+  ok [種M] "implement a self-improvement streak counter"  isReformSubject=false  ->standard
+  ok [種M] "build a self-improvement journal app"  isReformSubject=false  ->full
+  ok [種M] "build a priesthood directory app for the diocese"  isReformSubject=false  ->full
+
+種M で今なお reform を名乗る件数: 0 / 13
+
+
+═══ Q2/Q3. 172 件コーパスの混同行列(X4′) ═══
+forge: C:\Users\kikus\Documents\workspace\paradise\graph\forge.js
+コーパス件数: 172  (道ごと: counsel=19, cartography=15, reform=15, quick=15, standard=59, full=49)
+  内訳: 前走行 gate/new = 101 / 残債 debt = 2 / 本走行 P10 = 41 / 本走行 P11 = 24 / 本走行 P11c = 4
+
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          17           0          42           0      59
+full                     0           0          15           0           0          34      49
+
+対角の合計: 140 / 172  (誤着 32 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 17 件
+      ・楽園ビーチの写真を並べる機能を実装して   (new/P10)
+      ・build a fan wiki for paradise lost   (new/P10)
+      ・安全ハーネスの点検記録を付ける機能を実装して   (new/P10)
+      ・implement an inventory importer for climbing harness stock   (new/P10)
+      ・create a full-text search index for the us constitution   (new/P10)
+      ・implement a search engine result parser   (new/P10)
+      ・create a listing page for used car engine parts   (new/P10)
+      ・エンジンオイルの交換履歴を記録する機能を実装して   (new/P10)
+      ・データパイプラインの実行ログを表示する機能を実装して   (new/P10)
+      ・implement a sales pipeline stage filter   (new/P10)
+      ・自己改善のチェックリスト機能を実装して   (new/P10)
+      ・音楽のオーケストレーション譜面を印刷する機能を実装して   (new/P10)
+      ・implement a kubernetes orchestration status widget   (new/P10)
+      ・枢機卿の選挙結果を取り込むコマンドを実装して   (new/P10)
+      ・implement a cardinal direction compass widget   (new/P10)
+      ・神官の装束の在庫を数えるコマンドを実装して   (new/P10)
+      ・implement a parish priest schedule importer   (new/P10)
+
+  [full → reform] : 15 件
+      ・常夏の楽園を巡るリゾート予約アプリが欲しい   (new/P10)
+      ・i want a travel booking app for paradise island resorts   (new/P10)
+      ・登山用ハーネスの通販サイトを作れ   (new/P10)
+      ・build a safety harness inspection app   (new/P10)
+      ・日本国憲法の条文を検索できるアプリが欲しい   (new/P10)
+      ・build a constitution quiz app for students   (new/P10)
+      ・検索エンジンの順位を追うアプリが欲しい   (new/P10)
+      ・石油パイプラインの保守記録システムを作って   (new/P10)
+      ・build a crm app with a deal pipeline view   (new/P10)
+      ・自己改善の習慣を記録するアプリが欲しい   (new/P10)
+      ・コンテナオーケストレーションの監視ダッシュボードを作って   (new/P10)
+      ・build a container orchestration cost dashboard product   (new/P10)
+      ・カトリック枢機卿の一覧を引けるアプリが欲しい   (new/P10)
+      ・build a birdwatching app for spotting a cardinal   (new/P10)
+      ・神社の神官の当番表を管理するアプリが欲しい   (new/P10)
+
+非ゼロの非対角セル数: 2 / 30   誤着の総数: 32
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+ユニークな願い: 172 / 総行数 172
+OLD(前走行分) 行数=101  ユニーク=101
+
+
+═══ Q4. 既存門(逐次) ═══
+
+  ── tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── tests/counsel.test.js ──  exit=1
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  Counsel self-test: 209 passed, 1 failed
+
+  ── tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  Route debt self-test: 3 passed, 2 failed

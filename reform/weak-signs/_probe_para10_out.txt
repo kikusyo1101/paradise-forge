@@ -1,0 +1,163 @@
+forge: C:\Users\kikus\Documents\workspace\paradise\graph\forge.js
+REFORM_RE: /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest)/i
+
+═══ PARA-10: REFORM_RE の各印が「他語に埋もれる」か ═══
+
+  【印 "楽園"】 紛れの誤着 2/2
+    ✗ 誤着 "常夏の楽園を巡るリゾート予約アプリが欲しい"
+           REFORM_RE一致="楽園"@3  -> reform  (正解 full)
+    ✗ 誤着 "楽園ビーチの写真を並べる機能を実装して"
+           REFORM_RE一致="楽園"@0  -> reform  (正解 standard)
+
+  【印 "paradise"】 紛れの誤着 2/2
+    ✗ 誤着 "build a fan wiki for paradise lost"
+           REFORM_RE一致="paradise"@21  -> reform  (正解 standard)
+    ✗ 誤着 "i want a travel booking app for paradise island resorts"
+           REFORM_RE一致="paradise"@32  -> reform  (正解 full)
+
+  【印 "ハーネス"】 紛れの誤着 2/2
+    ✗ 誤着 "登山用ハーネスの通販サイトを作れ"
+           REFORM_RE一致="ハーネス"@3  -> reform  (正解 full)
+    ✗ 誤着 "安全ハーネスの点検記録を付ける機能を実装して"
+           REFORM_RE一致="ハーネス"@2  -> reform  (正解 standard)
+
+  【印 "harness"】 紛れの誤着 2/2
+    ✗ 誤着 "implement an inventory importer for climbing harness stock"
+           REFORM_RE一致="harness"@45  -> reform  (正解 standard)
+    ✗ 誤着 "build a safety harness inspection app"
+           REFORM_RE一致="harness"@15  -> reform  (正解 full)
+
+  【印 "憲法"】 紛れの誤着 1/2
+    ✗ 誤着 "日本国憲法の条文を検索できるアプリが欲しい"
+           REFORM_RE一致="憲法"@3  -> reform  (正解 full)
+    ok    "各国の憲法の前文を比較表がほしい"
+           REFORM_RE一致="憲法"@3  -> counsel  (正解 counsel)
+
+  【印 "constitution"】 紛れの誤着 2/2
+    ✗ 誤着 "create a full-text search index for the us constitution"
+           REFORM_RE一致="constitution"@43  -> reform  (正解 standard)
+    ✗ 誤着 "build a constitution quiz app for students"
+           REFORM_RE一致="constitution"@8  -> reform  (正解 full)
+
+  【印 "engine"】 紛れの誤着 3/3
+    ✗ 誤着 "implement a search engine result parser"
+           REFORM_RE一致="engine"@19  -> reform  (正解 standard)
+    ✗ 誤着 "build a civil engineering estimate app"
+           REFORM_RE一致="engine"@14  -> reform  (正解 full)
+    ✗ 誤着 "create a listing page for used car engine parts"
+           REFORM_RE一致="engine"@35  -> reform  (正解 standard)
+
+  【印 "エンジン"】 紛れの誤着 2/2
+    ✗ 誤着 "検索エンジンの順位を追うアプリが欲しい"
+           REFORM_RE一致="エンジン"@2  -> reform  (正解 full)
+    ✗ 誤着 "エンジンオイルの交換履歴を記録する機能を実装して"
+           REFORM_RE一致="エンジン"@0  -> reform  (正解 standard)
+
+  【印 "門"】 紛れの誤着 5/5
+    ✗ 誤着 "一門の家系図を作れるアプリが欲しい"
+           REFORM_RE一致="門"@1  -> reform  (正解 full)
+    ✗ 誤着 "専門店の在庫を管理するシステムを作って"
+           REFORM_RE一致="門"@1  -> reform  (正解 full)
+    ✗ 誤着 "部門別の売上を集計するコマンドを実装して"
+           REFORM_RE一致="門"@1  -> reform  (正解 standard)
+    ✗ 誤着 "名門校の受験対策アプリが欲しい"
+           REFORM_RE一致="門"@1  -> reform  (正解 full)
+    ✗ 誤着 "入門講座の進捗を記録する機能を実装して"
+           REFORM_RE一致="門"@1  -> reform  (正解 standard)
+
+  【印 "gate"】 紛れの誤着 4/4
+    ✗ 誤着 "implement a gateway timeout retry helper"
+           REFORM_RE一致="gate"@12  -> reform  (正解 standard)
+    ✗ 誤着 "build an app to investigate delegate voting records"
+           REFORM_RE一致="gate"@23  -> reform  (正解 full)
+    ✗ 誤着 "create a script to aggregate the daily sales rows"
+           REFORM_RE一致="gate"@24  -> reform  (正解 standard)
+    ✗ 誤着 "implement a navigate-back button for the wizard"
+           REFORM_RE一致="gate"@16  -> reform  (正解 standard)
+
+  【印 "パイプライン"】 紛れの誤着 2/2
+    ✗ 誤着 "石油パイプラインの保守記録システムを作って"
+           REFORM_RE一致="パイプライン"@2  -> reform  (正解 full)
+    ✗ 誤着 "データパイプラインの実行ログを表示する機能を実装して"
+           REFORM_RE一致="パイプライン"@3  -> reform  (正解 standard)
+
+  【印 "pipeline"】 紛れの誤着 2/2
+    ✗ 誤着 "implement a sales pipeline stage filter"
+           REFORM_RE一致="pipeline"@18  -> reform  (正解 standard)
+    ✗ 誤着 "build a crm app with a deal pipeline view"
+           REFORM_RE一致="pipeline"@28  -> reform  (正解 full)
+
+  【印 "自己改善"】 紛れの誤着 2/2
+    ✗ 誤着 "自己改善の習慣を記録するアプリが欲しい"
+           REFORM_RE一致="自己改善"@0  -> reform  (正解 full)
+    ✗ 誤着 "自己改善のチェックリスト機能を実装して"
+           REFORM_RE一致="自己改善"@0  -> reform  (正解 standard)
+
+  【印 "self-improve"】 紛れの誤着 2/2
+    ✗ 誤着 "implement a self-improvement streak counter"
+           REFORM_RE一致="self-improve"@12  -> reform  (正解 standard)
+    ✗ 誤着 "build a self-improvement journal app"
+           REFORM_RE一致="self-improve"@8  -> reform  (正解 full)
+
+  【印 "オーケストレーション"】 紛れの誤着 2/2
+    ✗ 誤着 "コンテナオーケストレーションの監視ダッシュボードを作って"
+           REFORM_RE一致="オーケストレーション"@4  -> reform  (正解 full)
+    ✗ 誤着 "音楽のオーケストレーション譜面を印刷する機能を実装して"
+           REFORM_RE一致="オーケストレーション"@3  -> reform  (正解 standard)
+
+  【印 "orchestration"】 紛れの誤着 2/2
+    ✗ 誤着 "implement a kubernetes orchestration status widget"
+           REFORM_RE一致="orchestration"@23  -> reform  (正解 standard)
+    ✗ 誤着 "build a container orchestration cost dashboard product"
+           REFORM_RE一致="orchestration"@18  -> reform  (正解 full)
+
+  【印 "枢機卿"】 紛れの誤着 2/2
+    ✗ 誤着 "カトリック枢機卿の一覧を引けるアプリが欲しい"
+           REFORM_RE一致="枢機卿"@5  -> reform  (正解 full)
+    ✗ 誤着 "枢機卿の選挙結果を取り込むコマンドを実装して"
+           REFORM_RE一致="枢機卿"@0  -> reform  (正解 standard)
+
+  【印 "cardinal"】 紛れの誤着 2/2
+    ✗ 誤着 "implement a cardinal direction compass widget"
+           REFORM_RE一致="cardinal"@12  -> reform  (正解 standard)
+    ✗ 誤着 "build a birdwatching app for spotting a cardinal"
+           REFORM_RE一致="cardinal"@40  -> reform  (正解 full)
+
+  【印 "神官"】 紛れの誤着 2/2
+    ✗ 誤着 "神社の神官の当番表を管理するアプリが欲しい"
+           REFORM_RE一致="神官"@3  -> reform  (正解 full)
+    ✗ 誤着 "神官の装束の在庫を数えるコマンドを実装して"
+           REFORM_RE一致="神官"@0  -> reform  (正解 standard)
+
+  【印 "priest"】 紛れの誤着 2/2
+    ✗ 誤着 "implement a parish priest schedule importer"
+           REFORM_RE一致="priest"@19  -> reform  (正解 standard)
+    ✗ 誤着 "build a priesthood directory app for the diocese"
+           REFORM_RE一致="priest"@8  -> reform  (正解 full)
+
+═══ 印ごとのまとめ ═══
+印                       誤着/試行   危うさ
+楽園                          2/2     ★ 危うい
+paradise                    2/2     ★ 危うい
+ハーネス                        2/2     ★ 危うい
+harness                     2/2     ★ 危うい
+憲法                          1/2     ★ 危うい
+constitution                2/2     ★ 危うい
+engine                      3/3     ★ 危うい
+エンジン                        2/2     ★ 危うい
+門                           5/5     ★ 危うい
+gate                        4/4     ★ 危うい
+パイプライン                      2/2     ★ 危うい
+pipeline                    2/2     ★ 危うい
+自己改善                        2/2     ★ 危うい
+self-improve                2/2     ★ 危うい
+オーケストレーション                  2/2     ★ 危うい
+orchestration               2/2     ★ 危うい
+枢機卿                         2/2     ★ 危うい
+cardinal                    2/2     ★ 危うい
+神官                          2/2     ★ 危うい
+priest                      2/2     ★ 危うい
+
+合計: 45/46 件が reform へ誤着
+危うい印: 楽園, paradise, ハーネス, harness, 憲法, constitution, engine, エンジン, 門, gate, パイプライン, pipeline, 自己改善, self-improve, オーケストレーション, orchestration, 枢機卿, cardinal, 神官, priest
+安全な印: 

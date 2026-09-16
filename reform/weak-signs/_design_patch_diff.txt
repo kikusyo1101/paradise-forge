@@ -1,0 +1,126 @@
+diff --git a/graph/forge.js b/./_t.js
+index 897bb2d..b27626a 100644
+--- a/graph/forge.js
++++ b/./_t.js
+@@ -348,7 +348,50 @@ function denude(wish) {
+  * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(楽園/門/憲法/engine…)。
+  *    これらは楽園以外を指さないので**無条件**で真でよい。
+  */
+-const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest)/i;
++/**
++ * ★ PARA-10 (reform/weak-signs / R2): **語境界を二枝で持つ**(第60条(b))。
++ *
++ * 旧実装は日英を一つの選択肢の並びに混ぜ、英語にも境界を課していなかった ——
++ * `gateway` の中の `gate` / `engineering` の中の `engine` /
++ * `delegate` `aggregate` `navigate` の中の `gate` / `priesthood` の中の `priest` /
++ * `self-improvement` の中の `self-improve` が当たり、世間の願いが改革の道へ攫われた。
++ *
++ * ⚠️ **日本語に `\b` を使ってはならない**(COUNSEL_JA / BUILD_JA の註と同じ理由 ——
++ *    日本語は全て非単語構成文字として扱われるので、境界は事実上決して一致しない)。
++ *    日本語側の語境界は `REFORM_FALSE_FRIENDS`(下)が代用する。
++ *    **日英を別の定数に割る形は L-3 で確立済みである**(`BUILD_JA` / `BUILD_EN` / `BUILD_RE`、
++ *    `COUNSEL_JA` / `COUNSEL_EN`、`DIAGRAM_JA` / `DIAGRAM_EN`)。同じ作法に揃えた。
++ *
++ * ⚠️ **語は一語も増減していない。** `tests/counsel.test.js:652` が 20 語を直に
++ *    撃っており(AC-10)、`REFORM_RE.test('門')` / `.test('gate')` は今も真である。
++ *    直したのは**当たり方**であって表ではない。
++ */
++const REFORM_JA = '楽園|ハーネス|憲法|エンジン|門|パイプライン|自己改善|オーケストレーション|枢機卿|神官';
++const REFORM_EN = '\\b(?:paradise|harness|constitution|engine|gate|pipeline|self-improve|orchestration|cardinal|priest)\\b';
++const REFORM_RE = new RegExp(`${REFORM_JA}|${REFORM_EN}`, 'i');
++
++/**
++ * ★ PARA-10 (reform/weak-signs / R3): 弱い印「門」の**紛れ語**。
++ *
++ * これは `REFORM_EN` の `\b` に対応する**日本語側の語境界**である ——
++ * 日本語に単語境界が無いので、「門」がより長い語の一部として当たる形を
++ * 語で数え上げるほか無い。`DIAGRAM_FALSE_FRIENDS` / `PRODUCT_FALSE_FRIENDS` と同じ作法。
++ *
++ * ⚠️⚠️ **ここに「門」を含まない語を一語でも入れてはならない**(第60条)。
++ *    弱い印は表を足しても強くならない。`常夏の楽園` `検索エンジン` `カトリック枢機卿`
++ *    のような**同音異義の的そのもの**を書けば、それは判定器の修理ではなく答案の暗記であり、
++ *    コーパスの外(`熱帯の楽園` `自動車エンジン`)には一切効かない。
++ *    しかも長い紛れ語は文の骨まで削る —— `コンテナオーケストレーション` を入れた形は
++ *    「の監視ダッシュボードを作って」だけを残し、`full` の願いを `standard` へ落とした
++ *    (reform/weak-signs/requirements.md §3.3 の実測)。
++ *    **塞げない的は `reform/weak-signs/reach.md` へ載せよ。**
++ *    `tests/reform-sign.test.js` の S-3 がこの戒めを機械で撃つ。
++ */
++const REFORM_FALSE_FRIENDS = new RegExp(
++  // 分野・学び・家系の「門」— 判定の門ではない
++  '一門|専門|部門|門下|入門|名門|門戸|関門|門限|門人|登竜門|' +
++  // 建物・行事の「門」
++  '門前|門外|水門|城門|門松|門出|山門|正門|門番|門弟', 'i');
+ 
+ /**
+  * 願いの**対象が楽園自身**か。
+@@ -361,7 +404,16 @@ const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|eng
+  *    第60条(b) の両方向試験を課してからにせよ。**
+  */
+ function isReformSubject(d) {
+-  return REFORM_RE.test(d);
++  /**
++   * ★ PARA-10 (reform/weak-signs / R3): 紛れ語の**一致箇所ごと全体**を削ってから印を探す。
++   *
++   * ⚠️ `if (REFORM_FALSE_FRIENDS.test(d)) return false;` と書いてはならない ——
++   *    それは**文全体**を無効化する形であり、PARA-11 が実証した病そのものである
++   *    (「専門の楽園を改修せよ」が改革の道を失う)。削るのは当たった箇所だけである。
++   * ⚠️ 削る単位は「一致箇所ごと全体」である。部分だけ削れば残りが印に当たる。
++   */
++  const stripped = String(d).replace(new RegExp(REFORM_FALSE_FRIENDS.source, 'gi'), ' ');
++  return REFORM_RE.test(stripped);
+ }
+ 
+ /**
+@@ -510,10 +562,24 @@ function wantsProduct(w) {
+    * 旧実装はこの一行を持たず、`PRODUCT_STRONG_RE` が紛れ語を素通しにしていた ——
+    * 「腎機能の低下を診断してほしい」が産物の依頼と誤読され、諐問の道を失った。
+    */
+-  if (PRODUCT_FALSE_FRIENDS.test(w)) return false;
+-  if (PRODUCT_STRONG_RE.test(w)) return true;
+-  // 一字の名(口/門/相)だけで当たった場合、それが紛れ語の一部でないか確かめる
+-  return PRODUCT_RE.test(w) && !PRODUCT_FALSE_FRIENDS.test(w);
++  /**
++   * ★ PARA-11 (reform/weak-signs / P3): 紛れ語の**一致箇所ごと全体**を削ってから
++   * 強い名を探す。**文全体を無効化してはならない** ——
++   * 旧実装の一行目 `if (PRODUCT_FALSE_FRIENDS.test(w)) return false;` は
++   * 「相関図を描けるアプリを作って」の「相関」に当たった瞬間、同じ文の「アプリ」まで
++   * 巻き添えで殺していた(debt.md PARA-11)。
++   *
++   * これは `isCartography` の `onlyWeak` が示す作法の**一般形**である ——
++   * `DIAGRAM_RE` は弱い印と強い印を別の式に切り出せるので述語で書けるが、
++   * `PRODUCT_RE` は強弱が同じ文に同居する(「専門店のサイト」)。
++   * ゆえに述語では分けられず、**一致箇所を削る**ことでしか強弱を分離できない。
++   *
++   * ⚠️ 削る単位は「一致箇所ごと全体」である。`窓口` から `窓` だけ削れば
++   *    残った `口` が `PRODUCT_RE` に当たり、諐問の道を失う(第60条)。
++   */
++  const stripped = String(w).replace(new RegExp(PRODUCT_FALSE_FRIENDS.source, 'gi'), ' ');
++  if (PRODUCT_STRONG_RE.test(stripped)) return true;
++  return PRODUCT_RE.test(stripped);
+ }
+ 
+ /**
+@@ -595,7 +661,15 @@ function isCartography(wish) {
+    *    既存門 tests/route-matrix.test.js のコーパスの願いが reform へ攫われる(実測 exit 1)。
+    *    ゆえに **強い産物名だけ**で打ち消す。第60条: 弱い印を打ち消しに使えば別の道を奪う。
+    */
+-  if (!PRODUCT_FALSE_FRIENDS.test(wish) && PRODUCT_STRONG_RE.test(wish)) return false;
++  {
++    // ★ PARA-11 (reform/weak-signs / P3): 作図の打ち消しも**同じ形**に揃える。
++    //    旧: if (!PRODUCT_FALSE_FRIENDS.test(wish) && PRODUCT_STRONG_RE.test(wish)) return false;
++    //        ← 紛れ語が在るだけで打ち消しが丸ごと死に、図一枚で返っていた。
++    //    ⚠️ `wantsProduct(wish)` を呼んではならない(AC-8)—— `PRODUCT_RE` の一字の名「相」が
++    //       『楽園の相の系統図を描いてほしい』に当たる。**強い産物名だけ**で打ち消す。
++    const _stripped = String(wish).replace(new RegExp(PRODUCT_FALSE_FRIENDS.source, 'gi'), ' ');
++    if (PRODUCT_STRONG_RE.test(_stripped)) return false;
++  }
+   // 「図に」「図を」だけで当たった場合、それが紛れ語の一部でないか確かめる。
+   const onlyWeak = !new RegExp(`${DIAGRAM_JA.split('|').filter(w => w !== '図に' && w !== '図を').join('|')}|${DIAGRAM_EN}`, 'i').test(wish);
+   if (onlyWeak && DIAGRAM_FALSE_FRIENDS.test(wish)) return false;
+@@ -815,4 +889,4 @@ function main() {
+ }
+ 
+ if (require.main === module) main();
+-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, DELIBERATION_RE, isDeliberation, finalClause };
++module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_FALSE_FRIENDS, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, DELIBERATION_RE, isDeliberation, finalClause };

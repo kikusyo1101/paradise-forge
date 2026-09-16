@@ -1,0 +1,83 @@
+forge: C:\Users\kikus\Documents\workspace\paradise\graph\forge.js
+コーパス件数: 172  (道ごと: counsel=19, cartography=15, reform=15, quick=15, standard=59, full=49)
+  内訳: 前走行 gate/new = 101 / 残債 debt = 2 / 本走行 P10 = 41 / 本走行 P11 = 24 / 本走行 P11c = 4
+
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           3          24           0          32           0      59
+full                     0           2          23           0           0          24      49
+
+対角の合計: 120 / 172  (誤着 52 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 3 件
+      ・人口分布の構成図を出力するツールを作る   (new/P11c)
+      ・窓口の導線を図示するコマンドを実装して   (new/P11c)
+      ・相場の推移を可視化するツールを作る   (new/P11c)
+
+  [standard → reform] : 24 件
+      ・部門別の集計コマンドを実装して   (new/P11)
+      ・入門講座の進捗を記録する機能を実装して   (new/P11)
+      ・門限を知らせるタイマーを実装して   (new/P11)
+      ・楽園ビーチの写真を並べる機能を実装して   (new/P10)
+      ・build a fan wiki for paradise lost   (new/P10)
+      ・安全ハーネスの点検記録を付ける機能を実装して   (new/P10)
+      ・implement an inventory importer for climbing harness stock   (new/P10)
+      ・create a full-text search index for the us constitution   (new/P10)
+      ・implement a search engine result parser   (new/P10)
+      ・create a listing page for used car engine parts   (new/P10)
+      ・エンジンオイルの交換履歴を記録する機能を実装して   (new/P10)
+      ・implement a gateway timeout retry helper   (new/P10)
+      ・create a script to aggregate the daily sales rows   (new/P10)
+      ・implement a navigate-back button for the wizard   (new/P10)
+      ・データパイプラインの実行ログを表示する機能を実装して   (new/P10)
+      ・implement a sales pipeline stage filter   (new/P10)
+      ・自己改善のチェックリスト機能を実装して   (new/P10)
+      ・implement a self-improvement streak counter   (new/P10)
+      ・音楽のオーケストレーション譜面を印刷する機能を実装して   (new/P10)
+      ・implement a kubernetes orchestration status widget   (new/P10)
+      ・枢機卿の選挙結果を取り込むコマンドを実装して   (new/P10)
+      ・implement a cardinal direction compass widget   (new/P10)
+      ・神官の装束の在庫を数えるコマンドを実装して   (new/P10)
+      ・implement a parish priest schedule importer   (new/P10)
+
+  [full → cartography] : 2 件
+      ・相関図を描けるアプリを作って   (debt/PARA-11)
+      ・専門分野の系統図を編集できるアプリが欲しい   (new/P11c)
+
+  [full → reform] : 23 件
+      ・一門の家系図を作れるアプリが欲しい   (debt/PARA-10)
+      ・専門店のサイトが欲しい   (new/P11)
+      ・名門校の受験対策アプリが欲しい   (new/P11)
+      ・登竜門コンテストの投票アプリが欲しい   (new/P11)
+      ・常夏の楽園を巡るリゾート予約アプリが欲しい   (new/P10)
+      ・i want a travel booking app for paradise island resorts   (new/P10)
+      ・登山用ハーネスの通販サイトを作れ   (new/P10)
+      ・build a safety harness inspection app   (new/P10)
+      ・日本国憲法の条文を検索できるアプリが欲しい   (new/P10)
+      ・build a constitution quiz app for students   (new/P10)
+      ・build a civil engineering estimate app   (new/P10)
+      ・検索エンジンの順位を追うアプリが欲しい   (new/P10)
+      ・build an app to investigate delegate voting records   (new/P10)
+      ・石油パイプラインの保守記録システムを作って   (new/P10)
+      ・build a crm app with a deal pipeline view   (new/P10)
+      ・自己改善の習慣を記録するアプリが欲しい   (new/P10)
+      ・build a self-improvement journal app   (new/P10)
+      ・コンテナオーケストレーションの監視ダッシュボードを作って   (new/P10)
+      ・build a container orchestration cost dashboard product   (new/P10)
+      ・カトリック枢機卿の一覧を引けるアプリが欲しい   (new/P10)
+      ・build a birdwatching app for spotting a cardinal   (new/P10)
+      ・神社の神官の当番表を管理するアプリが欲しい   (new/P10)
+      ・build a priesthood directory app for the diocese   (new/P10)
+
+非ゼロの非対角セル数: 4 / 30   誤着の総数: 52
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+ユニークな願い: 172 / 総行数 172
+OLD(前走行分) 行数=101  ユニーク=101

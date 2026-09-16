@@ -176,11 +176,30 @@ jobs:
         run: node tests/route-matrix.test.js
 
       - name: 💳 Route debt — 未払いの誤着が黙って直っていないか (AC-7 / 第16条)
-        # **これは xfail の門である。** PARA-10/PARA-11 は本走行で直さないと裁定した
-        # (reform/judgment-triad/requirements.md §3.4)。黙って外せば緩めたことに
-        # なるので、**誤った振る舞いを誤りのまま凍らせる**。誰かが直した日に
+        # **これは xfail の門である。** PARA-10/PARA-11 は reform/judgment-triad では
+        # 直さないと裁定され、**reform/weak-signs が払った**(debt.md §2)。
+        # `DEBT` は今 0 件で、D-1/D-3 は **skip を名乗って**通る(第58条(e))——
+        # **門は次の残債の受け皿として残す**(第44条の結線)。黙って外せば緩めたことに
+        # なるので、誤った振る舞いを凍らせる形は保つ。誰かが直した日に
         # この門が赤くなり、「debt.md から外して本コーパスへ昇格させよ」と教える。
         run: node tests/route-debt.test.js
+
+      - name: 🚪 Reform sign — 弱い印が語中に埋没していないか (PARA-10 / 第60条)
+        # **語境界の門である。** `REFORM_RE` の抽象名は一語も減らしていない(counsel.test.js:652)。
+        # 直したのは**当たり方**である —— 日本語は `REFORM_FALSE_FRIENDS`(「門」の複合語 21 語)、
+        # 英語は `REFORM_EN` の `\b` が語境界を担う(第60条(b): 規則を足したら両枝を持て)。
+        #
+        # ⚠️ S-3 は**紛れ語表そのものを撃つ門番**である。表に「門」を含まない語を
+        #    一語でも足せば鳴る。塞げない同音異義を表で暗記して緑にする道を機械で塞いでいる。
+        run: node tests/reform-sign.test.js
+
+      - name: 🎯 Reform reach — 弱い印の射程が黙って変わっていないか (PARA-10 / 第16条)
+        # **これは xfail の門である。** 種H(独立語として当たる同音異義)32 件は
+        # 語境界の修理では原理的に塞げない(reform/weak-signs/reach.md)。
+        # 黙って外せば緩めたことになるので、**誤着を誤着のまま凍らせる**。
+        # 誰かが射程を詰めた日にこの門が赤くなり、「reach.md から外して
+        # 本コーパスへ昇格させよ」と教える。**`|| true` を付けるな。**
+        run: node tests/reform-reach.test.js
 
       - name: ⚖️ Ratify guard — 仕事をせずに祝福できないか (PARA-6 / 第37条)
         # 旧実装は 17 相すべて pending・成果物 0 件のまま `domains ratified: 6/6` を

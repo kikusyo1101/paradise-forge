@@ -1,0 +1,73 @@
+X4″ = X4′ + 「門人」  C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.X4PP.js
+
+═══ Q5. 耐久 枝B(X4″) ═══
+  ok  [A-楽園] "門の閾値を上げよ" -> reform  (正解 reform)
+  ok  [A-楽園] "楽園のパイプラインに一段を足せ" -> reform  (正解 reform)
+  ok  [A-楽園] "憲法の条を一つ加えよ" -> reform  (正解 reform)
+  ok  [A-楽園] "神官の召し方を書き換えろ" -> reform  (正解 reform)
+  ok  [A-楽園] "枢機卿の割り当てを直せ" -> reform  (正解 reform)
+  ok  [A-楽園] "ハーネスの結線を張り直せ" -> reform  (正解 reform)
+  ok  [A-楽園] "add a guard to the gate" -> reform  (正解 reform)
+  ok  [A-楽園] "extend the paradise engine with a heartbeat endpoint" -> reform  (正解 reform)
+  ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+  ok  [A-楽園] "自己改善の輪に一段を足す" -> reform  (正解 reform)
+  ok  [B-世間] "武道の流派の門人名簿アプリが欲しい" -> full  (reform でなければ良)
+  ok  [B-世間] "正門の来客を記録する機能を実装して" -> standard  (reform でなければ良)
+  ok  [B-世間] "門松の注文を受ける通販サイトを作れ" -> full  (reform でなければ良)
+  ok  [B-世間] "山門の写真を並べるページを実装して" -> standard  (reform でなければ良)
+  ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+  ok  [B-世間] "implement a payment gateway webhook handler" -> standard  (reform でなければ良)
+  ok  [B-世間] "create a page to navigate the archive" -> standard  (reform でなければ良)
+  ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+  ok  [B-世間] "implement a priesthood census importer" -> standard  (reform でなければ良)
+  ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+  枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 7/10   枝C(産物を見失わない): 10/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 8/8   合計 44/48
+
+═══ Q6/Q7. AC-45 の的 と REFORM_RE の 20 語(X4″) ═══
+── AC-45 の的(紛れ語 / 門が現在 reform を期待している 2 件)──
+  "専門店の棚の傾きを直したい"  -> quick
+  "部門別の売上の誤りを直したい"  -> quick
+── AC-45 の逆向き(本物の門 / reform を失ってはならない 3 件)──
+  "門に監査の一段を足す"  -> reform
+  "門の判定を書き換える"  -> reform
+  "門を強化する"  -> reform
+── counsel.test.js:652 の 20 語を REFORM_RE に直に撃つ ──
+  REFORM_RE から落ちた語: 0 語 — 過不足なし
+  engine の固有名が入り込んだ: 0 語
+
+═══ Q7b. 172 件コーパス(X4″)— full→standard の新規誤着を確かめる ═══
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 19           0           0           0           0           0      19
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0          17           0          42           0      59
+full                     0           0          15           0           0          34      49
+
+対角の合計: 140 / 172  (誤着 32 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → reform] : 17 件
+
+  [full → reform] : 15 件
+
+非ゼロの非対角セル数: 2 / 30   誤着の総数: 32
+前走行 101 件コーパスのみ: 対角 101/101  (回帰なし)
+
+═══ Q7c. 既存門(X4″ / 逐次) ═══
+
+  ── tests/route-matrix.test.js ──  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── tests/counsel.test.js ──  exit=1
+  ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  Counsel self-test: 209 passed, 1 failed
+
+  ── tests/route-debt.test.js ──  exit=1
+  ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+  ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+  Route debt self-test: 3 passed, 2 failed

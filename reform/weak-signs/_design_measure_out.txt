@@ -1,0 +1,530 @@
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【B0】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_B0.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 120 / 140   非ゼロ非対角セル 4 / 30
+     [full→reform] 8 件
+        ・一門の家系図を作れるアプリが欲しい
+        ・専門店のサイトが欲しい
+        ・名門校の受験対策アプリが欲しい
+        ・登竜門コンテストの投票アプリが欲しい
+        ・build a civil engineering estimate app
+        ・build an app to investigate delegate voting records
+        ・build a self-improvement journal app
+        ・build a priesthood directory app for the diocese
+     [full→cartography] 2 件
+        ・相関図を描けるアプリを作って
+        ・専門分野の系統図を編集できるアプリが欲しい
+     [standard→reform] 7 件
+        ・部門別の集計コマンドを実装して
+        ・入門講座の進捗を記録する機能を実装して
+        ・門限を知らせるタイマーを実装して
+        ・implement a gateway timeout retry helper
+        ・create a script to aggregate the daily sales rows
+        ・implement a navigate-back button for the wizard
+        ・implement a self-improvement streak counter
+     [standard→cartography] 3 件
+        ・人口分布の構成図を出力するツールを作る
+        ・窓口の導線を図示するコマンドを実装して
+        ・相場の推移を可視化するツールを作る
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 16 / 16
+     ✗ "一門の家系図を作れるアプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門店のサイトが欲しい"  isReformSubject=true  ->reform
+     ✗ "部門別の集計コマンドを実装して"  isReformSubject=true  ->reform
+     ✗ "名門校の受験対策アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "入門講座の進捗を記録する機能を実装して"  isReformSubject=true  ->reform
+     ✗ "門限を知らせるタイマーを実装して"  isReformSubject=true  ->reform
+     ✗ "登竜門コンテストの投票アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門分野の系統図を編集できるアプリが欲しい"  isReformSubject=true  ->cartography
+     ✗ "build a civil engineering estimate app"  isReformSubject=true  ->reform
+     ✗ "implement a gateway timeout retry helper"  isReformSubject=true  ->reform
+     ✗ "build an app to investigate delegate voting records"  isReformSubject=true  ->reform
+     ✗ "create a script to aggregate the daily sales rows"  isReformSubject=true  ->reform
+     ✗ "implement a navigate-back button for the wizard"  isReformSubject=true  ->reform
+     ✗ "implement a self-improvement streak counter"  isReformSubject=true  ->reform
+     ✗ "build a self-improvement journal app"  isReformSubject=true  ->reform
+     ✗ "build a priesthood directory app for the diocese"  isReformSubject=true  ->reform
+   種H/PARA-11 の族(AC-2): 未修理 4 / 4
+     ✗ "相関図を描けるアプリを作って" wantsProduct=false ->cartography (正解 full)
+     ✗ "人口分布の構成図を出力するツールを作る" wantsProduct=false ->cartography (正解 standard)
+     ✗ "窓口の導線を図示するコマンドを実装して" wantsProduct=false ->cartography (正解 standard)
+     ✗ "相場の推移を可視化するツールを作る" wantsProduct=false ->cartography (正解 standard)
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> reform   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> reform   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 無し
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=0   Counsel self-test: 210 passed, 0 failed
+     ── tests/route-debt.test.js ── exit=0   Route debt self-test: 5 passed, 0 failed
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "武道の流派の門人名簿アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "正門の来客を記録する機能を実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "門松の注文を受ける通販サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [B-世間] "山門の写真を並べるページを実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a payment gateway webhook handler" -> reform  (reform でなければ良)
+     ✗   [B-世間] "create a page to navigate the archive" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a priesthood census importer" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [C-産物] "窓口業務のアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "相手先の一覧を出すコマンドを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "位相差顕微鏡の記録アプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "手相占いのボタンを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "外相会談の記録アプリを作って" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "悪口フィルタの機能を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "糸口を探すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "火口の様子を映すアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "蛇口の水量を測る画面を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "傷口の写真を残すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "窓口ごとの構成図を出力するツールを作る" -> cartography  (正解 standard)
+     ✗   [E-作図] "人口ピラミッドの図解アプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "相場の変動を図示するコマンドを実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "口座の資金の流れをフロー図にする機能を実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "相続関係の系統図を作れるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "入口の人流を可視化するツールを作る" -> cartography  (正解 standard)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 0/10   枝C(産物を見失わない): 0/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 0/8   合計 19/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【R2】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_R2.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 128 / 140   非ゼロ非対角セル 4 / 30
+     [full→reform] 4 件
+        ・一門の家系図を作れるアプリが欲しい
+        ・専門店のサイトが欲しい
+        ・名門校の受験対策アプリが欲しい
+        ・登竜門コンテストの投票アプリが欲しい
+     [full→cartography] 2 件
+        ・相関図を描けるアプリを作って
+        ・専門分野の系統図を編集できるアプリが欲しい
+     [standard→reform] 3 件
+        ・部門別の集計コマンドを実装して
+        ・入門講座の進捗を記録する機能を実装して
+        ・門限を知らせるタイマーを実装して
+     [standard→cartography] 3 件
+        ・人口分布の構成図を出力するツールを作る
+        ・窓口の導線を図示するコマンドを実装して
+        ・相場の推移を可視化するツールを作る
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 8 / 16
+     ✗ "一門の家系図を作れるアプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門店のサイトが欲しい"  isReformSubject=true  ->reform
+     ✗ "部門別の集計コマンドを実装して"  isReformSubject=true  ->reform
+     ✗ "名門校の受験対策アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "入門講座の進捗を記録する機能を実装して"  isReformSubject=true  ->reform
+     ✗ "門限を知らせるタイマーを実装して"  isReformSubject=true  ->reform
+     ✗ "登竜門コンテストの投票アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門分野の系統図を編集できるアプリが欲しい"  isReformSubject=true  ->cartography
+   種H/PARA-11 の族(AC-2): 未修理 4 / 4
+     ✗ "相関図を描けるアプリを作って" wantsProduct=false ->cartography (正解 full)
+     ✗ "人口分布の構成図を出力するツールを作る" wantsProduct=false ->cartography (正解 standard)
+     ✗ "窓口の導線を図示するコマンドを実装して" wantsProduct=false ->cartography (正解 standard)
+     ✗ "相場の推移を可視化するツールを作る" wantsProduct=false ->cartography (正解 standard)
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> reform   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> reform   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 無し
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=0   Counsel self-test: 210 passed, 0 failed
+     ── tests/route-debt.test.js ── exit=0   Route debt self-test: 5 passed, 0 failed
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "武道の流派の門人名簿アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "正門の来客を記録する機能を実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "門松の注文を受ける通販サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [B-世間] "山門の写真を並べるページを実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [C-産物] "窓口業務のアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "相手先の一覧を出すコマンドを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "位相差顕微鏡の記録アプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "手相占いのボタンを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "外相会談の記録アプリを作って" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "悪口フィルタの機能を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "糸口を探すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "火口の様子を映すアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "蛇口の水量を測る画面を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "傷口の写真を残すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "窓口ごとの構成図を出力するツールを作る" -> cartography  (正解 standard)
+     ✗   [E-作図] "人口ピラミッドの図解アプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "相場の変動を図示するコマンドを実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "口座の資金の流れをフロー図にする機能を実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "相続関係の系統図を作れるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "入口の人流を可視化するツールを作る" -> cartography  (正解 standard)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 3/10   枝C(産物を見失わない): 0/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 0/8   合計 22/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【R3】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_R3.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 127 / 140   非ゼロ非対角セル 4 / 30
+     [full→cartography] 2 件
+        ・相関図を描けるアプリを作って
+        ・専門分野の系統図を編集できるアプリが欲しい
+     [standard→cartography] 3 件
+        ・人口分布の構成図を出力するツールを作る
+        ・窓口の導線を図示するコマンドを実装して
+        ・相場の推移を可視化するツールを作る
+     [full→reform] 4 件
+        ・build a civil engineering estimate app
+        ・build an app to investigate delegate voting records
+        ・build a self-improvement journal app
+        ・build a priesthood directory app for the diocese
+     [standard→reform] 4 件
+        ・implement a gateway timeout retry helper
+        ・create a script to aggregate the daily sales rows
+        ・implement a navigate-back button for the wizard
+        ・implement a self-improvement streak counter
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 8 / 16
+     ✗ "build a civil engineering estimate app"  isReformSubject=true  ->reform
+     ✗ "implement a gateway timeout retry helper"  isReformSubject=true  ->reform
+     ✗ "build an app to investigate delegate voting records"  isReformSubject=true  ->reform
+     ✗ "create a script to aggregate the daily sales rows"  isReformSubject=true  ->reform
+     ✗ "implement a navigate-back button for the wizard"  isReformSubject=true  ->reform
+     ✗ "implement a self-improvement streak counter"  isReformSubject=true  ->reform
+     ✗ "build a self-improvement journal app"  isReformSubject=true  ->reform
+     ✗ "build a priesthood directory app for the diocese"  isReformSubject=true  ->reform
+   種H/PARA-11 の族(AC-2): 未修理 4 / 4
+     ✗ "相関図を描けるアプリを作って" wantsProduct=false ->cartography (正解 full)
+     ✗ "人口分布の構成図を出力するツールを作る" wantsProduct=false ->cartography (正解 standard)
+     ✗ "窓口の導線を図示するコマンドを実装して" wantsProduct=false ->cartography (正解 standard)
+     ✗ "相場の推移を可視化するツールを作る" wantsProduct=false ->cartography (正解 standard)
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> quick   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> quick   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 有り(21 項)
+   AC-3 の門番: 「門」を含まない項 0 件 / 英語混入 0 件
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=1   Counsel self-test: 209 passed, 1 failed
+        ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 4 passed, 1 failed
+        ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a payment gateway webhook handler" -> reform  (reform でなければ良)
+     ✗   [B-世間] "create a page to navigate the archive" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a priesthood census importer" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [C-産物] "窓口業務のアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "相手先の一覧を出すコマンドを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "位相差顕微鏡の記録アプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "手相占いのボタンを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "外相会談の記録アプリを作って" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "悪口フィルタの機能を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "糸口を探すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "火口の様子を映すアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "蛇口の水量を測る画面を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "傷口の写真を残すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "窓口ごとの構成図を出力するツールを作る" -> cartography  (正解 standard)
+     ✗   [E-作図] "人口ピラミッドの図解アプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "相場の変動を図示するコマンドを実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "口座の資金の流れをフロー図にする機能を実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "相続関係の系統図を作れるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "入口の人流を可視化するツールを作る" -> cartography  (正解 standard)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 4/10   枝C(産物を見失わない): 0/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 0/8   合計 23/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【P3】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_P3.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 124 / 140   非ゼロ非対角セル 2 / 30
+     [full→reform] 9 件
+        ・一門の家系図を作れるアプリが欲しい
+        ・専門店のサイトが欲しい
+        ・名門校の受験対策アプリが欲しい
+        ・登竜門コンテストの投票アプリが欲しい
+        ・専門分野の系統図を編集できるアプリが欲しい
+        ・build a civil engineering estimate app
+        ・build an app to investigate delegate voting records
+        ・build a self-improvement journal app
+        ・build a priesthood directory app for the diocese
+     [standard→reform] 7 件
+        ・部門別の集計コマンドを実装して
+        ・入門講座の進捗を記録する機能を実装して
+        ・門限を知らせるタイマーを実装して
+        ・implement a gateway timeout retry helper
+        ・create a script to aggregate the daily sales rows
+        ・implement a navigate-back button for the wizard
+        ・implement a self-improvement streak counter
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 16 / 16
+     ✗ "一門の家系図を作れるアプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門店のサイトが欲しい"  isReformSubject=true  ->reform
+     ✗ "部門別の集計コマンドを実装して"  isReformSubject=true  ->reform
+     ✗ "名門校の受験対策アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "入門講座の進捗を記録する機能を実装して"  isReformSubject=true  ->reform
+     ✗ "門限を知らせるタイマーを実装して"  isReformSubject=true  ->reform
+     ✗ "登竜門コンテストの投票アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門分野の系統図を編集できるアプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "build a civil engineering estimate app"  isReformSubject=true  ->reform
+     ✗ "implement a gateway timeout retry helper"  isReformSubject=true  ->reform
+     ✗ "build an app to investigate delegate voting records"  isReformSubject=true  ->reform
+     ✗ "create a script to aggregate the daily sales rows"  isReformSubject=true  ->reform
+     ✗ "implement a navigate-back button for the wizard"  isReformSubject=true  ->reform
+     ✗ "implement a self-improvement streak counter"  isReformSubject=true  ->reform
+     ✗ "build a self-improvement journal app"  isReformSubject=true  ->reform
+     ✗ "build a priesthood directory app for the diocese"  isReformSubject=true  ->reform
+   種H/PARA-11 の族(AC-2): 未修理 0 / 4
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> reform   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> reform   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 無し
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=0   Counsel self-test: 210 passed, 0 failed
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 4 passed, 1 failed
+        ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "武道の流派の門人名簿アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "正門の来客を記録する機能を実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "門松の注文を受ける通販サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [B-世間] "山門の写真を並べるページを実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a payment gateway webhook handler" -> reform  (reform でなければ良)
+     ✗   [B-世間] "create a page to navigate the archive" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a priesthood census importer" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> reform  (正解 full)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> reform  (正解 full)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 0/10   枝C(産物を見失わない): 10/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 6/8   合計 35/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【R2R3】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_R2R3.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 135 / 140   非ゼロ非対角セル 2 / 30
+     [full→cartography] 2 件
+        ・相関図を描けるアプリを作って
+        ・専門分野の系統図を編集できるアプリが欲しい
+     [standard→cartography] 3 件
+        ・人口分布の構成図を出力するツールを作る
+        ・窓口の導線を図示するコマンドを実装して
+        ・相場の推移を可視化するツールを作る
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 0 / 16
+   種H/PARA-11 の族(AC-2): 未修理 4 / 4
+     ✗ "相関図を描けるアプリを作って" wantsProduct=false ->cartography (正解 full)
+     ✗ "人口分布の構成図を出力するツールを作る" wantsProduct=false ->cartography (正解 standard)
+     ✗ "窓口の導線を図示するコマンドを実装して" wantsProduct=false ->cartography (正解 standard)
+     ✗ "相場の推移を可視化するツールを作る" wantsProduct=false ->cartography (正解 standard)
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> quick   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> quick   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 有り(21 項)
+   AC-3 の門番: 「門」を含まない項 0 件 / 英語混入 0 件
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=1   Counsel self-test: 209 passed, 1 failed
+        ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 4 passed, 1 failed
+        ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [C-産物] "窓口業務のアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "相手先の一覧を出すコマンドを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "位相差顕微鏡の記録アプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "手相占いのボタンを実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "外相会談の記録アプリを作って" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "悪口フィルタの機能を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "糸口を探すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "火口の様子を映すアプリが欲しい" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "蛇口の水量を測る画面を実装して" wantsProduct=false  (正解 true)
+     ✗   [C-産物] "傷口の写真を残すツールを作る" wantsProduct=false  (正解 true)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "窓口ごとの構成図を出力するツールを作る" -> cartography  (正解 standard)
+     ✗   [E-作図] "人口ピラミッドの図解アプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "相場の変動を図示するコマンドを実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "口座の資金の流れをフロー図にする機能を実装して" -> cartography  (正解 standard)
+     ✗   [E-作図] "相続関係の系統図を作れるアプリが欲しい" -> cartography  (正解 full)
+     ✗   [E-作図] "入口の人流を可視化するツールを作る" -> cartography  (正解 standard)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 7/10   枝C(産物を見失わない): 0/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 0/8   合計 26/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【R2P3】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_R2P3.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 132 / 140   非ゼロ非対角セル 2 / 30
+     [full→reform] 5 件
+        ・一門の家系図を作れるアプリが欲しい
+        ・専門店のサイトが欲しい
+        ・名門校の受験対策アプリが欲しい
+        ・登竜門コンテストの投票アプリが欲しい
+        ・専門分野の系統図を編集できるアプリが欲しい
+     [standard→reform] 3 件
+        ・部門別の集計コマンドを実装して
+        ・入門講座の進捗を記録する機能を実装して
+        ・門限を知らせるタイマーを実装して
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 8 / 16
+     ✗ "一門の家系図を作れるアプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門店のサイトが欲しい"  isReformSubject=true  ->reform
+     ✗ "部門別の集計コマンドを実装して"  isReformSubject=true  ->reform
+     ✗ "名門校の受験対策アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "入門講座の進捗を記録する機能を実装して"  isReformSubject=true  ->reform
+     ✗ "門限を知らせるタイマーを実装して"  isReformSubject=true  ->reform
+     ✗ "登竜門コンテストの投票アプリが欲しい"  isReformSubject=true  ->reform
+     ✗ "専門分野の系統図を編集できるアプリが欲しい"  isReformSubject=true  ->reform
+   種H/PARA-11 の族(AC-2): 未修理 0 / 4
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> reform   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> reform   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 無し
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=0   Counsel self-test: 210 passed, 0 failed
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 4 passed, 1 failed
+        ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "武道の流派の門人名簿アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "正門の来客を記録する機能を実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "門松の注文を受ける通販サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [B-世間] "山門の写真を並べるページを実装して" -> reform  (reform でなければ良)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     ✗   [E-作図] "専門用語の関連図を描けるアプリが欲しい" -> reform  (正解 full)
+     ✗   [E-作図] "部門の階層図を編集できるアプリが欲しい" -> reform  (正解 full)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 3/10   枝C(産物を見失わない): 10/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 6/8   合計 38/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【R3P3】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_R3P3.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 132 / 140   非ゼロ非対角セル 2 / 30
+     [full→reform] 4 件
+        ・build a civil engineering estimate app
+        ・build an app to investigate delegate voting records
+        ・build a self-improvement journal app
+        ・build a priesthood directory app for the diocese
+     [standard→reform] 4 件
+        ・implement a gateway timeout retry helper
+        ・create a script to aggregate the daily sales rows
+        ・implement a navigate-back button for the wizard
+        ・implement a self-improvement streak counter
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 8 / 16
+     ✗ "build a civil engineering estimate app"  isReformSubject=true  ->reform
+     ✗ "implement a gateway timeout retry helper"  isReformSubject=true  ->reform
+     ✗ "build an app to investigate delegate voting records"  isReformSubject=true  ->reform
+     ✗ "create a script to aggregate the daily sales rows"  isReformSubject=true  ->reform
+     ✗ "implement a navigate-back button for the wizard"  isReformSubject=true  ->reform
+     ✗ "implement a self-improvement streak counter"  isReformSubject=true  ->reform
+     ✗ "build a self-improvement journal app"  isReformSubject=true  ->reform
+     ✗ "build a priesthood directory app for the diocese"  isReformSubject=true  ->reform
+   種H/PARA-11 の族(AC-2): 未修理 0 / 4
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> quick   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> quick   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 有り(21 項)
+   AC-3 の門番: 「門」を含まない項 0 件 / 英語混入 0 件
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=1   Counsel self-test: 209 passed, 1 failed
+        ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 3 passed, 2 failed
+        ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+        ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a payment gateway webhook handler" -> reform  (reform でなければ良)
+     ✗   [B-世間] "create a page to navigate the archive" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "implement a priesthood census importer" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 4/10   枝C(産物を見失わない): 10/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 8/8   合計 41/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+【X4PP】 C:\Users\kikus\AppData\Local\Temp\ws_cand\forge.D_X4PP.js
+════════════════════════════════════════════════════════════════════════════════════════════
+① 受け入れ帳: 対角 140 / 140   非ゼロ非対角セル 0 / 30
+     (非対角はすべて 0 — 第61条の合格線に到達)
+② 射程帳: reform のまま凍っている 32 / 32   standard へ落ちた 0 件
+③ 種M(AC-1): 今なお reform を名乗る 0 / 16
+   種H/PARA-11 の族(AC-2): 未修理 0 / 4
+④ AC-45 の的:
+     "専門店の棚の傾きを直したい" -> quick   (門が現在 reform を期待)
+     "部門別の売上の誤りを直したい" -> quick   (門が現在 reform を期待)
+     "門に監査の一段を足す" -> reform   (逆向き / reform を失ってはならない)
+     "門の判定を書き換える" -> reform   (逆向き / reform を失ってはならない)
+     "門を強化する" -> reform   (逆向き / reform を失ってはならない)
+   counsel.test.js:652 — 落ちた語: 0 語(過不足なし) / 入り込んだ固有名: 0 語 / 台帳系: 0 件
+   REFORM_FALSE_FRIENDS の export: 有り(21 項)
+   AC-3 の門番: 「門」を含まない項 0 件 / 英語混入 0 件
+⑤ 既存門(逐次 / NFR-1):
+     ── tests/route-matrix.test.js ── exit=0   Route matrix self-test: 13 passed, 0 failed
+     ── tests/counsel.test.js ── exit=1   Counsel self-test: 209 passed, 1 failed
+        ✗ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+     ── tests/route-debt.test.js ── exit=1   Route debt self-test: 3 passed, 2 failed
+        ✗ D-1 [残債 PARA-10]: 一門の家系図…は今なお reform へ落ちる
+        ✗ D-2 [残債 PARA-11]: 相関図を描けるアプリ…は今なお cartography へ落ちる
+     ── tests/ratify-guard.test.js ── exit=0   Ratify guard self-test: 9 passed, 0 failed
+⑥ 耐久(コーパス外 48 件):
+     ✗   [A-楽園] "wire the orchestration pipeline to the audit ledger" -> counsel  (正解 reform)
+     ✗   [B-世間] "自動車エンジンの整備記録アプリが欲しい" -> reform  (reform でなければ良)
+     ✗   [B-世間] "build a birdwatching app for the northern cardinal" -> reform  (reform でなければ良)
+     ✗   [B-世間] "熱帯の楽園を紹介する旅行サイトを作れ" -> reform  (reform でなければ良)
+     枝A(楽園を失わない): 9/10   枝B(世間を攫わない): 7/10   枝C(産物を見失わない): 10/10   枝D(諐問を失わない): 10/10   枝E(図を作る産物): 8/8   合計 44/48
+
+════════════════════════════════════════════════════════════════════════════════════════════
+まとめ  部品        受入対角    非対角セル  射程帳    種M(AC-1)  PARA-11族  耐久
+        B0         120/140     4/30        32/32     0/16       0/4        19/48
+        R2         128/140     4/30        32/32     8/16       0/4        22/48
+        R3         127/140     4/30        32/32     8/16       0/4        23/48
+        P3         124/140     2/30        32/32     0/16       4/4        35/48
+        R2R3       135/140     2/30        32/32     16/16      0/4        26/48
+        R2P3       132/140     2/30        32/32     8/16       4/4        38/48
+        R3P3       132/140     2/30        32/32     8/16       4/4        41/48
+        X4PP       140/140     0/30        32/32     16/16      4/4        44/48
