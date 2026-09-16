@@ -275,13 +275,94 @@ const SCALE_PRODUCES = {
 };
 
 /**
- * 神託が「楽園そのもの」を指しているか。
+ * 願い文から**判定を惑わす記号**を剥ぐ (FR-02)。
+ *
+ * 実測された欠陥: 「CI に `ledger --audit` を追加する」の `--audit` が
+ * `COUNSEL_EN` の `\baudit\b` に当たり、engine 改修の願いが諐問へ攫われた。
+ * **フラグ名は産物の名であって、依頼の動詞ではない。**
+ *
+ * 剥ぐ順序は入れ替えてはならない:
+ *   1. バッククォート区間 — 先に剥がねば、中の `--flag` を剥いだ跡が対応を壊す
+ *   2. フラグ語 — **直前の一字を捕獲群で保存して置換する**。素朴に食うと直前の語が繋がる
+ *   3. ファイル名 — `x.js` `y.json` … は道具の名であって願いの動詞ではない
+ *   4. 空白を畳む
+ *
+ * 冪等である (`denude(denude(w)) === denude(w)`)。副作用は無い。
+ * **剥いだ文は判定にのみ使う。** `buildDag` の `meta.wish` には元の願い文が入る
+ * (`tests/counsel.test.js` が `meta.wish === '願い'` を撃っている / L-5)。
+ */
+function denude(wish) {
+  let s = String(wish == null ? '' : wish);
+  s = s.replace(/`[^`]*`/g, ' ');
+  s = s.replace(/(^|[\s(（「『【])--?[A-Za-z][A-Za-z0-9_-]*/g, '$1 ');
+  // ⚠️ 先頭の後読み `(?<![A-Za-z0-9_.-])` は **速さのためではなく命のため**である (quality 相 / S-1)。
+  //    これが無いと、正規表現エンジンは非一致文字列の**全ての開始位置**から
+  //    `[A-Za-z0-9_.-]+` を伸ばし直す —— 計算量は入力長の**二乗**になる。実測:
+  //      "x"*100000  →  4946 ms /  "x"*200000 → 22698 ms (倍率 ×3.99 = 二乗)
+  //    後読みで開始位置を語頭に固定すれば、同じ入力が **0.62 ms** で終わる(約 8000 倍)。
+  //    剥ぐ結果は一字も変わらない(語頭からしか一致しえない正規表現だから)。
+  s = s.replace(/(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]+\.(?:js|json|jsonl|md|yml|yaml|ts|tsx|sh)\b/gi, ' ');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * 神託が「楽園そのもの」を指しているか —— **楽園の抽象名だけ**で裁く。
  *
  * これが最初に判定される理由: 楽園自身への改革を quick/standard と誤ると、
  * 市場調査の神官が世間を調べに行き、己を測らない。対象を取り違えた道は、
  * どれだけ丁寧に回しても正しい場所に着かない。
+ *
+ * ══════════════════════════════════════════════════════════════════════
+ * ⚠️ **engine の固有名(`gauge` `forge` `conclave` …)をここへ入れてはならない。**
+ *
+ * reform 走行『route-misfire』は engine の固有名を印にしようと **四度**試み、
+ * **四度とも新しい回帰を生んだ**(教主の裁定により本走行から丸ごと撃ち捨てた):
+ *
+ *   欠陥C  一枚の表を `REFORM_RE` に流し込む
+ *            → 世間の語(`vendor`/`workflow`/`identity`…)を踏んだ創造の願いが reform へ
+ *   F-1    強い名/弱い名に割り、強い名を無条件で通す
+ *            → 日本語に冠詞が無いため防壁ゼロ。世間の願い 54/54 が reform へ
+ *   Q2-1   強い名に `MEND_RE`(改める動詞)を課す
+ *            → 改める動詞は世間の願いにも同じ頻度で現れる。32/32 が reform へ
+ *   Q3-1/2 `WORLDLY_VESSEL_RE`(世間の器の表)で守る
+ *            → 表に在る器 37 語すべてが**楽園の願いを落とした**
+ *              (`門の判定をアプリで直す` が main=reform → HEAD=quick)。
+ *              かつ枝 2(建造)には器の守りが無く 18/24 が世間へ誤着した。
+ *
+ * 教主が三案を試作して測った数(reform/route-misfire/requirements.md §申し送り):
+ *
+ *     案                     世間への誤着      楽園の取りこぼし
+ *     3表を足した形          枝2 で 6/6        Q3-1 で 37/37 が落ちる
+ *     抽象名のみ(本実装)     0/28              9/15
+ *     main の REFORM_RE 素   2/25              8/17
+ *
+ * **engine 名を印にする限り、取りこぼしを減らせば誤着が増える。**
+ * 第60条が言う「弱い印」そのものであり、本走行の射程では強め切れない。
+ * `gauge に fingerprint を確かめる口を設ける` のように **engine の固有名だけで
+ * 楽園を名指す願い**が standard/quick へ落ちるのは**承知の上の代価**である ——
+ * 神は「楽園の」と一言添えれば reform に着く。
+ * **題は別の走行へ申し送った**(`reform/route-misfire/requirements.md` の
+ * 「別の走行への申し送り」節に四度の回帰の実測と三案の数が在る)。
+ * ══════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ **ここに在る抽象名は一語も減らしてはならない**(楽園/門/憲法/engine…)。
+ *    これらは楽園以外を指さないので**無条件**で真でよい。
  */
 const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest)/i;
+
+/**
+ * 願いの**対象が楽園自身**か。
+ *
+ * **一枝である。** 抽象名が当たれば真、当たらなければ偽 —— それだけである。
+ * `chooseScale` の**判定順は一段も動かしていない**。
+ *
+ * ⚠️ この述語を「枝」に割ろうとするな。上の註が名指す通り、本走行は四度それを
+ *    試みて四度とも回帰を生んだ。**枝を足すなら、足した印そのものに
+ *    第60条(b) の両方向試験を課してからにせよ。**
+ */
+function isReformSubject(d) {
+  return REFORM_RE.test(d);
+}
 
 /**
  * 諐問の語彙 — 「創れ」ではなく「答えよ」と言っている願い。
@@ -294,14 +375,80 @@ const REFORM_RE = /(楽園|paradise|ハーネス|harness|憲法|constitution|eng
  */
 const COUNSEL_JA = '調査|監査|報告|意見|比較|分析|診断|推奨|助言|論評|検討|考察|集計|整理|見直|妥当か|どう思う|どうすべき|はないか|べきか|所見';
 const COUNSEL_EN = '\\b(?:research|investigate|audit|report|advise|recommend|compare|analyze|analyse|diagnose|review-only|assess|evaluate|survey|opinion)\\b';
-const COUNSEL_RE = new RegExp(`${COUNSEL_JA}|${COUNSEL_EN}`, 'i');
+/**
+ * **熟議の標識** (R-1) —— 「作るべきか」と**問うている**願いの印。
+ *
+ * ⚠️ これは欠陥A の修理が開いた面である。`CREATE_RE` に `BUILD_JA`(設ける/足す/
+ * 加える/追加…)を足した結果、`isCounsel` の 2 段目
+ * `if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;` が
+ * 「〜を設けるべきか検討して」でも偽になり、3 段目の打ち消しは `DOC_RE` だけなのに
+ * **熟議語は `DOC_RE` に一語も無い**。ゆえに熟議の願いが counsel を失った ——
+ * 格子実測で **main 0/150 → HEAD 120/150**(第60条(b) の両方向試験の欠落)。
+ *
+ * **熟議標識は「答えを求める」ので、建造動詞より強い。** ゆえに `isCounsel` の
+ * 2 段目より**先に**立つ(1.5 段目)。同時に `COUNSEL_RE` へも合流させる ——
+ * 1 段目(諐問の語彙が無ければ即 false)を通らねば 1.5 段目に届かないからである。
+ *
+ * ⚠️ **`べきか`(疑問)と `べきだ`(断定)の境目を必ず両方向で撃て。**
+ * 語彙は疑問の形だけを拾う(`べきか`/`べきではないか`/`べきだろうか`)。
+ * `べきだ`/`べきである`/`べき箇所` は**入れていない** —— それらは命令だからである。
+ */
+const DELIBERATION_JA = 'べきか|べきだろうか|べきでしょうか|べきではないか|どう思う|どうすべき|妥当か|いかがか|' +
+  'どちらがよい|どちらが良い|是非を|要るか|必要か|所見がほしい|所見が欲しい|検討して|検討せよ|検討したい';
+const DELIBERATION_EN = '\\b(?:should\\s+(?:we|i|it|they)|is\\s+it\\s+worth|do\\s+you\\s+think|' +
+  'worth\\s+\\w+ing|whether\\s+to|whether\\s+\\w+ing)\\b';
+const DELIBERATION_RE = new RegExp(`${DELIBERATION_JA}|${DELIBERATION_EN}`, 'i');
+
+/**
+ * 願いの**求め**は最後の節に載る。前節の熟議語は「既に検討した」という
+ * 前置きでありうる ——「妥当か検討済み:楽園に監査の口を実装せよ」は**命令**である。
+ *
+ * ⚠️ 英語の `?` と `.` で割ってはならない(実測):
+ *   `should we add a flag to the gate? please advise` を `?` で割ると
+ *   最終節が `please advise` になり、熟議標識を失う。
+ * ゆえに割るのは**日本語の文末記号と列挙のコロン/セミコロンだけ**である。
+ * 実測: この一行で「節跨ぎ命令」3 件が counsel を失わずに済み(コーパス3 3→0)、
+ * 「節跨ぎ熟議」は一件も落ちなかった。
+ */
+const CLAUSE_SPLIT_RE = /[。．！!；;：:]+/;
+function finalClause(w) {
+  const parts = String(w).split(CLAUSE_SPLIT_RE).map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : String(w);
+}
+
+/** その願いは**熟議**(作るべきかを問うている)か。最後の節だけを見る。 */
+function isDeliberation(wish) {
+  return DELIBERATION_RE.test(finalClause(denude(wish)));
+}
+
+/**
+ * ⚠️ `DELIBERATION_RE` を合流させる理由: 1 段目 `if (!COUNSEL_RE.test(w)) return false;`
+ * を通らねば 1.5 段目に届かない。`どちらがよい` / `should we` は `COUNSEL_JA` にも
+ * `COUNSEL_EN` にも無く、合流しなければ熟議の門は永久に届かない(実測: 案1 が
+ * 英語熟議 5/5 を落とした)。
+ */
+const COUNSEL_RE = new RegExp(`${COUNSEL_JA}|${COUNSEL_EN}|${DELIBERATION_RE.source}`, 'i');
 
 /**
  * 創造の動詞 — 「物を寄越せ」と言っている願い。諐問の語彙と混ざると
  * 「タイマーが欲しい」が調査の道へ攫われる。
+ *
+ * ⚠️ 旧実装は「**物を新しく作る**」動詞しか知らず、「**既に在る物に一段足す**」
+ * 動詞(設ける/足す/加える/追加…)を一語も持たなかった。ゆえに engine 改修の
+ * 願いは「創造動詞なし」と判定され、`isCounsel` の打ち消しが効かず諐問へ攫われた。
+ * `BUILD_JA` / `BUILD_EN` がその穴である (FR-01)。
+ *
+ * **日本語と英語を別の定数に割る**(L-3)。日本語に `\b` を使えば単語境界は
+ * 事実上決して立たず、日本語の願いは全て素通りする。
  */
+const BUILD_JA = '設ける|設け|足す|足し|加える|加え|追加|新設|導入|搭載|組み込|持たせ|生やす|' +
+  'できるようにする|可能にする|拡張|付ける|付与';
+const BUILD_EN = '\\b(?:add|introduce|extend|enable|support|wire)\\b';
+const BUILD_RE = new RegExp(`${BUILD_JA}|${BUILD_EN}`, 'i');
+
 const CREATE_RE = new RegExp('欲しい|ほしい|作れ|作って|作る|つくって|実装|実現|開発|構築|' +
-  '\\b(?:build|create|make|implement|develop)\\b', 'i');
+  `${BUILD_JA}|` +
+  '\\b(?:build|create|make|implement|develop)\\b|' + BUILD_EN, 'i');
 
 /**
  * ただし **求められている物が文書である**なら、創造の動詞があっても諐問である。
@@ -310,11 +457,105 @@ const CREATE_RE = new RegExp('欲しい|ほしい|作れ|作って|作る|つく
 const DOC_RE = new RegExp('報告書|比較表|レポート|一覧表|資料|所見|報告|調査|監査|意見|助言|分析|診断|考察|論評|' +
   '\\b(?:report|comparison|analysis|audit|assessment|findings)\\b', 'i');
 
-/** その願いは諐問(答えを求める)か、創造(物を求める)か。 */
+/**
+ * **産物の主名詞** (FR-03) — 願いが名指ししている「寄越せと言われている物」。
+ *
+ * 「健康診断アプリが欲しい」の「診断」に道を奪わせないための語彙である。
+ *
+ * ⚠️ **「図」を入れてはならない** (L-8)。`isCartography` は「意図/地図」の
+ *    紛れ語を退ける仕掛けを持っており、作図は 1 段目で既に決着している。
+ */
+const PRODUCT_RE = new RegExp('アプリ|ツール|コマンド|口|門|画面|機能|フラグ|オプション|' +
+  'エンドポイント|ボタン|一段|相|ページ|タイマー|' +
+  '\\b(?:app|tool|command|flag|option|cli|api|endpoint|button|screen|feature|toggle)\\b', 'i');
+
+/**
+ * 産物の名にも**紛れ語**が在る。`DIAGRAM_FALSE_FRIENDS` と同じ病である。
+ *
+ * 実測(本走行の build 相で発見): 一字の産物名「口」「相」は
+ * **人口 / 窓口 / 入口 / 出口 / 相場 / 相談 / 相手** の中に埋もれている。
+ * 素朴に一字で判定すれば「人口動態を調査して報告してほしい」が
+ * 「産物を求めている」と誤読され、諐問の道を失う —— **実測で 7 件が壊れた**。
+ *
+ * 設計 §1.3 は L-8 で「図」についてのみこの病を警告していたが、
+ * **同じ病は一字の産物名すべてに在った**。ゆえに同じ作法で守る。
+ */
+const PRODUCT_FALSE_FRIENDS = new RegExp(
+  // 「口」— 建物・身体・言葉の「口」。産物の口(コマンドの口)ではない
+  '人口|窓口|入口|出口|河口|口調|口座|口コミ|口頭|蛇口|傷口|経口|悪口|糸口|火口|裏口|非常口|改札口|' +
+  // 「相」— 様子・法律・人物の「相」。段階の相ではない
+  '相場|相談|相手|位相|真相|様相|手相|首相|外相|相続|相関|相互|相当|相対|相応|血相|世相|' +
+  // 「門」— 建物・分野・学びの「門」。判定の門ではない
+  '門前|専門|部門|門下|入門|名門|門戸|関門|門限|門外|登竜門|' +
+  /**
+   * ⚠️ **強い産物名にも紛れ語は在る**(quality 相 / R-2)。
+   * build 相は「一字の名だけが危うい」と裁いたが、実測で覆った ——
+   * `機能` `画面` `一段` `タイマー` は二字以上でも他語に埋もれる:
+   *   腎機能 / 肝機能 / 認知機能 → 「機能」は臓器の働きであって産物ではない
+   *   一段落               → 「一段」は作業の区切りであって門の一段ではない
+   *   画面越し             → 「画面」は場所を言う副詞であって求められた物ではない
+   * `PRODUCT_STRONG_RE` はこの守りを持たず、**基準線で counsel だった 6 件が
+   * standard/quick へ落ちていた**(main との突合で確認)。
+   */
+  '[腎肝心肺脳胃腸皮膚身体運動認知生殖免疫視聴嚥下排泄]機能|機能性|一段落|画面越|タイマー競技');
+/** 紛れ語を除いても残る、強い産物の名(これが在れば疑いなく物を求めている)。 */
+const PRODUCT_STRONG_RE = new RegExp('アプリ|ツール|コマンド|画面|機能|フラグ|オプション|' +
+  'エンドポイント|ボタン|一段|ページ|タイマー|' +
+  '\\b(?:app|tool|command|flag|option|cli|api|endpoint|button|screen|feature|toggle)\\b', 'i');
+
+/** その願いは**産物**を名指ししているか(紛れ語を退けたうえで)。 */
+function wantsProduct(w) {
+  /**
+   * ⚠️ **紛れ語の守りは強い名にも掛かる**(quality 相 / R-2)。
+   * 旧実装はこの一行を持たず、`PRODUCT_STRONG_RE` が紛れ語を素通しにしていた ——
+   * 「腎機能の低下を診断してほしい」が産物の依頼と誤読され、諐問の道を失った。
+   */
+  if (PRODUCT_FALSE_FRIENDS.test(w)) return false;
+  if (PRODUCT_STRONG_RE.test(w)) return true;
+  // 一字の名(口/門/相)だけで当たった場合、それが紛れ語の一部でないか確かめる
+  return PRODUCT_RE.test(w) && !PRODUCT_FALSE_FRIENDS.test(w);
+}
+
+/**
+ * **文書そのものを寄越せ**と言っている語彙 —— 産物の名より強い。
+ *
+ * `DOC_RE` から **「診断」と「監査」だけ**を除いた集合である。
+ * この二語は *文書の名でもあり、機構の機能の名でもある*:
+ *   「健康**診断**アプリが欲しい」 「門に**監査**の一段を足す」
+ * 二つの顔を持つのはこの二語だけで、他の語(報告書/比較表/調査/分析/所見…)は
+ * **文書を求める顔しか持たない**。ゆえにそれらは産物の名に勝つ。
+ *
+ * これが欠陥Aの核心である —— discovery §2.1 が名指しした
+ * 「『診断』が COUNSEL_JA と DOC_RE の同一語である」という事実の、正確な一般化。
+ */
+const DOC_STRONG_RE = new RegExp('報告書|比較表|レポート|一覧表|資料|所見|報告|調査|意見|助言|分析|考察|論評|' +
+  '\\b(?:report|comparison|analysis|audit|assessment|findings)\\b', 'i');
+
+/**
+ * その願いは諐問(答えを求める)か、創造(物を求める)か。
+ *
+ * ⚠️ 旧実装は `CREATE_RE(w) && !DOC_RE(w)` の一行だった。「診断」が
+ * `COUNSEL_JA` と `DOC_RE` の**両方に居る**ため、「健康診断アプリが欲しい」で
+ * 打ち消しが `!DOC_RE` によって無効化された —— 形を見て意味を見逃した(第19条)。
+ *
+ * 新しい問いは「DOC に当たったか」ではなく
+ * **「求められている物が文書そのものか」**である。
+ *
+ * 自ら `denude` を呼ぶ。`chooseScale` から剥いだ文を渡されても冪等なので害は無く、
+ * 単体で呼ばれても(`counsel.test.js` がそうする)正しく振る舞う。
+ */
 function isCounsel(wish) {
-  if (!COUNSEL_RE.test(wish)) return false;
-  if (CREATE_RE.test(wish) && !DOC_RE.test(wish)) return false;   // 物を求めている
-  return true;
+  const w = denude(wish);
+  if (!COUNSEL_RE.test(w)) return false;                    // 1. 諐問の語彙が無い
+  if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;  // 2. 答えだけを求めている
+  // 2.5 **熟議** (R-1): 「作るべきか」と問うている。答えを求めているので建造動詞より強い。
+  //     ★ この段より前に置くこと —— 建造動詞が在っても熟議は諐問である。
+  if (isDeliberation(w)) return true;
+  // 3. 物を求めている疑い。だが求めている物が**文書そのもの**なら、やはり諐問である。
+  //    強い文書の名は産物の名に勝つ(「画面設計を調査して報告書がほしい」)。
+  //    二つの顔を持つ「診断/監査」だけは、産物の名に負ける(「健康診断アプリが欲しい」)。
+  if (DOC_STRONG_RE.test(w)) return true;
+  return DOC_RE.test(w) && !wantsProduct(w);
 }
 
 /**
@@ -350,23 +591,38 @@ function isCartography(wish) {
   return true;
 }
 
-/** Heuristically choose a scale from the wish text. */
+/**
+ * Heuristically choose a scale from the wish text.
+ *
+ * ⚠️ **判定の順序は変えてはならない** (L-7)。`counsel.test.js:292` の
+ * 「壊れ engine」門が、語彙を潰すと『楽園のエンジンを監査してほしい』が
+ * **reform** へ落ちること —— すなわち counsel が reform より先に立つこと —— を
+ * 撃っている。本走行が変えたのは **何を渡すか**(剥いだ文)と **各段の語彙**だけである。
+ */
 function chooseScale(wish) {
-  const w = wish.toLowerCase();
+  // ★ 一度だけ剥ぎ、以降は剥いだ文で判定する (FR-02)。
+  //   フラグ名やコード片は「依頼の動詞」ではない。
+  const d = denude(wish);
+  const w = d.toLowerCase();
   // 産物の種類が道を決める。対象(楽園か否か)ではない — 作図も諐問も
   // 「楽園について」語りうるが、engine を書き換える道ではない。
-  if (isCartography(wish)) return 'cartography';
+  if (isCartography(d)) return 'cartography';
   // 主題優先: 「楽園のエンジンを監査してほしい」は楽園の話だが改変ではない。
   // 諐問は reform より先に判定する — 対象ではなく **求められている答えの種類**が道を決める。
+  // ★ 元の願い文を渡す。`isCounsel` は単体でも正しく振る舞わねばならず、
+  //   中で自ら剥ぐ(`denude` は冪等なので二重に剥いでも害は無い)。
   if (isCounsel(wish)) return 'counsel';
   // 対象が楽園自身なら、創造物の道ではなく改革の道を行く(第23条)。
-  if (REFORM_RE.test(wish)) return 'reform';
+  // ★ 述語は `isReformSubject` —— **楽園の抽象名だけ**で裁く。engine の固有名は
+  //   四度の回帰を経て本走行から撃ち捨てた(`REFORM_RE` の註と requirements の申し送り)。
+  //   **判定の段は一段も動かしていない。**
+  if (isReformSubject(d)) return 'reform';
   const quickJa = /一行|修正|バグ|直す|直して|直し|タイポ|誤字|微調整/;
   const quickEn = /\b(fix|bug|typo|rename|tweak|adjust|patch|hotfix|small|quick)\b/;
   const fullJa = /製品|システム|アプリ|プラットフォーム|全体/;
   const fullEn = /\b(product|platform|system|app|application|saas|dashboard|end-to-end|mvp|launch)\b/;
-  if (quickJa.test(wish) || quickEn.test(w)) return 'quick';
-  if (fullJa.test(wish) || fullEn.test(w)) return 'full';
+  if (quickJa.test(d) || quickEn.test(w)) return 'quick';
+  if (fullJa.test(d) || fullEn.test(w)) return 'full';
   return 'standard';
 }
 
@@ -518,4 +774,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, DELIBERATION_RE, isDeliberation, finalClause };

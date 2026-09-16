@@ -1,0 +1,34 @@
+# reform 走行『route-misfire』の scope 宣言 (盲点③ / 第37条・第60条(d))
+#
+# ⚠️ なぜこれが要るか —— 実測で確かめた欠陥である。
+#
+# `graph/critic.js` の `DEFAULT_SELF_SCOPES` は `paradise-internal` と
+# `orchestration` の 2 語しか名乗らない。だが本走行が刻んだ教訓の scope は
+# `forge` / `gate` / `reform` である。ゆえに critic は本走行自身の教訓 14 件を
+# 「lesson out of scope here」と言って **緑で素通しした**。
+#
+# そして素通しされた一件が `corpus-blind-to-its-own-half` ——
+# 「門のコーパスが規則の片枝しか含まないなら、門は永久に緑のまま
+#  面の半分を素通しする」—— **これは R-1 そのものを名指す教訓であった**。
+#
+# 一度目の tribunal はこの教訓を正しく刻み、
+# 走行は scope の既定値によってそれを自分で握り潰し、同じ病を再発させた。
+#
+# 実測: この 5 語を宣言すると GAP 37 → 39(新たに赤くなった 2 件 =
+#       corpus-blind-to-its-own-half / restore-path-must-be-verified)。
+#
+# ── 裁定: `.paradise-scopes` を置く(critic.js は触らない)─────────────
+# critic.js の `--self` を「触れた物から導く」案も検討したが退けた:
+#   (a) critic.js は全ての自己審査が通る道であり、R-1 の修理と同じ走行で
+#       判定器を二つ同時に触るのは、本走行が 8 度繰り返した過ちそのものである。
+#   (b) `.paradise-scopes` は critic.js が既に持つ**設計された拡張点**であり
+#       (「a configuration surface, not a hardcoded assumption」)、
+#       これを使うのが engine の意図に沿う。
+#   (c) 導出案は「触れた物」の定義が走行ごとに揺れ、黙って外れる面を新設する。
+# 導出案は次の走行への申し送りとして requirements に残した。
+
+paradise-internal
+orchestration
+forge
+gate
+reform

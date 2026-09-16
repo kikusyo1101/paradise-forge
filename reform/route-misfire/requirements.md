@@ -1,0 +1,1261 @@
+# requirements — reform 走行『route-misfire』
+
+道: `reform` / 相: `specify`
+前相: [`discovery.md`](./discovery.md)(実測はすべてそちらに在る。ここでは結論だけを引く)
+
+---
+
+## 0. この走行が直すもの / 直さないもの
+
+| | |
+|---|---|
+| **直す(欠陥A)** | `graph/forge.js` の `chooseScale` が「語の形」だけを見て「求められている産物の種類」を見ず、engine 改修の願いを `counsel` / `standard` へ攫う |
+| **直す(欠陥B)** | `graph/workspace.js` の `check` が `PARADISE_CREATIONS` の残留で、創造物の倉ですらない場所を裁いて偽の赤 (EXIT=1) を出す |
+| **直さない(別走行へ送る)** | `ECサイトを作れ` → standard の誤着(`fullJa` が「サイト」を知らない)。discovery §2.1 で発見したが教主の名指しに無い。**FR に含めない。§6 に記録だけ残す** |
+| **直さない** | `tests/paradise.test.js` の `--gate` 絞り込みが走行時間を縮めない件(discovery §8-8)。別の欠陥である |
+
+---
+
+## 1. 機能要件 (FR)
+
+### FR-01 — 建造の動詞を engine が知る
+「既に在る物に一段足す」動詞(設ける/足す/加える/追加/新設/導入/搭載/組み込/持たせ/生やす/できるようにする/可能にする/拡張、および英語 add/introduce/extend/enable/support/wire)を
+**創造の語彙として認める**。これにより `isCounsel` の打ち消し(現 `forge.js:316`)が改修の願いにも効く。
+
+### FR-02 — フラグ名とコード片は「依頼の動詞」ではない
+語彙判定の前に、願い文から次を剥ぐ:
+(a) バッククォートで囲まれた区間、(b) `--flag` / `-f` 形式の語、(c) `名前.js` `名前.json` 等のファイル名。
+剥いだ文で語彙を判定する。**剥いだ文は判定にのみ使い、`meta.wish` には元の願い文を保存する。**
+
+### FR-03 — 産物の主名詞は文書の語彙に勝つ
+願いが**産物の主名詞**(アプリ/ツール/コマンド/口/門/画面/機能/フラグ/オプション/エンドポイント/ボタン/一段/相/ページ/タイマー、および app/tool/command/flag/option/cli/api/endpoint/button/screen/feature/toggle)を含むとき、
+`DOC_RE` に当たっても **諮問ではない**。「健康診断アプリ」の「診断」に道を奪わせない。
+
+### FR-04 — ~~REFORM は engine の固有名を知る~~ → **射程外(build 相四度目 / 教主の裁定)**
+
+> **🔴 この FR は本走行から撃ち捨てられた。** 題そのものは正当だが、
+> **本走行の射程では解けないと教主が裁いた** —— 四度の実測がその根拠である。
+> **§8「別の走行への申し送り」に全ての実測と門のコーパスを残した。そこが次の走行の財産である。**
+
+~~`REFORM_RE` に engine の固有名(… `graph/*.js` のモジュール名 —— conclave / forge /
+codex / verdict / critic / synod / census / gauge / clergy / workspace / …)を加える。~~
+
+**`台帳` と `ledger` は加えてはならない**(この禁則だけは生きている / L-4)。
+discovery §6.1 の実測で `台帳の毒を直す` が quick から reform へ攫われた。
+`REFORM_RE` は main と同じ**楽園の抽象名だけ**である:
+`楽園|paradise|ハーネス|harness|憲法|constitution|engine|エンジン|門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|枢機卿|cardinal|神官|priest`
+
+### FR-05 — `chooseScale` の返り値は文字列のままである
+`forge.js:392` のコメントと `tests/paradise.test.js:8566` (`admit(wish,…).scale === chooseScale(wish)`) が依存する。
+**返り値の型を変えてはならない。**
+
+### FR-06 — `COUNSEL_JA` / `COUNSEL_EN` は定数名も判定経路も残す
+`tests/counsel.test.js:280-298` の「壊れ engine」門が、この二つの定数名をソース置換で潰して
+「語彙が判定に効いている」ことを撃つ。定数名を消す/語彙を別の場所へ移すと
+`assert.ok(broken !== src, '門の壊し方が古い')` が赤になる。
+
+### FR-07 — `resolve()` は「在る」と「創造物の倉である」を別の言葉で言う
+`resolve()` の返り値に `vault` を**足す**。既存キー (`root` / `source` / `legacy` / `exists`) は
+一つも消さず、意味も変えない(`tests/paradise.test.js:3085` が撃っている)。
+
+### FR-08 — 本物の創造物の倉であることを確かめてから裁く
+`isCreationsVault(root)` を `workspace.js` に置く。肯う印は二つ、**どちらか一つで足りる**:
+1. `git -C <root> config --get remote.origin.url` が `paradise-creations(\.git)?$` に一致する
+2. `<root>/.paradise-creations` という目印ファイルが在る
+
+**ディレクトリ名では判定しない。** `tests/abandoned-run.test.js:51` の sandbox は
+`paradise-creations` という名の仮倉を作るので、名で裁けば偽陽性になる。
+
+### FR-09 — 仮倉なら声に出して skip する(第37条)
+CLI `check` は、解決した倉が `isCreationsVault` でないとき:
+* 走行帳の流出検査を **EXIT に数えない**(偽の赤を出さない)
+* **黙って 0 件にしない。** 「その場所は創造物の倉ではないので、走行帳の流出は検めなかった」と
+  **場所を名指しして**印字する
+
+### FR-10 — `strayRuns()` 自体は今まで通り鳴る
+`strayRuns()` の返り値と鳴り方を**変えてはならない**。
+`tests/abandoned-run.test.js:258` の `B-1 [故障注入]` は **env で仮倉を立てて `strayRuns()` が鳴ること**を
+撃っている。ここを黙らせれば欠陥B対策が既存の門を殺す。
+skip の判断は **CLI `check` の層**でのみ行う。
+
+### FR-11 — 目印ファイルを置く側も engine が持つ
+FR-08 の印 2 を採るなら、`.paradise-creations` を**置く口**も engine が持たねばならない。
+discovery §5 の実測で、本物の倉に目印ファイルは**存在しない**。
+読む側だけを作れば、本物の倉ですら偽になる。
+
+---
+
+## 2. 非機能要件 (NFR)
+
+* **NFR-01** — `isCreationsVault` が呼ぶ `git` の代は 1 回 20ms 未満であること(実測 14〜15ms)。
+  `check` は CI で 1 回走るだけなので払える。
+* **NFR-02** — `git` が PATH に無い / 対象が git repo でない場合、**例外を投げず** `false` を返すこと。
+  `strayCreations()` の既存の作法(catch して空を返す)に倣う。
+* **NFR-03** — 新しい門ファイルを足すなら **CI か `tests/paradise.test.js` のどちらかが必ず呼ぶ**こと。
+  `node graph/wiring.js check` は門の孤児を exit 1 で名指しする(第44条)。
+* **NFR-04** — README 等に数値を手で書かない(第22条)。数は `graph/census.js` が測る。
+
+---
+
+## 3. 受入条件 (AC) — すべて機械が撃てる形
+
+前提: `cd C:/Users/kikus/Documents/workspace/paradise`。
+以下の `node -e` は**そのまま貼って走る**。`process.exit` で判定するので `echo $?` が答えである。
+
+### 3.1 欠陥A — 誤着を直す(5 件)
+
+**AC-01** 『楽園の自己診断に絞り込みの口を設ける』は reform へ着く
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('楽園の自己診断に絞り込みの口を設ける');console.log(g);process.exit(g==='reform'?0:1)"
+```
+期待: stdout `reform` / exit **0**
+
+**AC-02** 『門に監査の一段を足す』は reform へ着く
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('門に監査の一段を足す');console.log(g);process.exit(g==='reform'?0:1)"
+```
+期待: stdout `reform` / exit **0**
+
+**AC-03** 『CI に ledger --audit を追加する』は **counsel でない**(フラグ名に道を奪わせない)
+
+> **🔴 build 相四度目で期待値を改めた(教主の裁定 / FR-04 の射程外化)。**
+> main ではこの願いが **counsel** に着いていた —— `--audit` が `\baudit\b` に当たったためである。
+> `denude` がフラグ名を剥ぐことでその病は治った。**AC-03 の本旨はそこである。**
+> だが `reform` に着くには弱い名 `ci` が要り、それは FR-04 と共に撃ち捨てられた。
+> ゆえに期待値を **『counsel でないこと』**へ改める(AC-04 と同じ作法)。
+> **実測(build 相四度目)**: `standard` に着く。フラグ名に道を奪われてはいない。
+
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('CI に ledger --audit を追加する');console.log(g);process.exit(g!=='counsel'?0:1)"
+```
+期待: stdout が `counsel` **以外** / exit **0**
+
+**AC-04** 『健康診断アプリが欲しい』は **counsel でない**(教主裁定1)
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('健康診断アプリが欲しい');console.log(g);process.exit(g!=='counsel'?0:1)"
+```
+期待: stdout が `counsel` **以外** / exit **0**
+
+> **教主の裁定1(2026-09-13)** — design §1.6 の「`fullJa` から『アプリ』を外す」は**却下**。
+> `fullJa` は一字も触らない。本走行の主題は **counsel への誤着**であって、
+> full/standard の境目ではない。境目の病は別件に起票済み(台帳 PARA-7)。
+> ゆえに本 AC の期待値を `standard` から **『counsel でないこと』** に改めた。
+> **実測(build 相)**: `full` に着く。「診断」に道を奪われてはいない。
+
+**AC-05** ~~『gauge に fingerprint を確かめる口を設ける』は reform へ着く~~ → **🔴 射程外**
+
+> **build 相四度目 / 教主の裁定で本走行の射程から外した。** これは FR-04
+> (engine の固有名を印にする)の代表例であり、四度の実測が「この印は本走行では
+> 強め切れない」を示した。**§8 の申し送りに全て記した。**
+> **実測(build 相四度目 / main と同じ)**: `standard` に着く。
+> 神は「**楽園の** gauge に…」と一言添えれば reform に着く。
+>
+> **この AC を緑にするのが次の走行の題である。**
+
+### 3.2 欠陥A — 回帰を防ぐ(教主が名指しした 4 件)
+
+**AC-06** 『健康診断アプリが欲しい』→ **counsel でない**(AC-04 と同一。教主の回帰防止リストの一件として再掲)
+— AC-04 と同じ命令・同じ期待(教主裁定1により期待値を改めた)。
+
+**AC-07** 『楽園の位階の相関図を作れ』は cartography のままである
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('楽園の位階の相関図を作れ');console.log(g);process.exit(g==='cartography'?0:1)"
+```
+期待: stdout `cartography` / exit **0**
+
+**AC-08** 『楽園のエンジンを監査してほしい』は counsel のままである
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('楽園のエンジンを監査してほしい');console.log(g);process.exit(g==='counsel'?0:1)"
+```
+期待: stdout `counsel` / exit **0**
+
+**AC-09** 『台帳の毒を直す』は quick のままである(**FR-04 の禁則が守られている証拠**)
+```
+node -e "const F=require('./graph/forge.js');const g=F.chooseScale('台帳の毒を直す');console.log(g);process.exit(g==='quick'?0:1)"
+```
+期待: stdout `quick` / exit **0**
+
+### 3.3 欠陥A — 既存の門が撃っている断定を一つも壊さない
+
+**AC-10** 判定表 37 行を一度に撃ち、一件でも外れたら赤くなる
+```
+node -e "
+const F=require('./graph/forge.js');
+const T=[['楽園の自己診断に絞り込みの口を設ける','reform'],['門に監査の一段を足す','reform'],
+['CI に ledger --audit を追加する','reform'],['健康診断アプリが欲しい','NOT:counsel'],
+['gauge に fingerprint を確かめる口を設ける','reform'],['楽園の位階の相関図を作れ','cartography'],
+['楽園のエンジンを監査してほしい','counsel'],['台帳の毒を直す','quick'],
+['ポモドーロタイマーが欲しい','standard'],['現状のCIの健全性を監査してほしい','counsel'],
+['Rustの非同期ランタイムの選択肢を調査して比較表がほしい','counsel'],['今月のPRの傾向を報告してほしい','counsel'],
+['この設計は妥当か意見がほしい','counsel'],['ハーネスの設計を見直す必要はないか','counsel'],
+['楽園のエンジンのバグを修正する','reform'],['楽園に新しい門を追加してほしい','reform'],
+['タスク管理アプリを作って','standard|full'],['タイポを直して','quick'],['ログイン画面のバグを直す','quick'],
+['オーケストレーションの相関図、関連図を作成し連携してほしい','cartography'],['位階の図を描いてほしい','cartography'],
+['creations のデータフローを可視化して','cartography'],['draw a sequence diagram of the dispatch chain','cartography'],
+['意図を汲んでタイマーを実装してほしい','standard'],['地図アプリが欲しい','standard|full'],
+['楽園の憲法に条を足せ','reform'],['バグを直して','quick'],['エンジンを監査してほしい','counsel'],
+['ダッシュボードを生きた門にせよ','reform'],['fix login bug','quick'],['add a dark mode toggle','standard'],
+['build a habit tracker app','full'],['楽園のオーケストレーションを改善する','reform'],
+['憲法に条を足す','reform'],['improve the harness engine','reform'],['門を強化する','reform'],
+['市場の競合を調査して報告書をくれ','counsel']];
+let bad=0;for(const[w,e]of T){const g=F.chooseScale(w);const ok=e.startsWith('NOT:')?g!==e.slice(4):e.split('|').includes(g);if(!ok){console.log('NG',w,'got='+g,'want='+e);bad++}}
+console.log('NG='+bad+' / '+T.length);process.exit(bad?1:0)"
+```
+期待: 最終行 `NG=0 / 37` / exit **0**
+
+**AC-11** `isCounsel` の直接の断定(`tests/counsel.test.js` が撃っている 2 行)が保存されている
+```
+node -e "const F=require('./graph/forge.js');const a=F.isCounsel('検討したツールを実装して'),b=F.isCounsel('現状のCIの健全性を監査してほしい');console.log('a='+a,'b='+b);process.exit((a===false&&b===true)?0:1)"
+```
+期待: stdout `a=false b=true` / exit **0**
+
+**AC-12** `chooseScale` の返り値は文字列である(FR-05)
+```
+node -e "const F=require('./graph/forge.js');const t=typeof F.chooseScale('何でもよい願い');console.log(t);process.exit(t==='string'?0:1)"
+```
+期待: stdout `string` / exit **0**
+
+**AC-13** `COUNSEL_JA` / `COUNSEL_EN` の定数名が `forge.js` に残っている(FR-06)
+```
+node -e "const s=require('fs').readFileSync('graph/forge.js','utf8');const ok=/const COUNSEL_JA\s*=/.test(s)&&/const COUNSEL_EN\s*=/.test(s);console.log(ok);process.exit(ok?0:1)"
+```
+期待: stdout `true` / exit **0**
+
+**AC-14** 諮問の語彙を潰すと判定が崩れる(語彙が判定に効いている証拠 / `counsel.test.js:292` と同じ主張)
+```
+node tests/counsel.test.js
+```
+期待: 最終行 `Counsel self-test: 51 passed, 0 failed`(**passed は 51 以上、failed は 0**)/ exit **0**
+
+**AC-15** 走行帳の門が緑である
+```
+node tests/abandoned-run.test.js
+```
+期待: 最終行 `abandoned-run: N passed, 0 failed`(N ≥ 20)/ exit **0**
+
+**AC-16** 自己診断の全走が緑である(**6 分かかる。build 相で必ず一度撃つこと**)
+```
+node tests/paradise.test.js
+```
+期待: 集計行の `failed` が **0** / exit **0**
+
+**AC-17** `--scale` を明示した `admit` の裁定が `chooseScale` と一致する(`paradise.test.js:8566` の主張)
+```
+node -e "const F=require('./graph/forge.js');const w='ポモドーロタイマーを作れ';const ok=F.admit(w,'nonexistent').scale===F.chooseScale(w);console.log(ok);process.exit(ok?0:1)"
+```
+期待: stdout `true` / exit **0**
+
+### 3.4 欠陥B — 偽の赤を止め、かつ黙らない
+
+**AC-18** 仮倉(創造物の倉ではない場所)を指しても `check` は緑である
+```
+V="$LOCALAPPDATA/Temp/ac18-$$"; mkdir -p "$V/reform-probe"
+printf '%s' '{"meta":{"scale":"reform"},"domains":[{"phases":[{"artifactPath":"graph/forge.js"}]}]}' > "$V/reform-probe/conclave.json"
+PARADISE_CREATIONS="$(cygpath -w "$V")" node graph/workspace.js check; echo "EXIT=$?"; rm -rf "$V"
+```
+期待: exit **0**
+**修正前の実測**: exit **1**、`✗ reform の走行帳が創造物の倉に居る (1 件)` を印字(discovery §4)
+
+**AC-19** その緑は**黙っていない** — 検めなかったことと、その場所を名指しする(第37条 / FR-09)
+```
+STAMP="ac19-$$"; V="$LOCALAPPDATA/Temp/$STAMP"; mkdir -p "$V/reform-probe"
+printf '%s' '{"meta":{"scale":"reform"},"domains":[{"phases":[{"artifactPath":"graph/forge.js"}]}]}' > "$V/reform-probe/conclave.json"
+OUT=$(PARADISE_CREATIONS="$(cygpath -w "$V")" node graph/workspace.js check)
+echo "$OUT"
+echo "$OUT" | grep -q "創造物の倉ではない" && echo "$OUT" | grep -qF "$STAMP" && echo AC19-PASS || echo AC19-FAIL
+rm -rf "$V"
+```
+期待: stdout に `AC19-PASS`。すなわち出力に (a) 検めなかった旨の文言、(b) **skip した場所の道**(この仮倉に固有の名 `$STAMP` を含む)の両方が在る。
+**黙って `✓ …流出なし` とだけ言って終わるのは不合格である。**
+**註**: 道全体を `grep -qF` で照合しないのは、`cygpath -w` が返す道が
+`C:\Users\kikus\AppData\Local/Temp/…` のように区切りを混ぜるため(実測)。
+node が正規化して印字する道と一字一句は一致しない。固有の名で照合する。
+
+**AC-20** 本物の倉では今まで通り検める(片側だけ証明した修理は壁であって門ではない — 第37条)
+```
+node graph/workspace.js check; echo "EXIT=$?"
+```
+期待: exit **0** かつ stdout に `✓` の行。**AC-19 の skip 文言は出ない**(本物の倉なので検めている)。
+
+**AC-21** `strayRuns()` 自体は仮倉でも今まで通り鳴る(FR-10 / `abandoned-run.test.js` の `B-1` を殺していない)
+```
+node -e "
+const fs=require('fs'),path=require('path'),os=require('os');
+const ws=require('./graph/workspace.js');
+const d=fs.mkdtempSync(path.join(os.tmpdir(),'ac21-'));
+const repo=path.join(d,'paradise'),store=path.join(d,'paradise-creations');
+fs.mkdirSync(path.join(repo,'reform'),{recursive:true});
+fs.mkdirSync(path.join(store,'by-scale'),{recursive:true});
+fs.writeFileSync(path.join(store,'by-scale','conclave.json'),JSON.stringify({meta:{scale:'reform'},domains:[{status:'ratified',phases:[]}]}));
+const r=ws.strayRuns(repo,{env:{PARADISE_CREATIONS:store}});
+console.log(JSON.stringify(r.map(x=>x.slug)));
+fs.rmSync(d,{recursive:true,force:true});
+process.exit(r.length===1&&r[0].slug==='by-scale'?0:1)"
+```
+期待: stdout `[\"by-scale\"]` / exit **0**
+
+**AC-22** `isCreationsVault` が本物の倉に真、仮倉に偽を返す(FR-08)
+```
+node -e "
+const fs=require('fs'),path=require('path'),os=require('os');
+const ws=require('./graph/workspace.js');
+const real=ws.isCreationsVault('C:/Users/kikus/Documents/workspace/paradise-creations');
+const fake=ws.isCreationsVault(fs.mkdtempSync(path.join(os.tmpdir(),'ac22-')));
+console.log('real='+real,'fake='+fake);process.exit((real===true&&fake===false)?0:1)"
+```
+期待: stdout `real=true fake=false` / exit **0**
+**註**: 本物の倉が無い機械(CI の checkout)ではこの AC は**撃てない**。
+その場合は **skip を声に出す**こと。緑と記録してはならない(第37条)。
+
+**AC-23** 名前だけの偽物を本物と認めない(FR-08 の「ディレクトリ名で裁かない」)
+```
+node -e "
+const fs=require('fs'),path=require('path'),os=require('os');
+const ws=require('./graph/workspace.js');
+const d=fs.mkdtempSync(path.join(os.tmpdir(),'ac23-'));
+const decoy=path.join(d,'paradise-creations'); fs.mkdirSync(decoy);
+const v=ws.isCreationsVault(decoy);
+console.log('decoy='+v); fs.rmSync(d,{recursive:true,force:true});
+process.exit(v===false?0:1)"
+```
+期待: stdout `decoy=false` / exit **0**
+
+**AC-24** 目印ファイルだけでも本物と認める(FR-08 の印 2 / FR-11)
+```
+node -e "
+const fs=require('fs'),path=require('path'),os=require('os');
+const ws=require('./graph/workspace.js');
+const d=fs.mkdtempSync(path.join(os.tmpdir(),'ac24-'));
+fs.writeFileSync(path.join(d,'.paradise-creations'),'');
+const v=ws.isCreationsVault(d);
+console.log('marked='+v); fs.rmSync(d,{recursive:true,force:true});
+process.exit(v===true?0:1)"
+```
+期待: stdout `marked=true` / exit **0**
+
+**AC-25** `resolve()` の既存キーが一つも消えていない(FR-07)
+```
+node -e "
+const ws=require('./graph/workspace.js');
+const r=ws.resolve({env:{PARADISE_CREATIONS:require('os').tmpdir()}});
+const need=['root','source','legacy','exists','vault'];
+const miss=need.filter(k=>!(k in r));
+console.log(JSON.stringify(r));console.log('missing='+JSON.stringify(miss));
+process.exit(miss.length===0&&r.source==='env'?0:1)"
+```
+期待: `missing=[]` かつ `source` が `env` / exit **0**
+
+**AC-26** `git` が無くても例外を投げない(NFR-02)
+```
+NODE=$(which node)
+PATH="/usr/bin:/bin" "$NODE" -e "
+const ws=require('C:/Users/kikus/Documents/workspace/paradise/graph/workspace.js');
+let threw=false,v=null;
+try{v=ws.isCreationsVault('C:/Users/kikus/Documents/workspace/paradise-creations')}catch(e){threw=true;console.log('THREW '+e.message)}
+console.log('threw='+threw,'v='+v);process.exit(threw?1:0)"
+```
+期待: `threw=false` / exit **0**
+**実測済**: この `PATH` で `git` は確かに消える(`which: no git in (/usr/bin:/bin)`)。
+また `execFileSync('git',…)` はその状態で `ENOENT` を投げることを実測した
+(`node -e` で直接確認済。ゆえにこの AC は**本当に撃てている**)。
+`NODE=$(which node)` が要るのは、`PATH` を削ると `node` 自身も消えるため(実測 `command not found`)。
+
+### 3.5 engine の健全性
+
+**AC-27** 門の孤児が居ない(新しい門を足したなら CI か `paradise.test.js` が呼んでいる / NFR-03)
+```
+node graph/wiring.js check; echo "EXIT=$?"
+```
+期待: exit **0**、`✓ 門 N 本すべてに走らせる者が居る` を印字
+
+**AC-28** 住所の直書きが再発していない(第30条)
+```
+node -e "const ws=require('./graph/workspace.js');const r=ws.hardcodedRefs();console.log(JSON.stringify(r));process.exit(r.length===0?0:1)"
+```
+期待: stdout `[]` / exit **0**
+
+**AC-29** README 等の数値が測定と一致する(第22条)
+```
+node graph/census.js check; echo "EXIT=$?"
+```
+期待: exit **0**
+**註**: `census.js` は 3 分以上かかる(discovery §7 で `node graph/census.js` が 180 秒で終わらなかった)。
+build 相は十分な待ち時間を与えること。
+
+**AC-30** 誤着の修正が `forge.js` の CLI からも同じ答えを返す(環と器が割れていない)
+```
+node graph/forge.js scale "楽園の自己診断に絞り込みの口を設ける"
+```
+期待: stdout `reform` / exit **0**
+**修正前の実測**: stdout `counsel` / exit 0
+
+---
+
+## 3.6 欠陥C — **逆向きの誤着**: 世間一般の願いが reform へ拉い去られる
+
+> **🔴 build 相四度目の裁定(§8 を読め)**: AC-31〜35 のうち
+> **`ENGINE_NAMES` の存在を前提にする AC-32(engine 固有名の側)と AC-34 は射程外**である。
+> **AC-31 / AC-33 は生きている** —— それらは「**世間の願いが reform へ行かない**」という
+> 断定であり、実装がどんな形であれ守られねばならない。門も残した。
+
+> ⚠️ **これは設計時に見逃された穴である。**
+> design §1.5 は「`ENGINE_NAMES` は `graph/*.js` の名から測って作れ」「engine が増えたら
+> 門が赤くなって人に知らせよ」とまでは言った。だが **「engine の名の半分は世間一般の語である」**
+> とは一言も言わなかった。ゆえに build 相は `identity` `vendor` `contract` `census` `pulse`
+> `deploy` `domains` `workflow` `ci` `atlas` を**強い固有名と同じ表に並べ**、
+> `REFORM_RE` に `\b(?:ENGINE_NAMES)\b` として流し込んだ。
+>
+> 結果、**世間並みの創造の願いが engine 改修の 11 相へ攫われた**。教主の実測(HEAD `3b726f5`):
+>
+> | 願い | 落ちた先 | 当たった弱い名 |
+> |---|---|---|
+> | `build a workflow automation app for my team` | reform | workflow |
+> | `an identity verification service for startups` | reform | identity |
+> | `a vendor management dashboard` | reform | vendor |
+> | `build a contract review tool` | reform | contract |
+> | `make a census data explorer` | reform | census |
+> | `a pulse oximeter tracking app` | reform | pulse |
+> | `deploy a static site for my blog` | reform | deploy |
+> | `atlas という名の地図アプリを作れ` | reform | atlas |
+> | `CIに合格するためのアプリが欲しい` | reform | ci |
+> | `顧客のワークフローを管理するアプリが欲しい` | reform | ワークフロー |
+>
+> 神が「ベンダー管理アプリが欲しい」と命じて楽園の engine を改造する道が立ち上がる ——
+> **§3 の欠陥Aと同じ重さの病を、正反対に生んだ**だけである。本 requirements が
+> §2 で名指しで禁じた「**誤着を直して別の誤着を生む**」そのものであり、
+> ゆえに build 相は差し戻された(rework)。
+
+**修正の形**: `ENGINE_NAMES` を **強い名 / 弱い名の二枚**に割る。
+
+* **強い名** (`ENGINE_NAMES_STRONG`) — 楽園固有で世間の願い文に現れない
+  (`conclave` `clergy` `codex` `forge` `gauge` `synod` `ordain` `spawn-trace` …)。
+  **単独で reform を名乗ってよい。**
+* **弱い名** (`ENGINE_NAMES_WEAK` / `ENGINE_NAMES_WEAK_JA`) — 世間一般の語と衝突する
+  (`identity` `vendor` `contract` `census` `pulse` `deploy` `domains` `workflow` `ci`
+  `atlas` `upstream` `derived` `lessons` `workspace` `ワークフロー`)。
+  **(1) 建造の動詞(`BUILD_RE`)を伴い、かつ (2) 英語の冠詞
+  (a/an/the/my/our/your/their)の直後でない** 時にのみ reform を名乗る。
+
+`REFORM_RE` の**強い抽象名は一語も減らしていない**(楽園/paradise/憲法/engine/門/
+自己診断/走行帳/オーケストレーション/神官/枢機卿…)。`ワークフロー` 一語だけが
+強い抽象名の側から弱い名の側へ移った —— それは engine の器官名ではなく世間の語だからである。
+`isCounsel` / `denude` / `PRODUCT_*` / `DOC_STRONG_RE` / `chooseScale` の**判定順は一段も動かしていない**。
+3 段目の述語が `REFORM_RE.test(d)` から `isReformSubject(d)` に替わっただけである。
+
+---
+
+**AC-31** 世間一般の願いが reform へ攫われない(欠陥Cの修正 / 回帰防止)
+```
+node tests/counsel.test.js
+```
+期待: 上の実測 10 件と、rework 相の神官が自ら考えた 14 件 —— 計 **24 件が
+`standard` または `full` に着き、`reform` でない**ことを門が断定する。
+門は `notStrictEqual('reform')` で誤魔化さず、**落ち先まで名指しする**(第37条)。
+
+**AC-32** ~~弱い名も、楽園を名指していれば reform に留まる~~ → **🔴 部分的に射程外**
+
+> **build 相四度目**: 「弱い名 × 建造の動詞」は消えた。門は
+> **「楽園の抽象名を含む改革の願いは reform に留まる」**へ形を変えて残っている
+> (`ci に一段の門を足す` は `門` が抽象名なので今も reform、
+> `workflow に再試行の口を設ける` / `census に fix の口を足す` は射程外)。
+> **逆向きの証明という役目は生きている** —— 実装を「常に偽」に倒す修理を止める。
+
+~~(旧文)~~
+```
+node tests/counsel.test.js
+```
+期待: `CI に ledger --audit を追加する` / `ci に一段の門を足す` /
+`workflow に再試行の口を設ける` / `census に fix の口を足す` /
+`add a retry flag to the deploy engine` が **すべて reform**。
+強い名は単独で名乗る(`gauge に fingerprint を確かめる口を設ける` → reform)。
+**註**: この AC が無ければ「弱い名は常に reform でない」に倒して AC-31 を緑にできてしまう。
+それは弱い名を語彙から消したのと同じで、欠陥Aの修正を殺す。
+
+**AC-33** 冠詞の除外が**単独で**効いている(黙る門を作らない / 第21条)
+```
+node tests/counsel.test.js
+```
+期待: `add a dark mode toggle to my vendor dashboard` /
+`add CSV export to our census explorer app` /
+`extend the workflow builder in my todo app` ほか計 **6 件が reform でない**。
+**註**: AC-31 の 24 件は**どれも建造の動詞を持たない**ので、冠詞の除外を消しても
+`BUILD_RE` の伴需が独りで守り門は黙る(rework 相の故障注入で実測)。
+ゆえに **建造の動詞を持ちながら世間の願いである**形で別に撃つ。
+
+**AC-34** ~~`ENGINE_NAMES` 網羅の門が二分に合わせて更新されている~~ → **🔴 射程外・門を削除**
+
+> **build 相四度目**: `ENGINE_NAMES_STRONG` / `ENGINE_NAMES_WEAK` が消えたので、
+> **照合の相手が居なくなった**。門は削除した(守る物が無い門は飾りである)。
+> 代わりに **AC-37 のコーパス(26 件)を `graph/*.js` の実在名と照合する門**を残した ——
+> engine が増えたとき「世間の願いを一件足せ」という仕事は依然として生まれる。
+> **`ledger`/`台帳` の禁則と「世間一般の 14 語を強い名に置くな」の断定は、
+> 新しい門「`REFORM_RE` は main の抽象名を過不足なく持つ」が引き継いだ。**
+
+~~(旧文)~~
+```
+node tests/counsel.test.js
+```
+期待: `graph/*.js` の名(4 文字以上・小文字)が **強い名か弱い名のどちらかに載っている**。
+加えて —— (a) 同じ名が両方に居ない(排他)、(b) `ENGINE_NAMES` が二つの和である、
+(c) `ledger`/`台帳` がどちらにも無い(L-4)、(d) **世間一般の 14 語が強い名の側に無い**。
+engine が増えたら赤くなり、人に「**どちらへ載せるか**」を選ばせる。
+
+**AC-35** 欠陥Cの修正が**故障注入で鳴る**(第21条 / 第57条)
+三つの変異それぞれで `node tests/counsel.test.js` が赤くなること:
+| 変異 | 期待 |
+|---|---|
+| (a) 弱い名を強い名の表に戻す | 赤くなる |
+| (b) 冠詞の除外(後読み)を消す | 赤くなる |
+| (c) `isReformSubject` から `BUILD_RE` の伴需を消す | 赤くなる |
+**註**: 何本赤くなったかを rework 相が実測で書く。手で数を書かない(第22条)。
+
+---
+
+## 3.7 F-1 / F-4 — **強い名が無条件で reform を名乗る**(tribunal の BLOCK / 二度目の差し戻し)
+
+> **🔴 build 相四度目の裁定(§8 を読め)**:
+> * **残した**(世間への誤着を断定する / 実装の形に依らない):
+>   **AC-36**(教主の 10 件)/ **AC-37**(26 語網羅・ただし照合先を `graph/*.js` へ替えた)
+> * **形を変えて残した**: **AC-38**(逆向きの証明 —— 楽園の**抽象名**で撃つ形へ)
+>   **AC-40**(抽象名は無条件)/ **AC-41**(`MEND_RE` の表 → `REFORM_RE` の表を直に撃つ形へ)
+> * **🔴 削除**: **AC-39**(強い名の枝の二条件 —— 枝そのものが消えた)
+>   **AC-42**(F-1 の故障注入 —— 対象の枝が消えた)
+
+裁判は **BLOCK** を出した。理由は本走行が **main に無かった病を作った**ことである。
+
+**F-1**: `isReformSubject` は `if (REFORM_RE.test(d)) return true;` で
+**強い名 26 語を無条件に真**としていた。防壁は `DETERMINER_LOOKBEHIND`(限定詞の除外)一枚のみ。
+**日本語に冠詞は無い**ので、日本語の願いに対して防壁は事実上ゼロであった。
+
+**F-4**: AC-31/32/33 のコーパス 29 件が**全て弱い名**であり、強い名が 0 件だった。
+AC-35 の三変異も全て弱い名側の機構を狙っていた。
+ゆえに 471/134/33 が**全緑のまま F-1 を素通しした**。
+**「門が無い」より「門が在ると思っていたら守っていなかった」の方が危険である。**
+
+**実測(第38条 — main と HEAD の両方で同じ探針を撃った)**:
+
+| 群 | main c216014 | HEAD ec0694c(修理前) | HEAD(修理後) |
+|---|---|---|---|
+| 強い名 26 語 × 世間の願い | 0/26 | **25/26** | **0/26** |
+| 教主の 10 件 | 0/10 | **10/10** | **0/10** |
+| tribunal の B群 19 件 | 0/19 | **19/19** | **0/19** |
+| **強い名 合計** | **0/55** | **54/55** | **0/55** |
+| A群(楽園の改修・reform が正解) | 誤着 9/9 | 誤着 0/9 | 誤着 0/9 |
+
+**註**: HEAD 修理前が 55/55 でなく 54/55 なのは、`graph-engine 折れ線グラフ描画ライブラリのデモサイト` が
+**`cartography` に先に捕まった**ためである(判定順で作図が reform より先に立つ)。
+強い名の枝が守ったのではない —— **別の段が偶々受け止めた**だけである(第37条)。
+
+**修理**: `REFORM_RE` を `REFORM_ABSTRACT_RE`(抽象名)と `REFORM_STRONG_RE`(強い固有名)に割り、
+`isReformSubject` を**三枝**にした。枝ごとに課す条件が違い、**どの枝も無条件ではない**:
+
+1. 抽象名(楽園/門/engine/憲法/走行帳)—— 楽園以外を指さないので**無条件**
+2. 強い固有名 —— 限定詞の除外 **かつ** 改変の動詞(`BUILD_RE` ∪ **`MEND_RE`**)
+3. 弱い名 —— 限定詞の除外 **かつ** `BUILD_RE`
+
+**`MEND_RE` が必要な理由**: `conclave の毒を除く` は `BUILD_RE` を一語も持たない
+(「除く」は建造ではない)。強い名に `BUILD_RE` だけを課せば、この願いが死ぬ。
+**強い名の方が証拠として強いので、許す動詞集合も広い** —— これが枝 2 と枝 3 の非対称の根拠である。
+逆に `MEND_RE` に世間の創造の動詞(`作れ`/`欲しい`/`build`)を一語でも足せば F-1 へ戻る(AC-41 が撃つ)。
+
+**弱い名の扱い・`isCounsel`・`denude`・`PRODUCT_*`・`DOC_STRONG_RE`・`chooseScale` の判定順は一行も触っていない。**
+
+---
+
+**AC-36** 教主が実測した **10 件**が reform へ攫われない(F-1 / 回帰の消滅)
+```
+node tests/counsel.test.js
+```
+期待: `gauge calibration tracker` / `forge 鍛冶屋の在庫管理アプリを作って` /
+`synod 教会会議の議事録アプリ` / `critic 映画批評サイトを作れ` /
+`verdict 裁判の記録を管理するツール` / `clergy 聖職者名簿アプリが欲しい` /
+`abode 不動産アプリを作って` / `hermetic 密封容器の在庫管理` /
+`conclave ボードゲームのスコア表アプリ` / `ordain 儀式の手順書アプリが欲しい`
+—— **全て reform でない**。教主の実測(main 0/10 / HEAD 10/10)をそのまま門にした。
+
+**AC-37** **強い名 26 語すべて**について世間の願いを一件ずつ撃つ(F-4 の本体)
+```
+node tests/counsel.test.js
+```
+期待: (a) `ENGINE_NAMES_STRONG` の**全語**にコーパスの一件が対応する
+(表に在ってコーパスに無い名があれば赤い / 逆も赤い)、
+(b) コーパスの願いが**その名を実際に含む**(第16条 — 名指しは呼び出しではない)、
+(c) 26 件すべてが reform でない。
+
+**註**: tribunal は 26 語のうち **12 語しか撃っていない**と名乗った(reflect W-3)。
+この門は**表とコーパスを機械で照合する**ので、強い名を足してコーパスを忘れれば赤くなる。
+**F-4(コーパスが表に追いつかない)の再演を機械が止める。**
+
+**AC-38** 強い名は**改変の動詞を伴えば今まで通り reform**(逆向きの証明 / 第36条)
+```
+node tests/counsel.test.js
+```
+期待: (a) `BUILD_RE` 側 —— `gauge に fingerprint を確かめる口を設ける` /
+`codex に検めの口を足す` / `synod に警告の一段を足す` / `conclave に再試行の口を設ける` /
+`forge の道選びに一段足す` / `verdict に閾値の口を設ける` が **reform**。
+(b) `MEND_RE` 側 —— `conclave の毒を除く` / `forge の道選びを修正する` /
+`gauge の重みを見直す` / `codex の索引を書き換える` が **`isReformSubject` で真**。
+**この 4 件は `BUILD_RE` を一語も持たないことを門が前提として確かめる**
+(持っていれば `MEND_RE` を撃てていない — 黙る門になる)。
+
+**註**: この AC が無ければ「強い名を語彙から消す」ことで AC-36/37 を全て緑にできてしまい、
+欠陥A(engine 改修の願いが standard/counsel へ落ちる)が甦る。
+
+**AC-39** 強い名の枝の**二条件がそれぞれ単独で効いている**(第21条 / 黙る門を作らない)
+```
+node tests/counsel.test.js
+```
+期待: (i) **動詞の伴需だけ**が守っている例 —— `forge 鍛冶屋の…` / `gauge calibration tracker`
+(限定詞が無いので `REFORM_STRONG_RE` は真。動詞の伴需だけが reform を止めている)。
+(ii) **限定詞の除外だけ**が守っている例 —— `add a gauge widget to my car dashboard` /
+`add a critic score to my movie app`(`BUILD_RE` を持つので動詞の伴需は満たされる)。
+門は両方について**前提が崩れていないこと**を先に assert する。
+
+**註**: F-4 の教訓の一般化である。条件が二つ在るとき、片方だけで緑になる例しか持たない門は、
+もう片方を消しても鳴らない。
+
+**AC-40** **抽象名は無条件のまま**である(修理が広がりすぎていないこと)
+```
+node tests/counsel.test.js
+```
+期待: `楽園` / `paradise` / `憲法` / `engine` / `ハーネス` / `走行帳` / `自己診断` は
+**動詞を伴わなくても** `isReformSubject` が真。
+加えて `楽園の自己診断に絞り込みの口を設ける` / `門に監査の一段を足す` は **reform**。
+
+**AC-41** `MEND_RE` に**世間の創造の動詞が紛れていない**(F-1 の再発防止)
+```
+node tests/counsel.test.js
+```
+期待: `作れ` `作って` `作る` `ほしい` `欲しい` `つくって` `実装` `開発` `構築` /
+`build` `create` `make` `implement` `develop` —— **一語も `MEND_RE` に当たらない**。
+逆向き: `除く` `直す` `修正` `見直` / `fix` `remove` は**確かに当たる**(表を空にして緑にしていない)。
+
+**AC-42** F-1 / F-4 の修理が**故障注入で鳴る**(第21条 / 第57条)
+11 の変異それぞれで `node tests/counsel.test.js` が赤くなること。
+**うち 3 変異は門(コーパス)の側を壊す** —— 変異が実装側だけを狙ったのが F-4 の構造的理由だったからである。
+
+| # | 変異 | 狙い | 期待 |
+|---|---|---|---|
+| M-1 | 強い名の枝から動詞の伴需を消す | **F-1 の修理そのものを戻す** | 赤 |
+| M-2 | 強い名の枝から `MEND_RE` だけを落とす | 除去の願いが死ぬ | 赤 |
+| M-3 | `MEND_RE` に世間の創造の動詞を足す | F-1 へ戻る道 | 赤 |
+| M-4 | 強い名の枝から限定詞の除外を消す | R-4 の守りを戻す | 赤 |
+| M-5 | 抽象名にも動詞を課す | 修理が広がりすぎた形 | 赤 |
+| M-6 | 強い名の枝を殺す(`if (false)`) | 門を「消して」緑にする道 | 赤 |
+| M-7 | 弱い名から `BUILD_RE` の伴需を消す | AC-35(c) の再確認 | 赤 |
+| M-8 | 弱い名を強い名の表へ戻す | AC-35(a) の再確認 | 赤 |
+| M-9 | `MEND_RE` から「除く」だけを落とす | 一語の欠落を捕らえるか | 赤 |
+| M-10 | **門**: 強い名一語をコーパスから落とす | **F-4 の再演** | 赤 |
+| M-11 | **門**: 強い名を表へ足しコーパスへ足さない | **実際の増設の形** | 赤 |
+
+**註**: 何本赤くなったかを **build 相が実測で書く**。手で数を書かない(第22条)。
+**黙った変異は名指しで正直に書く**(第37条)。
+
+---
+
+## 3.8 【build 相三度目】Q2-1〜Q2-4 の修理の AC(AC-43〜46)
+
+> **🔴 build 相四度目の裁定(§8 を読め)**:
+> * **残した**: **AC-43 のコーパス 34 件**(改める動詞 × engine 名 × 世間の器 —— 全件 reform でない)
+>   **AC-44**(広げる変異を捕らえる —— engine 名の枝を足した瞬間に赤くなる形へ書き換え)
+> * **🔴 削除**: **AC-43 の裏**(`mendsParadise` の二条件)/ **AC-43 の禁則**
+>   (`WORLDLY_VESSEL_RE` の表を直に撃つ)/ **AC-46**(本相が足した 3 表の故障注入)
+> * **🔴 AC-45 は「未解決」として申し送り**: 一字の抽象名 `門` の紛れ語
+>   (`専門店` `部門別` …)は **main でも HEAD でも reform へ攫われる**。
+>   三度目の build はこれを `ABSTRACT_FALSE_FRIENDS` で塞いだが、その守りは
+>   `WORLDLY_VESSEL_RE` と一体であり Q3-1(器の表 37 語が楽園の願いを落とす)を生んだ。
+>   **門は「main と同じ振る舞いであること = 悪化していないこと」だけを撃つ形に改めた。**
+> * **新設**: **Q3-1 の回帰門**(楽園の抽象名は器の名 37 語を伴っても reform)/
+>   **Q3-2 の回帰門**(engine 名 × 建造の動詞 × 世間の器は reform でない)
+
+> quality 二周目が **Q2-1(六度目の回帰)** を実測した ——
+> `MEND_RE` の新設が、**強い名 × 改める動詞 の世間の願い 32/32 を reform へ攫った**(main 0/32)。
+> 病の核心は第60条(f) が名指す通り「**強い枝に許した動詞集合が、そのまま新しい弱い印になった**」。
+> AC-43〜46 はその修理と、**その修理自身への両方向試験**である。
+
+**AC-43** `MEND_RE` × 強い名 の**世間の願いが reform へ着かない**(Q2-1 の本体)
+```
+node tests/counsel.test.js
+```
+期待:
+* `isReformSubject` の枝 2'(強い名 × `MEND_RE`)が **`mendsParadise(d)` を追加で要求する**。
+  `mendsParadise` = **世間の器の名を持たない**(`WORLDLY_VESSEL_RE`)**かつ**
+  **強い名が助詞で結ばれている**(`STRONG_BOUND_RE`)。
+* **`MEND_RE` の語彙表の全語について一件ずつ**世間の願いを撃つ
+  (`MEND_WORLDLY_EVERY_VERB` / 34 語)。**一語も reform でない。**
+* コーパスは `MEND_RE` の源と**機械照合される** —— `MEND_RE` に語を足して
+  コーパスへ願いを足さなければ**赤くなる**(F-4 の五度目を機械が止める)。
+* **二条件がそれぞれ単独で効いている**ことを撃つ(第21条 / 黙る門を作らない):
+  器の不在だけが守っている例 / 助詞の結びだけが守っている例を**別々に持つ**。
+* 禁則: `WORLDLY_VESSEL_RE` に**楽園の器官の名**(`口`/`門`/`相`/`一段`/`フラグ`/
+  `台帳`/`索引`/`ledger`/`gate`/`flag`/`engine`)を**一語も入れてはならない** ——
+  入れた瞬間 `門に監査の一段を足す` が死ぬ。**表を直に撃つ門**がこれを守る。
+* 禁則: `ダッシュボード`/`dashboard` も入れてはならない —— 楽園自身が
+  `dashboard/index.html` を持ち、`ダッシュボードを生きた門にせよ` は楽園の改革である(実測で赤くなった)。
+
+**AC-44** 枝 3(弱い名)と枝 2'(強い名)の**どちらも OR で広がっていない**(Q2-3)
+```
+node tests/counsel.test.js
+```
+期待:
+* 弱い名 × `MEND_RE` × **建造の動詞なし**の世間の願い 10 件について、
+  **`isReformSubject` が偽**かつ **`chooseScale` が reform でない**。
+  枝 3 を `(BUILD_RE || MEND_RE)` へ広げた瞬間に赤くなる。
+* 枝 2' については **`mendsParadise` が実際に判定へ効いていること**を直に撃つ
+  (`mendsParadise(d) === false` なのに `isReformSubject(d) === true` なら赤)。
+
+**註**: quality 二周目 §2.3 の実測 —— 弱い名に `MEND_RE` を許す変異を
+**177 本の門が一本も捕らえなかった**。AC-42 の 11 変異はすべて「実装を**弱める**」変異で、
+「実装の条件を **OR で広げる**」変異が一件も無かったからである。
+**広げる変異は、弱める変異とは別の門でしか捕らえられない。**
+
+**AC-45** 抽象名 `門` / `gate` の**紛れ語が世間の願いを攫わない**
+```
+node tests/counsel.test.js
+```
+期待:
+* `門` は `REFORM_ABSTRACT_RE` の唯一の**一字の名**である。
+  `専門店` `門前町` `名門` `部門別` `入門講座` `関門` は世間の語であり、判定の門ではない。
+  `PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS` と**同じ作法**で `ABSTRACT_FALSE_FRIENDS` が守る。
+* 英語の `gate` には**限定詞の除外も掛かる**(`the gate` は世間の搭乗口)。
+* **世間の器の名を一語も持たない紛れ語**を別に撃つ ——
+  故障注入 M-I の実測で、器を持つ例だけでは `WORLDLY_VESSEL_RE` が単独で守ってしまい
+  `ABSTRACT_FALSE_FRIENDS` の表を空にしても門が**黙った**。
+* 逆向き: `門に監査の一段を足す` / `critic の門を一本足す` / `門の判定を書き換える` は **reform** のまま。
+
+**註**: これは **main 由来の病**である(main でも HEAD でも 5 件が攫われていた)。
+本走行が新しく塞いだ。
+
+**AC-46** 本相が足した正規表現も**故障注入で鳴る**(第21条 / 第57条 / 第60条(f))
+13 の変異それぞれで `node tests/counsel.test.js` が赤くなること。
+**うち 4 変異は「条件を OR で広げる/守りを外す」方向**である —— AC-42 の 11 変異が
+すべて「弱める」方向だったことが Q2-3 の構造的理由だったからである。
+
+| # | 変異 | 狙い | 期待 |
+|---|---|---|---|
+| M-A | 枝 2' から `mendsParadise` を外す | **Q2-1 そのものを戻す** | 赤 |
+| M-B | `mendsParadise` から `WORLDLY_VESSEL_RE` の検査を外す | 二条件の片方だけを消す | 赤 |
+| M-C | `mendsParadise` から `STRONG_BOUND_RE` の要求を外す | 二条件のもう片方を消す | 赤 |
+| M-D | `STRONG_BOUND_RE` から助詞の要求を外す | 印を弱める | 赤 |
+| M-E | `WORLDLY_VESSEL_RE` の表からアプリ/サイト/ツールを落とす | 表を空にして緑にする道 | 赤 |
+| M-F | `WORLDLY_VESSEL_RE` に楽園の器官の名(`口`)を混ぜる | **禁則を破る** | 赤 |
+| M-G | 枝 3 を `MEND_RE` へ広げる | **Q2-3 の変異** | 赤 |
+| M-H | 抽象名の紛れ語+器の守りを丸ごと外す | AC-45 を戻す | 赤 |
+| M-I | `ABSTRACT_FALSE_FRIENDS` の表を空にする | 表の側を壊す | 赤 |
+| M-J | `gate` の限定詞の除外を外す | 英語側の守りを戻す | 赤 |
+| M-K | `MEND_RE` の表から日本語を落とす | **逆向き**(楽園の改修が死ぬ) | 赤 |
+| M-L | `namesParadiseAbstractly` を素の `REFORM_ABSTRACT_RE` へ戻す | AC-45 を戻す | 赤 |
+| M-M | 枝 2(建造)を消す | **足しすぎの修理が逆向きを殺していないか** | 赤 |
+
+**註**: 何本赤くなったかを **build 相が実測で書く**。手で数を書かない(第22条)。
+**黙った変異は名指しで正直に書く**(第37条)。
+
+---
+
+**AC 総数: 46**
+内訳 — 欠陥Aの修正 5 (AC-01〜05) / 回帰防止 4 (AC-06〜09) / 既存の門の保存 8 (AC-10〜17) /
+欠陥Bの修正 9 (AC-18〜26) / engine の健全性 4 (AC-27〜30) /
+欠陥C(逆向きの誤着)の修正 5 (AC-31〜35) /
+F-1 / F-4(強い名の無条件通過)の修正 7 (AC-36〜42) /
+**Q2-1〜Q2-3(`MEND_RE` の両方向)の修正 4 (AC-43〜46)**
+
+---
+
+## 4. 完了条件
+
+**AC-01 から AC-46 のすべてが期待通りである**こと。ただし:
+* 撃てなかった AC(AC-22 の倉不在 / AC-26 の git 除去不能)は
+  **skip を声に出して記録する**。緑と数えてはならない(第37条)。
+* **AC-16(全走)を撃たずに完了と称してはならない。** 6 分は払うべき代である。
+* 何件が pass / skip / fail かを **build 相が実測で書く**。手で数を書かない(第22条)。
+
+---
+
+## 5. 明示的な非目標
+
+* `chooseScale` の返り値を構造化する(object にする)—— FR-05 が禁じる
+* 語彙判定を機械学習/LLM に置き換える —— この走行の射程外
+* `tests/paradise.test.js` の走行時間を縮める —— 別の欠陥(discovery §8-8)
+* `ECサイトを作れ` の誤着を直す —— §6 へ送る
+
+---
+
+## 6. 教主の裁定(2026-09-13 に下りた。以下が優先する)
+
+1. **`fullJa` から「アプリ」を外すことは却下された。** `fullJa` は一字も触らない。
+   本走行の主題は **counsel への誤着**であって full/standard の境目ではない。
+   境目の病は別件に起票済み(台帳 PARA-7)。
+   ゆえに **AC-04 / AC-06 の期待値を『standard』から『counsel でないこと』へ改めた**(上記 §3.1)。
+   実測: 『健康診断アプリが欲しい』は **full** に着く —— 「診断」に道を奪われてはいない。
+2. **`ECサイトを作れ` → standard の誤着は本走行に含めない。** 同じ理由。触らない。
+3. **`.paradise-creations` 目印ファイルは作る。** ただし**読む側だけにしない**。
+   * `workspace.js init` が倉の根に置く口を持つ(FR-11。門 `B-11` が撃つ)。
+   * 兄弟倉 `paradise-creations` に実物を置き commit する(**push も PR もしない**)。
+     実測: ブランチ `chore/vault-marker` / commit `e87577c`。
+   * これにより印 2 は**本物の倉で実際に発火している** —— `git` を PATH から外しても
+     `isCreationsVault(本物の倉) === true`(実測)。第57条の「発火しない門」を免れた。
+
+---
+
+## 7. build 相が設計から逸脱した点(正直な記録 — 第37条)
+
+1. **`PRODUCT_FALSE_FRIENDS` を足した(設計に無い)。**
+   設計 §1.3 の L-8 は「図」についてのみ紛れ語を警告していたが、実装して撃つと
+   一字の産物名「口」「相」が **人口 / 窓口 / 入口 / 相場 / 相談** の中に埋もれており、
+   **基準線で counsel だった 7 件が standard へ落ちた**(実測)。
+   設計の判定順は変えていない。`wantsProduct()` として `PRODUCT_RE` の使い方を包んだだけである。
+2. **`DOC_STRONG_RE` を足した(設計に無い)。**
+   設計 §1.3 の 3 段目は「DOC に当たり、かつ PRODUCT が無いなら諐問」だったが、
+   これだと『各社の**画面**設計を調査して**報告書**がほしい』が創造の道へ攫われる(実測)。
+   二つの顔を持つ語は **「診断」と「監査」だけ**であり、他の文書の名(報告書/比較表/調査/分析…)は
+   産物の名に勝たねばならない。3 段目をその形に精密化した。
+3. **`counsel.test.js:292` の「壊れ engine」門の期待値を `standard` → `reform` に改めた。**
+   FR-04 が `REFORM_RE` に **`CI`** を加えた必然の帰結である(『現状の**CI**の健全性を…』)。
+   門の主張(「語彙を潰せば counsel でなくなる」)は一字も緩めていない。
+   `notStrictEqual` で誤魔化さず、落ち先を名指ししたまま残した。
+
+
+---
+
+# 8. 【別の走行への申し送り】engine の固有名を道選びの印にする題
+
+> **これが本走行の最大の産物である。** build 相が四度挑み、四度とも新しい回帰を生んだ。
+> 教主は **build 相四度目(最後の差し戻し)で `ENGINE_NAMES` を丸ごと撃ち捨てる**と裁いた。
+> **次の走行は、ここに残した実測と門のコーパスから始めよ。ゼロから測り直すな。**
+> (第60条(h): *同じ印を四度強めても回帰が続くなら、その印は捨てよ。
+> 捨てた印は、実測と門のコーパスを添えて次の走行へ申し送れ。黙って消すのは隠蔽である*)
+
+## 8.1 題は何か
+
+**`gauge に fingerprint を確かめる口を設ける` が `standard` へ落ちる。**
+`conclave の毒を除く` は `standard`、`forge の道選びを直す` は `quick` へ落ちる。
+どれも紛れもない楽園の改革の願いでありながら、**engine 改修の 11 相(reform)へ着かない。**
+これが**欠陥Cの裏側**であり、AC-05 / FR-04 の本旨である。
+
+**神は「楽園の」と一言添えれば reform に着く。** ゆえに致命ではないが、
+**楽園が己の器官の名を知らないのは第22条の精神に反する。**
+
+## 8.2 四度の回帰 —— 何を試み、何が壊れたか
+
+| # | 相 | 試みた形 | 生まれた回帰 | 実測 |
+|---|---|---|---|---|
+| 1 | build(初回) | engine 名を**一枚の表**にして `REFORM_RE` に流し込む | **欠陥C**: 世間の語(`vendor`/`workflow`/`identity`/`ci`/`deploy`…)を踏んだ創造の願いが reform へ | 教主が 10 件を実測 |
+| 2 | build rework1 | **強い名 / 弱い名**に割り、強い名は限定詞の除外だけで無条件に通す | **F-1**: **日本語に冠詞は無い**ので日本語の願いに対する防壁がゼロ | tribunal 実測 **main 0/54 → HEAD 54/54** |
+| 3 | build rework2 | 強い名に **`BUILD_RE` ∪ `MEND_RE`**(改める動詞)を課す | **Q2-1**: 改める動詞は世間の願いにも同じ頻度で現れる | quality 二周目 **main 0/32 → HEAD 32/32** |
+| 4 | build rework3 | `mendsParadise` = **`WORLDLY_VESSEL_RE` の不在 かつ `STRONG_BOUND_RE`** で枝 2' を守る | **Q3-1**: 器の表 37 語**すべて**が楽園の願いを落とす(`門の判定をアプリで直す` が main=reform → HEAD=quick)<br>**Q3-2**: 枝 2(建造)には器の守りが無く 18/24 が誤着 | quality 三周目 **Q3-1 37/37 / Q3-2 main 0/24 → HEAD 18/24** |
+
+**修理が新しい欠陥を生んだ率は 7/7 = 100% であった。**
+
+## 8.3 教主が三案を試作して測った数 —— **これが裁定の根拠である**
+
+```
+                          世間への誤着   楽園の取りこぼし
+HEAD(3表を足した形)      枝2 で 6/6     Q3-1 で 37/37 が落ちる
+抽象名のみ(HEADの枝1)      0/28          9/15
+main の REFORM_RE 素        2/25          8/17
+```
+
+**engine 名を印にする限り、取りこぼしを減らせば誤着が増える。**
+これは第60条(b) が言う**弱い印の定義そのもの**であり ——
+*一方向にしか誤らない印は閾値がずれているだけである。両方向に誤る印は、
+印そのものが問いに足りていない* —— **条件を足して抜ける形ではない。**
+
+**教主はさらに、`main の REFORM_RE 素` の形で欠陥A の本旨 11 件を撃って確かめた:**
+
+```
+OK reform      | 楽園の自己診断に絞り込みの口を設ける
+OK reform      | 門に監査の一段を足す
+OK full        | 健康診断アプリが欲しい
+OK cartography | 楽園の位階の相関図を作れ
+OK counsel     | 楽園のエンジンを監査してほしい
+OK quick       | 台帳の毒を直す
+OK full        | build a habit tracker app
+OK counsel     | 比較表がほしい
+OK counsel     | gauge の重みを見直す
+OK counsel     | 各社の画面設計を調査して報告書がほしい
+OK standard    | 検討したツールを実装して
+欠陥A の本旨 NG=0/11
+```
+
+**すなわち `denude` / `PRODUCT_RE` / `DOC_STRONG_RE` / `BUILD_JA` / `isCounsel` だけで
+欠陥A は治る。`ENGINE_NAMES` は不要だった。**
+
+## 8.4 次の走行が引き継ぐ財産 —— **門のコーパスは全て `tests/counsel.test.js` に残してある**
+
+**実装は消したが、コーパスは一件も捨てていない。** 次の走行は**まずこれらを全て緑にせよ** ——
+それが四度の回帰の再演を止める最初の関門である。
+
+| 残したコーパス | 件数 | 何を守るか | 由来 |
+|---|---|---|---|
+| `WORLDLY_MEASURED` + `WORLDLY_OWN` | 24 | 世間の語(vendor/workflow/identity/ci/deploy…)を踏んだ創造の願いが reform へ行かない | 欠陥C(教主 10 + 神官 14) |
+| `STRONG_WORLDLY` | 9 | engine 名を踏んだ英語の世間の願い | quality 一周目 R-4 |
+| `DETERMINER_WORLDLY` | 12 | 限定詞(`a`/`the`/`my`/`this`/`each`/`some`…)付きの世間の願い | quality 一周目 R-3 |
+| `PONTIFF_STRONG_WORLDLY` | 10 | **教主が main と HEAD の両方で実測した 10 件** | F-1 / AC-36 |
+| `STRONG_WORLDLY_EVERY_NAME` | 26 | **engine 名 26 語を一件ずつ網羅** | F-4 / AC-37 |
+| `MEND_WORLDLY_EVERY_VERB` | 34 | **改める動詞 34 語 × engine 名 × 世間の器を一件ずつ網羅** | Q2-1 / AC-43 |
+| 「engine 名 + 改める動詞だけでは楽園を名乗らない」 | 14 | 判定を engine 名の枝へ広げる変異を捕らえる | Q2-3 / Q3-2 |
+| 「engine 名 + 建造の動詞 + 世間の器は楽園でない」 | 8 | **枝 2(建造)の器の守りの不在** | **Q3-2 / 三度目の build が塞ぎ忘れた面** |
+| 「楽園の抽象名は器の名を伴っても reform」 | 37 | **器の表を抽象名の枝に持ち込むな** | **Q3-1 / 七度目の回帰** |
+
+## 8.5 次の走行への具体的な助言(**実装するな。読め**)
+
+1. **`isReformSubject` を枝に割る前に、上の 174 件を全て緑にする案を先に作れ。**
+   四度の相はすべて「案を実装してからコーパスで測った」。順序が逆である。
+2. **枝を一つ足すごとに、その枝が守る面と開く面の両方にコーパスを持て**(第60条(e)(f))。
+   三度目の build は枝 2' に守りを掛け、**隣に立つ同型の枝 2 には掛けなかった**(Q3-2)。
+3. **同じ表を二つの枝で使うな**(Q3-1 の死因)。`WORLDLY_VESSEL_RE` は
+   `mendsParadise`(正しい)と `namesParadiseAbstractly`(誤り)の両方で使われた。
+   **楽園は器を持つ** —— `dashboard/index.html` が在り、`forge.js` は DAG を作る**ツール**である。
+   「楽園も名乗る器は、世間の器ではない」を表の**全語**に当てよ。
+4. **engine 名の印は「名だけ」では立たない可能性が高い。** 四度の実測がそれを示す。
+   別の軸(例: 願い文が `graph/` 配下のパスやフラグ名を含むか、
+   `走行`/`相`/`門`/`台帳` などの**楽園の語彙と共起**するか)を検討せよ。
+   ただし **`PRODUCT_RE` の一字の器官名(`口`/`門`/`相`/`一段`)を持ち込むな** ——
+   教主が試作して世間の願い 10/10 に誤射した(`専門店` `窓口` `相場` `条件検索`…)。
+
+## 8.6 別件として残る未解決 —— **一字の抽象名 `門` の紛れ語**
+
+**main 由来の病であり、本走行は悪化させていないが、直してもいない。**
+
+```
+専門店の棚の傾きを直したい          main=reform  HEAD=reform   🔴 両方の病
+部門別の売上の誤りを直したい        main=reform  HEAD=reform   🔴 両方の病
+入門書の誤植を直したい              main=reform  HEAD=reform   🔴 両方の病
+名門校の入試問題の誤りを取り除きたい  main=reform  HEAD=reform   🔴 両方の病
+門前町の看板の誤字を直したい        main=reform  HEAD=reform   🔴 両方の病
+関門海峡の潮流表の誤りを直したい    main=reform  HEAD=reform   🔴 両方の病
+a gateway timeout troubleshooting guide app   main=reform  HEAD=reform  🔴
+build a tailgate party planner                main=reform  HEAD=reform  🔴
+```
+
+三度目の build は `ABSTRACT_FALSE_FRIENDS`(`門前|専門|部門|門下|入門|名門|門戸|関門|門限|
+門外|登竜門|gated|gateway|floodgate|tailgate|stargate`)でこれを塞いだ。
+**表そのものは正しい。捨てたのは、それが `WORLDLY_VESSEL_RE` と一体で
+Q3-1 を生んだからである。** 次の走行は **`WORLDLY_VESSEL_RE` を伴わない形**で
+この表を復活させれば、**世間への誤着 8 件を main より減らせる**。
+門は現在「**main と同じ振る舞い = 悪化していない**」だけを撃つ形で残っている。
+
+## 8.7 もう一つの未解決 —— `COUNSEL_RE` と `DOC_RE` の境目が不揃い
+
+quality 三周目 R3-6.3 が名指した。`DOC_RE` の 3 語(`一覧表`/`資料`/`レポート`)が
+`COUNSEL_RE` に無い(逆もある)。**main と HEAD で一件も変わっておらず回帰ではない**が、
+「文書を求める願い」の境が語によって揺れる。**本走行の主題の外。**
+
+## 8.8 【quality 四周目が実測で足した申し送り】
+
+> 四周目は**裁く周**であり、直す周ではない。以下は**実測で見つけたが本走行では直さない**もの。
+> 次の走行は **8.6 / 8.7 と合わせてここから始めよ。**
+
+### 8.8.1 助数詞としての「門」—— 8.6 の紛れ語の**第二波**(main 由来 / 悪化なし)
+
+8.6 は `専門` `部門` `入門` … の**熟語**を挙げた。四周目は**助数詞・複合名詞**の側にも
+同じ病が在ることを実測した。`ABSTRACT_FALSE_FRIENDS` を復活させる次の走行は、
+**8.6 の表に以下も足せ**(表に無いので現在は素通り):
+
+```
+                                      main       HEAD
+家元と門弟の名簿アプリを作れ            reform     reform   🔴 門弟(表に無い)
+砲門の数を数える歴史ゲームが欲しい      reform     reform   🔴 砲門(表に無い)
+一門の家系図を作れるアプリが欲しい      cartography cartography 🔴 別の病(下記)
+```
+
+**`門弟` `砲門` `一門` `水門` `山門` `破門` `門松` `門扉` `獄門` は表に無い。**
+表は閉じた集合ではない —— **一字の抽象名を印にする限り、紛れ語の表は永遠に伸び続ける。**
+これ自体が第60条(a) の「弱い印」の徴候である。次の走行は
+**表を伸ばすのではなく、「門」を一字で印にするのをやめる**案も俎上に載せよ。
+
+### 8.8.2 `DIAGRAM_RE` の「図」が**世間の願いを攫う**(新発見 / main 由来 / 悪化なし)
+
+```
+一門の家系図を作れるアプリが欲しい   main=cartography  HEAD=cartography
+```
+
+**求められているのは「アプリ」であって「図」ではない。** `家系図` の「図」が
+`DIAGRAM_JA` の `図を` に当たり、作図の道(cartography)へ攫われた。
+`DIAGRAM_FALSE_FRIENDS`(`意図|地図|図書|合図|構図|図々|壮図|企図`)に
+**`家系図` `系統図` などの「物としての図」は入っていない**。
+
+**より重い一般化**: `isCartography` は 1 段目に立つので、**`wantsProduct` の
+打ち消しを一切受けない**。`isCounsel` は「文書を求める顔」と「産物の顔」を
+`DOC_STRONG_RE` で裁き分けたが(欠陥A の修理)、**`isCartography` は同じ裁き分けを持たない。**
+**欠陥A と同型の病が作図の道に残っている** —— 次の走行の第一候補である。
+
+### 8.8.3 `quick` の語彙が世間の建造の願いを攫う(新発見 / main 由来 / 悪化なし)
+
+```
+レシピを整理し直すアプリが欲しい   main=quick  HEAD=quick
+```
+
+`quickJa` の `直す` が当たり、**アプリ一つを建てる願いが「一行の修正」の道へ落ちた。**
+`quickJa` / `quickEn` は `isCounsel` / `isReformSubject` より**後**に立つが、
+`wantsProduct` の打ち消しを受けない。8.8.2 と同じ病である ——
+**産物を名指す願いは、改める動詞を持っていても「一行の修正」ではない。**
+
+### 8.8.4 第60条(b) の条文から実測の数を外した(四周目 docs が直した)
+
+条文が挙げていた二例のうち `graph/forge.js の道選びを直す` は
+**main でも HEAD でも `cartography`** であり(`graph` が `DIAGRAM_EN` の
+`graph` に当たる)、条文が語る `standard` を**再現しなかった**。
+四度目の撤去で `ENGINE_NAMES` が消えた今、`gauge` の側の例も再現しない。
+**条文は数を抱えるべきではない** —— 数は走行の記録に置き、条文は道を指す形に改めた。
+教訓 (a)〜(h) は一つも変えていない。
+
+### 8.8.5 削除された 19 門のうち、**面が生きているのに門を失った** 2 本
+
+四周目 review が一本ずつ検めた。18 本は「依存する機構が消えたので消して正しい」か
+「改名して生存」だが、**以下の 2 本は今の実装の形でも緑になる** ——
+すなわち**面は生きているのに、それを撃つ門だけが消えた**:
+
+| 消えた門 | 今の実装での実測 | 代替の有無 |
+|---|---|---|
+| 冠詞の直後の弱い名は、建造の動詞を伴っても reform でない (AC-31) | 5/5 が非 reform(生きている) | `R-3`(12 件)が**振る舞いで**同じ面を撃つ → 損失は軽微 |
+| 弱い名は改める動詞だけでは楽園を名乗らない (AC-44 / Q2-3) | 3/3 が非 reform(生きている) | 「engine 名 + 改める動詞だけでは楽園を名乗らない (AC-44)」に**改名して生存** |
+
+**どちらも代替の門が同じ面を守っているので、門の正味の損失はゼロと裁いた。**
+次の走行が枝を建て直すとき、この 2 本は**元の名で戻せる**(実装が枝を持てば直に撃てる)。
+
+---
+
+# 9. 【R-1 の修理】熟議の願いが counsel を失う回帰(AC-47〜56)
+
+> 本節は tribunal 二度目が **BLOCK(exit 2)** を出した欠陥 R-1 の受入基準である。
+> 一度目〜四周目の AC-01〜46 は一つも変えていない。**AC は追記のみ。**
+
+## 9.1 欠陥 R-1 —— 何が壊れていたか
+
+欠陥A の修理で `CREATE_RE` に `BUILD_JA`(設ける/足す/加える/追加…)を足した結果、
+`isCounsel` の 2 段目 `if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;` が
+「〜を設けるべきか検討して」でも偽になった。3 段目の打ち消しは `DOC_RE` だけであり、
+**熟議の標識(べきか/どう思う/妥当か/検討/どうすべき/はないか/見直)は
+`COUNSEL_JA` にしか居らず、`DOC_RE` に一語も無い。**
+ゆえに打ち消しが効かず、熟議の願いが counsel を失った。
+
+**実測(本走行が main の複製 `c216014` と HEAD の両方で撃った / 第38条):**
+
+| コーパス | n | main 誤着 | HEAD(修理前) | HEAD(修理後) |
+|---|---|---|---|---|
+| C1 本体(格子150 + 対照30 + 教主6 + 本旨8 + 境目11 + 英語8 + 世間6 + 改修5 + 問い5 + 作図4) | 233 | 11 | **166** | **1** |
+| C2 過剰発火(断定紛れ・世間熟議・楽園熟議・作図×熟議) | 22 | 2 | 5 | **2** |
+| C3 `finalClause` の面(節跨ぎ・退化入力・コロン紛れ) | 14 | 3 | 5 | **0** |
+| **合計** | **269** | **16** | **176** | **3** |
+
+**HEAD の誤着 3 < main の誤着 16。** 神官の格子 150 件は main 0/150 → 修理前
+HEAD 120/150 → **修理後 0/150**。
+
+## 9.2 受入基準
+
+### AC-47 熟議の標識は建造動詞より強い
+「作るべきか」と**問うている**願いは、建造動詞(`BUILD_JA`)を伴っていても
+`counsel` へ着く。判定は `isCounsel` の 2 段目より**後**、3 段目より**前**
+(2.5 段目)に立つ。
+**門**: `tests/route-matrix.test.js` `M-4` / `M-6`(格子 150 通り)。
+
+### AC-48 「べきか」(疑問)と「べきだ」(断定)を取り違えない
+`DELIBERATION_JA` は疑問の形だけを持つ(`べきか`/`べきではないか`/`べきだろうか`/
+`べきでしょうか`)。`べきだ`/`べきである`/`べき箇所` は**入れない** —— それらは命令である。
+**門**: `tests/route-matrix.test.js` `M-5`(`楽園の門を見直すべきだ` → reform)/
+`M-7`(命令形 30 通りが counsel へ着かない)。
+
+### AC-49 英語の熟議も拾う
+`should we` / `is it worth` / `do you think` / `whether to` / `worth …ing` を持つ願いは
+`counsel` へ着く。**`COUNSEL_RE` へ合流させる** —— 1 段目を通らねば 2.5 段目に届かない
+(実測: 合流しない案1 は英語熟議 5/5 を落とした)。
+**門**: `tests/route-matrix.test.js` counsel コーパス (c)。
+
+### AC-50 願いの求めは最後の節に載る
+「妥当か検討済み:楽園に監査の口を実装せよ」は**命令**である。熟議判定は
+`finalClause`(日本語の文末記号と列挙のコロン/セミコロンで割った最後の節)だけを見る。
+**英語の `?` と `.` で割ってはならない** —— `should we add …? please advise` の
+最終節が `please advise` になり標識を失う(実測で案5 が英語熟議 2 件を落とした)。
+**門**: `tests/route-matrix.test.js` counsel (d) / reform の節跨ぎ 2 件。
+
+### AC-51 欠陥A の本旨が保たれる
+`楽園の自己診断に…口を設ける`→reform / `門に監査の一段を足す`→reform /
+`健康診断アプリが欲しい`→counsel でない / `楽園の位階の相関図を作れ`→cartography /
+`楽園のエンジンを監査してほしい`→counsel / `台帳の毒を直す`→quick /
+`build a habit tracker app`→full / `比較表がほしい`→counsel。
+**門**: `tests/route-matrix.test.js` の 6 道コーパス全体(87 件)。
+
+### AC-52 門は対角線でなく**混同行列**である(第61条(a))
+`tests/route-matrix.test.js` は 6 道 × 6 道のセルを数え、
+**対角の合計 = コーパス件数** と **非対角の各セル = 0** を**両方** assert する。
+非対角が 0 でないとき、門は**セルの名と願いの本文**を出力に載せる。
+**門**: `M-2`(対角)/ `M-3`(非対角の各セル)。
+
+### AC-53 門自身の骨抜きを門が見張る(第61条 / `lesson:warden-outside-selection`)
+故障注入で実測: 実装を壊す変異 9 件は全て鳴ったが、**門の側を壊す変異 3 件は
+すべて黙った**。ゆえに行列を使わず試験ファイル本文を直に読む門番を置く。
+**門**: `W-1`(コーパスの下限)/ `W-2`(格子 3×10×5=150)/
+`W-3`(両辺が数値リテラルの恒真 assert が 0)/ `W-4`(語彙の各語に単独標識の願い)。
+
+### AC-54 コーパスの冗長は門の沈黙である(第61条(c))
+`DELIBERATION_JA` の**各語につき、その語だけが標識である願い**を持つ。
+格子 150 件は標識を二つ持つので、`べきか` を抜いても**門は黙った**(故障注入 M3)。
+**門**: `W-4`(機械で照合。人の足し忘れを許さない)。
+
+### AC-55 刻んだ教訓は門に届く(盲点②)
+`kg.js remember lesson` した走行は `lessons.js export` を走らせたか。
+原本(KG)と帳(`graph/lessons.json`)を **id の集合**で突き合わせる ——
+件数の一致は一致ではない。この機に KG が無ければ **`skip()` で声に出して名乗る**
+(第37条)。門自体の健全性は作り物の KG で撃つ。
+**門**: `tests/lesson-export.test.js` `L-1`〜`L-8`。
+
+### AC-56 reform 走行は自分の scope を宣言する(盲点③)
+`--self` の既定 scope(`paradise-internal` / `orchestration`)は本走行の教訓の
+scope(`forge` / `gate` / `reform`)を射程外にし、**R-1 を名指す
+`corpus-blind-to-its-own-half` を握り潰した**。`reform/route-misfire/.paradise-scopes`
+に 5 語を宣言する。実測: GAP **37 → 39**。
+**裁定の根拠**: `critic.js` の `--self` scope を「触れた物から導く」案は退けた ——
+(a) R-1 の修理と同じ走行で判定器を二つ触るのは本走行が 8 度繰り返した過ちである
+(b) `.paradise-scopes` は critic.js が既に持つ**設計された拡張点**である
+(c) 導出案は「触れた物」の定義が走行ごとに揺れ、黙って外れる面を新設する。
+**導出案は次の走行への申し送りとする(9.4)。**
+
+## 9.3 案の比較 —— 7 案を全コーパスに撃った数(採用 = 案7)
+
+| 案 | 形 | C1(233) | C2(22) | C3(14) | 合計誤着 | 裁定 |
+|---|---|---|---|---|---|---|
+| main 基準 | (修理前の基準線) | 11 | 2 | 3 | **16** | — |
+| HEAD 現状 | R-1 が生きている | 166 | 5 | 5 | **176** | 破棄(欠陥) |
+| 案1 | 教主の試作(日本語のみ・`COUNSEL_RE` 不変) | 9 | 4 | 3 | 16 | 捨てた(英語熟議 5/5 を落とす) |
+| 案2 | 案1 + 英語 + `COUNSEL_RE` へ合流 | 2 | 5 | 3 | 10 | 捨てた(断定紛れ 5 件) |
+| 案3 | 案2 の語彙を**疑問形だけ**に絞る | 1 | 5 | 3 | 9 | 捨てた(節跨ぎ命令 3 件を誤射) |
+| 案4 | 熟議語を 3 段目(`DOC` 側)に足すだけ | 63 | 5 | 3 | 71 | 捨てた(`wantsProduct` に潰される) |
+| 案5 | 案3 + 最終節判定(**英語の `?` `.` でも割る**) | 3 | 4 | 1 | 8 | 捨てた(`please advise` が最終節になり英語熟議 2 件を落とす) |
+| 案6 | 案3 + 最終節判定(日本語の文末記号のみ) | 1 | 3 | 1 | 5 | 捨てた(コロンで割らないので `妥当か検討済み:…実装せよ` を誤射) |
+| **案7** | **案6 + コロン/セミコロンでも割る** | **1** | **2** | **0** | **3** | **採用** |
+
+**捨てた案の数はすべて実機で撃った**。案4 が突出して悪いのは、3 段目が
+`&& !wantsProduct(w)` を伴うため「口/段」を名指す熟議が全て潰されるからである。
+
+**残る 3 件の誤着(名乗り / 第37条)**:
+
+| 願い | 期待 | 実際 | main | 所見 |
+|---|---|---|---|---|
+| `見直すべき箇所を直せ` | !counsel | counsel | **counsel(main も同じ)** | main から在る。`見直`(`COUNSEL_JA`)+`直す` の衝突。本走行の回帰ではない |
+| `所見は不要。家計簿ツールを作って` | !counsel | counsel | **counsel(main も同じ)** | main から在る。「不要」の否定を機構が読めない |
+| `build the tool, no need to think about whether to add it` | !counsel | counsel | !counsel | **本走行が作った** —— `whether to add` が最終節に在り、英語の否定(`no need to`)を読めない |
+
+**3 件目のみ本走行の産物である。** 英語の否定辞を読む機構は本走行の射程外と裁いた
+(日本語側の 2 件が main から同じ形で在り、**英語だけ直すのは片枝の修理**である ——
+第60条(b) が禁じた形)。**次の走行へ申し送る(9.4)。**
+
+## 9.4 次の走行への申し送り
+
+1. **熟議の否定辞** —— `no need to …` / `〜は不要` / `〜しなくてよい` を読む機構。
+   日本語 2 件は main から在り、英語 1 件は本走行の産物。**両言語を同時に直せ**。
+2. **`critic.js --self` の scope を触れた物から導く案** —— 9.2 AC-56 で退けた案。
+   判定器を単独の走行で扱えば安全に試せる。`.paradise-scopes` は残したままでよい
+   (宣言が在れば導出より優先、が素直な形である)。
+3. **AC-30(`forge.js` CLI 口の門)** —— 四度目の申し送りになる。本走行も
+   `chooseScale` を直に呼んでおり、CLI との割れは今も未検証である。
+
+---
+
+## 8.9 【tribunal 三度目が実測で足した申し送り】AC-03 型 2 件の裁定と、その根拠の数
+
+> **tribunal 三度目が自分で撃った実測のみ**(第27条)。
+> main は `git clone --no-hardlinks --branch main`(c216014)で立てた複製、
+> HEAD は同じく複製した 577949e。変異は**全て複製の中だけ**で撃った。
+
+### 8.9.1 教主が名指しした 2 件 —— **射程外へ格下げする(選択肢 1)**
+
+```
+                             main        HEAD      判定
+CI に ledger --audit を追加する   counsel  →  standard   ✓ 改善(調査の道へ攫われなくなった)
+conclave の毒を除く            standard →  standard   = 同じ(回帰ではない)
+```
+
+**どちらも `ENGINE_NAMES` 撤去(教主の命令)の既知の帰結であり、本走行が作った回帰ではない。**
+第38条の前後比較で **悪化は 0 件**である。
+
+### 8.9.2 AC-03 は**未達ではない** —— 期待値は build 相四度目で既に改訂済み
+
+§3.1 の AC-03 は `『counsel でない』` へ改訂されている(本旨=フラグ名に道を奪わせない)。
+tribunal 三度目が**生駆動した実測**:
+
+```
+  ✓ AC-01  =reform                HEAD=reform      main=counsel
+  ✓ AC-02  =reform                HEAD=reform      main=counsel
+  ✓ AC-03  ≠counsel (四度目で改訂)   HEAD=standard    main=counsel
+  ✓ AC-04  ≠counsel (教主裁定1)     HEAD=full        main=counsel
+  ⊘ AC-05  🔴 射程外 (取り下げ済)     HEAD=standard  / main=standard
+  ✓ AC-06 / AC-07 / AC-08 / AC-09 / AC-12                (全て緑)
+
+  AC 生駆動: pass=9 fail=0 射程外=1
+```
+
+### 8.9.3 `conclave の毒を除く` は「未達の AC」ではなく「門が assert している断言」
+
+`tests/counsel.test.js:875` の AC-38 逆向きの門が、この願いに対して機械で断言している:
+
+```
+  isReformSubject=false   ← 門は false を assert している
+  chooseScale=standard    ← 門は !== 'reform' を assert している
+```
+
+**これを未達と数えることは、緑の門を赤と呼ぶことである。**
+
+### 8.9.4 **選択肢 2 を採ると何を失うか** —— これが裁定の決定打
+
+「AC を緑にせよ」は「engine 固有名を印に戻せ」と同値である。**代価を測った**:
+
+```
+engine 名 26 語 × 「に検めの口を設ける」が reform へ着かない数:
+    main            = 26/26      ← main も全て着かない
+    HEAD (撤去後)   = 26/26      ← main と同じ = 回帰ではない
+    撤去前 6a4e3f4  =  3/26      ← 印が在れば 23 件が着く
+
+世間の願い × engine 名 18 件 が reform へ誤着する数:
+    main            =  0/18
+    撤去前 6a4e3f4  =  7/18      ← 印が在ると 7 件が攫われる (= Q3-2)
+    HEAD (撤去後)   =  0/18
+```
+
+**「AC 23 件を緑にする」ことと「世間の誤着 7 件(Q3-2)を甦らせる」ことは同じ操作である。**
+第60条(b) の「両方向に誤る印」そのものであり、**次の走行は §8.5 の助言から始めよ。**
+
+### 8.9.5 `ROUTE_MATRIX` 門は**過去 5 形の回帰を一つも捕らえない**(実測)
+
+次の走行への警告である。過去の実装(`git show <commit>:graph/forge.js`)を
+複製の `isReformSubject` へ委譲させて撃った:
+
+```
+変異        ROUTE_MATRIX         counsel.test              病の実測
+──────────────────────────────────────────────────────────────────
+欠陥C       黙った exit 0        🔴 exit 1 (106 failed)    世間 9/10 が reform へ
+F-1         黙った exit 0        🔴 exit 1 ( 82 failed)    日本語 7/10 が reform へ
+Q2-1        黙った exit 0        🔴 exit 1 ( 37 failed)    改める動詞 7/10 が reform へ
+Q3-1        黙った exit 0        🔴 exit 1 (  5 failed)    楽園の願い 1/8 を取りこぼす
+Q3-2        黙った exit 0        🔴 exit 1 (  5 failed)    枝2 の誤着 7/8 が reform へ
+R-1(対照)   🔴 exit 1 (4 failed) 黙った exit 0 (210/0)     熟議が counsel を失う
+```
+
+**機序**: 行列のコーパス 87 件の `standard`(9) / `full`(8) は
+**engine 固有名を一語も含まない**。「世間の願い × engine 名」の母集団が行列に 0 件なので、
+その面が何処へ着いても **36 セルが一つも動かない**。
+
+**ゆえに `tests/route-matrix.test.js` 冒頭の註と第61条の
+「片側だけ直す修理が構造的に不可能になる」は実測で偽である**(第33条: 散文が機構を騙る)。
+**次の走行は (1) 註と条文を実測に合わせて直し (2) 行列へ「世間の願い × engine 名」の行を足せ。**
+
+### 8.9.6 `CREATE_RE` の `BUILD_JA` は**今や余剰**(M9 / 神官の申告は真であった)
+
+```
+面                              HEAD      M9(BUILD_JA を CREATE_RE から抜く)
+──────────────────────────────────────────────────────────────────────
+欠陥A の本旨 15 件               0/15      0/15
+世間の建造 30 件                 0/30      0/30
+熟議 20 件                       0/20      0/20
+楽園の改修 10 件                 0/10      0/10
+門: route-matrix 13/0 (EXIT=0) / counsel 210/0 (EXIT=0)
+```
+
+**75 件の願いが一件も動かず、門も両方緑である。**
+当時は必要だった(main は欠陥A の本旨 11 件のうち 3 件を落とす)が、
+その仕事は後から建った `DELIBERATION_RE` と抽象名枝が引き受けた。
+**そしてこの余剰こそが R-1(8 度目の回帰)を生んだ当の語彙である。**
+
+**次の走行で撤去せよ。** tribunal 三度目は撤去していない ——
+振る舞いを一件も変えない撤去を、reworks=3 の最後の環でねじ込むのは
+「修理が新しい欠陥を生む 8/8 = 100%」の 9 度目を招くからである。
