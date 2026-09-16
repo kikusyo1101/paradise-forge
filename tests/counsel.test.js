@@ -805,6 +805,309 @@ test('B-1【教主の裁定】答えを求める語(見直す)は counsel が取
 });
 
 /**
+ * ══════════════════════════════════════════════════════════════════════
+ * 【build 相三度目 / Q2-1〜Q2-3 の修理】
+ *   `MEND_RE` × 強い名 の**世間側の面**を機械的に撃つ。
+ *
+ * ⚠️ quality 二周目 §4 が名指した F-4 の**四度目**: 門は `MEND_RE` の
+ *    「楽園を正しく拾う面」を 12 件撃ち、「世間を誤って拾う面」を **0 件**
+ *    しか撃っていなかった。ゆえに `MEND_RE` が世間の願い 32/32 を攫っても
+ *    177 本の門は一本も鳴らなかった。
+ *
+ *    第60条(f): **印を一つ足したら、足した印そのものに (b) の両方向試験を課せ。**
+ *    ここがその両方向試験の**世間側**である。
+ * ══════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * **`MEND_RE` の語彙 × 強い名 × 世間の願い**(AC-43 の本体)。
+ *
+ * ⚠️ 表は `MEND_JA` / `MEND_EN` の**語の数と照合される**(下の門)。
+ *    `MEND_RE` に語を足したのにここへ願いを足さなければ**赤くなる** ——
+ *    「表の半分しか撃たない」という F-4 の五度目を機械が止める。
+ */
+const MEND_WORLDLY_EVERY_VERB = {
+  '直す': 'gauge の壊れた針を直すDIYサイトが欲しい',
+  '直し': 'abode 賃貸物件の写真の傾き直しツール',
+  '直せ': 'forge 溶接所の看板のデザインを直せるWebエディタ',
+  '直して': 'clergy 名簿の読み仮名を直してくれるアプリ',
+  '修正': 'synod 議事録の誤字を修正できるアプリ',
+  '修復': 'codex 古文書の破れを修復する写真加工サイト',
+  '改修': 'abode 住宅改修の見積もりシミュレータ',
+  '改善': 'hermetic 密閉パッキンの歩留まりを改善する生産管理アプリ',
+  '改める': 'ordain 式次第の文言を改める編集画面のアプリが欲しい',
+  '改め': 'critic 投稿の表記を改めたい人向けの校正サイト',
+  '除く': 'clergy 名簿の重複を除くツールが欲しい',
+  '除去': 'wiring 配線工事の錆を除去する薬剤の通販サイト',
+  '取り除': 'hermetic 容器の不良品を取り除く検品アプリ',
+  '塞ぐ': 'abode 空き家の隙間を塞ぐリフォーム業者マッチングサイト',
+  '塞い': 'forge 溶接で穴を塞いだ実績を載せる工務店のサイト',
+  '潰す': 'verdict 待ち時間を潰す暇つぶしゲーム集のアプリ',
+  '削る': 'synod 会議費の予算を削る稟議アプリ',
+  '削除': 'critic 投稿したレビューを削除できる掲示板',
+  '外す': 'daily-guard 当番表から欠勤者を外すシフト管理アプリ',
+  '替える': 'abode 不動産の写真を差し替えるツール',
+  '置き換え': 'export-state 輸出書類の旧様式を置き換える変換ツール',
+  '書き換え': 'codex 蔵書の分類を書き換えるツール',
+  '整える': 'clergy 祭壇の花を整えるフラワーアレンジ教室の予約サイト',
+  '見直': 'branch-guard 支店の警備契約を見直す相見積もりサービス',
+  'fix': 'fix gauge readings in my vintage car dashboard app',
+  'repair': 'repair shop booking site for forge equipment',
+  'remove': 'remove watermarks from codex scans, a small web tool',
+  'refactor': 'refactor my resume with critic feedback, a writing coach app',
+  'rewrite': 'rewrite listings copy for abode rentals automatically',
+  'patch': 'patch notes viewer for conclave board game expansions',
+  'harden': 'harden shipping boxes for hermetic containers — a materials picker',
+  'migrate': 'migrate orchestrator seating charts from excel to a web app',
+  'drop': 'abode drop shipping storefront builder',
+  'deprecate': 'deprecate old ordain ceremony templates in my church CMS',
+};
+
+test('MEND の世間側コーパスが MEND_RE の語彙を過不足なく覆っている (AC-43 / F-4 の五度目を止める)', () => {
+  // `MEND_RE` の源から語を取り出す(実装の表を直に読む・第16条)
+  const src = forge.MEND_RE.source;
+  const ja = src.split('|\\b(?:')[0].split('|');
+  const en = (src.match(/\\b\(\?:([^)]+)\)\\b/) || [, ''])[1].split('|').filter(Boolean);
+  const table = [...ja, ...en];
+  const corpus = Object.keys(MEND_WORLDLY_EVERY_VERB);
+  const uncovered = table.filter(v => !corpus.includes(v));
+  assert.deepStrictEqual(uncovered, [],
+    `MEND_RE に語が在るのに世間側のコーパスが撃っていない: ${uncovered.join(', ')} — ` +
+    'F-4(守る面の半分を一度も撃たない)の再演である。' +
+    'tests/counsel.test.js の MEND_WORLDLY_EVERY_VERB に世間の願いを一件足せ');
+  const stale = corpus.filter(v => !table.includes(v));
+  assert.deepStrictEqual(stale, [],
+    `コーパスが MEND_RE に無い語を撃っている: ${stale.join(', ')} — 表から消えた語の門は嘘をつく`);
+  // 撃った願いが実際にその語と強い名の両方を含んでいること(第16条: 名指しは呼び出しではない)
+  for (const [verb, wish] of Object.entries(MEND_WORLDLY_EVERY_VERB)) {
+    const d = forge.denude(wish);
+    assert.ok(new RegExp(verb, 'i').test(d),
+      `コーパスの願いが MEND の語 "${verb}" を含まない — その語を撃っていない: ${wish}`);
+    assert.ok(forge.REFORM_STRONG_RE.test(d),
+      `コーパスの願いが強い名を含まない — 枝 2' を撃てていない: ${wish}`);
+  }
+});
+
+for (const [verb, wish] of Object.entries(MEND_WORLDLY_EVERY_VERB)) {
+  test(`"${wish}" は reform でない — MEND の語 ${verb} × 強い名(34 語網羅) (AC-43 / Q2-1)`, () => {
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `MEND の語 "${verb}" が世間の願いを engine 改修の 11 相へ攫った(Q2-1 の回帰)`);
+  });
+}
+
+/**
+ * **枝 2' の二条件が、それぞれ単独で効いている**(AC-43 の裏 / 第21条: 黙る門を作らない)。
+ *
+ * ⚠️ `mendsParadise` は二条件(`WORLDLY_VESSEL_RE` の不在 **かつ** `STRONG_BOUND_RE`)
+ *    を持つ。片方だけで緑になる例しか持たない門は、もう片方を消しても鳴らない ——
+ *    それが F-4 / Q2-2 の形である。ゆえに**どちらか一方だけが守っている例**を持つ。
+ */
+test('枝 2\' は世間の器の不在と助詞の結びの両方を要る (AC-43 / 黙る門を作らない)', () => {
+  // (i) **器の不在だけ**が守っている —— 助詞は在る(= STRONG_BOUND_RE を消しても緑)
+  for (const wish of [
+    'gauge の壊れた針を直すDIYサイトが欲しい',
+    'critic の投稿したレビューを削除できる掲示板',
+  ]) {
+    const d = forge.denude(wish);
+    assert.ok(forge.STRONG_BOUND_RE.test(d),
+      `前提が崩れた — 助詞の結びが既にこの願いを落としている(器の不在を撃てない): ${wish}`);
+    assert.ok(forge.WORLDLY_VESSEL_RE.test(d),
+      `前提が崩れた — この願いは世間の器を持たない: ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `世間の器の除外が死んでいる — ${wish}`);
+  }
+  // (ii) **助詞の結びだけ**が守っている —— 世間の器は無い(= WORLDLY_VESSEL_RE を消しても緑)
+  for (const wish of [
+    'abode drop shipping storefront builder',
+    'harden shipping boxes for hermetic containers',
+  ]) {
+    const d = forge.denude(wish);
+    assert.ok(forge.MEND_RE.test(d),
+      `前提が崩れた — この願いは改める動詞を持たない(枝 2' を撃てない): ${wish}`);
+    assert.ok(!forge.STRONG_BOUND_RE.test(d),
+      `前提が崩れた — この願いは助詞で結ばれている(助詞の守りを撃てない): ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `助詞の結びの要求が死んでいる — ${wish}`);
+  }
+  // (iii) 逆向き: 二条件を満たす楽園の願いは今まで通り reform
+  //       (二条件を「常に false」にして緑にする修理を止める・第36条)
+  for (const wish of ['conclave の毒を除く', 'codex の索引を書き換える', 'gauge の台帳の重複行を除く']) {
+    assert.strictEqual(forge.chooseScale(wish), 'reform',
+      `枝 2' が楽園の改修を落とした — 条件を足しすぎた: ${wish}`);
+    assert.strictEqual(forge.mendsParadise(forge.denude(wish)), true,
+      `mendsParadise が楽園の改修に偽を返す: ${wish}`);
+  }
+});
+
+/**
+ * **`WORLDLY_VESSEL_RE` に楽園の器官の名を入れてはならない**(AC-43 の禁則 / 実装の表を直に撃つ)。
+ *
+ * ⚠️ 教主が試作して失敗した道がこれである —— 器官名に一字の語(門/口/相/条)を含めた
+ *    案は**世間の願い 10/10 に誤射した**(`専門店` `窓口` `相場` `条件検索`…)。
+ *    逆に**世間の器の表**に楽園の器官の名を入れれば、楽園の改修が死ぬ。
+ *    どちらも「一つの表に二つの顔の語を置いた」という同じ病である(第60条(a))。
+ */
+test('WORLDLY_VESSEL_RE が楽園の器官の名を含まない (AC-43 の禁則 / 表を直に撃つ)', () => {
+  for (const organ of ['口', '門', '相', '一段', 'フラグ', '走行帳', '台帳', '索引', '自己診断',
+    'ledger', 'gate', 'flag', 'engine']) {
+    assert.ok(!forge.WORLDLY_VESSEL_RE.test(organ),
+      `WORLDLY_VESSEL_RE が楽園の器官の名 "${organ}" を含む — 楽園の改修が世間の物と誤読される`);
+  }
+  // 逆向き: 世間の器は確かに入っている(表を空にして緑にしていないこと・第36条)
+  for (const vessel of ['アプリ', 'サイト', 'ツール', '掲示板', '通販', 'a booking site', 'storefront builder']) {
+    assert.ok(forge.WORLDLY_VESSEL_RE.test(vessel),
+      `WORLDLY_VESSEL_RE から世間の器 "${vessel}" が落ちた — 表を空にして緑にしている`);
+  }
+});
+
+/**
+ * **抽象名 `門` / `gate` の紛れ語**(AC-45 / Q2-1 の同族)。
+ *
+ * ⚠️ `門` は `REFORM_ABSTRACT_RE` の唯一の**一字の名**である。
+ *    `専門店` `門前町` `名門` `部門別` `入門講座` は世間の語であり、判定の門ではない。
+ *    実測: この守りが無いと自作コーパスの 5 件が **main でも HEAD でも** reform へ攫われた
+ *    —— すなわちこれは main 由来の病であり、本走行が新しく塞いだ。
+ */
+test('抽象名「門」/「gate」の紛れ語が世間の願いを攫わない (AC-45)', () => {
+  for (const wish of [
+    'gauge 専門店の壊れた棚を直す在庫アプリ',
+    'forge 門前町の案内板の誤字を修正するサイト',
+    'ordain 入門講座の資料の誤植を直す教材配布サイト',
+    'orchestrator 名門楽団の旧名簿を書き換えるファンサイト',
+    'verdict 部門別の売上の誤りを修正する経理ツール',
+    'rewrite the gate schedule board at forge airport terminal',
+    'deprecate the old scoring gate in my conclave tournament site',
+  ]) {
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `「門」/「gate」の紛れ語が世間の願いを reform へ攫った — ABSTRACT_FALSE_FRIENDS が死んでいる: ${wish}`);
+  }
+  /**
+   * ⚠️ **世間の器の名を一語も持たない紛れ語**を別に撃つ(故障注入 M-I の帰結)。
+   *    上の 7 件はすべて `アプリ`/`サイト`/`ツール` を持つので、
+   *    **`WORLDLY_VESSEL_RE` が単独で守ってしまい**、
+   *    `ABSTRACT_FALSE_FRIENDS` の表を空にしても門は**黙った**(実測)。
+   *    第60条(e) と同じ病 —— 二つの守りが在る面を、片方だけで緑になる例で撃っていた。
+   */
+  for (const wish of [
+    '部門別の売上の誤りを直したい',
+    '専門店の棚の傾きを直したい',
+    '入門書の誤植を直したい',
+    '名門校の入試問題の誤りを取り除きたい',
+    '門前町の看板の誤字を直したい',
+    '関門海峡の潮流表の誤りを直したい',
+  ]) {
+    assert.ok(!forge.WORLDLY_VESSEL_RE.test(forge.denude(wish)),
+      `前提が崩れた — この願いは世間の器を持つので ABSTRACT_FALSE_FRIENDS を単独で撃てない: ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `「門」の紛れ語が世間の願いを reform へ攫った — ABSTRACT_FALSE_FRIENDS の表が空になっている: ${wish}`);
+  }
+  // 逆向き: 本物の門は今まで通り無条件で楽園を名指す(表を膨らませて緑にしていないこと)
+  for (const wish of ['門に監査の一段を足す', 'critic の門を一本足す', '門の判定を書き換える']) {
+    assert.strictEqual(forge.chooseScale(wish), 'reform',
+      `紛れ語の守りが本物の門まで落とした — ${wish}`);
+  }
+  assert.strictEqual(forge.namesParadiseAbstractly('門に監査の一段を足す'), true);
+  assert.strictEqual(forge.namesParadiseAbstractly('専門店の棚を直すアプリ'), false);
+});
+
+/**
+ * ══════════════════════════════════════════════════════════════════════
+ * 【Q2-3 の修理】**変異を門が捕らえること**を、門の側から撃つ。
+ *
+ * ⚠️ quality 二周目 §2.3 の実測: **弱い名に `MEND_RE` を許す変異を、
+ *    177 本の門が一本も捕らえなかった**。AC-42 の変異表 11 件はすべて
+ *    「実装を**弱める**」変異であり、「実装の条件を **OR で広げる**」変異は
+ *    一件も無かった。**広げる変異は、弱める変異とは別の門でしか捕らえられない。**
+ *
+ *    ここは `isReformSubject` を**呼ばずに**、枝ごとの述語を直に撃つ ——
+ *    実装が枝を OR で広げた瞬間に赤くなる形である。
+ * ══════════════════════════════════════════════════════════════════════
+ */
+test('弱い名は改める動詞だけでは楽園を名乗らない (AC-44 / Q2-3 の変異を捕らえる)', () => {
+  // 弱い名 × MEND × 建造の動詞なし の世間の願い。
+  // 枝 3 を `(BUILD_RE || MEND_RE)` に広げた瞬間、ここが赤くなる。
+  for (const wish of [
+    'vendor の請求書テンプレを直す',
+    'census の重複行を削除する',
+    'workflow の並び順を書き換える',
+    'atlas の地図の色を整える',
+    'deploy の画面を整える',
+    'fix vendor onboarding emails',
+    'remove duplicate steps from workflow templates',
+    'drop identity verification from the signup flow',
+    'patch contract pdf generation',
+    'ワークフローの重複を除く',
+  ]) {
+    const d = forge.denude(wish);
+    assert.ok(forge.REFORM_WEAK_RE.test(d),
+      `前提が崩れた — この願いは弱い名を含まない(枝 3 を撃てない): ${wish}`);
+    assert.ok(forge.MEND_RE.test(d),
+      `前提が崩れた — この願いは改める動詞を含まない(枝 3 の広がりを撃てない): ${wish}`);
+    assert.ok(!forge.BUILD_RE.test(d),
+      `前提が崩れた — この願いは建造の動詞を持つので枝 3 が既に真である: ${wish}`);
+    assert.strictEqual(forge.isReformSubject(d), false,
+      `弱い名 + 改める動詞が楽園を名指した — 枝 3 が MEND_RE へ広がっている(Q2-3 の回帰): ${wish}`);
+    assert.notStrictEqual(forge.chooseScale(wish), 'reform',
+      `弱い名 + 改める動詞が reform へ着いた(Q2-3 の回帰): ${wish}`);
+  }
+});
+
+/**
+ * **枝 2' も OR で広がっていない**(AC-44 の対 / Q2-1 の変異を捕らえる)。
+ *
+ * ⚠️ 上の門は枝 3 だけを見ている。**枝 2' を `MEND_RE` 単独へ戻す変異**
+ *    (= Q2-1 そのもの)は、`mendsParadise` を呼ばない実装に戻すことで起きる。
+ *    ゆえに **`mendsParadise` が実際に判定へ効いていること**を直に撃つ。
+ */
+test('枝 2\' は mendsParadise を通っている (AC-44 の対 / Q2-1 の変異を捕らえる)', () => {
+  // `mendsParadise` が偽を返す願いは、強い名 × MEND を持っていても reform でない
+  for (const wish of [
+    'gauge の壊れた針を直すDIYサイトが欲しい',
+    'abode drop shipping storefront builder',
+    'critic 投稿したレビューを削除できる掲示板',
+  ]) {
+    const d = forge.denude(wish);
+    assert.ok(forge.REFORM_STRONG_RE.test(d) && forge.MEND_RE.test(d),
+      `前提が崩れた — 強い名 × 改める動詞でない(枝 2' を撃てない): ${wish}`);
+    assert.strictEqual(forge.mendsParadise(d), false,
+      `mendsParadise が世間の願いに真を返す: ${wish}`);
+    assert.strictEqual(forge.isReformSubject(d), false,
+      `枝 2' が mendsParadise を通っていない — MEND_RE 単独で真になっている(Q2-1 の回帰): ${wish}`);
+  }
+  // 逆向き: `mendsParadise` が真を返す願いは今まで通り reform
+  for (const wish of ['conclave の毒を除く', 'forge の道選びを直す', 'spawn-trace の走行帳を直す']) {
+    const d = forge.denude(wish);
+    assert.strictEqual(forge.mendsParadise(d), true, `mendsParadise が楽園の改修に偽を返す: ${wish}`);
+    assert.strictEqual(forge.isReformSubject(d), true,
+      `枝 2' が楽園の改修を落とした — mendsParadise が厳しすぎる: ${wish}`);
+  }
+});
+
+/**
+ * **新しい正規表現も二乗で膨れない**(S-1 / `MEND_RE` の門と同じ作法)。
+ *
+ * ⚠️ 足した者が計らねば誰も計らない —— `MEND_RE` の門が既にそう書いている。
+ *    本相が足した `WORLDLY_VESSEL_RE` / `STRONG_BOUND_RE` / `ABSTRACT_FALSE_FRIENDS`
+ *    にも同じ物差しを当てる。
+ */
+test('本相が足した正規表現が病的な入力で二乗に膨れない (S-1 / Q2-1 の修理)', () => {
+  const cases = [
+    ['WORLDLY_VESSEL_RE', forge.WORLDLY_VESSEL_RE, ['アプ', 'ap', 'サイ', 'storefron']],
+    ['STRONG_BOUND_RE', forge.STRONG_BOUND_RE, ['gaug', 'conclav', 'の', 'a ']],
+    ['ABSTRACT_FALSE_FRIENDS', forge.ABSTRACT_FALSE_FRIENDS, ['門', '専', 'gatewa']],
+  ];
+  for (const [name, re, units] of cases) {
+    for (const unit of units) {
+      const t0 = process.hrtime.bigint();
+      re.test(unit.repeat(100000));
+      const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+      assert.ok(ms < 200, `${name} が "${unit}"×100000 に ${ms.toFixed(1)}ms 掛かった — 交替が暴走している`);
+    }
+  }
+});
+
+
+/**
  * **`MEND_RE` は二乗で膨れない**(S-1 と同じ病を新しい正規表現に持ち込んでいないこと)。
  *
  * ⚠️ security 相の U-1 は「`REFORM_RE` 等の ReDoS を計測していない」と名乗った。

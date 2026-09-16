@@ -423,6 +423,40 @@ const REFORM_ABSTRACT_RE = new RegExp('(楽園|paradise|ハーネス|harness|憲
   '門|gate|パイプライン|pipeline|自己改善|self-improve|オーケストレーション|orchestration|' +
   '枢機卿|cardinal|神官|priest|自己診断|走行帳)', 'i');
 
+/**
+ * ⚠️ **抽象名の中にも「一字の名」が一つだけ在る** —— `門` である(Q2-1 の同族)。
+ *    `専門店` `門前町` `名門` `部門別` `入門講座` は世間の語であり、判定の門ではない。
+ *    `PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS` と**同じ作法**で守る。
+ *    実測: この守りが無いと自作 MINE_H の 5 件(`gauge 専門店の…` 等)が
+ *    **main でも HEAD でも** reform へ攫われる —— すなわちこれは main 由来の病である。
+ *
+ * ⚠️ `門` と `gate` **以外**の抽象名は多字であり紛れ語を持たないので、この守りを掛けない。
+ *    掛ければ `楽園の…アプリ` のような正当な願いが死ぬ。
+ *
+ * ⚠️ **英語の `gate` には限定詞の除外も掛ける**(実測で 1 件が直った)。
+ *    `rewrite the gate schedule board…` / `deprecate the old scoring gate in my
+ *    conclave tournament site` —— `the gate` は世間の搭乗口・世間の関門である。
+ *    日本語の `門` に冠詞は無いので、そちらは紛れ語と世間の器の表が受け持つ。
+ */
+const ABSTRACT_SOLO_RE = new RegExp('門|' + DETERMINER_LOOKBEHIND + '\\bgate\\b', 'i');
+const ABSTRACT_FALSE_FRIENDS = new RegExp(
+  '門前|専門|部門|門下|入門|名門|門戸|関門|門限|門外|登竜門|' +
+  '\\b(?:gated|gateway|floodgate|tailgate|stargate)\\b', 'i');
+
+/** 抽象名が**楽園を**名指しているか(一字の名は紛れ語を退けたうえで)。 */
+function namesParadiseAbstractly(d) {
+  if (!REFORM_ABSTRACT_RE.test(d)) return false;
+  // 多字の抽象名(楽園/engine/憲法/走行帳…)で当たったなら、そこで決着する。
+  const multi = new RegExp(REFORM_ABSTRACT_RE.source.replace('門|gate|', ''), 'i');
+  if (multi.test(d)) return true;
+  // `門`/`gate` の一字だけで当たった場合、それが紛れ語の一部でないか確かめる。
+  // ⚠️ **世間の器の名も退ける** —— `rewrite the gate schedule board at forge airport
+  //    terminal` の `gate` は空港の搭乗口である。紛れ語の表には載らないが、
+  //    **世間の器を作る願い**である以上、楽園の門ではない(実測で 1 件が直った)。
+  if (!ABSTRACT_SOLO_RE.test(d)) return false;
+  return !ABSTRACT_FALSE_FRIENDS.test(d) && !WORLDLY_VESSEL_RE.test(d);
+}
+
 /** engine の**強い固有名** —— 限定詞の直後は数えない。 */
 const REFORM_STRONG_RE = new RegExp(
   `${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b`, 'i');
@@ -464,14 +498,74 @@ const MEND_EN = '\\b(?:fix|repair|remove|refactor|rewrite|patch|harden|migrate|d
 const MEND_RE = new RegExp(`${MEND_JA}|${MEND_EN}`, 'i');
 
 /**
- * 願いの**対象が楽園自身**か (AC-31 / AC-36)。
+ * **世間の器の名** (Q2-1 の修理 / 第60条(f))。
  *
- * 三枝である。**枝ごとに課す条件が違い、どの枝も無条件ではない**:
+ * 願いが「**世間の人に配る物**」を名指しているなら、そこで改められるのは
+ * 楽園の器官ではなく**その世間の物**である。
+ *
+ * ⚠️ `PRODUCT_RE` と**別の表**である。役目が違う:
+ *    `PRODUCT_RE` は「物を求めているか」(counsel との境)を裁く。
+ *    ここは「**改める対象が楽園の外に在るか**」を裁く。
+ *    ゆえに `PRODUCT_RE` に在る `口`/`門`/`相`/`フラグ`/`一段` —— **楽園の器官の名でもある語**
+ *    —— を**一語も置いてはならない**。置いた瞬間 `門に監査の一段を足す` が死ぬ。
+ *    ここに在るのは**楽園が決して名乗らない器**(掲示板/通販/予約/booking/rentals…)だけである。
+ *
+ * ⚠️ **`ダッシュボード`/`dashboard` を入れてはならない**(実測で門が赤くなった)。
+ *    楽園自身が `dashboard/index.html` を持つ —— `ダッシュボードを生きた門にせよ` は
+ *    楽園の改革であり、`counsel.test.js` が撃っている。**楽園も名乗る器は、世間の器ではない。**
+ */
+const WORLDLY_VESSEL_RE = new RegExp(
+  'アプリ|サイト|ツール|掲示板|ゲーム|サービス|通販|ショップ|マッチング|シミュレータ|' +
+  'エディタ|校正|検品|予約|配車|貸出|特番|番組|教材|講座|' +
+  '\\b(?:app|site|website|tool|shop|store|storefront|marketplace|cms|viewer|picker|' +
+  'builder|planner|spreadsheet|listings|rentals|booking)\\b', 'i');
+
+/**
+ * **強い名が文の主題として結ばれているか** (Q2-1 の修理 / 第60条(f))。
+ *
+ * 楽園の改修の願いは `conclave の毒を除く` / `gauge に fingerprint を…` のように
+ * **強い名の直後に助詞が立つ**。名は「何を改めるのか」の主である。
+ * 世間の願い `gauge の壊れた針を直すDIYサイトが欲しい` も `gauge の` を持つので
+ * **これ一枚では足りない** —— `WORLDLY_VESSEL_RE` と組んで初めて働く(第60条(d))。
+ *
+ * ⚠️ 英語側は助詞を持たないので、この印は**日本語にしか立たない**。
+ *    英語の世間の願いは `WORLDLY_VESSEL_RE` と限定詞の除外が受け持つ。
+ *    **この非対称は測って選んだ**ものであり、design.md §1.5.1 に実測を記した。
+ */
+const STRONG_BOUND_RE = new RegExp(
+  `${DETERMINER_LOOKBEHIND}\\b(?:${ENGINE_NAMES_STRONG})\\b[\\s]*(?:の|に|へ|を|は|が)`, 'i');
+
+/**
+ * 強い名 × **改める動詞** の願いが、**楽園を**改めようとしているか。
+ *
+ * ⚠️ これが Q2-1(六度目の回帰)の修理である。旧実装は
+ *    `REFORM_STRONG_RE && (BUILD_RE || MEND_RE)` の一行で、**改める動詞を
+ *    無条件に受けていた**。実測 —— 教主 9/10・神官 32/32・自作 44/44 の
+ *    **世間の願いが reform へ攫われた**(main では 0)。
+ *    第60条(f) が名指す通り、**強い枝に許した動詞集合がそのまま新しい弱い印になった**。
+ *
+ * ⚠️ **なぜ二条件が要るか**(第60条(d): 弱い印は強い印と組んで初めて働く):
+ *    `WORLDLY_VESSEL_RE` 単独では `forge 工程表の順番を入れ替える町工場の生産管理ツール`
+ *    …は落ちるが `abode drop shipping storefront builder` 系の器を持たぬ願いが残る。
+ *    `STRONG_BOUND_RE` 単独では `gauge の壊れた針を直すDIYサイトが欲しい` が残る
+ *    (世間の願いも `の` を持つ)。**測った数は design.md §1.5.1 の表に在る。**
+ */
+function mendsParadise(d) {
+  if (WORLDLY_VESSEL_RE.test(d)) return false;
+  return STRONG_BOUND_RE.test(d);
+}
+
+/**
+ * 願いの**対象が楽園自身**か (AC-31 / AC-36 / AC-43)。
+ *
+ * **四枝**である。**枝ごとに課す条件が違い、どの枝も無条件ではない**:
  *
  *   1. **抽象名** (`REFORM_ABSTRACT_RE`) —— 楽園/門/engine/憲法/走行帳 …
  *      これらは楽園以外を指さないので**無条件**で真。
- *   2. **強い固有名** (`REFORM_STRONG_RE`) —— conclave/forge/gauge/synod …
- *      **限定詞の直後でなく、かつ改変の動詞(`BUILD_RE` ∪ `MEND_RE`)を伴う**時のみ真。
+ *      ただし一字の `門` は紛れ語を持つ —— `namesParadiseAbstractly` が守る。
+ *   2. **強い固有名 × 建造の動詞** —— `codex に検めの口を足す`。
+ *   2'. **強い固有名 × 改める動詞** —— **`mendsParadise` を追加で要求する**(AC-43)。
+ *      改める動詞は世間の願いにも同じ頻度で現れるので、動詞だけでは印にならない。
  *   3. **弱い名** (`REFORM_WEAK_RE`) —— vendor/census/workflow …
  *      **限定詞の直後でなく、かつ `BUILD_RE` を伴う**時のみ真。
  *
@@ -482,14 +576,20 @@ const MEND_RE = new RegExp(`${MEND_JA}|${MEND_EN}`, 'i');
  *    実測(tribunal reflect §2.1 / 教主): main 0/54 → HEAD 54/54 が reform へ攫われた。
  *
  * ⚠️ **枝 3 の `BUILD_RE` を `MEND_RE` へ広げてはならない。** 弱い名は世間の語と
- *    衝突するので、`fix the vendor page` が楽園の改革と誤読される。
- *    **強い名の方が証拠として強いから、許す動詞集合も広い** —— これが非対称の根拠である。
+ *    衝突するので、`vendor の請求書テンプレを直す` が楽園の改革と誤読される
+ *    (実測 8/12 が壊れる —— review §2.1)。**AC-44 の門がこの変異を撃つ。**
+ *
+ * ⚠️ **非対称の根拠は「強い名の方が証拠として強いから」ではない**(Q2-4 の訂正)。
+ *    実測では枝 2 に `MEND_RE` を許す方が(32/32)枝 3 に許す(8/12)より酷く壊れた。
+ *    正しい根拠は **「枝 2 には守るべき正例(`conclave の毒を除く`)が在るので、
+ *    動詞ではない別の印(`mendsParadise`)を足して通す」** である。
  *
  * `chooseScale` の**判定順は一段も動かしていない**。
  */
 function isReformSubject(d) {
-  if (REFORM_ABSTRACT_RE.test(d)) return true;
-  if (REFORM_STRONG_RE.test(d) && (BUILD_RE.test(d) || MEND_RE.test(d))) return true;
+  if (namesParadiseAbstractly(d)) return true;
+  if (REFORM_STRONG_RE.test(d) && BUILD_RE.test(d)) return true;
+  if (REFORM_STRONG_RE.test(d) && MEND_RE.test(d) && mendsParadise(d)) return true;
   return REFORM_WEAK_RE.test(d) && BUILD_RE.test(d);
 }
 
@@ -847,4 +947,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_ABSTRACT_RE, REFORM_STRONG_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, MEND_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, REFORM_ABSTRACT_RE, REFORM_STRONG_RE, REFORM_WEAK_RE, isReformSubject, DETERMINER_LOOKBEHIND, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, MEND_RE, ENGINE_NAMES, ENGINE_NAMES_STRONG, ENGINE_NAMES_WEAK, ENGINE_NAMES_WEAK_JA, WORLDLY_VESSEL_RE, STRONG_BOUND_RE, mendsParadise, namesParadiseAbstractly, ABSTRACT_FALSE_FRIENDS };
