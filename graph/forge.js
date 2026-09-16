@@ -375,7 +375,59 @@ function isReformSubject(d) {
  */
 const COUNSEL_JA = '調査|監査|報告|意見|比較|分析|診断|推奨|助言|論評|検討|考察|集計|整理|見直|妥当か|どう思う|どうすべき|はないか|べきか|所見';
 const COUNSEL_EN = '\\b(?:research|investigate|audit|report|advise|recommend|compare|analyze|analyse|diagnose|review-only|assess|evaluate|survey|opinion)\\b';
-const COUNSEL_RE = new RegExp(`${COUNSEL_JA}|${COUNSEL_EN}`, 'i');
+/**
+ * **熟議の標識** (R-1) —— 「作るべきか」と**問うている**願いの印。
+ *
+ * ⚠️ これは欠陥A の修理が開いた面である。`CREATE_RE` に `BUILD_JA`(設ける/足す/
+ * 加える/追加…)を足した結果、`isCounsel` の 2 段目
+ * `if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;` が
+ * 「〜を設けるべきか検討して」でも偽になり、3 段目の打ち消しは `DOC_RE` だけなのに
+ * **熟議語は `DOC_RE` に一語も無い**。ゆえに熟議の願いが counsel を失った ——
+ * 格子実測で **main 0/150 → HEAD 120/150**(第60条(b) の両方向試験の欠落)。
+ *
+ * **熟議標識は「答えを求める」ので、建造動詞より強い。** ゆえに `isCounsel` の
+ * 2 段目より**先に**立つ(1.5 段目)。同時に `COUNSEL_RE` へも合流させる ——
+ * 1 段目(諐問の語彙が無ければ即 false)を通らねば 1.5 段目に届かないからである。
+ *
+ * ⚠️ **`べきか`(疑問)と `べきだ`(断定)の境目を必ず両方向で撃て。**
+ * 語彙は疑問の形だけを拾う(`べきか`/`べきではないか`/`べきだろうか`)。
+ * `べきだ`/`べきである`/`べき箇所` は**入れていない** —— それらは命令だからである。
+ */
+const DELIBERATION_JA = 'べきか|べきだろうか|べきでしょうか|べきではないか|どう思う|どうすべき|妥当か|いかがか|' +
+  'どちらがよい|どちらが良い|是非を|要るか|必要か|所見がほしい|所見が欲しい|検討して|検討せよ|検討したい';
+const DELIBERATION_EN = '\\b(?:should\\s+(?:we|i|it|they)|is\\s+it\\s+worth|do\\s+you\\s+think|' +
+  'worth\\s+\\w+ing|whether\\s+to|whether\\s+\\w+ing)\\b';
+const DELIBERATION_RE = new RegExp(`${DELIBERATION_JA}|${DELIBERATION_EN}`, 'i');
+
+/**
+ * 願いの**求め**は最後の節に載る。前節の熟議語は「既に検討した」という
+ * 前置きでありうる ——「妥当か検討済み:楽園に監査の口を実装せよ」は**命令**である。
+ *
+ * ⚠️ 英語の `?` と `.` で割ってはならない(実測):
+ *   `should we add a flag to the gate? please advise` を `?` で割ると
+ *   最終節が `please advise` になり、熟議標識を失う。
+ * ゆえに割るのは**日本語の文末記号と列挙のコロン/セミコロンだけ**である。
+ * 実測: この一行で「節跨ぎ命令」3 件が counsel を失わずに済み(コーパス3 3→0)、
+ * 「節跨ぎ熟議」は一件も落ちなかった。
+ */
+const CLAUSE_SPLIT_RE = /[。．！!；;：:]+/;
+function finalClause(w) {
+  const parts = String(w).split(CLAUSE_SPLIT_RE).map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : String(w);
+}
+
+/** その願いは**熟議**(作るべきかを問うている)か。最後の節だけを見る。 */
+function isDeliberation(wish) {
+  return DELIBERATION_RE.test(finalClause(denude(wish)));
+}
+
+/**
+ * ⚠️ `DELIBERATION_RE` を合流させる理由: 1 段目 `if (!COUNSEL_RE.test(w)) return false;`
+ * を通らねば 1.5 段目に届かない。`どちらがよい` / `should we` は `COUNSEL_JA` にも
+ * `COUNSEL_EN` にも無く、合流しなければ熟議の門は永久に届かない(実測: 案1 が
+ * 英語熟議 5/5 を落とした)。
+ */
+const COUNSEL_RE = new RegExp(`${COUNSEL_JA}|${COUNSEL_EN}|${DELIBERATION_RE.source}`, 'i');
 
 /**
  * 創造の動詞 — 「物を寄越せ」と言っている願い。諐問の語彙と混ざると
@@ -496,6 +548,9 @@ function isCounsel(wish) {
   const w = denude(wish);
   if (!COUNSEL_RE.test(w)) return false;                    // 1. 諐問の語彙が無い
   if (!CREATE_RE.test(w) && !wantsProduct(w)) return true;  // 2. 答えだけを求めている
+  // 2.5 **熟議** (R-1): 「作るべきか」と問うている。答えを求めているので建造動詞より強い。
+  //     ★ この段より前に置くこと —— 建造動詞が在っても熟議は諐問である。
+  if (isDeliberation(w)) return true;
   // 3. 物を求めている疑い。だが求めている物が**文書そのもの**なら、やはり諐問である。
   //    強い文書の名は産物の名に勝つ(「画面設計を調査して報告書がほしい」)。
   //    二つの顔を持つ「診断/監査」だけは、産物の名に負ける(「健康診断アプリが欲しい」)。
@@ -719,4 +774,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE };
+module.exports = { CONSTITUTION, SCALES, SCALE_PRODUCES, chooseScale, admit, explainAdmit, forgeCallLine, buildDag, REFORM_RE, isReformSubject, PRODUCT_FALSE_FRIENDS, wantsProduct, COUNSEL_RE, CREATE_RE, DOC_RE, DIAGRAM_RE, isCounsel, isCartography, denude, PRODUCT_RE, BUILD_RE, DELIBERATION_RE, isDeliberation, finalClause };

@@ -167,6 +167,22 @@ jobs:
       - name: 🏛️ Counsel — 諐問の道と階層の実体 (第25条 / 第32条 / 第37条)
         run: node tests/counsel.test.js
 
+      - name: 🧭 Route matrix — 6 道 × 6 道の混同行列 (第61条)
+        # **列ではなく行列で撃つ。** 本走行は道選びを 8 度直し、8 度とも
+        # 「別の行き先を奪う」形の回帰を生んだ。うち 7 度は reform の列を撃って
+        # 捕らえたが、8 度目 (R-1) は counsel の側だったので誰も見なかった ——
+        # 格子実測で counsel → standard/reform が **0/150 → 120/150**。
+        # 対角の合計と**非対角の各セルが 0** を両方 assert する。
+        run: node tests/route-matrix.test.js
+
+      - name: 📤 Lesson export — 刻んだ教訓が門に届いているか (第61条 / 盲点②)
+        # `kg.js remember lesson` は KG(.gitignore 済)に刻む。critic が読むのは
+        # `lessons.js export` が**生成する** graph/lessons.json である。
+        # 本走行は一度も export を走らせず、**自分が刻んだ教訓 10 件が
+        # critic に一度も読まれていなかった**(85 件のまま腐っていた)。
+        # 刻んだのに門へ届いていない状態は、刻んでいないのと同じである。
+        run: node tests/lesson-export.test.js
+
       - name: 🔁 Abandoned run — 見捨てられた走行を機構が名指すか (第53条)
         run: node tests/abandoned-run.test.js
 
