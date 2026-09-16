@@ -998,3 +998,467 @@ Counsel self-test: 177 passed, 0 failed
 | R2-6 | **中国語・韓国語** | 一周目と同じく一件も撃っていない |
 | R2-7 | **`admit()` / `buildDag()` の下流** | 道が変わった時に相の数と担い手がどう変わるかは撃っていない(一周目から変わらず) |
 | R2-8 | **実 GitHub Actions** | 掟により push しない |
+
+
+---
+---
+
+# 【三周目】review — 七度目の回帰を実測で発見した
+
+> 相: `review`(quality 領域・**三周目**)
+> 起点: `reform/route-misfire` HEAD `6a4e3f4` / 差分の基点 `cbf4ed2..HEAD`
+> **本節の全ての数は quality 三周目が自分の手で撃った生出力である**(第27条)。
+> **撃てなかったものは「撃てなかった」と名乗る**(第37条)。
+
+---
+
+## R3-0. 結論(先に述べる)
+
+**七度目の回帰は起きている。判定は 7/7 = 100% の継続である。**
+
+三度目の build が足した `WORLDLY_VESSEL_RE` は、**`mendsParadise` の中だけでなく
+`namesParadiseAbstractly` の中でも使われている**。後者は**抽象名の枝**である。
+その結果、**抽象名 `門` / `gate` を名指す楽園の願いが、器の名を一語でも持つと
+reform から落ちる**。main では落ちなかった。
+
+```
+$ (「門の判定を<器>で直す」型を WORLDLY_VESSEL_RE の全 37 語で撃つ / main 対 HEAD)
+<<REG アプリ          main=reform      HEAD=quick       :: 門の判定をアプリで直す
+<<REG サイト          main=reform      HEAD=quick       :: 門の判定をサイトで直す
+<<REG ツール          main=reform      HEAD=quick       :: 門の判定をツールで直す
+<<REG 掲示板          main=reform      HEAD=quick       :: 門の判定を掲示板で直す
+  … (以下 37 語すべて同じ) …
+<<REG booking      main=reform      HEAD=quick       :: fix the gate check with a booking
+回帰件数 = 37 / 37
+```
+
+**`WORLDLY_VESSEL_RE` の表に在る 37 語すべてが、この向きに回帰を生む。**
+第60条(f) が命じた「**印を足したら足した印そのものに両方向試験を課せ**」が、
+**`mendsParadise` の枝には課され、`namesParadiseAbstractly` の枝には課されなかった。**
+
+これは build-rework3.md §10 の **B3-2** が自ら名乗った疑い
+(「`WORLDLY_VESSEL_RE` の表は自分が選んだ」)の**逆側**である。
+神官は「表に**無い**器が漏れる」ことを疑った。実際に起きたのは
+「表に**在る**器が、楽園の願いを**落とす**」ことだった。
+
+---
+
+## R3-1. 自作コーパス 138 件 —— 新しい六つの軸(main 対 HEAD)
+
+**過去に使われた軸(MEND 語彙表 / 強い名26語 / 一字の器官名の紛れ語 / 英語の冠詞)とは
+重ならない軸から作った**。命じられた 60 件を超えて **138 件**。
+
+| 軸 | 何を変えたか | 件数 |
+|---|---|---|
+| **A** | 願いが**二文以上** | 12 |
+| **B** | **箇条書き**(`-` / `・` / `*` / `1.`) | 10 |
+| **C** | **会話体・口語・敬語**(「ねえ」「すみません」「おい」) | 10 |
+| **D** | **数字・型番・版番号・パス**が混じる(`v2.3` / `GX-3000` / `A-102` / `302`) | 10 |
+| **E** | **楽園の語と世間の語が同じ文に同居** | 12 |
+| **F** | **疑問・条件・否定**の形(「〜ないだろうか」「〜ないと駄目だ」) | 10 |
+| **PV** | **楽園自身が器を持つ願い**(命じられた 20 件以上) | 26 |
+| **EN-P** | **英語の楽園の願い**(命じられた 20 件以上) | 24 |
+| **EN-W** | **英語の世間の願い** | 24 |
+| | **合計** | **138** |
+
+### R3-1.1 群ごとの誤り(生出力)
+
+```
+########## HEAD (6a4e3f4) ##########
+MINE_N_A_multisentence       miss   0 /  12
+MINE_N_B_bullets             miss   0 /  10
+MINE_N_C_conversational      miss   2 /  10
+MINE_N_D_numbers             miss   2 /  10
+MINE_N_E_mixed               miss   3 /  12
+MINE_N_F_polite_question     miss   3 /  10
+PV_paradise_with_vessel      miss  17 /  26
+EN_paradise                  miss  22 /  24
+EN_worldly                   miss   0 /  24
+TOTAL                        miss 49 / 138
+
+########## main (c216014) ##########
+MINE_N_A_multisentence       miss   4 /  12
+MINE_N_B_bullets             miss   3 /  10
+MINE_N_C_conversational      miss   4 /  10
+MINE_N_D_numbers             miss   5 /  10
+MINE_N_E_mixed               miss   4 /  12
+MINE_N_F_polite_question     miss   6 /  10
+PV_paradise_with_vessel      miss  24 /  26
+EN_paradise                  miss  23 /  24
+EN_worldly                   miss   2 /  24
+TOTAL                        miss 75 / 138
+```
+
+### R3-1.2 main と HEAD の差分(回帰 / 修理 / 両方の病)
+
+```
+$ node delta.js corpus.json
+件数 138  /  回帰(main○ HEAD×) 1  /  修理(main× HEAD○) 27  /  両方× 48
+
+### 回帰 = 七度目の候補 ###
+  [PV_paradise_with_vessel] main=reform → HEAD=quick :: hermetic の検品の門を直す
+
+### HEAD が直した(27 件) ###
+  [MINE_N_A] conclave の毒を除いてくれ。走行帳が壊れたままなんだ。
+  [MINE_N_A] forge の道選びがおかしい。gauge の願いが standard へ落ちる。直せ。
+  [MINE_N_A] codex の索引がずれている。書き換えて index を作り直してほしい。
+  [MINE_N_A] gauge 専門店の棚が傾いている。直す在庫アプリが欲しい。
+  [MINE_N_B] やりたいこと:\n- conclave の毒を除く\n- 走行帳の重複行を削る
+  [MINE_N_B] 直してほしい点:\n・forge の scale 判定\n・codex の索引の順番
+  [MINE_N_B] * gauge の fingerprint の検めを直す\n* 走行帳の欠けを塞ぐ
+  [MINE_N_C] すみません、forge の道選びを直していただけますか。
+  [MINE_N_C] あのさ、走行帳がまた壊れてるんだよね。塞いでくれない?
+  [MINE_N_D] codex の第60条(g)の文言を直す
+  [MINE_N_D] gauge の fingerprint SHA-256 の検めを直す
+  [MINE_N_D] 走行帳 run-2026-09-16 の壊れた行を塞ぐ
+  [MINE_N_E] 走行帳を塞いでから、社外向けのサービスに展開する
+  [MINE_N_F] もし可能なら codex の索引を書き換えてほしい
+  [MINE_N_F] 走行帳が壊れないように塞いでおいてほしい
+  [MINE_N_F] gauge 専門学校の時間割の誤りが直せないだろうか
+  [PV] conclave のダッシュボードを直す
+  [PV] critic のレビュー画面のバグを直す
+  [PV] orchestrator の状態機械を直す
+  [PV] spawn-trace の走行帳アプリを直す
+  [PV] gauge のダッシュボードのゲージを直す
+  [PV] conclave の ratify コマンドを直す
+  [PV] codex の index コマンドの誤りを直す
+  [PV] export-state のダッシュボード出力を書き換える
+  [EN_paradise] add a fingerprint check to gauge
+  [EN_worldly] rewrite the gate schedule board at forge airport terminal
+  [EN_worldly] deprecate the old scoring gate in my conclave tournament site
+```
+
+**⚠️ 読み方を誤ってはならない。**
+自作 138 件の **単純な差し引きは HEAD の勝ち**(75 → 49)であり、
+**世間側の誤着(`EN_worldly` / 各軸の NOT_reform 行)は HEAD で 0 件**である。
+`AC-31` は**達成**に戻った(二周目の未達から回復)。
+
+**だが「回帰 1 件」という数は、コーパスの偏りが作った数である。**
+この 1 件を**軸として展開すると 37 件になる**(§R3-0)。
+**コーパスの件数で回帰の重さを測ってはならない** —— 一件の回帰が
+**表の全語に渡る面**を表すのか、**一語だけの面**を表すのかを見よ。
+
+---
+
+## R3-2. 七度目の回帰の解剖(最も重い発見)
+
+### R3-2.1 死因 —— `WORLDLY_VESSEL_RE` が二つの枝で使われている
+
+`graph/forge.js` の該当箇所:
+
+```js
+function namesParadiseAbstractly(d) {
+  if (!REFORM_ABSTRACT_RE.test(d)) return false;
+  const multi = new RegExp(REFORM_ABSTRACT_RE.source.replace('門|gate|', ''), 'i');
+  if (multi.test(d)) return true;
+  if (!ABSTRACT_SOLO_RE.test(d)) return false;
+  return !ABSTRACT_FALSE_FRIENDS.test(d) && !WORLDLY_VESSEL_RE.test(d);   // ← ここ
+}
+
+function mendsParadise(d) {
+  if (WORLDLY_VESSEL_RE.test(d)) return false;                            // ← と、ここ
+  return STRONG_BOUND_RE.test(d);
+}
+```
+
+**`mendsParadise` の側は正しい。**「世間の器を作る願いは楽園の改修ではない」は妥当である。
+
+**`namesParadiseAbstractly` の側が誤っている。**
+この枝は「**願いが抽象名 `門` / `gate` で楽園を名指しているか**」だけを裁くべきである。
+そこへ `WORLDLY_VESSEL_RE` を持ち込むと、主張が
+「**楽園の門を名指していて、かつ世間の器を一語も含まない**」に化ける。
+
+**楽園は器を持つ。** `dashboard/index.html` が在り、`pulse.js` は `serve` を持ち、
+`forge.js` は DAG を作る**ツール**である。
+build 相自身が `WORLDLY_VESSEL_RE` の註に
+「**`ダッシュボード`/`dashboard` を入れてはならない —— 楽園も名乗る器は、世間の器ではない**」
+と書いた。**その理を、表の残り 37 語に当てなかった。**
+
+### R3-2.2 実測 —— 「器を持つ楽園の願い」26 件
+
+| # | 願い | main | HEAD | 判定 |
+|---|---|---|---|---|
+| 1 | 楽園のダッシュボードの画面を直す | reform | **reform** | ○(多字の抽象名 `楽園` が救った) |
+| 2 | conclave のダッシュボードを直す | quick | **reform** | ○ HEAD が直した |
+| 3 | pulse の serve するアプリを直す | quick | **quick** | ✗ 両方の病(`pulse` は弱い名) |
+| 4 | forge の DAG 生成ツールを直す | quick | **quick** | ✗ 両方の病 |
+| 5 | gauge の検品の口を直す | quick | **quick** | ✗ 両方の病(`検品` が器の表に在る) |
+| 6 | codex の索引ツールを書き換える | standard | **standard** | ✗ 両方の病 |
+| 7 | critic のレビュー画面のバグを直す | quick | **reform** | ○ HEAD が直した |
+| 8 | synod の予約された相を除く | standard | **standard** | ✗ 両方の病(`予約` が器の表に在る) |
+| 9 | clergy の名簿エディタを直す | quick | **quick** | ✗ 両方の病 |
+| 10 | wiring のチェックツールを直す | quick | **quick** | ✗ 両方の病 |
+| 11 | **hermetic の検品の門を直す** | **reform** | **quick** | 🔴 **七度目の回帰** |
+| 12 | orchestrator の状態機械を直す | quick | **reform** | ○ HEAD が直した |
+| 13 | spawn-trace の走行帳アプリを直す | quick | **reform** | ○ HEAD が直した |
+| 14 | verdict の判定サイトを直す | quick | **quick** | ✗ 両方の病 |
+| 15 | abode のテンプレ配布サイトを直す | quick | **quick** | ✗ 両方の病 |
+| 16 | daily-guard の当番アプリを直す | quick | **quick** | ✗ 両方の病 |
+| 17 | gauge のダッシュボードのゲージを直す | quick | **reform** | ○ HEAD が直した |
+| 18 | forge の scale 判定のツールチェーンを直す | quick | **quick** | ✗ 両方の病 |
+| 19 | conclave の ratify コマンドを直す | quick | **reform** | ○ HEAD が直した |
+| 20 | codex の index コマンドの誤りを直す | quick | **reform** | ○ HEAD が直した |
+| 21 | graph-engine のビューアを直す | cartography | **cartography** | ✗ 両方の病(`ビューア` ではなく `図` 系の別因) |
+| 22 | ordain の教材ページの誤りを直す | quick | **quick** | ✗ 両方の病(`教材` が器の表に在る) |
+| 23 | visual-verify の画面撮りツールを直す | quick | **quick** | ✗ 両方の病 |
+| 24 | branch-guard の保護サービスの判定を直す | quick | **quick** | ✗ 両方の病(`サービス` が器の表に在る) |
+| 25 | export-state のダッシュボード出力を書き換える | standard | **reform** | ○ HEAD が直した |
+| 26 | check-agents の一覧ツールの漏れを塞ぐ | standard | **standard** | ✗ 両方の病 |
+
+**26 件中 HEAD で reform に着いたのは 9 件。回帰 1 件。両方の病 17 件。**
+
+**17 件の「両方の病」は本走行が作ったものではない**が、
+**`WORLDLY_VESSEL_RE` がそれを塞ぐどころか一段固くした**面が在る:
+表に `検品` `予約` `教材` `サービス` `校正` `貸出` が在るので、
+**`gauge の検品の口を直す`** のような**純然たる楽園の器官の願い**が
+`mendsParadise` で永久に落ちるようになった(main では `MEND_RE` が無かったので
+別の理由で落ちていた —— **落ち先は同じだが、落ちる理由が一つ増えた**)。
+
+### R3-2.3 `ABSTRACT_FALSE_FRIENDS` は退けすぎていないか —— 実測
+
+**日本語側は退けすぎていない。** 多字の抽象名が救うので、
+`楽園の専門の門の判定を直す` は HEAD でも reform である(11/11 が緑)。
+
+**英語側は退けすぎている。**
+
+```
+$ (ABSTRACT_FALSE_FRIENDS の英語 5 語 × 真の楽園の願い)
+<<REG gated       main=reform     HEAD=quick      :: fix the gated behaviour of our gate checks
+<<REG gateway     main=reform     HEAD=quick      :: fix the gateway behaviour of our gate checks
+<<REG floodgate   main=reform     HEAD=quick      :: fix the floodgate behaviour of our gate checks
+<<REG tailgate    main=reform     HEAD=quick      :: fix the tailgate behaviour of our gate checks
+<<REG stargate    main=reform     HEAD=quick      :: fix the stargate behaviour of our gate checks
+回帰 5/16
+```
+
+`ABSTRACT_FALSE_FRIENDS` は**文のどこかに紛れ語が在れば枝全体を殺す**。
+`gateway` という語が一度でも出れば、**同じ文に在る本物の `gate` も道連れになる**。
+`PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS` は**同じ構造を持つ**が、
+それらは「紛れ語が在る=その語は器官名ではない」で済む面だった。
+**抽象名の枝では、一文に紛れ語と本物が同居しうる。**
+
+**日本語側も同じ形で壊れる:**
+
+```
+<<REG main=reform     HEAD=quick      :: 入門者向けに門の判定を直す
+<<REG main=reform     HEAD=quick      :: 専門家が門の一段を直す
+<<REG main=reform     HEAD=quick      :: 部門をまたぐ門の判定を直す
+<<REG main=reform     HEAD=quick      :: 名門扱いの門の除外を直す
+<<REG main=reform     HEAD=standard   :: 関門となる門の順を書き換える
+<<REG main=reform     HEAD=quick      :: 門下の相の門を直す
+<<REG main=reform     HEAD=quick      :: fix gateway checks in the gate router
+<<REG main=reform     HEAD=quick      :: fix the gated rollout gate logic
+```
+
+**8/8 が回帰。** §R3-2.2 の表の日本語 11 件が緑だったのは、
+**それらが多字の抽象名 `楽園` を持っていたから**である ——
+**`楽園` を抜いた瞬間、紛れ語の守りが本物の門を殺す。**
+これは第60条(h) が名指した病(「二つの守りが同じ例を守っているなら変異試験は黙る」)の
+**逆側**である: **二つの守りが同じ例を救っていると、片方の過剰が見えない。**
+
+---
+
+## R3-3. `STRONG_BOUND_RE` —— 英語で枝 2' は**構造的に到達不能**である
+
+神官は B3-1 で「英語では漏れる見込みが高い」と名乗った。
+**実測は「漏れる」より重い。英語では枝 2' が一度も成立しない。**
+
+```
+$ (MEND_EN の全 10 語 × 強い名 `conclave` × 助詞なし)
+ fix         HEAD=quick      STRONG=true MEND=true BOUND=false mendsPar=false
+ repair      HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ remove      HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ refactor    HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ rewrite     HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ patch       HEAD=quick      STRONG=true MEND=true BOUND=false mendsPar=false
+ harden      HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ migrate     HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ drop        HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+ deprecate   HEAD=standard   STRONG=true MEND=true BOUND=false mendsPar=false
+英語で枝2' に到達した件数 = 0/10
+```
+
+**英語の楽園の願い 24 件のうち、HEAD で reform に着いたのは 2 件だけである。**
+
+```
+EN_paradise  miss 22 / 24   (main は 23/24 — HEAD が直したのは `add a fingerprint check to gauge` 1 件)
+```
+
+落ちた 22 件は `fix forge scale routing` / `remove poison entries from conclave ledgers` /
+`harden gauge fingerprint checks` / `rewrite orchestrator state transitions` …
+**どれも紛う方なき楽園の改修の願いである。**
+
+**⚠️ これは本走行の回帰ではない**(main も 23/24 落としていた)。
+**だが本走行は「直した」と名乗れる面でもない。**
+`STRONG_BOUND_RE` は**設計上、英語の枝 2' を永久に閉じた**。
+design.md §1.5.1 は「**この非対称は測って選んだ**」と書くが、
+**選んだ結果が「英語の楽園の改修は一件も reform に着かない」であることは書いていない。**
+これは第37条の「撃てなかったものは名乗れ」ではなく、
+**「撃った結果の意味を述べていない」**である。
+
+**助詞の表も 6 語に限られている:**
+
+```
+  の : reform  bound=true      と : standard  bound=false  <- 表に無い助詞
+  に : reform  bound=true      で : standard  bound=false  <- 表に無い助詞
+  へ : reform  bound=true      から : standard  bound=false <- 表に無い助詞
+  を : reform  bound=true      より : standard  bound=false <- 表に無い助詞
+  は : reform  bound=true      も : standard  bound=false  <- 表に無い助詞
+  が : reform  bound=true      や : standard  bound=false  <- 表に無い助詞
+```
+
+`conclave も毒を除く` / `conclave から毒を除く` は落ちる。
+**日本語の助詞は 6 語では尽きない。**
+
+---
+
+## R3-4. §10 の「確信を持てない」10 件 —— 撃てるものを全て撃った
+
+| # | 神官の疑い | 三周目の裁定 | 証拠 |
+|---|---|---|---|
+| **B3-1** | `STRONG_BOUND_RE` は日本語にしか立たない | 🔴 **疑い以上に重い** | 英語で枝 2' に到達 **0/10**。英語の楽園の願い **22/24 が落ちる**(§R3-3) |
+| **B3-2** | `WORLDLY_VESSEL_RE` の表は自分が選んだ / 網羅の機械照合が無い | 🔴 **疑いの逆側が病だった** | 表に**在る**37 語すべてが抽象名の枝で回帰を生む(§R3-0)。機械照合の門は**建てられる**(§R3-5) |
+| **B3-3** | `ABSTRACT_FALSE_FRIENDS` の表も自分が選んだ / 撃っていない | 🟡 **半分当たり** | 未収録の紛れ語(`門松`/`破門`/`門番`/`水門`)は**今も漏れる**が、それより**収録済みの語が本物を殺す**方が重い(§R3-2.3) |
+| **B3-4** | 枝 3 を塞がなかった判断 / G群 12 件が正しいコーパスか | 🟢 **妥当** | 枝 3 を `MEND_RE` へ広げる変異 M-G は**赤くなる**(212 passed, 6 failed)。判断は門で守られている |
+| **B3-5** | `BUILD_RE` の語彙表に同じ検査をしていない | 🔴 **当てた。出た**(§R3-6) | `BUILD_RE` 23 語 × 弱い名 の世間の願いを撃った結果を §R3-6 に示す |
+| **B3-6** | `COUNSEL_RE` / `PRODUCT_RE` / `DOC_RE` の表 | 🔴 **当てた。出た**(§R3-6) | 同上 |
+| **B3-7** | 中国語・韓国語 | ⬜ **三周目も撃っていない** | 正直に申し送る |
+| **B3-8** | `admit()` / `buildDag()` の下流 | 🟡 **一部撃った** | verify §V3-2 に CLI⇔lib の突合(割れ 0 / CLI 拒否 2)。相の数と担い手の変化は**撃っていない** |
+| **B3-9** | 実 GitHub Actions | ⬜ **掟により撃たない** | push しない |
+| **B3-10** | 「修理が新しい欠陥を生んだ率」が今回 0 である保証は無い | 🔴 **保証が無いどころか、0 ではない** | **七度目は起きた**(§R3-0 / §R3-2) |
+
+---
+
+## R3-5. `WORLDLY_VESSEL_RE` / `ABSTRACT_FALSE_FRIENDS` に網羅の機械照合は建てられるか
+
+**建てられる。そして建てるべきである。** 第60条(g) が既にそう命じている。
+
+**現状の実測 —— `.source` を読む門は `MEND_RE` の一本だけである:**
+
+```
+$ grep -n "\.source" tests/counsel.test.js
+868:  const src = forge.MEND_RE.source;
+
+  WORLDLY_VESSEL_RE      : source を読む門 = なし
+  STRONG_BOUND_RE        : source を読む門 = なし
+  ABSTRACT_FALSE_FRIENDS : source を読む門 = なし
+  ENGINE_NAMES_STRONG    : source を読む門 = なし(※ split('|') で読む別形の門は在る)
+```
+
+**建て方(具体案 —— `MEND_WORLDLY_EVERY_VERB` と同じ作法)**
+
+* `WORLDLY_VESSEL_RE` の源を `|` で割り、**37 語すべてについて二つの願いを要求する**:
+  1. **世間側** —— その器の名を持つ世間の願いが reform でないこと(既に守られている面)
+  2. **楽園側** —— **その器の名を持つ楽園の願いが reform であること**(⚠️ **今まさに壊れている面**)
+  楽園側のコーパスを機械照合すれば、**`門の判定をアプリで直す` が緑でないことが
+  表の全 37 語について自動で赤くなる。** 七度目はこの門で捕まった。
+* `ABSTRACT_FALSE_FRIENDS` の源を割り、**16 語すべてについて**:
+  1. その紛れ語だけを持つ世間の願いが reform でないこと
+  2. **その紛れ語と本物の `門`/`gate` が同居する願いが reform であること**(⚠️ **今壊れている面**)
+* `STRONG_BOUND_RE` の助詞の表(6 語)についても同じ ——
+  **表に無い助詞(`と`/`で`/`から`/`より`/`も`/`や`)を名指しで「撃っていない」と記録する門**を置ける。
+
+**⚠️ ただし、第60条(g) の「機械照合」だけでは七度目は捕まらなかった。**
+(g) は「**表の全語について楽園側と世間側の両方のコーパスを持て**」と書く。
+`MEND_RE` にはそれが建てられた —— **だがそれは `MEND_RE` を `mendsParadise` の
+軸で照合しただけ**であり、`WORLDLY_VESSEL_RE` が**もう一つの枝でも使われている**
+事実は照合の外に在った。
+**表は「どの述語で使われているか」の軸でも照合されねばならない。**
+一つの表が n 個の述語で使われるなら、**n 通りの両方向試験が要る**(§R3-8 に条文案)。
+
+---
+
+## R3-6. `BUILD_RE` / `COUNSEL_RE` / `PRODUCT_RE` / `DOC_RE` に同じ一語ずつ検査を当てた
+
+**B3-5 / B3-6 が「当てていない」と名乗った面。三周目が当てた。当てたら出た。**
+
+### R3-6.1 集計(main 対 HEAD / 生出力)
+
+| 表 | 語数 | 世間への誤着 main | **世間への誤着 HEAD** | 楽園の取りこぼし main | 楽園の取りこぼし HEAD |
+|---|---|---|---|---|---|
+| `BUILD_RE` × **弱い名**(枝 3) | 24 | 0/24 | **0/24** ✓ | 18/24 | **0/24** ✓ |
+| `BUILD_RE` × **強い名**(枝 2) | 24 | 0/24 | 🔴 **18/24** | 24/24 | **0/24** ✓ |
+| `PRODUCT_RE` × 強い名 | 27 | 1/27 | **0/27** ✓ | 26/27 | **0/27** ✓ |
+| `COUNSEL_RE` × 楽園 | 36 | 0/36 | **0/36** ✓ | 36/36 | 36/36 |
+| `DOC_RE` × 楽園 | 21 | 0/21 | **0/21** ✓ | 21/21 | 18/21 |
+
+### R3-6.2 🔴 **重い発見: 枝 2(建造)には器の守りが無い**
+
+```
+$ (BUILD_RE の全 24 語 × 強い名 conclave × 世間の器「予約サイト」)
+  誤着 設ける            main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を設ける
+  誤着 足す             main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を足す
+  誤着 追加             main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を追加
+  誤着 新設             main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を新設
+  誤着 導入             main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を導入
+  誤着 搭載             main=standard    HEAD=reform :: conclave ホテルの予約サイトに機能を搭載
+  … (日本語 18 語すべて) …
+  世間への誤着  main=0/24  HEAD=18/24
+```
+
+**`isReformSubject` の枝 2 は今もこうである:**
+
+```js
+if (REFORM_STRONG_RE.test(d) && BUILD_RE.test(d)) return true;       // ← 枝 2: 無条件
+if (REFORM_STRONG_RE.test(d) && MEND_RE.test(d) && mendsParadise(d)) return true;  // ← 枝 2': 守りあり
+```
+
+**Q2-1 の病(「強い枝に許した動詞集合がそのまま新しい弱い印になった」)は、
+`MEND_RE` にだけ在ったのではない。`BUILD_RE` にも同じ形で在る。**
+三度目の build は `mendsParadise` を**枝 2' にだけ**掛け、**枝 2 には掛けなかった**。
+
+**責任の帰属を実測で分けた**(`git clone --branch reform/route-misfire` → `checkout cbf4ed2`):
+
+```
+願い                                       main      cbf4ed2(build2)  HEAD(build3)
+conclave ホテルの予約サイトに機能を足す            standard  reform           reform
+gauge 計器店の通販アプリに絞り込みを足す            full      reform           reform
+forge 鍛冶体験の予約サイトにカレンダーを追加         standard  reform           reform
+abode 不動産サイトに地図表示を足す                standard  reform           reform
+add a filter to the conclave hotel booking site  standard  standard  standard
+```
+
+**これは三度目の build が作った回帰ではない —— 二度目の build(`cbf4ed2`)が作った。**
+**だが三度目の build は「`MEND_RE` × 強い名」だけを修理し、
+隣に立つ同型の病(`BUILD_RE` × 強い名)を修理も報告もしなかった。**
+build-rework3.md §10 の **B3-5**(「`BUILD_RE` の語彙表に同じ検査をしていない」)は
+**この病そのものを指していたが、神官は「未測」と書いて済ませた。測れば出た。**
+
+**⚠️ 英語側は無傷である**(`add a filter to the conclave hotel booking site` は
+限定詞 `the conclave` の除外が救う)。**病は日本語 18 語に限られる。**
+
+### R3-6.3 `COUNSEL_RE` / `DOC_RE` の取りこぼしは**設計通り**(誤報しない)
+
+`COUNSEL_RE` 36/36 と `DOC_RE` 18/21 の「取りこぼし」は
+**`chooseScale` が `isCounsel` を `isReformSubject` より先に判定する**からである。
+`conclave を監査して直す` が counsel に着くのは第23条の主題優先の逆 ——
+**「求められている答えの種類が道を決める」**(forge.js の註が明記)。
+**main と HEAD で一件も変わっていない。回帰ではない。**
+ただし `DOC_RE` の 3 件(`一覧表`/`資料`/`レポート`)は HEAD で reform に着いており、
+**`COUNSEL_RE` に在って `DOC_RE` に無い語 / 逆の語の境目が不揃い**である。
+**これは本走行の主題の外なので申し送りに留める。**
+
+---
+
+## R3-7. ReDoS —— 新しい 3 表(security-report.md §三周目へ委譲)
+
+本節は `security-report.md` の **§三周目 S3-1** に生出力が在る。要旨のみ:
+**3 表 × 11 の悪意の形 × 10KB/100KB/200KB の最悪が 0.485 ms。二乗の兆候は無い。**
+
+---
+
+## R3-8. 憲法への申し送り(条文案)
+
+第60条に **(i)** を継ぐことを提案する。**ただし §docs で述べる通り、
+第60条は既に 113 行(中央値 24 行の 4.7 倍)であり、継ぐより畳むべきである。**
+
+> **(i) 一つの表が二つの述語で使われるなら、両方向試験は二通り要る。**
+> `WORLDLY_VESSEL_RE` は `mendsParadise`(強い名の枝)と
+> `namesParadiseAbstractly`(抽象名の枝)の**両方**で使われた。
+> (f)(g) の両方向試験は**前者にだけ**課され、後者には課されなかった。
+> 結果、**表に在る 37 語すべてが、抽象名の枝で楽園の願いを落とした**。
+> **表の網羅を照合する門は「表の語」を軸にする。だが病は「表の使い所」を軸に出る。**
+> ゆえに: **表を二箇所目で使う者は、その箇所についての両方向試験を新たに建てよ。**
+> 機械で強制する形は「`grep` で表の識別子の出現箇所を数え、
+> 各箇所に対応する両方向の門が在ることを照合する」である。
+

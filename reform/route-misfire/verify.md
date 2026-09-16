@@ -1170,3 +1170,369 @@ README の数は動かない。**手で数を書いていない**(第22条)。
 | V2-7 | **CI 上での実走** | 掟により push しない。**GitHub Actions 上で 681 本が緑になるかは見ていない** |
 | V2-8 | **AC-34 の `kg`** | F-3(4 文字未満の黙った除外)は**今も未修理**である。本相は実測で `kg` を名指したが、**直していない** |
 | V2-9 | **41 と 42 のどちらが正しい AC 数か** | AC-06 を AC-04 の再掲と読んで 41 とした。**requirements.md 自身は「AC 総数: 42」と書いている。** 本相の読みが教主の意図と一致するかは確かめていない |
+
+
+---
+---
+
+# 【三周目】verify — AC 全 46 件を実機で撃ち直す
+
+> 相: `verify`(quality 領域・**三周目**)
+> 起点: `reform/route-misfire` HEAD `6a4e3f4`
+> **本節の全ての数は quality 三周目が自分の手で撃った生出力である**(第27条)。
+> **撃てなかったものは「撃てなかった」と名乗る**(第37条)。
+
+---
+
+## V3-0. AC の四区分(全 46 件 / **三周目**)
+
+| 格付け | **三周目(46件)** | 二周目(41件) | 一周目(35件) |
+|---|---|---|---|
+| **達成** | **37** | 32 | 28 |
+| **未達** | **1** | 1 | 0 |
+| **検められない** | **0** | 0 | 0 |
+| **門が無い** | **8** | 8 | 7 |
+
+```
+=== 四区分 ===
+件数 = 46
+  達成: 37
+  未達: 1
+  検められない: 0
+  門が無い: 8
+未達の AC: AC-45
+門が無い AC: AC-16, AC-19, AC-22, AC-26, AC-29, AC-30, AC-35, AC-42
+検められない AC: 無し
+```
+
+**二周目から変わった点**:
+
+* **二周目の未達 AC-31(世間の願いが reform へ攫われる)は達成に戻った。**
+  自作の世間コーパス **55 件中 reform へ攫われた = 0 件**。
+  **三度目の build の修理は、AC-31 の面については本物である。**
+* **代わりに AC-45 が未達になった。** これが**七度目の回帰**である(§V3-1)。
+* **門が無いは 8 件のまま。一件も直っていない。**
+  ただし**中身は入れ替わった** —— AC-46 は二周目に「門が無い」だった AC-42 の
+  同型の新設 AC だが、**三周目の実測で 15/15 の変異が赤くなり「達成」になった**。
+
+---
+
+## V3-1. 🔴 AC-45 = **未達**(七度目の回帰)
+
+AC-45 の主張は「抽象名 `門` / `gate` の**紛れ語が世間の願いを攫わない**」であり、
+requirements.md はその**逆向き**も要求している:
+
+> 逆向き: `門に監査の一段を足す` / `critic の門を一本足す` / `門の判定を書き換える` は **reform** のまま。
+
+**世間側は完璧である。逆向きが壊れている。**
+
+```
+| AC-45 | **未達** | 世間の紛れ語 誤着= 0/7 / 本物の門 落ちた= 0/3 /
+                    **器を持つ本物の門 落ちた= 4/4**
+  門の判定をツールで直す → quick
+  門の判定をアプリで直す → quick
+  hermetic の検品の門を直す → quick
+  fix gate routing in our app → quick |
+```
+
+**requirements.md が挙げた逆向きの 3 件は緑である**(`門に監査の一段を足す` 等)。
+**だがその 3 件は器の名を一語も持たない。**
+**器を持つ本物の門の願いは 4/4 が落ちる。**
+
+**展開すると `WORLDLY_VESSEL_RE` の全 37 語に渡る**(review §R3-0):
+
+```
+回帰件数 = 37 / 37   (「門の判定を<器>で直す」型 / main=reform → HEAD=quick)
+```
+
+**⚠️ 格付けの正直**: `counsel.test.js` の **218 本の門は全て緑**である。
+すなわち **「門で測れば達成、AC の主張の逆向きで測れば未達」** である。
+**二周目の AC-31 とまったく同じ形の誤りが、別の AC で再演した。**
+**本相は AC の主張を採る。**
+
+---
+
+## V3-2. AC 全 46 件の格付け(実機の生出力)
+
+```
+| AC | 格付 | 証拠 |
+|---|---|---|
+| AC-01 | **達成** | chooseScale=reform 期待=reform / 門に文字列在り=true |
+| AC-02 | **達成** | chooseScale=reform 期待=reform / 門に文字列在り=true |
+| AC-03 | **達成** | chooseScale=reform 期待=reform / 門に文字列在り=true |
+| AC-04 | **達成** | chooseScale=full 期待=NOT counsel / 門に文字列在り=true |
+| AC-05 | **達成** | chooseScale=reform 期待=reform / 門に文字列在り=true |
+| AC-06 | **達成** | chooseScale=full 期待=NOT counsel / 門に文字列在り=true |
+| AC-07 | **達成** | chooseScale=cartography 期待=cartography / 門に文字列在り=true |
+| AC-08 | **達成** | chooseScale=counsel 期待=counsel / 門に文字列在り=true |
+| AC-09 | **達成** | chooseScale=quick 期待=quick / 門に文字列在り=true |
+| AC-10 | **達成** | ROUTES(判定表)の行数=37 (>=37 を要す) — 一件でも外れたら赤くなることは counsel EXIT=0 が示す |
+| AC-11 | **達成** | counsel.test.js に isCounsel の直接断定=true |
+| AC-12 | **達成** | chooseScale 返り値の型の断定=true |
+| AC-13 | **達成** | forge.js に COUNSEL_JA=true COUNSEL_EN=true |
+| AC-14 | **達成** | 語彙を潰す門が counsel.test.js に在り |
+| AC-15 | **達成** | abandoned-run EXIT=0 / 33 passed, 0 failed |
+| AC-16 | **門が無い** | 全走は実際に撃った: Paradise self-test: 471 passed, 0 failed / EXIT=0 — だが「6分を払え」を強いる門は無い(false) |
+| AC-17 | **達成** | paradise.test.js に admit と chooseScale の一致門=true |
+| AC-18 | **達成** | 仮倉で check EXIT=0 |
+| AC-19 | **門が無い** | 緑は黙っていないか=true / 出力: · 走行帳の流出は検めなかった — C:\Users\kikus\AppData\Local\Temp\q3\fakevault は創造物の倉ではない<br>  (目印 .paradise-creations も git remote parad — 「場所の名指し」を撃つ門は本走行の仮倉の名でしか撃たない(一周目・二周目の裁定を再確認) |
+| AC-20 | **達成** | 本物の倉で check EXIT=0 / ✓ 楽園に創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし (検めた倉: C:\Users\kikus\Documents\workspace\paradise-creations) |
+| AC-21 | **達成** | abandoned-run に B-1(故障注入)=true |
+| AC-22 | **門が無い** | B-12b 在り=true だが CI では兄弟倉が無く永久 skip(第60条(e) が名指した病) |
+| AC-23 | **達成** | B-5(名でも指され方でも裁かない)=true |
+| AC-24 | **達成** | B-11(目印)=true |
+| AC-25 | **達成** | paradise.test.js に resolve() の断定=true |
+| AC-26 | **門が無い** | B-14 在り=true — 細工値で投げないことを撃つのみ。PATH から git を消した状態は三周目でも再現していない |
+| AC-27 | **達成** | wiring check EXIT=0 / 門 19 本 |
+| AC-28 | **達成** | workspace check(住所の直書き) EXIT=0 |
+| AC-29 | **門が無い** | census check EXIT=0 — 門が測る対象と AC の主張がずれる(一周目・二周目の裁定を再確認) |
+| AC-30 | **門が無い** | CLI⇔lib: 割れ=0 / CLI が拒んだ=2。scale 口を子プロセスで撃つ門=true<br>  一致 CLI=reform lib=reform | 楽園の自己診断に絞り込みの口を設ける<br>  一致 CLI=quick lib=quick | fix the vendor page<br>  一致 CLI=full lib=full | forge 鍛冶屋の在庫管理アプリを作って<br>  一致 CLI=quick lib=quick | 台帳の毒を直す<br>  一致 CLI=reform lib=reform | 門に監査の一段を足す<br>  CLI拒否 lib=reform | conclave の毒を除く<br>  CLI拒否 lib=standard | gauge calibration tracker<br>  一致 CLI=quick lib=quick | hermetic の検品の門を直す |
+| AC-31 | **達成** | 自作の世間コーパス 55 件中 reform へ攫われた= 0 件 |
+| AC-32 | **達成** | 弱い名 × 建造 = reform,reform (期待 reform) |
+| AC-33 | **達成** | "a vendor…"=full(非reform要) / "vendor に…"=reform(reform要) |
+| AC-34 | **達成** | 表に無い engine(4字以上)= 無し / 4字未満で黙って除外= kg |
+| AC-35 | **門が無い** | 変異を自動で当てる門は今も無い(人が手で撃つ)。三周目の実測は AC-46 の表に在る |
+| AC-36 | **達成** | 教主の10件 reform 誤着= 0/10 |
+| AC-37 | **達成** | 表 26 語 ⇔ counsel.test.js に現れる= 26 / 覆えていない= 0 |
+| AC-38 | **達成** | 強い名+改変の動詞 7 件 / 落ちた= 0 |
+| AC-39 | **達成** | 二条件がそれぞれ単独で効く門(前提の assert 付き)在り=true |
+| AC-40 | **達成** | 抽象名 12 語 / 無条件で真にならなかった= 0 |
+| AC-41 | **達成** | MEND_RE に創造の動詞の紛れ= 0 |
+| AC-42 | **門が無い** | 11 変異を自動で当てる門は無い。三周目が M-N/M-O を撃った結果は AC-46 の表に在る |
+| AC-43 | **達成** | counsel EXIT=0 / MEND 語 34 語 ⇔ 世間側コーパス 34 語 / 禁則違反= 0 / 218 passed, 0 failed |
+| AC-44 | **達成** | 弱い名×MEND の漏れ= 0/5 / 枝2' の漏れ= 0/2 |
+| AC-45 | **未達** | 世間の紛れ語 誤着= 0/7 / 本物の門 落ちた= 0/3 / **器を持つ本物の門 落ちた= 4/4**<br>  門の判定をツールで直す → quick<br>  門の判定をアプリで直す → quick<br>  hermetic の検品の門を直す → quick<br>  fix gate routing in our app → quick |
+| AC-46 | **達成** | 変異 15 件中 赤= 15 / 黙った= 0<br>| M-A | 枝2'から mendsParadise を外す | 赤 ✓ | 176 passed, 42 failed |<br>| M-B | mendsParadise から WORLDLY_VESSEL_RE を外す | 赤 ✓ | 210 passed, 8 failed |<br>| M-C | mendsParadise から STRONG_BOUND_RE を外す | 赤 ✓ | 211 passed, 7 failed |<br>| M-D | STRONG_BOUND_RE から助詞の要求を外す | 赤 ✓ | 211 passed, 7 failed |<br>| M-E | WORLDLY_VESSEL_RE からアプリ/サイト/ツールを落とす | 赤 ✓ | 209 passed, 9 failed |<br>| M-F | WORLDLY_VESSEL_RE に楽園の器官の名(口)を混ぜる | 赤 ✓ | 212 passed, 6 failed |<br>| M-G | 枝3を MEND_RE へ広げる | 赤 ✓ | 212 passed, 6 failed |<br>| M-H | 抽象名の紛れ語+器の守りを丸ごと外す | 赤 ✓ | 212 passed, 6 failed |<br>| M-I | ABSTRACT_FALSE_FRIENDS の表を空にする | 赤 ✓ | 212 passed, 6 failed |<br>| M-J | gate の限定詞の除外を外す | 赤 ✓ | 212 passed, 6 failed |<br>| M-K | MEND_RE の表から日本語を落とす | 赤 ✓ | 204 passed, 14 failed |<br>| M-L | namesParadiseAbstractly を素の REFORM_ABSTRACT_RE へ戻す | 赤 ✓ | 212 passed, 6 failed |<br>| M-M | 枝2(建造)を消す | 赤 ✓ | 209 passed, 9 failed |<br>| M-N | 限定詞の除外を丸ごと外す(AC-33/35) | 赤 ✓ | 198 passed, 20 failed |<br>| M-O | 弱い名を強い名の表へ戻す(AC-35) | 赤 ✓ | 207 passed, 11 failed | |
+```
+
+---
+
+## V3-3. AC-46 の変異表 —— **15/15 が赤くなった**(黙った変異ゼロ)
+
+**requirements.md の M-A〜M-M(13 件)に、AC-35 / AC-42 系の代表 2 件(M-N / M-O)を足して
+三周目が自分の手で撃った**(`graph/` と `tests/` を Temp へ複製し、`forge.js` を変異させ、
+`counsel.test.js` を走らせる)。
+
+```
+| # | 変異 | 結果 | 数 |
+|---|---|---|---|
+| M-A | 枝2'から mendsParadise を外す | 赤 ✓ | 176 passed, 42 failed |
+| M-B | mendsParadise から WORLDLY_VESSEL_RE を外す | 赤 ✓ | 210 passed, 8 failed |
+| M-C | mendsParadise から STRONG_BOUND_RE を外す | 赤 ✓ | 211 passed, 7 failed |
+| M-D | STRONG_BOUND_RE から助詞の要求を外す | 赤 ✓ | 211 passed, 7 failed |
+| M-E | WORLDLY_VESSEL_RE からアプリ/サイト/ツールを落とす | 赤 ✓ | 209 passed, 9 failed |
+| M-F | WORLDLY_VESSEL_RE に楽園の器官の名(口)を混ぜる | 赤 ✓ | 212 passed, 6 failed |
+| M-G | 枝3を MEND_RE へ広げる | 赤 ✓ | 212 passed, 6 failed |
+| M-H | 抽象名の紛れ語+器の守りを丸ごと外す | 赤 ✓ | 212 passed, 6 failed |
+| M-I | ABSTRACT_FALSE_FRIENDS の表を空にする | 赤 ✓ | 212 passed, 6 failed |
+| M-J | gate の限定詞の除外を外す | 赤 ✓ | 212 passed, 6 failed |
+| M-K | MEND_RE の表から日本語を落とす | 赤 ✓ | 204 passed, 14 failed |
+| M-L | namesParadiseAbstractly を素の REFORM_ABSTRACT_RE へ戻す | 赤 ✓ | 212 passed, 6 failed |
+| M-M | 枝2(建造)を消す | 赤 ✓ | 209 passed, 9 failed |
+| M-N | 限定詞の除外を丸ごと外す(AC-33/35) | 赤 ✓ | 198 passed, 20 failed |
+| M-O | 弱い名を強い名の表へ戻す(AC-35) | 赤 ✓ | 207 passed, 11 failed |
+```
+
+**⚠️ 正直に述べる**: 最初の試行では M-B / M-C / M-J / M-N の 4 件が
+**「変異が当たらなかった」**と出た。
+**これは門が黙ったのではなく、本相の置換文字列が実装と一字違っていたためである**
+(改行コード / `DETERMINER_LOOKBEHIND` の連結の形)。
+**門の沈黙として報告しかけたが、実装を読み直して置換を直したら 4 件とも赤くなった。**
+**自分の道具の欠陥を、対象の欠陥として報告しない**(第37条)。
+
+**この 15/15 は build-rework3.md の主張を裏づける。故障注入の面では門は本物である。**
+
+---
+
+## V3-4. 二周目の未達 AC-31 と「門が無い」8 件 —— 今どうなっているか(再裁定)
+
+### V3-4.1 AC-31(二周目の唯一の未達)
+
+| | 二周目 | **三周目** |
+|---|---|---|
+| 自作の世間コーパス | 57 件中 **32 件が攫われた** 🔴 | **55 件中 0 件** 🟢 |
+| 教主の 10 件 | — | **0/10** 🟢 |
+| 判定 | **未達** | **達成** |
+
+🟢 **直った。三度目の build の修理は本物である。**
+**ただし直った面と壊れた面は別である** —— AC-31 は「世間 → reform」の向き、
+AC-45 の逆向きは「楽園 → 非 reform」の向きである。
+**片方向を直して逆方向を壊した。これが 7 回続いている型そのものである。**
+
+### V3-4.2 「門が無い」8 件の再裁定
+
+| AC | 二周目 | **三周目** | 変化 |
+|---|---|---|---|
+| **AC-16**(全走を強いる門) | 門が無い | **門が無い** | **変わらず。** 本相も全走を実際に撃った(`471 passed, 0 failed` / EXIT=0)—— **人の規律が三度目も守った。門が守ったのではない** |
+| **AC-19**(緑が場所を名指す) | 門が無い | **門が無い** | **変わらず。** 実測では名指している(`…\Temp\q3\fakevault は創造物の倉ではない`)が、**それを撃つ門は本走行の仮倉の名でしか撃たない** |
+| **AC-22**(実在の倉を撃つ) | 門が無い | **門が無い** | **変わらず。** `B-12b` 在り。CI では兄弟倉が無く**永久 skip**。第60条(e) が名指した病が三周とも残る |
+| **AC-26**(git 不在で投げない) | 門が無い | **門が無い** | **変わらず。** `B-14` は細工値で投げないことを撃つのみ。**PATH から git を消した状態は三周目でも再現していない** |
+| **AC-29**(README の数) | 門が無い | **門が無い** | **変わらず。** `census.js fix` → `check` は本相が撃って EXIT=0(§V3-6) |
+| **AC-30**(環と器が割れていない) | 門が無い | **門が無い** | **変わらず。だが数が改善した** —— 二周目は「CLI が拒む= 10/12」だったが、三周目の 8 件では**割れ 0 / CLI 拒否 2**。`scale` 口を子プロセスで撃つ門は**在る**(`hasGate=true`)—— **二周目の `false` は本相の走査式が甘かった可能性が高い。訂正する**(下記) |
+| **AC-35**(変異が自動で鳴る) | 門が無い | **門が無い** | **変わらず。** 変異は今も人が手で撃つ。**本相が撃ったから 15/15 が判った** |
+| **AC-42**(F-1/F-4 の変異) | 門が無い | **門が無い** | **変わらず。** 同上 |
+
+**8 件すべてが二周目のまま。一件も直っていない。**
+
+**⚠️ AC-30 の訂正**: 二周目は「`scale` 口を子プロセスで撃つ門=false」と書いた。
+三周目の走査では `true` である。**どちらが正しいかは走査式に依る** ——
+本相の式は `execFileSync[\s\S]{0,80}forge\.js` 等の緩い照合であり、
+**「門が在る」を過大に報告しうる**。
+**ゆえに AC-30 の格付けは「門が無い」のまま据え置く**(疑わしきは厳しい側へ)。
+**二周目と三周目で走査式が違うので、この一点は数として比較してはならない。**
+
+```
+| AC-30 | **門が無い** | CLI⇔lib: 割れ=0 / CLI が拒んだ=2。
+  一致 CLI=reform lib=reform | 楽園の自己診断に絞り込みの口を設ける
+  一致 CLI=quick  lib=quick  | fix the vendor page
+  一致 CLI=full   lib=full   | forge 鍛冶屋の在庫管理アプリを作って
+  一致 CLI=quick  lib=quick  | 台帳の毒を直す
+  一致 CLI=reform lib=reform | 門に監査の一段を足す
+  CLI拒否 lib=reform   | conclave の毒を除く
+  CLI拒否 lib=standard | gauge calibration tracker
+  一致 CLI=quick  lib=quick  | hermetic の検品の門を直す |
+```
+
+**⚠️ 最後の一行が七度目の回帰そのものである** ——
+`hermetic の検品の門を直す` は **CLI と lib が一致している**。
+**環と器は割れていない。二つ揃って間違っている。**
+**AC-30 の「一致」は正しさの証明ではない。** これは三周目の新しい所見である。
+
+---
+
+## V3-5. 第38条 —— main と HEAD の門の数と誤着数
+
+**`git clone --branch main` を使った**(`git archive` は `.git` を持たないので偽の赤を出す)。
+
+```
+$ git clone --quiet --branch main "C:/Users/kikus/Documents/workspace/paradise" par_main_q3
+$ cd par_main_q3 && git log --oneline -1
+c216014 Merge pull request #53 from kikusyo1101/reform/orphan-gates
+```
+
+### V3-5.1 門の数
+
+| | **main `c216014`** | **HEAD `6a4e3f4`** | 差 |
+|---|---|---|---|
+| `paradise.test.js` 全走 | **469 passed, 0 failed, 2 skipped** | **471 passed, 0 failed** | **+2** |
+| `counsel.test.js` | **51 passed, 0 failed** | **218 passed, 0 failed** | **+167** |
+| `abandoned-run.test.js` | **20 passed, 0 failed** | **33 passed, 0 failed** | **+13** |
+| `tests/` のファイル数 | **20** | **20** | ±0 |
+| `wiring.js check` | — | **門 19 本すべてに走らせる者が居る** / EXIT=0 | — |
+
+**⚠️ 門の数は増えた。だが門の数は正しさではない。**
+**218 本の門が全て緑のまま、AC-45 の逆向きが壊れている**(§V3-1)。
+
+### V3-5.2 誤着数(自作コーパス 138 件 / 新しい六つの軸)
+
+| | **main** | **HEAD** |
+|---|---|---|
+| 全体の外し | **75 / 138** | **49 / 138** |
+| 世間 → reform の誤着 | **2**(`the gate` 型) | **0** 🟢 |
+| 楽園 → 非 reform の取りこぼし | **73** | **49** |
+| **main○ → HEAD× の回帰** | — | **1 件**(展開すると **37 件**) 🔴 |
+| **main× → HEAD○ の修理** | — | **27 件** 🟢 |
+
+**第38条の観点では HEAD は main より良い**(75 → 49)。
+**だが「良くなった」は「回帰が無い」ではない。**
+
+---
+
+## V3-6. 完了の定義の生出力
+
+### 6. counsel / abandoned-run
+
+```
+$ node tests/counsel.test.js
+Counsel self-test: 218 passed, 0 failed
+counsel EXIT=0
+
+$ node tests/abandoned-run.test.js
+abandoned-run: 33 passed, 0 failed
+abandoned EXIT=0
+```
+
+### 7. wiring / codex
+
+```
+$ node graph/wiring.js check
+═══ 🔗 WIRING GATE (第44条 / 第48条) ═══
+  engine 39 / 内の辺 73
+  · 門の除外 1 件: tests/_pulse-fixture.js — 門ではなく、pulse の門が読む作り物の的である
+  ✓ 門 19 本すべてに走らせる者が居る (第44条)
+  ✓ 全ての engine に呼ぶ者が居り、宙吊りの参照は無い
+wiring EXIT=0
+
+$ node graph/codex.js check
+═══════ 📖 CODEX CHECK ═══════
+  ✓ 索引は本文と一致している (60 条)
+══════════════════════════════
+codex EXIT=0
+```
+
+### 8. paradise 全走(background)
+
+```
+$ node tests/paradise.test.js          # background 必須(6分)
+Paradise self-test: 471 passed, 0 failed
+PARADISE_FULL_EXIT=0
+```
+
+### 9. census fix → check(background)
+
+```
+$ node graph/census.js fix
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+nothing to fix
+  ✓ 書き換えた数は、その主張の目で読み直して実測と一致する
+CENSUS_FIX_EXIT=0
+
+$ node graph/census.js check
+═══════ 🔢 CENSUS CHECK ═══════
+  ✓ every number the paradise claims about itself is true
+═══════════════════════════════
+census EXIT=0
+```
+
+**⚠️ `census.js fix` が `nothing to fix` と言った** —— README の数は既に正しい。
+**手で書き換えていない**(第22条)。
+
+**⚠️ 自分の誤読を訂正する**(第37条): `census.js fix` が
+`⚠️ ledger line skipped (corrupt): =======…` を 2 行名乗ったので、
+一度は「台帳に merge conflict の残骸が紛れている」と書きかけた。**追って撃ったら違った。**
+
+```
+$ node -e "…workspace.resolve().root + '/gauge-ledger.jsonl'"
+台帳の道: C:\Users\kikus\Documents\workspace\paradise-creations\gauge-ledger.jsonl
+$ grep -c "=======" <台帳>
+0
+$ cut -c1-12 <台帳>
+{"ts":"2026-   (全 7 行とも健全な JSON)
+```
+
+**本物の台帳は無傷である。** 競合の印は
+`tests/paradise.test.js:3895 / 4441` が**故意に注ぎ込む毒**であった:
+
+```
+tests/paradise.test.js:4441:    for (const marker of ['<<<<<<< HEAD', '=======', '>>>>>>> A']) {
+```
+
+**すなわちこれは門が正しく働いている音であって、欠陥ではない。**
+**故障注入の悲鳴を、対象の欠陥として報告しない。**
+
+---
+
+## V3-7. 【三周目】自分が見ていない項目(第37条)
+
+| # | 見ていない面 |
+|---|---|
+| 1 | **中国語・韓国語の願い** —— 三周とも一件も撃っていない |
+| 2 | **`buildDag()` の下流** —— 道が変わったとき相の数と担い手がどう変わるかは撃っていない(`admit()` は撃った) |
+| 3 | **実 GitHub Actions** —— 掟により push しない。CI の裸の機械での数は測れていない |
+| 4 | **`module.exports` に載らない正規表現 8 本の ReDoS** —— `denude` を除き未測(security §S3-5) |
+| 5 | **`WORLDLY_VESSEL_RE` の表に無い世間の器**(`ポータル` `EC` `SaaS` `bot` `プラグイン` `予約システム`) —— 神官の B3-2 が名乗った疑いの**表側**は撃っていない(**逆側は撃って病を見つけた**) |
+| 6 | **`ABSTRACT_FALSE_FRIENDS` に無い `門` の紛れ語**(`門松` `破門` `門番` `水門`) —— 撃っていない |
+| 7 | **AC-30 の走査式の妥当性** —— 二周目と三周目で `hasGate` の答えが違う。**どちらが正しいか裁いていない**(厳しい側へ据え置いた) |
+| 8 | **`dashboard/` の 10 本の門** —— 全走に含まれるので緑だが、個別には撃っていない |
+| 9 | **CI の裸の機械での `skipped` の数** —— 本機では 471 passed / 0 skipped だが、README は CI で `459 passed, 0 failed, 10 skipped` と語る。**その 10 件がどれかは撃っていない** |

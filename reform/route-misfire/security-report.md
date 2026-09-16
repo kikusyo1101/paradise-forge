@@ -593,3 +593,320 @@ $ (module.exports に在るか確かめた)
 | S2-5 | **並行実行下の挙動** | 単一プロセス・単一スレッドで測った。同時多発の負荷は撃っていない |
 | S2-6 | **U-2 / U-4 / U-5 / U-6 / U-7** | §3 の表のとおり、二周目でも撃っていない |
 | S2-7 | **`MEND_RE` の誤着が security 事象か** | 本相は「否」と裁いた(道選びの正しさの問題)。だが **`reform` は 11 相を走らせる最も重い道**であり、世間の願いが誤って 11 相を起動することを**資源の消尽と読む余地は在る**。**その角度からは撃っていない** |
+
+
+---
+---
+
+# 【三周目】security — 新しい 3 表の ReDoS / 一周目の修理の再撃
+
+> 相: `security`(quality 領域・**三周目**)
+> 起点: `reform/route-misfire` HEAD `6a4e3f4`
+> **本節の全ての数は quality 三周目が自分の手で撃った生出力である**(第27条)。
+
+---
+
+## S3-0. 結論
+
+| # | 面 | 判定 |
+|---|---|---|
+| **S3-1** | 新しい 3 表の ReDoS(10KB / 100KB / 200KB × 11 の悪意の形) | 🟢 **健全**。最悪 0.485 ms / 二乗の兆候なし |
+| **S3-2** | 一周目 **HIGH-1 / S-1**(`denude` の二乗)の修理 | 🟢 **今も生きている**。倍率 2.04(線形) |
+| **S3-3** | 一周目 **V-1**(壊れた走行帳で `check` が死ぬ)の修理 | 🟢 **今も生きている**。壊れた 3 件を置いても走査は走り切る |
+| **S3-4** | `graph/workspace.js` の回帰 | 🟢 **無し**。三周目で一行も触られておらず、撃って確かめた |
+| **S3-5** | 全公開正規表現 15 本への無差別撃ち | 🟢 **健全**。最悪 0.728 ms |
+| **S3-6** | 🟡 **新しい所見**: 表が増えるほど `chooseScale` の総時間が伸びる | 200KB で 6.66 ms(`the ` の反復)。危険ではないが**単調増加している** |
+
+**安全性の観点で BLOCK 相当の欠陥は無い。** 本走行の重い欠陥は
+**安全性ではなく正しさ**の面に在る(review §R3-0 / §R3-6.2)。
+
+---
+
+## S3-1. 新しい 3 表の ReDoS —— 10KB / 100KB / 200KB × 11 の悪意の形
+
+**悪意の形の選び方**: 交替(`|`)が暴走するのは
+**「どの枝も語頭で一致しかけて、最後に外れる」**入力である。
+ゆえに **表の各語の接頭辞**を反復単位に選んだ。加えて
+**後読み(`DETERMINER_LOOKBEHIND`)を毎文字踏ませる形**(`the ` / ` `)と、
+**全ての表を同時に踏む混合形**を足した。
+
+| 形 | 反復単位 | 狙い |
+|---|---|---|
+| prefix-ap | `ap` | `アプリ`/`app` の語頭で外す |
+| prefix-sto | `sto` | `store`/`storefront` の語頭で外す |
+| prefix-アプ | `アプ` | 日本語の語頭で外す |
+| prefix-門 | `gatewa` | `gateway`/`gated` の語頭で外す |
+| prefix-専 | `専` | `専門` の語頭で外す |
+| strongname-conclav | `conclav` | 強い名 26 語の語頭で外す |
+| determiner-the | `the ` | **後読みを毎位置で踏ませる** |
+| particle-の | `conclave` | 助詞の直前で外す |
+| ws-space | ` ` | `[\s]*` を暴走させる |
+| mend-直 | `直` | `MEND_JA` の語頭 |
+| mixed | `a gate 門 アプ sto ` | **全表を同時に踏む** |
+
+### S3-1.1 200KB の生出力(全 55 組)
+
+```
+表                       形                         size  ms
+WORLDLY_VESSEL_RE       prefix-ap               204800  0.158
+WORLDLY_VESSEL_RE       prefix-sto              204800  0.160
+WORLDLY_VESSEL_RE       prefix-アプ               204800  0.129
+WORLDLY_VESSEL_RE       prefix-門                204800  0.272
+WORLDLY_VESSEL_RE       prefix-専                204800  0.126
+WORLDLY_VESSEL_RE       strongname-conclav      204800  0.153
+WORLDLY_VESSEL_RE       determiner-the          204800  0.173
+WORLDLY_VESSEL_RE       particle-の              204800  0.154
+WORLDLY_VESSEL_RE       ws-space                204800  0.411
+WORLDLY_VESSEL_RE       mend-直                  204800  0.124
+WORLDLY_VESSEL_RE       mixed                   204800  0.317
+STRONG_BOUND_RE         prefix-ap               204800  0.043
+STRONG_BOUND_RE         prefix-sto              204800  0.153
+STRONG_BOUND_RE         prefix-アプ               204800  0.056
+STRONG_BOUND_RE         prefix-門                204800  0.047
+STRONG_BOUND_RE         prefix-専                204800  0.045
+STRONG_BOUND_RE         strongname-conclav      204800  0.046
+STRONG_BOUND_RE         determiner-the          204800  0.159
+STRONG_BOUND_RE         particle-の              204800  0.046
+STRONG_BOUND_RE         ws-space                204800  0.045
+STRONG_BOUND_RE         mend-直                  204800  0.045
+STRONG_BOUND_RE         mixed                   204800  0.306
+ABSTRACT_FALSE_FRIENDS  prefix-ap               204800  0.154
+ABSTRACT_FALSE_FRIENDS  prefix-sto              204800  0.118
+ABSTRACT_FALSE_FRIENDS  prefix-アプ               204800  0.079
+ABSTRACT_FALSE_FRIENDS  prefix-門                204800  0.223
+ABSTRACT_FALSE_FRIENDS  prefix-専                204800  0.071
+ABSTRACT_FALSE_FRIENDS  strongname-conclav      204800  0.121
+ABSTRACT_FALSE_FRIENDS  determiner-the          204800  0.123
+ABSTRACT_FALSE_FRIENDS  particle-の              204800  0.127
+ABSTRACT_FALSE_FRIENDS  ws-space                204800  0.201
+ABSTRACT_FALSE_FRIENDS  mend-直                  204800  0.070
+ABSTRACT_FALSE_FRIENDS  mixed                   204800  0.192
+MEND_RE                 prefix-ap               204800  0.160
+MEND_RE                 prefix-sto              204800  0.237
+MEND_RE                 prefix-アプ               204800  0.117
+MEND_RE                 prefix-門                204800  0.160
+MEND_RE                 prefix-専                204800  0.119
+MEND_RE                 strongname-conclav      204800  0.157
+MEND_RE                 determiner-the          204800  0.245
+MEND_RE                 particle-の              204800  0.155
+MEND_RE                 ws-space                204800  0.131
+MEND_RE                 mend-直                  204800  0.122
+MEND_RE                 mixed                   204800  0.355
+REFORM_STRONG_RE        prefix-ap               204800  0.446
+REFORM_STRONG_RE        prefix-sto              204800  0.412
+REFORM_STRONG_RE        prefix-アプ               204800  0.068
+REFORM_STRONG_RE        prefix-門                204800  0.485
+REFORM_STRONG_RE        prefix-専                204800  0.045
+REFORM_STRONG_RE        strongname-conclav      204800  0.458
+REFORM_STRONG_RE        determiner-the          204800  0.124
+REFORM_STRONG_RE        particle-の              204800  0.472
+REFORM_STRONG_RE        ws-space                204800  0.172
+REFORM_STRONG_RE        mend-直                  204800  0.052
+REFORM_STRONG_RE        mixed                   204800  0.228
+
+最悪 = 0.485 ms  (REFORM_STRONG_RE / prefix-門 / 204800)
+```
+
+**10KB / 100KB は 1.0 ms を一度も越えなかった**(閾値 1.0 ms 超のみ印字する設定で、
+200KB 以外は一行も出なかった)。
+
+### S3-1.2 二乗性の検定(100KB → 200KB の倍率)
+
+```
+=== 二乗性の検定 (100KB → 200KB の倍率) ===
+  ⚠ MEND_RE / prefix-sto: 100KB=0.056ms 200KB=0.147ms 倍率=2.63
+  (倍率 2.6 超 または 200KB で 5ms 超 のみ表示 — 上に何も無ければ全て線形)
+```
+
+**55 組中、倍率 2.6 を越えたのは 1 組だけ**であり、それも**絶対値が 0.147 ms**である。
+二乗なら倍率 4 付近になる —— **2.63 は測定のゆらぎの範囲**(0.056 ms という
+微小な分母で割っている)。**二乗の兆候は無い。**
+
+**理由(構造から言える)**: 3 表はいずれも
+**「量化子を持たない語の交替」**である。`(?:a|b|c)` の形に `+` や `*` が掛かっていない。
+`STRONG_BOUND_RE` の `[\s]*` だけが量化子だが、**その後ろが助詞の文字クラスで
+固定されている**ので、バックトラックの分岐が指数に増えない。
+
+### S3-1.3 `chooseScale` 全体(denude 込み)の 200KB
+
+```
+=== chooseScale 全体 (denude 込み) ===
+  prefix-ap               204800  3.19 ms
+  prefix-sto              204800  3.13 ms
+  prefix-アプ               204800  0.73 ms
+  prefix-門                204800  3.30 ms
+  prefix-専                204800  0.70 ms
+  strongname-conclav      204800  3.24 ms
+  determiner-the          204800  6.66 ms
+  particle-の              204800  3.14 ms
+  ws-space                204800  2.61 ms
+  mend-直                  204800  0.84 ms
+  mixed                   204800  4.11 ms
+```
+
+🟡 **S3-6 の所見**: 最悪は `the ` の反復で **6.66 ms**。
+これは**後読みを毎位置で踏む形**であり、`DETERMINER_LOOKBEHIND` を持つ
+正規表現が 3 本(`REFORM_STRONG_RE` / `REFORM_WEAK_RE` / `STRONG_BOUND_RE`)
++ `ABSTRACT_SOLO_RE` と**増え続けている**ことの帰結である。
+
+**危険ではない**(200KB の願いは現実に来ない / 6.66 ms は許容)。
+**だが単調増加している** —— 二周目の同型の測定と比べて表が 3 本増えたぶん伸びた。
+**次に限定詞付きの表を足す相は、この数を測り直せ。**
+
+---
+
+## S3-2. HIGH-1 / S-1 の修理は今も生きているか —— 再撃
+
+**一周目の S-1**: `denude` のファイル名剥ぎが入力長の**二乗**になっていた
+(`"x"*100000 → 4946 ms` / `"x"*200000 → 22698 ms`)。
+修理は先頭の後読み `(?<![A-Za-z0-9_.-])` で開始位置を語頭に固定すること。
+
+```
+===== HIGH-1 / S-1 再撃: denude の二乗性 =====
+  denude  x*100000 = 0.487 ms
+  denude  x*200000 = 0.614 ms
+  denude  x*400000 = 1.216 ms
+  倍率 100k→200k = 2.04  (≈2 線形 / ≈4 二乗)
+  S-1 の後読みが健在: true
+  ドット付きの実物: "graph/ の 498 行目"
+```
+
+🟢 **生きている。** 倍率 2.04 は線形。`400000` でも 1.216 ms。
+**一周目の 22698 ms から 3 万分の 1 以下**である。
+**後読みの文字列が `graph/forge.js` に実在することも確かめた**(`true`)——
+数だけ見て「速いから健在」と言わない(第16条: 名指しは呼び出しではない)。
+
+**一周目 HIGH-1 の紛れ語の守り(`PRODUCT_FALSE_FRIENDS` / `DIAGRAM_FALSE_FRIENDS`)も再撃:**
+
+```
+===== HIGH-1 再撃: PRODUCT_FALSE_FRIENDS / DIAGRAM_FALSE_FRIENDS =====
+  standard     :: 人口の増減を調べる
+  full         :: 窓口の待ち時間アプリ
+  standard     :: 相場の推移を見るサイト
+  full         :: 腎機能の記録アプリ
+  standard     :: 意図を伝える資料
+  full         :: 地図アプリが欲しい
+  standard     :: 図書館の蔵書サイト
+```
+
+🟢 **7/7 が非 reform / 非 cartography。** 紛れ語の守りは生きている。
+
+---
+
+## S3-3. V-1 の修理は今も生きているか —— 再撃
+
+**一周目の V-1**: 壊れた形の走行帳一つで `conclave.js audit` が
+**走り切らずに死ぬ** —— 攻撃者が壊れた JSON を一つ置くだけで門を無力化できた。
+
+**実地で撃った**(仮の道ではなく `reform/` の本物の場所に置いた):
+
+```
+--- 素の状態 ---
+見捨てられた走行: 1 / 判定不能: 0 / 全 12
+--- 壊れた 3 件を置く ---
+見捨てられた走行: 1 / 判定不能: 3 / 全 15
+--- 壊れた後も他の走行が名指されるか ---
+10   (✓ / 🔴 で始まる行の数 = 走査は走り切っている)
+--- 掃除完了 ---
+見捨てられた走行: 1 / 判定不能: 0 / 全 12
+```
+
+🟢 **生きている。** 壊れた 3 件は **`判定不能: 3` として名乗られ**、
+**全数が 12 → 15 に増え**、**他の 10 走行は今まで通り名指された**。
+**黙って飲み込んでいない**(第37条)し、**死んでもいない**(V-1 の修理)。
+
+**壊し方を四通りに変えても同じ:**
+
+```
+audit(壊れた JSON)     EXIT=1   ← 既に居る見捨てられた走行のため 1。死んではいない
+audit(null)            EXIT=1
+audit(array)           EXIT=1
+audit(nullmembers)     EXIT=1   ← JSON.parse は通るが走行帳ではない形
+audit(valid-stray)     EXIT=1
+audit(clean)           EXIT=1   ← 壊れた物を全て除いた後も 1(既存の sovereign-abode)
+```
+
+**⚠️ 正直に述べる**: `EXIT=1` は**全ての場合で同じ**である。
+理由は `sovereign-abode` という**既に見捨てられている走行**が居るためで、
+**壊れた走行帳の有無では exit が変わらない**。
+ゆえに **exit だけを見る門は V-1 の回帰を捕らえられない。**
+**本相が「判定不能の数」と「全数」を読んだからこそ区別できた。**
+`tests/abandoned-run.test.js:673` の `B-16` が実際にそう書いているかは確かめた:
+
+```
+tests/abandoned-run.test.js:658: * **B-16 [V-1]** — 壊れた形の走行帳一つで `check` が**走り切らずに死ぬ**のを禁じる。
+tests/abandoned-run.test.js:673:test('B-16 [V-1]: 壊れた形の走行帳で走査が死なない — 壊れた JSON 一つで門を無力化できない', () => {
+```
+
+🟢 **門は実在し、`abandoned-run: 33 passed, 0 failed` で緑である。**
+
+---
+
+## S3-4. `graph/workspace.js` は回帰していないか —— 触られていないことと、撃ったこと
+
+**まず「触られていない」を機械で確かめた**(名乗りではなく実測):
+
+```
+$ git log --oneline cbf4ed2..HEAD -- graph/workspace.js | wc -l
+0
+$ git diff cbf4ed2..HEAD --stat -- graph/workspace.js
+(出力なし)
+```
+
+**次に撃った** —— 触られていないことは「回帰していない」の証明ではない
+(`forge.js` の変更が `workspace.js` の振る舞いを変える経路がありうる):
+
+```
+=== 仮倉(創造物の倉ではない場所)を指す ===
+PARADISE_CREATIONS=<Temp>/q3/fakevault node graph/workspace.js check
+  · 走行帳の流出は検めなかった — C:\Users\kikus\AppData\Local\Temp\q3\fakevault は創造物の倉ではない
+    (目印 .paradise-creations も git remote parad…)
+EXIT=0                    ← AC-18 達成: 仮倉でも緑
+
+=== 本物の倉 ===
+node graph/workspace.js check
+  ✓ 楽園に創造物の混入なし・住所の直書きなし・reform 走行帳の流出なし
+    (検めた倉: C:\Users\kikus\Documents\workspace\paradise-creations)
+EXIT=0                    ← AC-20 達成: 本物の倉では今まで通り検める
+
+=== 壊れた走行帳を置いた状態 ===
+EXIT=0                    ← 巻き添えで死んでいない
+```
+
+🟢 **回帰無し。** 第60条(a)〜(c) が命じた
+`rev-parse --show-toplevel` の突合(強い印)は生きており、
+**仮倉を「倉である」と騙らず、名指しで退いている**(第37条)。
+
+---
+
+## S3-5. 全公開正規表現への無差別撃ち(取りこぼしを防ぐ)
+
+**3 表だけを撃つと「撃った表は健全だが、撃たなかった表が病んでいた」を見逃す。**
+ゆえに `module.exports` が公開する**全ての正規表現**に 200KB を撃った。
+
+```
+===== ReDoS: 全ての公開された正規表現に 200KB を撃つ =====
+  公開された正規表現 15 本 × 9 形 × 200KB の最悪 = 0.728 ms  (PRODUCT_FALSE_FRIENDS / "門")
+```
+
+🟢 **135 組すべてが 0.728 ms 以下。**
+
+**⚠️ 撃っていない面を名乗る**: `module.exports` に**載っていない**正規表現
+(`ABSTRACT_SOLO_RE` / `REFORM_RE` の合成 / `denude` の内部 3 本 /
+`chooseScale` の `quickJa`/`quickEn`/`fullJa`/`fullEn`)は、
+**この無差別撃ちの対象外**である。
+`denude` は §S3-2 で個別に撃った。**残りは撃っていない。**
+
+---
+
+## S3-6. 新しい所見(重い順)
+
+| # | 所見 | 重さ |
+|---|---|---|
+| **S3-a** | 🟡 **`chooseScale` の最悪時間が表の追加に比例して伸びている**(200KB / `the ` 反復で 6.66 ms)。限定詞の後読みを持つ正規表現が 4 本に増えた。**危険ではないが、次に足す相は測り直せ** | 低 |
+| **S3-b** | 🟡 **`conclave.js audit` の exit は壊れた走行帳の有無で変わらない**(既存の見捨てられた走行が exit を占有する)。**exit だけを読む門は V-1 の回帰を捕らえられない**。`B-16` は数を読んでいるので緑だが、**他の門が exit を代用していないかは撃っていない** | 中 |
+| **S3-c** | ⬜ **`module.exports` に載らない正規表現 8 本は無差別撃ちの外**。`denude` を除き未測 | 低 |
+| **S3-d** | 🟢 **表を 3 本足しても ReDoS 面は悪化していない** —— 「量化子を持たない語の交替」という作法が守られたため。**この作法を条文にする価値がある** | — |
+
+**⚠️ 安全性の面では BLOCK 相当の欠陥を一件も見つけていない。**
+**本走行を止めるべき理由は安全性ではなく、review §R3-0 / §R3-6.2 の正しさの欠陥である。**
