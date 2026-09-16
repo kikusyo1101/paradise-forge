@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -120,9 +120,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/build-8-evidence.md",
           "dispatchedAt": "2026-09-10T15:01:26.628Z",
           "resumes": 0
         },
@@ -135,9 +135,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,9 +162,9 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -177,9 +177,9 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -192,9 +192,9 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -236,9 +236,9 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/sovereign-abode/CLOSURE.md",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -377,6 +377,61 @@
       "bytes": 53133,
       "note": "第6段: 撤収を完遂。逆向き依存6件→0件、神5キー無傷、hooks は消さず移した",
       "detail": "build ⟡ reform/sovereign-abode/build-7-evidence.md — 第6段: 撤収を完遂。逆向き依存6件→0件、神5キー無傷、hooks は消さず移した"
+    },
+    {
+      "ts": "2026-09-16T13:17:24.963Z",
+      "event": "done",
+      "detail": "build → reform/sovereign-abode/build-8-evidence.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.054Z",
+      "event": "done",
+      "detail": "prove → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.145Z",
+      "event": "done",
+      "detail": "review → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.239Z",
+      "event": "done",
+      "detail": "security → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.330Z",
+      "event": "done",
+      "detail": "docs → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.420Z",
+      "event": "done",
+      "detail": "verify → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.513Z",
+      "event": "done",
+      "detail": "reflect → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:25.604Z",
+      "event": "done",
+      "detail": "verdict → reform/sovereign-abode/CLOSURE.md"
+    },
+    {
+      "ts": "2026-09-16T13:17:29.794Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-16T13:17:29.843Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-16T13:17:29.893Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "spawnTrace": {
@@ -412,6 +467,94 @@
         "at": "2026-09-10T15:01:26.462Z",
         "kind": "observed"
       }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:24.914Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.006Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.098Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.189Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.282Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.373Z",
+        "kind": "observed"
+      }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.464Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "architect",
+        "toolUseId": "sovereign-abode-pr45-52",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-16T13:17:25.556Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -438,6 +581,70 @@
         "序列1: 1 件の起動を観測: architect"
       ],
       "at": "2026-09-10T15:01:26.520Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:24.962Z"
+    },
+    "prove": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.053Z"
+    },
+    "review": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.145Z"
+    },
+    "security": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.238Z"
+    },
+    "docs": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.329Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.420Z"
+    },
+    "reflect": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.512Z"
+    },
+    "verdict": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-16T13:17:25.603Z"
     }
   }
 }
