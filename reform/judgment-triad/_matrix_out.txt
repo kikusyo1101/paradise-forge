@@ -1,0 +1,38 @@
+forge: C:\Users\kikus\Documents\workspace\paradise\graph\forge.js
+コーパス件数: 98  (道ごと: counsel=18, cartography=15, reform=15, quick=15, standard=17, full=18)
+
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           2           0           0          15           0      17
+full                     0           3           0           0           7           8      18
+
+対角の合計: 86 / 98  (誤着 12 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 2 件
+      ・組織図を編集できるツールを作る   (new/PARA-9)
+      ・系統図を出力するコマンドを実装して   (new/PARA-9)
+
+  [full → cartography] : 3 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → standard] : 7 件
+      ・ECサイトを作れ   (new/PARA-7)
+      ・社内ポータルサイトを作れ   (new/PARA-7)
+      ・予約サイトを作りたい   (new/PARA-7)
+      ・コーポレートサイトが欲しい   (new/PARA-7)
+      ・通販サイトを構築して   (new/PARA-7)
+      ・ニュースポータルのウェブサイトが欲しい   (new/PARA-7)
+      ・build an e-commerce site   (new/PARA-7)
+
+非ゼロの非対角セル数: 3 / 30
+EXIT=0

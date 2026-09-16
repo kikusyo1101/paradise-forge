@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "slug": "judgment-triad",
+    "wish": "楽園の道選びと環の裁きに残る三つの欠陥を直す (PARA-6 / PARA-9 / PARA-7)",
+    "scale": "reform",
+    "branch": "reform/judgment-triad",
+    "commits": ["7f34e9a", "12c3490", "28c3347"]
+  },
+  "produces": "artifact",
+  "build": "pass",
+  "tests": {
+    "passed": 708,
+    "failed": 0,
+    "total": 708,
+    "detail": {
+      "paradise.test.js": "471 passed, 0 failed",
+      "counsel.test.js": "210 passed, 0 failed",
+      "route-matrix.test.js": "13 passed, 0 failed",
+      "ratify-guard.test.js": "9 passed, 0 failed (新設)",
+      "route-debt.test.js": "5 passed, 0 failed (新設)"
+    },
+    "note": "門 23 本すべてに走らせる者が居る (wiring.js check exit 0)。conclave.js audit は 0/0/全13 exit 0。すべて本物のリポジトリで一つずつ逐次に走らせた (NFR-1/NFR-2)"
+  },
+  "security": {
+    "issues": 0,
+    "secrets": 0,
+    "method": "git diff main..HEAD -- graph/ tests/ .github/ の追加行を password|secret|token|api_key|eval(|child_process|exec(|process.env で走査。当たりは tests/ratify-guard.test.js:28 の require('child_process') 一件のみ",
+    "assessment": [
+      "child_process は spawnSync/execFileSync を argv 配列で呼ぶ形のみ。shell:true を使わず、願い文字列をコマンドに混ぜない — シェル注入の口は無い",
+      "fs.rmSync は fs.mkdtempSync(os.tmpdir(), 'paradise-ratify-guard-') が作った一時ディレクトリのみを対象とし、process.on('exit') で掃除する。作業樹を触らない",
+      "新設 2 門・engine の変更に秘密・鍵・外部通信・eval は 0 件",
+      "ratify 関門は throw する前に d.status を書かない(部分適用なし / NFR-9)— 失敗しても台帳が壊れないことを tests/ratify-guard.test.js が撃つ"
+    ]
+  },
+  "lint": { "status": "pass", "warnings": 0 },
+  "spec": {
+    "satisfied": true,
+    "unmet": [],
+    "acceptance": [
+      { "id": "AC-1", "pass": true, "desc": "相が全て done でない領域は祝福できない", "evidence": "教主が本走行の quality 領域に ratify を直撃 → RATIFY_PHASES_NOT_DONE で拒まれ status は pending のまま" },
+      { "id": "AC-2", "pass": true, "desc": "関門が本当に鳴ることを対で証明 (第21条)", "evidence": "ratify-guard.test.js が拒む枝と通る枝を対で持ち 9/9 緑" },
+      { "id": "AC-3", "pass": true, "desc": "四枝 (a)reject通る (b)rework拒む (c)blocked相拒む (c2)領域blocked拒む", "evidence": "design §3.3 で写し実測、本物で 9/9 緑" },
+      { "id": "AC-4", "pass": true, "desc": "既存 13 台帳は一本も赤くならない", "evidence": "conclave.js audit → 0/0/全 13, exit 0" },
+      { "id": "AC-5", "pass": true, "desc": "101 件コーパスで対角 101/101・非対角 30 セルすべて 0", "evidence": "本物の forge に計測器を再走 → 対角 101/101・非対角 0/30。教主が独立に 11 件直撃し NG 0" },
+      { "id": "AC-6", "pass": true, "desc": "的と FLOOR が判定器と同じ commit", "evidence": "git show --stat 12c3490 に graph/forge.js と tests/route-matrix.test.js が同時に載る。コーパス 87→102、FLOOR standard 9→16 / full 8→16、他四道据置" },
+      { "id": "AC-7", "pass": true, "desc": "外した 2 件は debt.md + xfail 門で凍る", "evidence": "28c3347: debt.md 新設 + route-debt.test.js 5/5 緑" },
+      { "id": "AC-8", "pass": true, "desc": "C2 を採らない", "evidence": "採用は C2a。『楽園の相の系統図を描いてほしい』→ cartography(C2 なら reform に攫われる的)" },
+      { "id": "AC-9", "pass": true, "desc": "新設門はすべて結線 (第44条)", "evidence": "wiring.js check → 門 23 本(基準線 21 + 2)、孤児 0" },
+      { "id": "AC-10", "pass": true, "desc": "五つの基準線の門が緑に戻る", "evidence": "教主が本物のリポジトリで逐次実行し全て exit 0" },
+      { "id": "AC-11", "pass": true, "desc": "README の数を手で書かない (第22条)", "evidence": "census.js fix → nothing to fix、git diff 空" }
+    ]
+  },
+  "diff": { "files": 7 },
+  "trajectory": {
+    "score": 100,
+    "complete": true,
+    "phasesTotal": 11,
+    "phasesDone": 11,
+    "domainsTotal": 6,
+    "domainsRatified": 6,
+    "firstPassRate": 1,
+    "reworkCount": 0,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "tier1": 4,
+    "tier2": 7,
+    "tier3": 0,
+    "noTier": 0,
+    "note": "第27条に従い tribunal を ratify した後に gauge.js score --json を撃ち直した数値。下の pending 欄は判定時点の写しではなく確定値である"
+  },
+  "critic": {
+    "verdict": "the critic found nothing (107 件の教訓で裁いた). Proceed to judgment.",
+    "command": "node graph/critic.js review graph --self --lessons graph/lessons.json"
+  },
+  "loosened_gates": "なし — git diff main..HEAD に || true / test.skip / 閾値の緩めは 0 件。fullJa/fullEn の diff は空(語彙を一語も足していない)",
+  "debts": [
+    "PARA-10: REFORM_RE の弱い印「門」が『一門の家系図を作れるアプリが欲しい』に当たり reform へ攫う。debt.md + route-debt.test.js で xfail 凍結",
+    "PARA-11: PRODUCT_FALSE_FRIENDS が文全体を無効化し『相関図を描けるアプリを作って』が cartography に残る。同上"
+  ],
+  "honest_notes": [
+    "建造相で一度 paradise.test.js が 469/2 を出した。原因は設計欠陥ではなく作業順序の誤り(commit ③ 用の門を ② の前に書き置いたため孤児の門が 1 本でき wiring.js check が exit 1)。退避して測り直し 471/0 を確認してから commit した。門は一切触っていない",
+    "要件相の R1 試作で ✗ 5 本が出たが、4 本は写し同士が git 作業樹を奪い合った測定の汚染。対照群を単独走行で取り直して確認。残る 1 本は本物で、tests/paradise.test.js の fixture 自身が PARA-6 の抜け道に寄りかかっていた(ux を done にせず ratify を撃っていた)— 正しい赤であり L798 に 'ux' を足して直した"
+  ]
+}

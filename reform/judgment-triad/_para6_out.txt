@@ -1,0 +1,98 @@
+=== 1. convene 直後 — 相は全て pending ===
+CONCLAVE — 聖職位階の進行
+════════════════════════════════════════════════════
+· 枢機卿 discovery — Discovery (調査)   [review: pontiff]
+     · ⚖️ discover @market-researcher
+· 枢機卿 requirements — Requirements (要件)   [review: cardinal:discovery]
+     ·    analyze @requirements-analyst
+     · ⚖️ specify @requirements-analyst
+· 枢機卿 architecture — Architecture (設計)   [review: cardinal:requirements]
+     ·    ux @architect
+     ·    identity @architect
+     · ⚖️ design @architect
+     ·    detail @architect
+· 枢機卿 construction — Construction (建造)   [review: cardinal:quality]
+     ·    build @architect
+     ·    build-ui @architect
+     ·    tests @tdd-guide
+· 枢機卿 quality — Quality (品質)   [review: executor]
+     ·    review @code-reviewer
+     ·    ux-review @ux-reviewer
+     ·    security @security-reviewer
+     ·    docs @doc-updater
+     · ⚖️ verify @verification-loop
+· 枢機卿 tribunal — Tribunal (断罪機関)   [review: god]
+     · ⚖️ reflect @self-critic
+     · ⚖️ verdict @creation-judge
+════════════════════════════════════════════════════
+domains ratified: 0/6
+
+相の状態の内訳(convene 直後): {"pending":17}
+
+=== 2. 一つも done にせず、全ての枢機卿に ratify を撃つ ===
+  ratify(discovery) -> {"ok":true,"ratified":"discovery"}   [この領域の相: discover=pending]
+  ratify(requirements) -> {"ok":true,"ratified":"requirements"}   [この領域の相: analyze=pending, specify=pending]
+  ratify(architecture) -> {"ok":true,"ratified":"architecture"}   [この領域の相: ux=pending, identity=pending, design=pending, detail=pending]
+  ratify(construction) -> {"ok":true,"ratified":"construction"}   [この領域の相: build=pending, build-ui=pending, tests=pending]
+  ratify(quality) -> {"ok":true,"ratified":"quality"}   [この領域の相: review=pending, ux-review=pending, security=pending, docs=pending, verify=pending]
+  ratify(tribunal) -> {"ok":true,"ratified":"tribunal"}   [この領域の相: reflect=pending, verdict=pending]
+
+=== 3. ratify 後の statusBoard ===
+CONCLAVE — 聖職位階の進行
+════════════════════════════════════════════════════
+✓ 枢機卿 discovery — Discovery (調査)   [review: pontiff]
+     · ⚖️ discover @market-researcher
+✓ 枢機卿 requirements — Requirements (要件)   [review: cardinal:discovery]
+     ·    analyze @requirements-analyst
+     · ⚖️ specify @requirements-analyst
+✓ 枢機卿 architecture — Architecture (設計)   [review: cardinal:requirements]
+     ·    ux @architect
+     ·    identity @architect
+     · ⚖️ design @architect
+     ·    detail @architect
+✓ 枢機卿 construction — Construction (建造)   [review: cardinal:quality]
+     ·    build @architect
+     ·    build-ui @architect
+     ·    tests @tdd-guide
+✓ 枢機卿 quality — Quality (品質)   [review: executor]
+     ·    review @code-reviewer
+     ·    ux-review @ux-reviewer
+     ·    security @security-reviewer
+     ·    docs @doc-updater
+     · ⚖️ verify @verification-loop
+✓ 枢機卿 tribunal — Tribunal (断罪機関)   [review: god]
+     · ⚖️ reflect @self-critic
+     · ⚖️ verdict @creation-judge
+════════════════════════════════════════════════════
+domains ratified: 6/6
+
+相の状態の内訳(ratify 後): {"pending":17}
+done の相の数: 0 / 17
+artifactPath を持つ相の数: 0 / 17
+ratified な領域の数: 6 / 6
+
+=== 4. conclave.js audit がこの走行帳をどう裁くか ===
+CONCLAVE AUDIT — 見捨てられた走行 (第53条)
+════════════════════════════════════════════════════════
+✓ [probe] para6-demo  domains 6/6
+════════════════════════════════════════════════════════
+見捨てられた走行: 0 / 判定不能: 0 / 全 1
+
+auditRuns の生の判定: {
+  "where": "probe",
+  "slug": "para6-demo",
+  "path": "C:\\Users\\kikus\\AppData\\Local\\Temp\\para6-mnII08\\conclave.json",
+  "state": "closed",
+  "abandoned": false,
+  "idleMs": 1,
+  "ratified": 6,
+  "total": 6,
+  "closed": true,
+  "lastBeat": "2026-09-16T15:08:54.086Z",
+  "beats": 0,
+  "lastProof": null
+}
+
+exit code 相当 (abandoned+unknown+unreadable): 0
+TMPDIR=C:\Users\kikus\AppData\Local\Temp\para6-mnII08
+EXIT=0

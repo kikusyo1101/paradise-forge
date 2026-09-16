@@ -1,0 +1,29 @@
+fullJa を触っていないか: true
+fullEn を触っていないか: true
+曲げた forge: C:\Users\kikus\AppData\Local\Temp\jt_design\forge.FINAL.js
+
+══ reform/judgment-triad/_design_matrix.js  exit=0 ══
+═══ 6 道 × 6 道 混同行列 (101 件) ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          22           0      22
+full                     0           0           0           0           0          16      16
+
+対角の合計: 101 / 101  (誤着 0 件)
+
+═══ 非ゼロの非対角セル ═══
+  (無し — 全セル 0)
+
+非ゼロの非対角セル数: 0 / 30
+判定: 合格 (対角 101/101 かつ 非対角 0)
+
+══ tests/route-matrix.test.js  exit=0 ══
+  Route matrix self-test: 13 passed, 0 failed
+
+══ tests/counsel.test.js  exit=0 ══
+  Counsel self-test: 210 passed, 0 failed

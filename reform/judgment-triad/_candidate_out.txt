@@ -1,0 +1,405 @@
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-03USsn\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-03USsn\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-03USsn\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-RpOYpM\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-RpOYpM\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-RpOYpM\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-svSviE\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-svSviE\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-svSviE\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-vv3slZ\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-vv3slZ\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-vv3slZ\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-AfIUOc\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-AfIUOc\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-AfIUOc\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module 'C:\Users\kikus\AppData\Local\Temp\graph\clergy.js'
+Require stack:
+- C:\Users\kikus\AppData\Local\Temp\cand-MHmz5D\counsel.bent.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\kikus\AppData\Local\Temp\cand-MHmz5D\counsel.bent.test.js:24:16)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\kikus\\AppData\\Local\\Temp\\cand-MHmz5D\\counsel.bent.test.js'
+  ]
+}
+
+Node.js v24.14.0
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C1-サイト語彙
+  fullJa に「サイト|ウェブ|ec|通販|ポータル」を足す (+ fullEn に site|website|ecommerce|e-commerce|portal|shop|store)
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           2           0           0          15           0      17
+full                     0           3           0           0           0          15      18
+
+対角の合計: 93 / 98  (誤着 5 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 2 件
+      ・組織図を編集できるツールを作る   (new/PARA-9)
+      ・系統図を出力するコマンドを実装して   (new/PARA-9)
+
+  [full → cartography] : 3 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+非ゼロの非対角セル数: 2 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C1a-サイトのみ(最小)
+  fullJa に「サイト」の一語だけを足す
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           2           0           0          15           0      17
+full                     0           3           0           0           1          14      18
+
+対角の合計: 92 / 98  (誤着 6 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 2 件
+      ・組織図を編集できるツールを作る   (new/PARA-9)
+      ・系統図を出力するコマンドを実装して   (new/PARA-9)
+
+  [full → cartography] : 3 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → standard] : 1 件
+      ・build an e-commerce site   (new/PARA-7)
+
+非ゼロの非対角セル数: 3 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C1b-siteのみ(英語最小)
+  fullEn に site|website だけを足す
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           2           0           0          15           0      17
+full                     0           3           0           0           6           9      18
+
+対角の合計: 87 / 98  (誤着 11 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [standard → cartography] : 2 件
+      ・組織図を編集できるツールを作る   (new/PARA-9)
+      ・系統図を出力するコマンドを実装して   (new/PARA-9)
+
+  [full → cartography] : 3 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・家系図を作れるアプリが欲しい   (new/PARA-9)
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → standard] : 6 件
+      ・ECサイトを作れ   (new/PARA-7)
+      ・社内ポータルサイトを作れ   (new/PARA-7)
+      ・予約サイトを作りたい   (new/PARA-7)
+      ・コーポレートサイトが欲しい   (new/PARA-7)
+      ・通販サイトを構築して   (new/PARA-7)
+      ・ニュースポータルのウェブサイトが欲しい   (new/PARA-7)
+
+非ゼロの非対角セル数: 3 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C2-作図を産物で打ち消す
+  isCartography に `if (wantsProduct(wish)) return false;` を足す(素朴版)
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          13           2           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          17           0      17
+full                     0           1           1           0           7           9      18
+
+対角の合計: 87 / 98  (誤着 11 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [cartography → reform] : 2 件
+      ・楽園の相の系統図を描いてほしい   (gate)
+      ・楽園の相の依存をダイアグラムにして   (new)
+
+  [full → cartography] : 1 件
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → reform] : 1 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+
+  [full → standard] : 7 件
+      ・ECサイトを作れ   (new/PARA-7)
+      ・社内ポータルサイトを作れ   (new/PARA-7)
+      ・予約サイトを作りたい   (new/PARA-7)
+      ・コーポレートサイトが欲しい   (new/PARA-7)
+      ・通販サイトを構築して   (new/PARA-7)
+      ・ニュースポータルのウェブサイトが欲しい   (new/PARA-7)
+      ・build an e-commerce site   (new/PARA-7)
+
+非ゼロの非対角セル数: 4 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=1
+  ✗ M-2 [対角]: 対角線の合計がコーパスの件数と等しい — 全件が正しい道へ着く
+  ✗ M-3 [非対角]: 非対角の**各セル**が 0 — どの道も他の道を奪っていない
+  Route matrix self-test: 11 passed, 2 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C2a-作図を産物で打ち消す(強い産物名のみ)
+  isCartography に PRODUCT_STRONG_RE による打ち消しだけを足す(紛れ語の守り付き)
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          17           0      17
+full                     0           1           1           0           7           9      18
+
+対角の合計: 89 / 98  (誤着 9 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [full → cartography] : 1 件
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → reform] : 1 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+
+  [full → standard] : 7 件
+      ・ECサイトを作れ   (new/PARA-7)
+      ・社内ポータルサイトを作れ   (new/PARA-7)
+      ・予約サイトを作りたい   (new/PARA-7)
+      ・コーポレートサイトが欲しい   (new/PARA-7)
+      ・通販サイトを構築して   (new/PARA-7)
+      ・ニュースポータルのウェブサイトが欲しい   (new/PARA-7)
+      ・build an e-commerce site   (new/PARA-7)
+
+非ゼロの非対角セル数: 3 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+
+══════════════════════════════════════════════════════════════════════════════
+候補 C3-C1+C2a 併用
+  C1 と C2a を同時に当てる
+  差分が当たったか: YES
+══════════════════════════════════════════════════════════════════════════════
+═══ 6 道 × 6 道 混同行列 ═══
+
+正解\実際               counse      cartog      reform       quick      standa        full     計
+────────────────────────────────────────────────────────────────────────────────────────────
+counsel                 18           0           0           0           0           0      18
+cartography              0          15           0           0           0           0      15
+reform                   0           0          15           0           0           0      15
+quick                    0           0           0          15           0           0      15
+standard                 0           0           0           0          17           0      17
+full                     0           1           1           0           0          16      18
+
+対角の合計: 96 / 98  (誤着 2 件)
+
+═══ 非ゼロの非対角セル ═══
+
+  [full → cartography] : 1 件
+      ・相関図を描けるアプリを作って   (new/PARA-9)
+
+  [full → reform] : 1 件
+      ・一門の家系図を作れるアプリが欲しい   (new/PARA-9)
+
+非ゼロの非対角セル数: 2 / 30
+
+  ── 既存の門 tests/route-matrix.test.js を曲げた forge に撃つ ──
+  exit=0
+  Route matrix self-test: 13 passed, 0 failed
+
+  ── 既存の門 tests/counsel.test.js を曲げた forge に撃つ ──
+  exit=1
+  (出力なし)
+EXIT=0

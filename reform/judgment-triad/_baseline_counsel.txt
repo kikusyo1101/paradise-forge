@@ -1,0 +1,236 @@
+諐問の道 — 願いの行き先 (判定表):
+  ✓ "現状のCIの健全性を監査してほしい" → counsel
+  ✓ "Rustの非同期ランタイムの選択肢を調査して比較表がほしい" → counsel
+  ✓ "今月のPRの傾向を報告してほしい" → counsel
+  ✓ "この設計は妥当か意見がほしい" → counsel
+  ✓ "ハーネスの設計を見直す必要はないか" → counsel
+  ✓ "楽園のエンジンを監査してほしい" → counsel
+  ✓ "楽園のエンジンのバグを修正する" → reform
+  ✓ "楽園に新しい門を追加してほしい" → reform
+  ✓ "ポモドーロタイマーが欲しい" → standard
+  ✓ "タスク管理アプリを作って" → standard or full
+  ✓ "タイポを直して" → quick
+  ✓ "楽園の自己診断に絞り込みの口を設ける" → reform
+  ✓ "門に監査の一段を足す" → reform
+  ✓ "CI に ledger --audit を追加する" → standard or quick or full
+  ✓ "楽園の位階の相関図を作れ" → cartography
+  ✓ "台帳の毒を直す" → quick
+  ✓ "build a habit tracker app" → full
+  ✓ "比較表がほしい" → counsel
+  ✓ "ログイン画面のバグを直す" → quick
+  ✓ "オーケストレーションの相関図、関連図を作成し連携してほしい" → cartography
+  ✓ "位階の図を描いてほしい" → cartography
+  ✓ "creations のデータフローを可視化して" → cartography
+  ✓ "draw a sequence diagram of the dispatch chain" → cartography
+  ✓ "意図を汲んでタイマーを実装してほしい" → standard
+  ✓ "地図アプリが欲しい" → standard or full
+  ✓ "楽園の憲法に条を足せ" → reform
+  ✓ "バグを直して" → quick
+  ✓ "エンジンを監査してほしい" → counsel
+  ✓ "ダッシュボードを生きた門にせよ" → reform
+  ✓ "fix login bug" → quick
+  ✓ "add a dark mode toggle" → standard
+  ✓ "楽園のオーケストレーションを改善する" → reform
+  ✓ "憲法に条を足す" → reform
+  ✓ "improve the harness engine" → reform
+  ✓ "門を強化する" → reform
+  ✓ "市場の競合を調査して報告書をくれ" → counsel
+  ✓ "健康診断アプリが欲しい" は counsel でない (AC-04 / 教主裁定1)
+
+諐問の道 — 剥ぎと語彙の単体:
+  ✓ denude はフラグ語・バッククォート・ファイル名を剥ぐ (FR-02)
+  ✓ denude は冪等である — 二度剥いでも同じ文
+  ✓ chooseScale は剥いだ文で判定する — フラグ名が道を変えない (FR-02)
+  ✓ denude は元の願い文を汚さない — meta.wish は原文のまま (L-5)
+  ✓ PRODUCT_RE は産物の主名詞を拾い、「図」を拾わない (FR-03 / L-8)
+  ✓ 一字の産物名の紛れ語が諐問の道を奪わない (人口/窓口/相場/相談)
+  ✓ 報告書を求める願いは、産物の名を含んでも諐問である
+  ✓ BUILD_RE は「既に在る物に一段足す」動詞を知っている (FR-01)
+  ✓ isCounsel の直接の断定が保存されている (AC-11)
+  ✓ chooseScale の返り値は文字列である (FR-05 / AC-12 / L-1)
+  ✓ COUNSEL_JA / COUNSEL_EN の定数名が forge.js に残っている (FR-06 / AC-13 / L-2)
+  ✓ admit の裁定は chooseScale と一致する (AC-17 / paradise.test.js:8566 の主張)
+
+道選び — 世間の願いを reform へ攫わない:
+  ✓ "build a workflow automation app for my team" は reform でない — 世間の語 workflow に道を奪われない
+  ✓ "an identity verification service for startups" は reform でない — 世間の語 identity に道を奪われない
+  ✓ "a vendor management dashboard" は reform でない — 世間の語 vendor に道を奪われない
+  ✓ "build a contract review tool" は reform でない — 世間の語 contract に道を奪われない
+  ✓ "make a census data explorer" は reform でない — 世間の語 census に道を奪われない
+  ✓ "a pulse oximeter tracking app" は reform でない — 世間の語 pulse に道を奪われない
+  ✓ "deploy a static site for my blog" は reform でない — 世間の語 deploy に道を奪われない
+  ✓ "atlas という名の地図アプリを作れ" は reform でない — 世間の語 atlas に道を奪われない
+  ✓ "CIに合格するためのアプリが欲しい" は reform でない — 世間の語 ci に道を奪われない
+  ✓ "顧客のワークフローを管理するアプリが欲しい" は reform でない — 世間の語 ワークフロー に道を奪われない
+  ✓ "a domains registrar comparison site" は reform でない — 世間の語 domains に道を奪われない
+  ✓ "the upstream supplier tracker we discussed" は reform でない — 世間の語 upstream に道を奪われない
+  ✓ "our derived metrics dashboard for sales" は reform でない — 世間の語 derived に道を奪われない
+  ✓ "a lessons booking app for tutors" は reform でない — 世間の語 lessons に道を奪われない
+  ✓ "your workspace booking tool for the office" は reform でない — 世間の語 workspace に道を奪われない
+  ✓ "their identity card printing service" は reform でない — 世間の語 identity に道を奪われない
+  ✓ "make a pulse survey app for employees" は reform でない — 世間の語 pulse に道を奪われない
+  ✓ "build a vendor invoice scanner" は reform でない — 世間の語 vendor に道を奪われない
+  ✓ "create a contract expiry reminder" は reform でない — 世間の語 contract に道を奪われない
+  ✓ "a census tract map viewer" は reform でない — 世間の語 census に道を奪われない
+  ✓ "build an atlas of local hiking trails" は reform でない — 世間の語 atlas に道を奪われない
+  ✓ "ベンダー管理アプリが欲しい" は reform でない — 世間の語 vendor(和) に道を奪われない
+  ✓ "社内のワークフローを描く業務アプリを作って" は reform でない — 世間の語 ワークフロー に道を奪われない
+  ✓ "deploy キーを配るだけの小さな画面が欲しい" は reform でない — 世間の語 deploy に道を奪われない
+  ✓ 楽園の抽象名を含む改革の願いは reform に留まる (逆向きの証明)
+
+道選び — quality 相が実測で見つけた誤着:
+  ✓ "add a gauge widget to my car dashboard" は reform でない — engine 名 gauge も世間の普通名詞である (R-4)
+  ✓ "add a critic score to my movie app" は reform でない — engine 名 critic も世間の普通名詞である (R-4)
+  ✓ "add a verdict field to my court case tracker" は reform でない — engine 名 verdict も世間の普通名詞である (R-4)
+  ✓ "add a forge upgrade screen to my RPG game" は reform でない — engine 名 forge も世間の普通名詞である (R-4)
+  ✓ "add an abode listing page to my rental app" は reform でない — engine 名 abode も世間の普通名詞である (R-4)
+  ✓ "add a hermetic seal check to my lab app" は reform でない — engine 名 hermetic も世間の普通名詞である (R-4)
+  ✓ "add a codex viewer to my fantasy game" は reform でない — engine 名 codex も世間の普通名詞である (R-4)
+  ✓ "add a clergy directory to my parish app" は reform でない — engine 名 clergy も世間の普通名詞である (R-4)
+  ✓ "add a synod calendar to our church site" は reform でない — engine 名 synod も世間の普通名詞である (R-4)
+  ✓ 楽園の抽象名を伴えば今まで通り楽園を名指す (R-4 の逆向き)
+  ✓ 限定詞付きの世間の願い(道まるごと)が reform へ落ちない (R-3)
+
+道選び — F-1: engine 名が世間の願いを攫う(教主と tribunal が実測した回帰):
+  ✓ "gauge calibration tracker" は reform でない — engine 名 gauge が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "forge 鍛冶屋の在庫管理アプリを作って" は reform でない — engine 名 forge が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "synod 教会会議の議事録アプリ" は reform でない — engine 名 synod が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "critic 映画批評サイトを作れ" は reform でない — engine 名 critic が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "verdict 裁判の記録を管理するツール" は reform でない — engine 名 verdict が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "clergy 聖職者名簿アプリが欲しい" は reform でない — engine 名 clergy が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "abode 不動産アプリを作って" は reform でない — engine 名 abode が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "hermetic 密封容器の在庫管理" は reform でない — engine 名 hermetic が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "conclave ボードゲームのスコア表アプリ" は reform でない — engine 名 conclave が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ "ordain 儀式の手順書アプリが欲しい" は reform でない — engine 名 ordain が世間の願いの道を奪わない (AC-36 / 教主の実測)
+  ✓ 強い名のコーパスが engine 名を過不足なく覆っている (AC-37 / F-4)
+  ✓ "abode 不動産アプリを作って" は reform でない — engine 名 abode(26 語網羅) (AC-37)
+  ✓ "apply-guards という警備員シフト管理アプリが欲しい" は reform でない — engine 名 apply-guards(26 語網羅) (AC-37)
+  ✓ "apply-hooks 釣り針通販サイトを作れ" は reform でない — engine 名 apply-hooks(26 語網羅) (AC-37)
+  ✓ "apply-models ファッションモデル事務所の名簿アプリ" は reform でない — engine 名 apply-models(26 語網羅) (AC-37)
+  ✓ "apply-seat 劇場の座席予約サイトを作って" は reform でない — engine 名 apply-seat(26 語網羅) (AC-37)
+  ✓ "apply-spawn 養殖場の稚魚管理アプリが欲しい" は reform でない — engine 名 apply-spawn(26 語網羅) (AC-37)
+  ✓ "branch-guard 支店の警備記録管理ツールを作れ" は reform でない — engine 名 branch-guard(26 語網羅) (AC-37)
+  ✓ "build-identity-catalog 名刺カタログ印刷サイト" は reform でない — engine 名 build-identity-catalog(26 語網羅) (AC-37)
+  ✓ "check-agents 不動産仲介業者の評価サイトを作って" は reform でない — engine 名 check-agents(26 語網羅) (AC-37)
+  ✓ "clergy 聖職者名簿アプリが欲しい" は reform でない — engine 名 clergy(26 語網羅) (AC-37)
+  ✓ "codex 写本閲覧サイトを作れ" は reform でない — engine 名 codex(26 語網羅) (AC-37)
+  ✓ "conclave ボードゲームのスコア表アプリ" は reform でない — engine 名 conclave(26 語網羅) (AC-37)
+  ✓ "critic 映画批評サイトを作れ" は reform でない — engine 名 critic(26 語網羅) (AC-37)
+  ✓ "daily-guard 日替わり当番表アプリが欲しい" は reform でない — engine 名 daily-guard(26 語網羅) (AC-37)
+  ✓ "export-state 輸出申告書の作成ツールを作って" は reform でない — engine 名 export-state(26 語網羅) (AC-37)
+  ✓ "forge 鍛冶屋の在庫管理アプリを作って" は reform でない — engine 名 forge(26 語網羅) (AC-37)
+  ✓ "gauge calibration tracker" は reform でない — engine 名 gauge(26 語網羅) (AC-37)
+  ✓ "graph-engine 折れ線グラフ描画ライブラリのデモサイト" は reform でない — engine 名 graph-engine(26 語網羅) (AC-37)
+  ✓ "hermetic 密封容器の在庫管理" は reform でない — engine 名 hermetic(26 語網羅) (AC-37)
+  ✓ "orchestrator 楽団の演奏会管理アプリ" は reform でない — engine 名 orchestrator(26 語網羅) (AC-37)
+  ✓ "ordain 儀式の手順書アプリが欲しい" は reform でない — engine 名 ordain(26 語網羅) (AC-37)
+  ✓ "spawn-trace 産卵地の追跡記録サイトを作れ" は reform でない — engine 名 spawn-trace(26 語網羅) (AC-37)
+  ✓ "synod 教会会議の議事録アプリ" は reform でない — engine 名 synod(26 語網羅) (AC-37)
+  ✓ "verdict 裁判の記録を管理するツール" は reform でない — engine 名 verdict(26 語網羅) (AC-37)
+  ✓ "visual-verify 目視検査の記録アプリが欲しい" は reform でない — engine 名 visual-verify(26 語網羅) (AC-37)
+  ✓ "wiring 電気配線工事の見積アプリを作って" は reform でない — engine 名 wiring(26 語網羅) (AC-37)
+  ✓ 楽園の抽象名は改変の動詞を伴えば今まで通り楽園を名指す (AC-38 / F-1 の逆向き)
+  ✓ 抽象名は今まで通り無条件で楽園を名指す (AC-40 / 修理が広がりすぎていない)
+  ✓ REFORM_RE は main の抽象名を過不足なく持つ (表を直に撃つ)
+  ✓ B-1【教主の裁定】答えを求める語(見直す)は counsel が取る — 為せと命ずる語(直す)は reform
+  ✓ MEND の世間側コーパスが改める動詞を過不足なく覆っている (AC-43 / F-4 の五度目を止める)
+  ✓ "gauge の壊れた針を直すDIYサイトが欲しい" は reform でない — 改める語 直す × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "abode 賃貸物件の写真の傾き直しツール" は reform でない — 改める語 直し × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "forge 溶接所の看板のデザインを直せるWebエディタ" は reform でない — 改める語 直せ × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "clergy 名簿の読み仮名を直してくれるアプリ" は reform でない — 改める語 直して × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "synod 議事録の誤字を修正できるアプリ" は reform でない — 改める語 修正 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "codex 古文書の破れを修復する写真加工サイト" は reform でない — 改める語 修復 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "abode 住宅改修の見積もりシミュレータ" は reform でない — 改める語 改修 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "hermetic 密閉パッキンの歩留まりを改善する生産管理アプリ" は reform でない — 改める語 改善 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "ordain 式次第の文言を改める編集画面のアプリが欲しい" は reform でない — 改める語 改める × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "critic 投稿の表記を改めたい人向けの校正サイト" は reform でない — 改める語 改め × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "clergy 名簿の重複を除くツールが欲しい" は reform でない — 改める語 除く × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "wiring 配線工事の錆を除去する薬剤の通販サイト" は reform でない — 改める語 除去 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "hermetic 容器の不良品を取り除く検品アプリ" は reform でない — 改める語 取り除 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "abode 空き家の隙間を塞ぐリフォーム業者マッチングサイト" は reform でない — 改める語 塞ぐ × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "forge 溶接で穴を塞いだ実績を載せる工務店のサイト" は reform でない — 改める語 塞い × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "verdict 待ち時間を潰す暇つぶしゲーム集のアプリ" は reform でない — 改める語 潰す × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "synod 会議費の予算を削る稟議アプリ" は reform でない — 改める語 削る × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "critic 投稿したレビューを削除できる掲示板" は reform でない — 改める語 削除 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "daily-guard 当番表から欠勤者を外すシフト管理アプリ" は reform でない — 改める語 外す × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "abode 不動産の写真を差し替えるツール" は reform でない — 改める語 替える × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "export-state 輸出書類の旧様式を置き換える変換ツール" は reform でない — 改める語 置き換え × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "codex 蔵書の分類を書き換えるツール" は reform でない — 改める語 書き換え × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "clergy 祭壇の花を整えるフラワーアレンジ教室の予約サイト" は reform でない — 改める語 整える × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "branch-guard 支店の警備契約を見直す相見積もりサービス" は reform でない — 改める語 見直 × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "fix gauge readings in my vintage car dashboard app" は reform でない — 改める語 fix × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "repair shop booking site for forge equipment" は reform でない — 改める語 repair × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "remove watermarks from codex scans, a small web tool" は reform でない — 改める語 remove × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "refactor my resume with critic feedback, a writing coach app" は reform でない — 改める語 refactor × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "rewrite listings copy for abode rentals automatically" は reform でない — 改める語 rewrite × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "patch notes viewer for conclave board game expansions" は reform でない — 改める語 patch × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "harden shipping boxes for hermetic containers — a materials picker" は reform でない — 改める語 harden × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "migrate orchestrator seating charts from excel to a web app" は reform でない — 改める語 migrate × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "abode drop shipping storefront builder" は reform でない — 改める語 drop × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ "deprecate old ordain ceremony templates in my church CMS" は reform でない — 改める語 deprecate × engine 名(34 語網羅) (AC-43 / Q2-1)
+  ✓ 「門」の紛れ語は main と同じ振る舞いである (AC-45 / 本走行は悪化させていない)
+  ✓ engine 名 + 改める動詞だけでは楽園を名乗らない (AC-44 / 広げる変異を捕らえる)
+  ✓ engine 名 + 建造の動詞 + 世間の器は楽園でない (Q3-2 の回帰を捕らえる)
+  ✓ 楽園の抽象名は世間の器の名を伴っても reform である (Q3-1 の回帰を捕らえる / 37 語)
+  ✓ REFORM_RE が病的な入力で二乗に膨れない (S-1 と同じ病を持ち込まない)
+  ✓ 強い産物名の紛れ語が諐問の道を奪わない (R-2 / 機能・一段・画面)
+  ✓ 一字の紛れ語の表は quality 相が足した 20 語を持つ (R-1)
+  ✓ denude / chooseScale は長い願い文でも線形時間である (S-1 / ReDoS)
+  ✓ 剥ぎの結果は後読みを足しても一字も変わらない (S-1 の正しさ)
+
+諐問の道 — 何も創らないことの証明:
+  ✓ counsel という第5の道が存在する
+  ✓ counsel の道は build / tests / verdict 相を一つも持たない
+  ✓ counsel の道は survey/measure/assess/counter/synthesize/counsel の6相である
+  ✓ counsel の終端相は推奨を返す(断罪ではない)
+  ✓ 他の4本の道には依然として build 相がある(壊していない証拠)
+  ✓ meta.produces が道の性質を宣言する (counsel=document / 他=artifact)
+  ✓ meta の既存キーは一つも壊れていない
+
+諐問の道 — survey と measure は並列に立つ:
+  ✓ survey と measure は同じ波(wave)に入る
+  ✓ counsel の DAG は engine の検証を通る(循環も宙吊り依存も無い)
+
+諐問の道 — 全ての相に主が居る:
+  ✓ 枢機卿 counsel が存在し、6相すべてを統べる
+  ✓ counsel の全相がどれかの枢機卿/執行官に統べられている(無主の相が無い)
+  ✓ ungovernedPhases() は全5本の道を見て何も返さない
+  ✓ 相名の衝突が無い: analyze は requirements のまま、諐問は assess を使う
+  ✓ counsel の道が名指す神官は全て clergy に実在する
+
+諐問の道 — 新しい担い手に実体があるか:
+  ✓ overlay/agents/auditor.md が実在し、位階どおりの宣言を持つ
+  ✓ overlay/agents/reporter.md が実在し、位階どおりの宣言を持つ
+  ✓ overlay/agents/data-collector.md が実在し、位階どおりの宣言を持つ
+  ✓ 新エージェント3体は overlay.json の own に登録されている(配備に乗る)
+  ✓ 信徒 data-collector に務めの説明がある(名前だけの階層を作らない)
+
+諐問の道 — 門を壊して鳴ることの証明:
+  ✓ COUNSEL_RE を空にすると判定は崩れる(門が効いている証拠)
+  ✓ 日本語に \b を使うと語彙は死ぬ(既存バグの回帰固定)
+  ✓ 創造の除外が効いている(除外を外せば創造の願いが攫われる)
+
+諐問の道 — 元老院は諐問を批准できるか (第32条の隣人):
+  ✓ 元老院は諐問の計画を批准する — 建てた道が入口で拒まれない
+  ✓ 創造の道は依然として厳しい — 門を緩めていない証拠
+  ✓ 諐問から survey を抜くと鳴る — 外を調べぬ諐問は憶測
+  ✓ 諐問から measure を抜くと鳴る — 手元を測らぬ諐問は伝聞
+  ✓ 諐問から counter を抜くと鳴る — 己を疑わぬ諐問は断定
+  ✓ 諐問に build/tests/verdict が紛れ込めば鳴る (第32条)
+  ✓ 道の性質によらぬ掟は両方に効く — 神官なき枢機卿は両道で欠陥
+
+断罪の門 — 不在は通過ではない (第37条):
+  ✓ 空のレポートは SHIP されない — 何も検証していない報告は通過ではない
+  ✓ security の不在は BLOCK — 不明な安全性は証明された安全性ではない
+  ✓ 中身の無い security 報告も BLOCK — 名前だけの証拠は証拠でない (第16条)
+  ✓ tests の不在は REWORK — 試験なき実装は未検証
+  ✓ 試験0件は REWORK — 空の試験は試験ではない
+  ✓ 完全な報告は依然として SHIP — 門を塞いだが緩めていない
+  ✓ 諐問(produces:document)は build/tests を要求されない (第32条・第36条)
+  ✓ 秘密の混入は今も BLOCK — 既存の裁きを壊していない
+  ✓ 相ごとに相応しい神官が指揮される — 実体を作って命令が届かぬ階層は階層でない (第25条)
+  ✓ 創造の道の指揮系統は壊れていない
+  ✓ 指揮系統を跨いだ発令はしない — 表が他家の神官を指しても自家に落ちる
+
+Counsel self-test: 210 passed, 0 failed
+EXIT=0
