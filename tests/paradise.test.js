@@ -16,6 +16,19 @@ const ENGINE = path.join(DIR, '..', 'graph', 'graph-engine.js');
 const KG = path.join(DIR, '..', 'graph', 'kg.js');
 const engine = require(path.join(DIR, '..', 'graph', 'graph-engine.js'));
 
+/**
+ * **いま走っている門の名**(第62条(b) / verify 相 S-3)。
+ *
+ * 第62条(b) は「食い違えば**どの門が汚したかを名指して**倒れよ」と明文で命じている。
+ * だが番兵は `withGaugeSandbox` の中に居り、器は自分を呼んだ門の名を知らなかった ——
+ * **66 の呼び口すべてに名を配るより、走行の側が名を置く方が安い**(第48条: 名の出所は一つ)。
+ * `test()` がここに名を置き、番兵がそれを読む。門の外で器が呼ばれたときは `null` である。
+ *
+ * ⚠️ `typeof` で守る理由は `test()` の docblock と同じ —— この宣言は絞り込み塊の**外**に住み、
+ * 塊を子プロセスへ抜き出す門(`門ヘルパー: test() の失敗が必ず数に載る`)は宣言を連れて行かない。
+ */
+const CURRENT_GATE = { name: null };
+
 // >>> gate-filter: 絞り込み塊 ここから  (AC-16 の門がこの対を読む — 対を消すな)
 /**
  * 門の絞り込みの口 (reform/gate-filter)。**CLI 引数のみ。環境変数は一つも読まない。**
@@ -103,6 +116,8 @@ function test(name, fn) {
     GATE.matched++;
     if (GATE.list) { GATE.say(name); return; }          // fn を呼ばない
   }
+  // **番兵に真犯人を名乗らせる**(第62条 b / verify S-3)。`typeof` で守る理由は上と同じ。
+  if (typeof CURRENT_GATE !== 'undefined') CURRENT_GATE.name = name;
   try { fn(); console.log('  \u2713 ' + name); pass++; }
   catch (e) {
     if (e && e.__skip) {
@@ -112,6 +127,7 @@ function test(name, fn) {
     }
     console.log('  \u2717 ' + name + '\n      ' + e.message); fail++;
   }
+  finally { if (typeof CURRENT_GATE !== 'undefined') CURRENT_GATE.name = null; }
 }
 // <<< gate-filter: 絞り込み塊 ここまで  (AC-16 の門がこの対を読む — 対を消すな)
 
@@ -3456,20 +3472,253 @@ console.log('\nGauge 台帳の冪等性 (第55条):');
 const GAUGE_JS = path.join(DIR, '..', 'graph', 'gauge.js');
 const WORKSPACE_JS = path.join(DIR, '..', 'graph', 'workspace.js');
 
+/**
+ * ── 実台帳の番兵(第62条(b) / D-A)─────────────────────────────────
+ * 本走行の discover 相で、住所解決を壊す変異(W1)が **門の防御を素通りして**
+ * 実台帳に 14 行を書いた。`PARADISE_CREATIONS` の振替は「門が正しく書かれている限り」
+ * しか効かない —— 振替そのものを壊す変異には無力である。
+ * ゆえに **不可侵を主張ではなく測定にする**:門ごとに指紋を照合する。
+ * 実測の代: sha256 一回 0.057 ms x 62 呼出 = 3.5 ms(節 9.6 秒の 0.04%)。
+ */
+const REAL_LEDGER = path.join(require(WORKSPACE_JS).resolve().root, 'gauge-ledger.jsonl');
+
+/**
+ * ── **倉の側の状態を名乗る**(rework 相 / R-4 / 残債 SM-S2 の半分の返済)──────────────
+ *
+ * verify 相は SM-S2 を残債にし、その理由を
+ * 「本物の不在と偽装の不在を**外から区別する道が今日は無い**」と書いた。
+ * **reflect 相がこれを測定で偽と告発し、rework 相が三通りの機で撃ち直した:**
+ *
+ * ```
+ * [A 倉あり・台帳あり(神の機)]    {"source":"env","exists":true, "vault":false,"ledger":true}
+ * [B 倉あり・台帳だけ隠した(S-2)] {"source":"env","exists":true, "vault":false,"ledger":false}
+ * [C 倉ごと無い(CI の機)]        {"source":"env","exists":false,"vault":null, "ledger":false}
+ * ```
+ *
+ * **B と C は `exists` と `vault` の両方で既に分かれている。** `workspace.js` を一文字も変えていない ——
+ * **既に在る欄を読むだけ**である。**ゆえに「道が無い」は偽であり、その理由で残債にはできない。**
+ *
+ * **裁定: (i) 実際に塞ぐ**を採った。ただし**塞げるのは片側だけ**であり、その境目を測って書く。
+ *
+ * | 機 | source | exists | 台帳 | 裁定 | 理由 |
+ * |---|---|---|---|---|---|
+ * | M1 神の機 | sibling | true | 在る | **照合** | 指紋が採れる |
+ * | M2 **S-2 の偽装** | sibling | true | **無い** | **🔴 赤** | **兄弟倉は在るのに台帳だけ無い = 隠された。ここを塞いだ** |
+ * | M3 CI の機 | sibling/default | **false** | 無い | skip | 兄弟倉ごと無い(第37条が認めた不在) |
+ * | M4 振替の機 | **env** | 任意 | 無い | skip | 操作者が `PARADISE_CREATIONS` で倉を**意図して**振り替えた |
+ *
+ * **M4 を赤にしない理由は測定である**(第38条)—— `PARADISE_CREATIONS=<仮ディレクトリ>` は
+ * 本走行の変異台・複製走行・`gauge-audit.test.js` が**日常的に使う道**であり、
+ * 赤にすれば「倉を振り替えた瞬間に全門が落ちる」。**偽の赤は門を殺す。**
+ * 残るのは「**`env` で振り替えた機では台帳の隠蔽と振替を分けられない**」という**真の**残債であり、
+ * それが rework 後の SM-S2 の理由である(「道が無い」ではない)。
+ */
+function ledgerAbsenceKind() {
+  let r;
+  try { r = require(WORKSPACE_JS).resolve(); }
+  catch (e) { return { kind: 'unmeasurable', why: `住所解決が投げた: ${e && e.message}` }; }
+  if (r.source === 'env') {
+    return { kind: 'redirected',
+      why: `倉が PARADISE_CREATIONS で振り替えられている(${r.root})— `
+        + '操作者が意図して倉を動かした機である。**この機では隠蔽と振替を分けられない**(残債 SM-S2)' };
+  }
+  if (!r.exists) {
+    return { kind: 'absent',
+      why: `兄弟倉そのものが無い(${r.root})— 第37条が認めた不在の機(CI がこれ)` };
+  }
+  return { kind: 'hidden',
+    why: `**兄弟倉は在る(${r.root} / source=${r.source} / exists=true)のに台帳だけ無い** — `
+      + '本物の不在なら倉ごと無いはずである。台帳だけが消えているのは**隠蔽の形**であり、'
+      + '走行を通して隠せば番兵が永久 skip になる手口そのものである (security S-2 / 第62条 b)' };
+}
+
+/**
+ * **「不在」と「読めない」を別の言葉で名乗る**(verify 相 S-1 / 第37条)。
+ *
+ * 旧実装は `fs.existsSync(p) ? sha256(readFileSync(p)) : null` だった。
+ * security 相 A4 が撃ったとおり、**実台帳の位置にディレクトリを置くだけ**で
+ * `existsSync` は真・`readFileSync` は `EISDIR` を投げ、**この式は節の最上位に住むので
+ * モジュールの読み込みごと死に、484 門が一本も走らなかった**(実測 exit 1)。
+ * `EACCES` / `ELOOP` / `ENAMETOOLONG` も同じ道である。
+ *
+ * ゆえに指紋採りを fail-safe にし、三つの状態を**別の値**で返す:
+ *   - `null`                  … 不在(ENOENT)。CI の兄弟倉が無い機。`skip` を名乗って通す。
+ *   - `'unreadable:<CODE>'`   … **在るが読めない**。これは skip ではない —— **番兵が倒れる。**
+ *   - `'<64桁の hex>'`        … 指紋。
+ * 第37条は「不在は通過ではない」と言う。**不能も通過ではない。だが不能で全門を殺すのは更に悪い。**
+ */
+const SENTINEL_UNREADABLE = 'unreadable:';
+function ledgerDigest(p) {
+  try {
+    return require('crypto').createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+  } catch (e) {
+    const code = String((e && e.code) || 'EUNKNOWN');
+    return code === 'ENOENT' ? null : SENTINEL_UNREADABLE + code;
+  }
+}
+/** 実台帳の大きさ(バイト)。読めなければ `null`。`sentinelChangeKind` の材料である。 */
+function ledgerSize(p) {
+  try { const st = fs.statSync(p); return st.isFile() ? st.size : null; } catch { return null; }
+}
+const REAL_DIGEST = ledgerDigest(REAL_LEDGER);
+const REAL_SIZE = ledgerSize(REAL_LEDGER);
+
+/**
+ * 番兵の判定 —— **純関数**である(AC-3(a) が作り物の「実台帳」でこの関数自体を撃つため)。
+ * 実台帳が不在の機(CI)では `before === after === null` で true を返すが、
+ * **黙って true を返してはならない** —— 不在は `sentinelSkipNote()` が名乗る(第37条)。
+ */
+function ledgerUntouched(before, after) { return before === after; }
+
+/**
+ * **なぜ番兵が動くのか**を一本の純関数で名指す(第48条: 同じ問いに二つの答えを持たない)。
+ * 返り値: `null` = 無事 / `'skip'` = 不在のまま(名乗って通す)/ それ以外は**理由の文面**。
+ */
+function sentinelReason(before, after) {
+  const unread = (v) => typeof v === 'string' && v.startsWith(SENTINEL_UNREADABLE);
+  if (unread(before) || unread(after)) {
+    return `実台帳が在るのに読めない(${unread(after) ? after : before})`
+         + ' — 「読めない」は「不在」ではない (verify S-1 / 第37条)';
+  }
+  if (before === null && after === null) return 'skip';
+  if (before === null) {
+    return '節の読み込みの時は不在だった実台帳が、走行の途中で現れた'
+         + ' — 一瞬だけ隠して番兵を永久 skip に固定する手口である (verify S-2 / 第62条 b)';
+  }
+  if (after === null) return '走行の途中で実台帳が消えた — 門は仮倉としか話してはならない (第30条)';
+  if (ledgerUntouched(before, after)) return null;
+  return '実台帳が書き換えられた — 門は仮倉としか話してはならない (D-A / 第30条 / 第62条 b)';
+}
+
+/**
+ * 番兵の**裁定**もまた純関数である(prove 相の修理 / 第21条)。
+ *
+ * ⚠️ **なぜ純関数に持ち上げたか。** 当初この裁定は `withGaugeSandbox` の `finally` の
+ * `if (!ledgerUntouched(...))` の**内側**に三行で書かれていた。だが実台帳が汚れない機
+ * —— つまり**門が正しく働いている限りすべての機** —— では、その三行は**到達不能**である。
+ * prove 相が変異 Y11(`if (bodyThrew) … else throw` を無条件 `throw` に潰す)を撃ったところ、
+ * **門は一本も鳴らなかった**。死に枝を撃つ変異は、死に枝のままでは捕まらない。
+ * ゆえに裁定を**実台帳の状態に依らず撃てる形**に出し、AC-2 がこの関数を直接撃つ。
+ *
+ * 返り値: 'ok' = 無傷 / 'skip' = 不在のまま / 'warn' = 異常だが本体が既に投げている(名乗りのみ)
+ *        / 'throw' = 番兵が倒れる
+ */
+function sentinelVerdict(bodyThrew, before, after, absence) {
+  const why = sentinelReason(before, after);
+  if (why === null) return 'ok';
+  /**
+   * ── **「不在のまま」は無条件では通さない**(rework / R-4 / SM-S2)──────────────
+   * `absence` は `ledgerAbsenceKind()` の `kind`。**倉が在るのに台帳だけ無い(`hidden`)なら
+   * それは第37条が認めた不在ではなく隠蔽の形**であり、番兵は skip ではなく倒れる。
+   * 引数で受けるのは**この裁定を純関数のまま四通りの機で撃てるようにするため**である
+   * (第44条: 死に枝は撃てない / prove 相 Y11 の教訓)。
+   * `absence` を渡さない古い呼び方は `undefined` になり、**従来どおり skip** —— 呼び手の配線は
+   * 「番兵は本体の例外を飲み込まない」門が正規表現で凍らせている。
+   */
+  if (why === 'skip') return absence === 'hidden' ? (bodyThrew ? 'warn' : 'throw') : 'skip';
+  return bodyThrew ? 'warn' : 'throw';   // 本体の例外を差し替えない(AC-2)
+}
+
+/**
+ * **「外部の正当な追記」と「門が既存の行を書き換えた」を分ける**(verify S-3 / 第55条)。
+ *
+ * 台帳は追記のみで育つ(第55条)。ゆえに **前の全バイトがそのまま先頭に残っていれば**
+ * 変化は追記である —— 開発者が別端末で `gauge.js record` を走らせた形(security A49)がこれである。
+ * 先頭が変わっていれば、それは追記ではない。
+ *
+ * ⚠️ **正直に言う**: 振替を壊した門が実台帳に**追記**した場合(本走行の W1 がまさにそれ)も
+ * 同じ形を取る。**`appended` は「門は無実」を意味しない** —— 「形は追記である」しか言わない。
+ * 門と外部を確実に分ける道は、番兵が門ごとに前の指紋を採り直す形であり、それは残債 SM-S3 である。
+ */
+function sentinelChangeKind(beforeDigest, beforeSize, afterBuf) {
+  if (!Buffer.isBuffer(afterBuf) || typeof beforeSize !== 'number' || beforeSize < 0) return 'unknown';
+  if (typeof beforeDigest !== 'string' || !/^[0-9a-f]{64}$/.test(beforeDigest)) return 'unknown';
+  if (afterBuf.length < beforeSize) return 'truncated';
+  const head = require('crypto').createHash('sha256')
+    .update(afterBuf.subarray(0, beforeSize)).digest('hex');
+  return head === beforeDigest ? 'appended' : 'rewritten';
+}
+
+/**
+ * 番兵の名乗り。**どの門が汚したかを名指す**(第62条(b) の明文 / verify S-3)。
+ * 純関数である —— 実台帳が汚れない機でも AC-2 がこの文面を直接撃てる。
+ */
+function sentinelMessage(why, gateName, before, after, kind) {
+  const who = gateName ? `門「${gateName}」` : '(門の外 — 器が test() の外で呼ばれた)';
+  const how = { appended: '既存の行は無傷で末尾に追記された(外部の正当な record と同じ形。'
+                        + 'ただし振替を壊した門の追記も同じ形を取る — 形だけでは分けられない)',
+                rewritten: '既存の行そのものが書き換わった(追記ではない — 外部の record では起きない形)',
+                truncated: '台帳が短くなった(追記のみの掟に反する)',
+                unknown: '変化の形は測れなかった' }[kind] || '変化の形は測れなかった';
+  return `${why}: 汚したのは ${who} / 変化の形=${kind}(${how}) / before=${before} after=${after}`;
+}
+
+/** 不在を名乗る一行(AC-3(b) / 第58条(e) / `tests/gauge-audit.test.js:177` の先例)。 */
+function sentinelSkipNote(absence) {
+  /**
+   * **rework 相 / R-4**: 「なぜ無いのかは測っていない」を**測った**に変えた。
+   * `absence.kind` が不在の形を名乗る —— `absent`(倉ごと無い)/ `redirected`(振替)/
+   * `unmeasurable`(住所解決が投げた)。`hidden` はここへ来ない(番兵が倒れる側へ行く)。
+   */
+  const tail = absence
+    ? `不在の形=${absence.kind}: ${absence.why}`
+    : '(なぜ無いのかは測っていない / verify S-12)';
+  return `      \u00b7 skip: 実台帳が無い(${REAL_LEDGER})— ${tail}。`
+       + '番兵自体の歯は「実台帳が無い機でも番兵は歯を持つ」の (a) が撃っている';
+}
+let SENTINEL_SAID = false;   // 節に一度だけ名乗る(62 回の skip 行で画面を埋めない)
+
 function withGaugeSandbox(fn) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-fp-'));
   const prevEnv = process.env.PARADISE_CREATIONS;
   process.env.PARADISE_CREATIONS = tmp;
   delete require.cache[require.resolve(WORKSPACE_JS)];
   delete require.cache[require.resolve(GAUGE_JS)];
+  let bodyThrew = false;                                   // AC-2: 本体が投げたかを憶える旗
   try {
     return fn(require(GAUGE_JS), tmp);
-  } finally {
+  } catch (e) { bodyThrew = true; throw e; }
+  finally {
+    // ── (1) 本体の後始末を**先に**全部済ませる(AC-1 の順序の掟) ──
+    //     番兵が投げても投げなくても、env / cache / 仮倉は必ず元に戻る。
     if (prevEnv === undefined) delete process.env.PARADISE_CREATIONS;
     else process.env.PARADISE_CREATIONS = prevEnv;
     delete require.cache[require.resolve(WORKSPACE_JS)];
     delete require.cache[require.resolve(GAUGE_JS)];
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
+
+    // ── (2) 番兵。**env を戻した後**でなければ住所が仮倉を指したままになる ──
+    /**
+     * **枝を持たずに毎回測る(verify S-2)。** 旧実装は読み込み時の `REAL_DIGEST` が
+     * null かどうかで**先に分岐**していたので、**節の読み込みの一瞬だけ台帳を隠せば
+     * 走行のあいだ番兵が永久に無力**だった
+     * (security A7 の実測: 実台帳を汚しても 122 green / 0 red)。
+     * いまは毎門で採り直し、**不在だったものが現れたら `sentinelReason` が名指す。**
+     *
+     * **判定は `sentinelVerdict` 一本に住む(第48条)。** ここに if を書き足せば
+     * 裁定が二箇所に住み、AC-2 が撃つ側と実際に走る側が食い違う。
+     */
+    const after = ledgerDigest(REAL_LEDGER);
+    /**
+     * **不在の「形」を毎門で測り直す**(rework / R-4 / SM-S2)。
+     * 走行の途中で兄弟倉ごと隠される手口もあるので、読み込み時の一度きりにしない。
+     */
+    const absence9 = (after === null && REAL_DIGEST === null) ? ledgerAbsenceKind() : null;
+    const verdict9 = sentinelVerdict(bodyThrew, REAL_DIGEST, after, absence9 && absence9.kind);
+    if (verdict9 === 'skip') {
+      if (!SENTINEL_SAID) { console.log(sentinelSkipNote(absence9)); SENTINEL_SAID = true; }
+    } else if (verdict9 !== 'ok') {
+      let buf = null;
+      try { buf = fs.readFileSync(REAL_LEDGER); } catch {}
+      const kind = sentinelChangeKind(REAL_DIGEST, REAL_SIZE, buf);
+      const msg = sentinelMessage(
+        absence9 && absence9.kind === 'hidden'
+          ? `実台帳が走行の全体を通して隠されている — ${absence9.why}`
+          : sentinelReason(REAL_DIGEST, after),
+        (typeof CURRENT_GATE !== 'undefined' ? CURRENT_GATE.name : null), REAL_DIGEST, after, kind);
+      if (verdict9 === 'warn') console.error('🔴 ' + msg + ' (本体の例外を優先して名乗りのみ)');
+      else throw new Error(msg);
+    }
   }
 }
 
@@ -3550,6 +3799,225 @@ function injectGauge(sandDir, name, replacer) {
 }
 
 /**
+ * ── 最上位の可変大域を静的に検める(D-L / 第62条(c))────────────────
+ * 射程: `graph/gauge.js` と `graph/spawn-trace.js` **のみ**。
+ * `hermetic.js` は git の一覧の memo(`TRACKED` :516)を正当に持つので射程外である
+ * (実測: 射程を graph/ 全体に広げると即座に 3 件の偽の赤 — :516 :519 :522)。
+ *
+ * 字句器は `graph/hermetic.js` の `shadow` / `bindingsOf` / `functionsOf` を**借りる**
+ * (第48条: 同じ問いに二つの答えを持たない)。足すのは深さの地図だけである。
+ */
+const HERMETIC_JS = path.join(DIR, '..', 'graph', 'hermetic.js');
+const SPAWN_TRACE_JS = path.join(DIR, '..', 'graph', 'spawn-trace.js');
+const DESTRUCTIVE = ['push', 'set', 'add', 'delete', 'clear', 'pop', 'shift', 'unshift',
+  'splice', 'sort', 'reverse'];
+
+/** 影の各位置の入れ子の深さ。0 = 最上位。**hermetic には無い唯一の道具**である。 */
+function topLevelDepths(sh) {
+  const d = new Int32Array(sh.length);
+  let depth = 0;
+  for (let i = 0; i < sh.length; i++) {
+    const c = sh[i];
+    if (c === '(' || c === '[' || c === '{') { d[i] = depth; depth++; continue; }
+    if (c === ')' || c === ']' || c === '}') { depth--; d[i] = depth; continue; }
+    d[i] = depth;
+  }
+  return d;
+}
+
+/**
+ * ── **名前を作らない置き場の一覧と、それぞれの深さの扱い**(rework 相 / R-1)──────────
+ *
+ * **第44条 c / 第62条 c の要求**: 射程は名指しで狭く切り、**なぜ切るかを毎回名乗れ**。
+ *
+ * 旧実装は全形に `if (dep !== 0) continue;` の一行を掛けていた。その結果
+ * **関数の中の `globalThis.__seen = …`(G8 の実形)が全 492 門に無音**であり、
+ * しかも `trap2` fixture が「関数の中の代入は罪ではない」と `deepStrictEqual(…, [])` で
+ * **凍結していた** —— 盲点が門の側に成文化された状態である(第62条 a が最も恐れた形)。
+ *
+ * ここでは**深さを形ごとの性質として書く**。`topOnly:true` は一形だけであり、
+ * その形が本当に深さで意味が変わる(関数の中の `let {a}` は**局所束縛**であって大域ではない)
+ * からである。残る形は**関数の中に書いても大域は大域**なので深さを問わない。
+ *
+ * `topWhy` は `null` でない形だけが深さで切られ、門は走行のたびにこの表を**画面で名乗る**。
+ */
+const NAMELESS_FORMS = [
+  { name: 'globalThis',
+    re: /(?<![.\w$])(?:globalThis|global)\s*(?:\.\s*[A-Za-z_$][\w$]*|\[[^\]]*\])\s*=(?!=)/g,
+    why: 'globalThis の属性への代入(名前を作らない大域)',
+    topOnly: false, topWhy: null },
+  { name: 'module.exports',
+    re: /(?<![.\w$])(?:module\s*\.\s*)?exports\s*(?:\.\s*[A-Za-z_$][\w$]*|\[[^\]]*\])\s*=(?!=)/g,
+    why: 'module.exports の属性への代入(束縛を作らずに状態を持つ)',
+    topOnly: false, topWhy: null },
+  { name: 'process.env',
+    re: /(?<![.\w$])process\s*\.\s*env\s*(?:\.\s*[A-Za-z_$][\w$]*|\[[^\]]*\])\s*=(?!=)/g,
+    why: 'process.env を状態の置き場にした(プロセス大域)',
+    topOnly: false, topWhy: null },
+  { name: 'require.cache',
+    re: /(?<![.\w$])require\s*\.\s*cache\s*\[[^\]]*\]\s*(?:\.\s*[A-Za-z_$][\w$]*\s*)*=(?!=)/g,
+    why: 'require.cache を状態の置き場にした',
+    topOnly: false, topWhy: null },
+  { name: 'Object.assign(globalThis)',
+    re: /(?<![.\w$])Object\s*\.\s*assign\s*\(\s*(?:globalThis|global)\s*,/g,
+    why: 'Object.assign で大域に一括で生やした(代入の字面を持たない形 / 旧 SM-L2)',
+    topOnly: false, topWhy: null },
+  { name: 'Reflect.set(globalThis)',
+    re: /(?<![.\w$])Reflect\s*\.\s*(?:set|defineProperty)\s*\(\s*(?:globalThis|global)\s*,/g,
+    why: 'Reflect 経由で大域に生やした(代入の字面を持たない形 / 旧 SM-L2)',
+    topOnly: false, topWhy: null },
+  { name: 'Object.defineProperty(globalThis)',
+    re: /(?<![.\w$])Object\s*\.\s*define(?:Property|Properties)\s*\(\s*(?:globalThis|global)\s*,/g,
+    why: 'Object.defineProperty で大域に生やした(代入の字面を持たない形 / 旧 SM-L2)',
+    topOnly: false, topWhy: null },
+  { name: '(分割代入)',
+    re: /\b(?:let|var)\s*[{[]/g,
+    why: '最上位の分割代入 let/var(名が正規表現に当たらない形)',
+    // ★ この形だけが深さで切られる。理由を書く義務がここに在る(第44条 c)。
+    topOnly: true,
+    topWhy: '`let {a} = …` は**束縛の宣言**であり、関数の中に書けば局所束縛である。'
+      + '深さ 1 以上を罪と呼べば「関数の中のすべての分割代入」が赤になる —— '
+      + 'それは大域の門ではなく文体の門である' },
+];
+
+/** 門が毎回名乗る一行(第44条 c: 射程を切ったなら、切った理由を名乗れ)。 */
+function namelessDepthPolicy() {
+  const cut = NAMELESS_FORMS.filter(f => f.topOnly);
+  const any = NAMELESS_FORMS.filter(f => !f.topOnly).map(f => f.name);
+  return `静的の門の深さの射程: 深さを問わない ${any.length} 形 [${any.join(' / ')}] / `
+    + `深さ 0 のみ ${cut.length} 形 [${cut.map(f => f.name).join(' / ')}]`
+    + cut.map(f => `\n        └ なぜ ${f.name} だけ深さで切るか: ${f.topWhy}`).join('');
+}
+
+/**
+ * ── **残債 SM-L3: 修理の後もなお見えない形**(rework / R-1 の 5 / 第62条 c)────────────
+ *
+ * 第62条(c) は「**射程の外は次の走行の残債として名を持て**」と命じている。
+ * verify 相の SM-L2 は 4 形(動的 require / Object.assign / eval / Proxy)を名指したが、
+ * reflect の実測で**最大の穴(関数の中の形)が表に無かった**。
+ * rework 相は関数の中の形と `Object.assign` / `Reflect.set` / `Object.defineProperty` を**払い**、
+ * **残った 4 形を測って名指す**(rework 相の実測 / 7 形中 4 形が無音)。
+ *
+ * **この名は SM-L2 を置き換える(SM-L3)。** 古い名は「最大の穴が表に無い」不完全な名指しだった。
+ */
+const STATIC_BLIND_SPOTS =
+  '残債 SM-L3(修理後もなお見えない 4 形 / rework 相の実測): '
+  + '① eval("globalThis.x = 1") — 字句器は文字列の中を影で潰すので原理的に見えない / '
+  + '② 動的 require した別 module の属性への代入(require("./m").x = 1)— 名が実行時に決まる / '
+  + '③ 非 strict の関数内 this への代入(this.x = 1)— this の指す先は呼ばれ方で決まる / '
+  + '④ 関数の中の分割代入(let {a} = …)— **意図して見ない**(局所束縛であり大域ではない)。'
+  + '①②③ は静的字句器の原理的な限界であり、払うには AST か実行時の観測が要る(第62条 c)';
+
+function mutableGlobals(files) {
+  /**
+   * **空の射程を拒む(prove 相の修理 / 第37条)。**
+   * 変異 Z2(`mutableGlobals([GAUGE_JS, SPAWN_TRACE_JS])` → `mutableGlobals([])`)は
+   * **門を素通りした** —— 何も検めなければ `found` は空であり、`deepStrictEqual(found, [])` は通る。
+   * **「何も見なかった」と「見て何も無かった」は違う。** 不在は通過ではない。
+   */
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error('静的の門が空の射程で呼ばれた — 何も検めずに緑を出す道である (D-L / 第37条)');
+  }
+  const H = require(HERMETIC_JS);
+  const found = [];
+  const ESC = /[.*+?^${}()|[\]\\]/g;
+  for (const file of files) {
+    const src = fs.readFileSync(file, 'utf8');
+    const sh = H.shadow(src);                 // ★ 註釈 / 文字列 / テンプレート / 正規表現を潰す
+    const dep = topLevelDepths(sh);
+    const lineAt = (i) => src.slice(0, i).split('\n').length;
+    // (i) 最上位の let / var 宣言
+    const declRe = /\b(let|var)\s+([A-Za-z_$][\w$]*)/g;
+    let m;
+    while ((m = declRe.exec(sh))) {
+      if (dep[m.index] !== 0) continue;
+      found.push({ file, line: lineAt(m.index), name: m[2], why: `最上位の ${m[1]} 束縛` });
+    }
+    // 最上位の名 = 束縛 + 関数宣言(関数も属性を持てる — G8 の `record.__seen` がこれ)
+    const tops = new Set();
+    for (const b of H.bindingsOf(src, sh)) if (dep[b.at] === 0) tops.add(b.name);
+    for (const [fname, f] of H.functionsOf(src, sh)) if (dep[f.at] === 0) tops.add(fname);
+    // (ii) 最上位の名への破壊的操作
+    for (const name of tops) {
+      const esc = name.replace(ESC, '\\$&');
+      for (const [re, why] of [
+        [new RegExp('(?<![.\\w$])' + esc + '\\s*=(?!=)', 'g'), '最上位束縛への再代入'],
+        [new RegExp('(?<![.\\w$])' + esc + '\\s*\\.\\s*[A-Za-z_$][\\w$]*\\s*=(?!=)', 'g'), '最上位束縛の属性への代入'],
+        [new RegExp('(?<![.\\w$])' + esc + '\\s*\\[[^\\]]*\\]\\s*=(?!=)', 'g'), '最上位束縛の添字への代入'],
+        [new RegExp('(?<![.\\w$])' + esc + '\\s*\\.\\s*(?:' + DESTRUCTIVE.join('|') + ')\\s*\\(', 'g'), '最上位束縛への破壊的操作'],
+      ]) {
+        let g2;
+        while ((g2 = re.exec(sh))) {
+          // 宣言そのもの(`const X = …`)は罪ではない
+          if (/\b(?:const|let|var)\s+$/.test(sh.slice(Math.max(0, g2.index - 12), g2.index))) continue;
+          found.push({ file, line: lineAt(g2.index), name, why });
+        }
+      }
+    }
+    /**
+     * ── (iii) **名前を作らずに状態を持つ形**(verify 相 / security S-6・A29-A45)────
+     *
+     * security 相は「最上位の**名前**を起点に探す」字句器の盲点を 15 形で撃ち、**9 形が不可視**だった。
+     * とくに重いのが A45 —— **第62条が生まれた元凶 G4 そのもの**を四通りで書くと、
+     * 設計者の形(`let`)だけが捕まり、`globalThis` / `module.exports` / `class static` の三形は
+     * **全 484 門が完全に無音**だった。**門が建てられた唯一の目的に対して 3/4 で失敗**していた。
+     *
+     * ゆえに「名前を作らない置き場」を名指しで列挙する。**列挙は射程である**(第44条 c)——
+     * ここに無い形は見ていない形であり、残債 SM-L3 に名を持つ。
+     *
+     * ── **rework 相の修理(R-1)**: 深さの門を形ごとに分けた ────────────────────────
+     * reflect 相の告発: 旧実装は `if (dep[g3.index] !== 0) continue;` の**一行を全形に掛け**、
+     * 「名を持たない置き場は**深さ 0 でのみ罪**」という非対称を作っていた。
+     * (ii) の「最上位束縛への破壊的操作」には深さの門が無く、`record.__seen = …` は関数の中でも捕まる。
+     * **同じ字句器の中で、名を持つ置き場は深さを問わず罪、名を持たない置き場は最上位でのみ罪** ——
+     * この非対称は文書のどこにも書かれておらず、**G8 の実形(関数の中の `globalThis.__seen`)が
+     * 全 492 門に無音**だった(rework 相の実測: 4 形 × exit=0 / red=0)。
+     * **深さは形の性質であって、全形に一律に掛けてよい門ではない。**
+     */
+    for (const form of NAMELESS_FORMS) {
+      form.re.lastIndex = 0;
+      let g3;
+      while ((g3 = form.re.exec(sh))) {
+        const d = dep[g3.index];
+        // **深さで切るのは `topOnly:true` の形だけ**。その理由は NAMELESS_FORMS に書いてある(第44条 c)。
+        if (form.topOnly && d !== 0) continue;
+        found.push({
+          file, line: lineAt(g3.index), name: form.name, depth: d,
+          why: form.why + (d === 0 ? '' : `— 深さ ${d}(関数の中でも大域は大域である)`),
+        });
+      }
+    }
+    /**
+     * `class` の `static` 欄・`static {}` 塊。**最上位の class の中は深さ 1 以上**なので
+     * 深さでは切れない —— 最上位の `class` を先に見つけ、その本体の中だけを見る。
+     */
+    const classRe = /\bclass\b/g;
+    let cm;
+    while ((cm = classRe.exec(sh))) {
+      if (dep[cm.index] !== 0) continue;
+      const open = sh.indexOf('{', cm.index);
+      if (open < 0) continue;
+      let d = 0, end = -1;
+      for (let i = open; i < sh.length; i++) {
+        if (sh[i] === '{') d++;
+        else if (sh[i] === '}') { d--; if (d === 0) { end = i; break; } }
+      }
+      if (end < 0) end = sh.length;
+      const body = sh.slice(open, end);
+      const stRe = /\bstatic\s+(?:([A-Za-z_$][\w$]*)\s*=(?!=)|\{)/g;
+      let sm;
+      while ((sm = stRe.exec(body))) {
+        found.push({ file, line: lineAt(open + sm.index),
+          name: sm[1] || '(static 塊)',
+          why: 'class の static 欄 — 最上位に束縛を作らずに呼び出しを跨ぐ状態を持つ' });
+      }
+    }
+  }
+  found.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.name.localeCompare(b.name));
+  return found;
+}
+
+/**
  * 門そのものを子プロセスとして撃つ。**「門が exit 1 で鳴る」を文字どおり実測する。**
  * 注入版に対して非ゼロ、実物に対してゼロ —— 片側だけでは門ではない(第21条 壊して鳴らす)。
  */
@@ -3583,7 +4051,671 @@ function seedGaugeCreations(tmp, slugs) {
   }
 }
 
+// ── 実台帳の番兵そのものの門(AC-2 / AC-3 / AC-4 / 第62条 b)──────────
+
+test('gauge(番兵): 実台帳の番兵は本体の例外を飲み込まない (D-A / 第16条)', () => {
+  assert.throws(() => withGaugeSandbox(() => { throw new Error('BODY-BOOM'); }), /BODY-BOOM/,
+    '番兵が本体の例外を差し替えた — 門が何で落ちたか分からなくなる (AC-2)');
+  // 番兵の文面が本体の例外に混ざっていないこと
+  try { withGaugeSandbox(() => { throw new Error('BODY-BOOM'); }); }
+  catch (e) { assert.ok(!/実台帳が書き換えられた/.test(e.message), `番兵が本体の例外を汚した: ${e.message}`); }
+  /**
+   * ── 裁定そのものを撃つ(prove 相の修理)──────────────────────────
+   * 上の二つは「実台帳が汚れない機」でしか走らない道を通る —— 正常な機では
+   * 番兵の裁定は**一度も実行されない**。それでは変異 Y11 を捕まえられない(実測で素通りした)。
+   * ゆえに裁定を純関数として直接撃つ。**この三行はどの機でも必ず走る。**
+   */
+  assert.strictEqual(sentinelVerdict(false, 'aaa', 'aaa'), 'ok',
+    '無傷の台帳を汚れたと呼んだ — 番兵が偽の赤を出す (AC-2)');
+  assert.strictEqual(sentinelVerdict(false, 'aaa', 'bbb'), 'throw',
+    '汚れた台帳に番兵が黙った — 本体が投げていないなら番兵が倒れねばならない (D-A)');
+  assert.strictEqual(sentinelVerdict(true, 'aaa', 'bbb'), 'warn',
+    '本体が既に投げているのに番兵が throw を選んだ — 本体の例外を差し替える (AC-2 / 第16条)');
+  /**
+   * ── 裁定が器に**配線されている**ことを読む(prove 相の修理)──────────
+   * 変異 Z1(`finally` の中で `const verdict9 = 'ok';` と潰す)は **123 門を素通りした**。
+   * 純関数を撃つ歯(上の三行)は「裁定が正しいこと」しか言わない ——
+   * **その裁定が誰からも呼ばれていなければ、番兵は存在しないのと同じである**(第44条)。
+   * ゆえに `withGaugeSandbox` の本体を読み、配線そのものを凍らせる。
+   */
+  const selfSrc = fs.readFileSync(__filename, 'utf8');
+  const box9 = selfSrc.slice(selfSrc.indexOf('function withGaugeSandbox'),
+                             selfSrc.indexOf('function writeGaugeLedger'));
+  assert.ok(box9.length > 400, '器の本文を切り出せていない(前提)— 門の形が変わった');
+  assert.ok(/sentinelVerdict\(bodyThrew, REAL_DIGEST, after, absence9 && absence9\.kind\)/.test(box9),
+    '番兵の裁定が withGaugeSandbox の finally から外された(あるいは不在の形を渡さなくなった)— '
+    + '裁定が正しくても、呼ばれなければ台帳は守られない (D-A / 第44条 / R-4)');
+  assert.ok(/ledgerAbsenceKind\(\)/.test(box9),
+    '器が不在の形を測っていない — 「倉ごと無い」と「台帳だけ隠された」が再び同じ skip に潰れる (R-4 / SM-S2)');
+  assert.ok(/ledgerDigest\(REAL_LEDGER\)/.test(box9),
+    '器が実台帳の指紋を採り直していない — 番兵が前後を比べていない (第62条 b)');
+  assert.ok(/throw new Error\(msg\)/.test(box9),
+    '番兵が倒れる道が器から消えた — 名乗るだけの番兵は門ではない (第16条)');
+  /**
+   * ── verify 相の追撃: 番兵の**名指し**と**毎回の採り直し**が器に配線されているか ────
+   * 第62条(b) は「どの門が汚したかを**名指して**倒れよ」と命じている。名乗りを組む
+   * `sentinelMessage` が器から外れれば、番兵は「誰かが汚した」としか言えない番兵に戻る。
+   * そして `if (REAL_DIGEST === null)` の**枝を先に置く形**に戻れば、security A7 の
+   * 「一瞬隠して永久 skip」が復活する —— **枝が無いことも凍らせる。**
+   */
+  assert.ok(/sentinelMessage\(/.test(box9) && /sentinelReason\(REAL_DIGEST, after\)/.test(box9),
+    '番兵の名乗りが器から外された — 第62条(b) が明文で命じた「どの門が汚したか」を言えなくなる');
+  // rework / R-4: 隠蔽のときは**隠蔽と名乗る**(sentinelReason は「不在」としか言えない)
+  assert.ok(/absence9 && absence9\.kind === 'hidden'/.test(box9),
+    '隠蔽の名乗りが器から消えた — 台帳を隠されたとき「実台帳が無い」としか言えない番兵に戻る (R-4)');
+  assert.ok(/CURRENT_GATE/.test(box9),
+    '器が門の名を読んでいない — 名指しの材料が無ければ名乗りは空手形である (第62条 b)');
+  assert.ok(/sentinelChangeKind\(REAL_DIGEST, REAL_SIZE, buf\)/.test(box9),
+    '変化の形(追記か書き換えか)を測る道が器から消えた — 偽の赤と真の赤を分ける材料である');
+  assert.ok(!/if \(REAL_DIGEST === null\)/.test(box9),
+    '番兵が `REAL_DIGEST === null` で先に分岐する形に戻った — '
+    + '節の読み込みの一瞬だけ台帳を隠せば走行のあいだ永久に無力になる (verify S-2 / security A7)');
+});
+
+test('gauge(番兵): 「読めない」は「不在」ではない — 実台帳が読めない機で節ごと死なない (verify S-1 / 第37条)', () => {
+  /**
+   * **security 相 A4 の再現**。実台帳の位置にディレクトリを置くと `existsSync` は真、
+   * `readFileSync` は `EISDIR` を投げる。旧実装は指紋採りを節の最上位で裸に呼んでいたので、
+   * **モジュールの読み込みごと死に、484 門が一本も走らなかった**(実測 exit 1 / 門 0 本)。
+   *
+   * ここで撃つのは二つ:
+   *   (a) `ledgerDigest` が**投げない**こと。読めない物を `unreadable:<CODE>` と名乗ること。
+   *   (b) 「読めない」が **skip ではなく赤**であること(第37条: 不能も通過ではない)。
+   */
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-s1-'));
+  try {
+    // (a) ディレクトリ — security A4 と同じ形
+    const asDir = path.join(box, 'gauge-ledger.jsonl');
+    fs.mkdirSync(asDir, { recursive: true });
+    let got;
+    assert.doesNotThrow(() => { got = ledgerDigest(asDir); },
+      'ledgerDigest が投げた — 節の最上位で呼ばれる式が投げれば 484 門が一本も走らない (S-1)');
+    assert.ok(typeof got === 'string' && got.startsWith(SENTINEL_UNREADABLE),
+      `読めない実台帳を ${JSON.stringify(got)} と名乗った — 「読めない」を名乗らせよ (S-1)`);
+    assert.ok(/EISDIR|EPERM|EACCES/.test(got), `読めない理由を名指していない: ${got}`);
+    // 不在は null。**「不在」と「読めない」が同じ値になってはならない**(第37条)
+    assert.strictEqual(ledgerDigest(path.join(box, 'no-such-file.jsonl')), null,
+      '不在の台帳が null 以外を名乗った — 不在と不能が混ざれば CI が永久に赤になる');
+    assert.notStrictEqual(got, null, '「読めない」が「不在」と同じ値になった (S-1 の本体)');
+
+    // (b) 裁定。読めない側は skip でも ok でもなく throw
+    assert.strictEqual(sentinelVerdict(false, got, got), 'throw',
+      '読めない実台帳を番兵が通した — 不能は通過ではない (S-1 / 第37条)');
+    assert.strictEqual(sentinelVerdict(false, 'a'.repeat(64), got), 'throw',
+      '走行の途中で読めなくなった実台帳を番兵が通した (S-1)');
+    assert.strictEqual(sentinelVerdict(true, got, got), 'warn',
+      '本体が既に投げているのに番兵が例外を差し替えた (AC-2)');
+    assert.ok(/読めない/.test(sentinelReason(got, got)),
+      `読めないことを理由として名乗っていない: ${sentinelReason(got, got)}`);
+    // 不在のままは skip(ここだけが通ってよい唯一の道である)
+    assert.strictEqual(sentinelVerdict(false, null, null), 'skip',
+      '不在の機で番兵が赤になった — CI が全滅する');
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+});
+
+test('gauge(番兵): 一度 null を名乗った後に台帳が現れたら鳴る — 永久 skip に固定させない (verify S-2 / security A7)', () => {
+  /**
+   * **security 相 A7 の再現**。節の読み込みの一瞬だけ実台帳を隠せば `REAL_DIGEST=null` が焼き付き、
+   * 旧実装は `if (REAL_DIGEST === null)` の枝に永久に落ちた ——
+   * **その後どれだけ実台帳を汚しても 122 green / 0 red**(security の実測)。
+   *
+   * 裁定は純関数なので、`before=null` かつ `after=<指紋>` を直接撃てる。
+   * **この歯はどの機でも走る**(実台帳の在不在に依らない)。
+   */
+  assert.strictEqual(sentinelVerdict(false, null, 'b'.repeat(64)), 'throw',
+    '不在だった実台帳が走行の途中で現れたのに番兵が黙った — '
+    + '一瞬隠すだけで番兵を永久 skip に固定できる (S-2 / security A7)');
+  assert.ok(/走行の途中で現れた/.test(sentinelReason(null, 'b'.repeat(64))),
+    `現れたことを名乗っていない: ${sentinelReason(null, 'b'.repeat(64))}`);
+  // 逆向き(走行の途中で消えた)も通さない
+  assert.strictEqual(sentinelVerdict(false, 'a'.repeat(64), null), 'throw',
+    '走行の途中で実台帳が消えたのに番兵が通した (S-2 の裏)');
+  // 「不在のまま」だけが skip である
+  assert.strictEqual(sentinelVerdict(false, null, null), 'skip', '不在のままが skip でない');
+  /**
+   * ── **rework 相 / R-4: SM-S2 の半分を実際に塞いだ** ────────────────────────────
+   *
+   * verify 相はここに「走行の最初から最後まで隠し続ければ今も skip」と書き、その理由を
+   * 「**外から区別する道が今日は無い**」とした。**reflect 相がこれを測定で偽と告発した。**
+   * rework 相が三通りの機で `workspace.resolve()` を撃った実測:
+   *   B 倉あり・台帳だけ隠した → `exists:true`  / C 倉ごと無い → `exists:false`
+   * **B と C は既に分かれている。** `workspace.js` を一文字も変えずに読めた。
+   *
+   * ゆえに `ledgerAbsenceKind()` を建て、`sentinelVerdict` の第四引数で受ける。
+   * **四通りの機すべてをここで撃つ** —— 純関数なので、どの機で走らせても全枝が走る(第44条)。
+   */
+  assert.strictEqual(sentinelVerdict(false, null, null, 'hidden'), 'throw',
+    '**兄弟倉は在るのに台帳だけ無い**のに番兵が通した — '
+    + 'これが security S-2 の「走行を通して隠す」手口であり、rework 相が塞いだ当の道である (R-4)');
+  assert.strictEqual(sentinelVerdict(true, null, null, 'hidden'), 'warn',
+    '隠蔽を見つけても本体が既に投げていれば名乗りのみ — 本体の例外を差し替えてはならない (AC-2)');
+  assert.strictEqual(sentinelVerdict(false, null, null, 'absent'), 'skip',
+    '兄弟倉ごと無い機(CI)で赤を出した — 第37条が認めた不在まで赤にすれば CI が永久に赤になる');
+  assert.strictEqual(sentinelVerdict(false, null, null, 'redirected'), 'skip',
+    'PARADISE_CREATIONS で倉を振り替えた機で赤を出した — '
+    + '振替は変異台・複製走行・gauge-audit が日常的に使う道である。偽の赤は門を殺す (第38条)');
+  assert.strictEqual(sentinelVerdict(false, null, null, 'unmeasurable'), 'skip',
+    '住所解決が投げた機で赤を出した — 測れないことを罪と呼ぶな (第16条)');
+  assert.strictEqual(sentinelVerdict(false, null, null, undefined), 'skip',
+    '不在の形を渡さない古い呼び方の意味が変わった — 呼び手の配線は別の門が凍らせている');
+  /**
+   * **残る射程を正直に名乗る(第16条)。** 塞いだのは `source !== 'env'` の機だけである。
+   * **`PARADISE_CREATIONS` で振り替えた機では、隠蔽と振替を分けられない** ——
+   * これが rework 後の SM-S2 の**真の**理由である(「道が無い」ではなく「この一つの機では分けられない」)。
+   */
+  const k = ledgerAbsenceKind();
+  assert.ok(['absent', 'redirected', 'hidden', 'unmeasurable'].includes(k.kind),
+    `不在の形が四つの名のどれでもない: ${JSON.stringify(k)}`);
+  assert.ok(k.why && k.why.length > 20, `不在の形が理由を名乗っていない: ${JSON.stringify(k)}`);
+  if (k.kind === 'redirected') {
+    assert.ok(/残債 SM-S2/.test(k.why),
+      '振替の機が残債の名を名乗っていない — 射程の外は名を持て (第62条 c)');
+  }
+});
+
+test('gauge(番兵): 倒れるとき「どの門が汚したか」を名指す (verify S-3 / 第62条 b の明文)', () => {
+  /**
+   * 第62条(b): 「食い違えば**どの門が汚したかを名指して**倒れよ」。
+   * 旧実装の文面は `before=… after=…` だけで、**誰も名指していなかった**(security A48)。
+   * 名乗りを純関数に持ち上げたので、実台帳が汚れない機でも文面そのものを撃てる。
+   */
+  const A = 'a'.repeat(64), B = 'b'.repeat(64);
+  const why = sentinelReason(A, B);
+  const msg = sentinelMessage(why, 'gauge: 架空の門', A, B, 'rewritten');
+  assert.ok(/門「gauge: 架空の門」/.test(msg), `番兵が門の名を名乗っていない (第62条 b): ${msg}`);
+  assert.ok(msg.includes(A) && msg.includes(B), `前後の指紋が文面から消えた: ${msg}`);
+  assert.ok(/実台帳が書き換えられた/.test(msg), `何が起きたかを名乗っていない: ${msg}`);
+  // 門の外で汚れたときも黙らない(「名前が無い」を名乗る)
+  assert.ok(/門の外/.test(sentinelMessage(why, null, A, B, 'unknown')),
+    '門の名が無いときに番兵が沈黙した — 名乗らない番兵は第16条違反である');
+
+  /**
+   * ── 「外部の正当な record」と「門が書き換えた」を形で分ける(security A49)────
+   * 台帳は追記のみで育つ(第55条)。前の全バイトが先頭に残っていれば形は**追記**である。
+   * **これは「門が無実」を意味しない** —— 振替を壊した門の追記も同じ形になる。門の言葉で正直に言う。
+   */
+  const head = Buffer.from('{"ts":"2026-01-01T00:00:00.000Z","slug":"a"}\n');
+  const beforeDigest = require('crypto').createHash('sha256').update(head).digest('hex');
+  assert.strictEqual(
+    sentinelChangeKind(beforeDigest, head.length, Buffer.concat([head, Buffer.from('{"x":1}\n')])),
+    'appended', '末尾への追記を「書き換え」と呼んだ — 外部の record を毎回の偽の赤にする (S-3)');
+  assert.strictEqual(
+    sentinelChangeKind(beforeDigest, head.length, Buffer.from('{"ts":"2099-01-01T00:00:00.000Z","slug":"a"}\nx\n')),
+    'rewritten', '既存の行の書き換えを「追記」と呼んだ — 真の汚染が外部の営みに化ける (S-3)');
+  assert.strictEqual(sentinelChangeKind(beforeDigest, head.length, Buffer.from('{')), 'truncated',
+    '短くなった台帳を名乗っていない — 追記のみの掟に反する形である (第55条)');
+  assert.strictEqual(sentinelChangeKind(beforeDigest, head.length, null), 'unknown',
+    '測れないものを測れたと名乗った (第16条)');
+  // 追記と分かっても番兵は倒れる —— 判定を緩めてはならない(exit の規約は動かさない)
+  assert.strictEqual(sentinelVerdict(false, beforeDigest, B), 'throw',
+    '「追記だから」と番兵が通した — 形の判別は名乗りのためであって免罪符ではない');
+  assert.ok(/外部の正当な record と同じ形/.test(sentinelMessage(why, 'g', A, B, 'appended')),
+    '追記であることを人に伝えていない — 偽の赤を人が判別できない (S-3)');
+});
+
+test('gauge(番兵): 実台帳が無い機でも番兵は歯を持つ — 不在は通過ではない (D-A / 第37条)', () => {
+  // ── (a) 作り物の「実台帳」で判定関数そのものを撃つ。CI でも必ず走る歯である ──
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-sentinel-'));
+  try {
+    const fake = path.join(box, 'gauge-ledger.jsonl');
+    fs.writeFileSync(fake, JSON.stringify({ ts: '2026-09-01T00:00:00.000Z', slug: 'sentinel-fixture',
+      scale: 'standard', metrics: { score: 100, complete: true, phasesTotal: 1, phasesDone: 1,
+        domainsTotal: 1, domainsRatified: 1, firstPassRate: 1, reworkCount: 0, retryOverhead: 0,
+        loopGuardTrips: 0, durationMs: 1000 } }) + '\n');
+    const before = ledgerDigest(fake);
+    assert.ok(before, '作り物の実台帳の指紋が採れていない(前提)');
+    assert.strictEqual(ledgerUntouched(before, ledgerDigest(fake)), true,
+      '触っていない台帳を「書き換えられた」と呼んだ — 番兵が偽の赤を出す');
+    fs.appendFileSync(fake, JSON.stringify({ ts: '2026-09-02T00:00:00.000Z', slug: 'intruder' }) + '\n');
+    assert.strictEqual(ledgerUntouched(before, ledgerDigest(fake)), false,
+      '一行足された台帳を「無傷」と呼んだ — 番兵に歯が無い (D-A)');
+    /**
+     * **長さの変わらない書き換えも捕まえる(prove 相の修理)。**
+     * 変異 Z10(指紋を `sha256` から `readFileSync(p).length` に弱める)は
+     * **門を素通りした** —— 上の追記は長さを変えるので、長さでも「違う」と言えてしまう。
+     * **点を一つ書き換えるだけの改竄は長さを変えない。** 指紋が中身を見ていることを撃つ。
+     */
+    const same = path.join(box, 'same-length.jsonl');
+    fs.writeFileSync(same, '{"ts":"2026-09-01T00:00:00.000Z","slug":"a","scale":"standard"}\n');
+    const d0 = ledgerDigest(same);
+    fs.writeFileSync(same, '{"ts":"2026-09-01T00:00:00.000Z","slug":"b","scale":"standard"}\n');
+    assert.strictEqual(ledgerUntouched(d0, ledgerDigest(same)), false,
+      '長さの変わらない書き換えを「無傷」と呼んだ — 指紋が中身ではなく大きさしか見ていない (D-A / 第62条 b)');
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+
+  /**
+   * ── (a2) 不在の名乗りの**形**は、どの機でも撃つ(prove 相の修理)──────
+   * 当初この assert は下の `if (REAL_DIGEST === null)` の**内側**に居た。
+   * だが実台帳が在る機(神の機)ではその枝に入らないので、
+   * **名乗りを落とす変異(Y12)が門を素通りした**(実測)。
+   * 不在の名乗りは「不在の機でしか検められない」ものではない —— **文字列の形は純粋である。**
+   * ゆえに枝の外に出す。CI(不在)でも神の機(在る)でも、この一行は必ず走る。
+   */
+  assert.ok(/\u00b7 skip: 実台帳が無い/.test(sentinelSkipNote()),
+    `不在の名乗りが形を失った — CI の画面から「なぜ通したか」が消える (AC-3 / 第37条): ${sentinelSkipNote()}`);
+  assert.ok(sentinelSkipNote().includes(REAL_LEDGER),
+    '不在の名乗りが**どの住所**を見に行ったかを言っていない (第16条)');
+
+  // ── (b) 本物。在れば照合、無ければ**名乗って**通す(黙った緑は禁じる) ──
+  if (REAL_DIGEST === null) {
+    console.log(sentinelSkipNote());
+    return;
+  }
+  assert.strictEqual(ledgerDigest(REAL_LEDGER), REAL_DIGEST,
+    '節の実行中に実台帳が動いた — どの門が汚したかは番兵の Error が名指す (D-A)');
+});
+
+test('gauge(故障注入): 住所解決を壊す変異(W1)を番兵が名指す — 本走行の実害の再現 (D-A)', () => {
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-w1-'));
+  try {
+    fs.mkdirSync(path.join(box, 'FAKE-REAL'), { recursive: true });
+    const fakeReal = path.join(box, 'FAKE-REAL', 'gauge-ledger.jsonl');
+    fs.writeFileSync(fakeReal, '');
+    // 注入: ledgerPath() が workspace を通らず「複製の隣」を指す(= W1 と同型)
+    const broken = injectGauge(box, 'gauge-w1.js', (s) => s.replace(
+      'return path.join(workspace.resolve().root, LEDGER_NAME);',
+      "return path.join(__dirname, 'FAKE-REAL', LEDGER_NAME);"));
+    const run = path.join(box, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const body = `
+      const r = g.record(${JSON.stringify(run)}, 'w1-probe');
+      console.log('LEDGER=' + g.ledgerPath());
+    `;
+    // ── 注入版: 偽の実台帳が動く = 番兵が false を返さねばならない ──
+    const before = ledgerDigest(fakeReal);
+    const bad = runGaugeGate(broken, box, body);
+    assert.strictEqual(bad.code, 0, `注入版が走らなかった(前提): ${bad.out}`);
+    assert.strictEqual(ledgerUntouched(before, ledgerDigest(fakeReal)), false,
+      '住所解決を壊した変異が偽の実台帳を汚したのに、番兵が「無傷」と答えた (D-A / AC-4)');
+    /**
+     * **空回りの assert を直した(verify 相 / review【重大 A】)。**
+     * 旧: `assert.ok(/gauge-w1\.js|FAKE-REAL/.test(bad.out + broken), …)` ——
+     * `broken` は `injectGauge` の返り値(= `…/gauge-w1.js` を必ず含むパス文字列)なので、
+     * **`bad.out` が空文字でも常に真**だった(review が実測で証明)。何も検めていない一行である。
+     * いま検めるのは**注入版の出力そのもの**: 壊れた住所解決が `FAKE-REAL` を指したことを、
+     * 子プロセスが自分の口で名乗ったか。
+     */
+    assert.ok(/FAKE-REAL/.test(bad.out),
+      `注入版が自分の口で壊れた住所を名乗っていない — 「名指す」と言いながら何も読んでいない (AC-4): `
+      + `out=${JSON.stringify(bad.out)}`);
+    assert.ok(/LEDGER=/.test(bad.out), `注入版の名乗りの形が変わった(前提): ${bad.out}`);
+    /**
+     * **番兵の名乗りそのものを撃つ(AC-4 が要求していたが欠けていた歯)。**
+     * AC-4 は「番兵が**名指しで**鳴る」を要求している。この門の中では実台帳は汚れないので
+     * 番兵の `finally` は走らない —— ゆえに**判定と名乗りを純関数として直接撃つ**
+     * (AC-2 の ⑥〜⑧ と同じ作法)。門の名が実体より大きくならないための一手である。
+     */
+    const w1msg = sentinelMessage(sentinelReason(before, ledgerDigest(fakeReal)),
+      'gauge(故障注入): 住所解決を壊す変異(W1)を番兵が名指す — 本走行の実害の再現 (D-A)',
+      before, ledgerDigest(fakeReal), 'appended');
+    assert.ok(/実台帳が書き換えられた/.test(w1msg),
+      `W1 と同じ食い違いに対して番兵が「書き換えられた」と名乗らない (AC-4): ${w1msg}`);
+    assert.ok(/門「gauge\(故障注入\)/.test(w1msg),
+      `番兵が汚した門を名指していない — 第62条(b) の明文 (AC-4): ${w1msg}`);
+    // ── 実物: 振替が効くので偽の実台帳は動かない。**片側だけでは門ではない**(第21条) ──
+    fs.writeFileSync(fakeReal, '');
+    const clean = ledgerDigest(fakeReal);
+    const good = runGaugeGate(GAUGE_JS, box, body);
+    assert.strictEqual(good.code, 0, `実物が走らなかった: ${good.out}`);
+    assert.strictEqual(ledgerUntouched(clean, ledgerDigest(fakeReal)), true,
+      '実物が振替の外へ書いた — 前提が崩れている');
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+});
+
+test('gauge(静的): 台帳を書く engine は最上位に可変の大域を持たない (D-L / 第62条 c)', () => {
+  /**
+   * ── **射程を定数にして凍らせる**(verify 相 / review【重大 B】)────────────────
+   * review の実測: 射程を `[GAUGE_JS, SPAWN_TRACE_JS]` → `[GAUGE_JS]` に縮める変異(L3)は
+   * **129 門すべてが緑のまま**だった。prove 相は Z2(`mutableGlobals([])`)を見て**空の射程**を
+   * 拒む歯を足したが、**`[A,B] → [A]` は空ではないので掛からない**。半分の射程は空の射程の親戚である。
+   * ゆえに射程を定数に出し、**その中身を N18 / RACE_LEAD_MS と同じ作法で assert する。**
+   */
+  const STATIC_SCOPE = [GAUGE_JS, SPAWN_TRACE_JS];
+  assert.deepStrictEqual(STATIC_SCOPE.map(p => path.basename(p)).sort(), ['gauge.js', 'spawn-trace.js'],
+    `静的の門の射程が動いた(いま ${STATIC_SCOPE.map(p => path.basename(p)).join(', ')})— `
+    + '射程の縮小は「見なかった」を「見て何も無かった」に化けさせる。'
+    + '正当に動かすなら、動かした射程で G4 が捕まることを実測してからこの門を動かせ (第62条 c)');
+  assert.strictEqual(STATIC_SCOPE.length, 2, '射程の本数が 2 でない — 半分の射程は空の射程の親戚である');
+  console.log('      \u00b7 射程: graph/gauge.js / graph/spawn-trace.js の最上位のみ — '
+    + 'hermetic.js は git の一覧の memo(:516 TRACKED)を正当に持つため射程外'
+    + '(第57条: 射程を広げるのは別の走行。残債 SM-L = pulse.js:_gateCache / hermetic.js:TRACKED / abode.js:unmeasurable)');
+  /**
+   * ── **射程の第二の軸を毎回名乗る**(rework / R-1 の 2 / 第44条 c)────────────────
+   * reflect の告発: 「射程には二つの軸が在る —— **どのファイルを見るか**(凍っている)と、
+   * **その中のどこまで見るか**(凍っていない)」。旧実装は後者を `dep !== 0` の一行に隠し、
+   * 文書のどこにも書かなかった。**深さで切るなら、その理由を毎回名乗れ。**
+   */
+  console.log('      \u00b7 ' + namelessDepthPolicy());
+  /**
+   * ── **鳴らせられない形に名を付け、門が名乗る**(rework / R-1 の 5 / 第62条 c)────────
+   * rework 相が修理後の字句器に 7 形を撃った実測: **4 形がなお無音**である。
+   * 「見ていない形」は**残債 SM-L3 の名**を持ち、門が走行のたびに画面でその名を挙げる ——
+   * **名乗らない射程外は、次の走行にとって存在しない射程外である。**
+   */
+  console.log('      \u00b7 ' + STATIC_BLIND_SPOTS);
+  const found = mutableGlobals(STATIC_SCOPE);
+  assert.deepStrictEqual(found, [],
+    '最上位に可変の大域が生えた — 呼び出しを跨いで状態を持つ道である (D-L):\n'
+    + (found.length ? found.map(f => `  ${f.file}:${f.line}  ${f.name}  (${f.why})`).join('\n') : ''));
+  // ── 壊して鳴ることを同じ門で撃つ(第21条)。**複製に対して**撃つ(第58条 c) ──
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-dl-'));
+  try {
+    const p = path.join(box, 'gauge-g4.js');
+    fs.writeFileSync(p, fs.readFileSync(GAUGE_JS, 'utf8').replace(
+      "const LEDGER_NAME = 'gauge-ledger.jsonl';",
+      "const LEDGER_NAME = 'gauge-ledger.jsonl';\nlet __recCount = 0;"));
+    const hit = mutableGlobals([p]);
+    assert.strictEqual(hit.length, 1, `G4 の一行を見逃した — 門になっていない: ${JSON.stringify(hit)}`);
+    assert.strictEqual(hit[0].name, '__recCount');
+    assert.ok(/最上位の let 束縛/.test(hit[0].why), hit[0].why);
+    /**
+     * ── **G4 の四形すべてを撃つ**(verify 相 / security S-6・A45)────────────────
+     * security 相は「第62条が生まれた元凶 G4 そのもの」を四通りで書き、
+     * **設計者の形(`let`)だけが捕まり、私の三形は全 484 門が完全に無音**だと実測した。
+     * **門が建てられた唯一の目的に対して 3/4 で失敗していた。** いまは四形とも捕まえる。
+     * 名前を作らない形は名前で名指せないので、**置き場の名**(`globalThis` 等)で名乗る。
+     */
+    const anchor = "const LEDGER_NAME = 'gauge-ledger.jsonl';";
+    const gaugeSrc = fs.readFileSync(GAUGE_JS, 'utf8');
+    const ghosts = [
+      ['g4-global.js', '\nglobalThis.__recCount = 0;', 'globalThis'],
+      ['g4-exports.js', '\nmodule.exports.__recCount = 0;', 'module.exports'],
+      ['g4-class.js', '\nclass __Memo { static n = 0; }', 'n'],
+      ['g4-classblock.js', '\nclass __Memo2 { static { __Memo2.n = 0; } }', '(static 塊)'],
+      ['g4-env.js', "\nprocess.env.__GAUGE_SEEN = '0';", 'process.env'],
+      ['g4-destr.js', '\nlet { __a, __b } = { __a: 0, __b: 0 };', '(分割代入)'],
+    ];
+    for (const [name, insert, expectName] of ghosts) {
+      const gp = path.join(box, name);
+      fs.writeFileSync(gp, gaugeSrc.replace(anchor, anchor + insert));
+      const gh = mutableGlobals([gp]);
+      assert.strictEqual(gh.length, 1,
+        `G4 の等価形「${insert.trim()}」を ${gh.length} 件と数えた — `
+        + `名前を作らない大域は字句器の盲点である (S-6 / A45): ${JSON.stringify(gh)}`);
+      assert.strictEqual(gh[0].name, expectName,
+        `置き場の名を名乗っていない: ${JSON.stringify(gh[0])}`);
+    }
+    /**
+     * ── **関数の中の四形**(rework 相 / R-1 / reflect の告発)────────────────────────
+     * reflect が実測した「**全 492 門に無音**だった四形」を、**この門が engine の現物に撃つ。**
+     * どれも `record()` の中に一行入れるだけであり、**人が現実に書く形**である。
+     * 旧実装(`if (dep !== 0) continue;` を全形に掛ける)ではこの四形すべてが exit 0 だった。
+     */
+    const REC_ANCHOR = '    const idx = index instanceof Map ? index : keyIndex(readLedger({ raw: true }));';
+    assert.ok(gaugeSrc.includes(REC_ANCHOR),
+      'record() の錨が動いた — 関数の中の四形を撃つ足場が消えた(前提の門 / 第37条)');
+    const inFunc = [
+      ['f-global.js', '    globalThis.__seen = globalThis.__seen || new Map();\n', 'globalThis'],
+      ['f-exports.js', '    module.exports.__stash = module.exports.__stash || {};\n', 'module.exports'],
+      ['f-reflect.js', "    Reflect.set(globalThis, '__gaugeSeen', 1);\n", 'Reflect.set(globalThis)'],
+      ['f-assign.js', '    Object.assign(globalThis, { __gaugeMemo: new Map() });\n', 'Object.assign(globalThis)'],
+    ];
+    for (const [name, insert, expectName] of inFunc) {
+      const fp = path.join(box, name);
+      fs.writeFileSync(fp, gaugeSrc.replace(REC_ANCHOR, insert + REC_ANCHOR));
+      const fh = mutableGlobals([fp]);
+      assert.strictEqual(fh.length, 1,
+        `**関数の中の**「${insert.trim()}」を ${fh.length} 件と数えた — `
+        + 'G8 の実形が無音に戻った。深さの門を全形に掛ける実装に戻っていないか (R-1 / reflect): '
+        + JSON.stringify(fh));
+      assert.strictEqual(fh[0].name, expectName, `置き場の名を名乗っていない: ${JSON.stringify(fh[0])}`);
+      assert.ok(fh[0].depth > 0, `関数の中なのに深さ ${fh[0].depth} を名乗った — 深さの計測が壊れている`);
+    }
+    // G6 / G8 の層も同じ門で鳴ること(一行差で致命に化ける段差を塞ぐ)
+    const p6 = path.join(box, 'gauge-g6.js');
+    fs.writeFileSync(p6, fs.readFileSync(GAUGE_JS, 'utf8')
+      .replace('  const composite = Math.max(0, Math.min(100, raw));',
+               '  WEIGHTS.rework = 0;\n  const composite = Math.max(0, Math.min(100, raw));'));
+    assert.strictEqual(mutableGlobals([p6]).length, 1, 'G6(定数表の破壊的書き換え)を見逃した');
+    const p8 = path.join(box, 'gauge-g8.js');
+    fs.writeFileSync(p8, fs.readFileSync(GAUGE_JS, 'utf8').replace(
+      '    const idx = index instanceof Map ? index : keyIndex(readLedger({ raw: true }));',
+      '    const idx = index instanceof Map ? index : (record.__seen || (record.__seen = keyIndex(readLedger({ raw: true }))));'));
+    assert.strictEqual(mutableGlobals([p8]).length, 1,
+      'G8(関数の属性への memo)を見逃した — functionsOf を借りていない');
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+});
+
+test('gauge(静的): 大域の門は定数を罪と呼ばない — 偽の赤を出さない境界 (D-L / 第16条)', () => {
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-dl2-'));
+  try {
+    const ok = path.join(box, 'ok.js');
+    fs.writeFileSync(ok, [
+      "const fs = require('fs');",
+      'const WEIGHTS = { rework: 10, retryOverhead: 5 };',
+      'const FROZEN = Object.freeze({ a: 1 });',
+      'const RE = /^g1:[0-9a-f]{16}$/;',
+      "const NAME = 'gauge-ledger.jsonl';",
+      'const MAXD = 64;',
+      "const isT3 = (s) => s === 'tier3';",
+      "function f() { let local = 0; local++; const m = new Map(); m.set('k', 1); return local + m.size; }",
+      'module.exports = { WEIGHTS, FROZEN, RE, NAME, MAXD, isT3, f };',
+    ].join('\n'));
+    assert.deepStrictEqual(mutableGlobals([ok]), [],
+      '定数を罪と呼んだ — この門は偽の赤を出す (D-L)');
+    // 註釈・文字列・テンプレート・正規表現の中の `let` を罪と呼ばない(字句器の歯)
+    const trap = path.join(box, 'trap.js');
+    fs.writeFileSync(trap, [
+      '// let ghost1 = 1;',
+      '/* let ghost2 = 2;  let ghost3 = 3; */',
+      "const S = 'let ghost4 = 4;';",
+      'const T = `let ghost5 = 5; ${"x"}`;',
+      'const U = /let ghost6 = 6/;',
+      'function h() { let inner = 0; return inner; }',
+      '/** let ghost7 — JSDoc の中 */',
+      'module.exports = { S, T, U, h };',
+    ].join('\n'));
+    assert.deepStrictEqual(mutableGlobals([trap]), [],
+      '註釈か文字列の中の let を罪と呼んだ — 字句器が影を作れていない (D-L)');
+    /**
+     * ── **強めた字句器が偽の赤を出さない境界**(verify 相 / S-6 の裏)──────────
+     * `globalThis` / `module.exports` / `process.env` / `class static` / 分割代入を見るようにした。
+     * **読むだけの形・正当な公開を罪と呼んではならない。**
+     *
+     * ── **rework 相の修理(R-1 の 3)**: 「関数の中の代入は罪ではない」の凍結を除いた ──────
+     * 旧 fixture はここに
+     *   `'function f2() { globalThis.__scratch = 1; process.env.X = "1"; }'`
+     * を置き、`deepStrictEqual(…, [])` で **「関数の中の大域への代入は罪ではない」と門に宣誓させていた。**
+     * reflect 相の告発どおり、**これは残債ではなく、盲点が門の側に成文化された状態**である ——
+     * 残債は「そこを見ていない」と言うが、この fixture は「**そこには何も無い**」と言っていた。
+     * **その一行を除いた。** 深さで切らなくなったので、この形はいま罪である(下の `bad3` で撃つ)。
+     * 残したのは**読むだけの形**と**正当な一括公開**だけである。
+     *
+     * 実測(rework 相): この修理の後に `graph/*.js` の **39 ファイル全部**を走査し、
+     * 当たりは **6 件 / 3 ファイル**(`pulse.js:_gateCache` / `hermetic.js:TRACKED` /
+     * `abode.js:unmeasurable` = 既知の残債 SM-L)のみ。**既知 3 ファイルの外の新たな当たりは 0 件。**
+     * **深さの門を形ごとに分けても偽陽性は一件も増えていない。**
+     */
+    const trap2 = path.join(box, 'trap2.js');
+    fs.writeFileSync(trap2, [
+      "const home = globalThis.process ? globalThis.process.cwd() : '';",   // 読むだけ
+      "const flag = process.env.PARADISE_ABODE || '';",                    // 読むだけ
+      'function f3() { return globalThis.crypto ? 1 : 0; }',               // 関数の中で**読むだけ**
+      "function f4() { return process.env.HOME || ''; }",                  // 関数の中で**読むだけ**
+      'function f5() { const o = {}; Object.assign(o, { a: 1 }); return o; }', // 大域ではない先への assign
+      'class Ok { constructor() { this.n = 0; } tick() { this.n++; return this.n; } }',
+      'const inst = new Ok();',
+      '// globalThis.ghost = 1;',
+      "const SRC = 'module.exports.ghost = 1;';",
+      'module.exports = { home, flag, f3, f4, f5, Ok, inst, SRC };',       // 一括の公開は罪ではない
+    ].join('\n'));
+    assert.deepStrictEqual(mutableGlobals([trap2]), [],
+      '強めた字句器が偽の赤を出した — 読むだけの globalThis / 関数の中の読み取り / '
+      + '大域でない先への Object.assign / 一括の module.exports は罪ではない (S-6 の裏 / 第16条)');
+    /**
+     * ── **逆側: 関数の中の大域への代入は、いま罪である**(rework / R-1)────────────
+     * 旧 fixture が「罪ではない」と凍結していた当の形を、**罪として凍結し直す。**
+     * これが無ければ `topOnly:false` を `true` に戻す変異が無音で通る(第21条: 壊して鳴らす)。
+     */
+    const bad3 = path.join(box, 'bad3.js');
+    fs.writeFileSync(bad3, [
+      'function f2() { globalThis.__scratch = 1; process.env.X = "1"; }',   // G8 の実形
+      'function f6() { module.exports.__stash = {}; }',
+      "function f7() { Reflect.set(globalThis, '__r', 1); }",
+      'function f8() { Object.assign(globalThis, { __o: 1 }); }',
+      'module.exports = { f2, f6, f7, f8 };',
+    ].join('\n'));
+    const deep = mutableGlobals([bad3]);
+    assert.strictEqual(deep.length, 5,
+      `関数の中の大域への代入を ${deep.length} 件しか見ていない — `
+      + 'G8 の実形(関数の中の globalThis.__seen)が無音に戻った (R-1 / reflect): '
+      + JSON.stringify(deep));
+    assert.deepStrictEqual(deep.map(h => h.name).sort(),
+      ['Object.assign(globalThis)', 'Reflect.set(globalThis)', 'globalThis',
+        'module.exports', 'process.env'].sort(),
+      `置き場の名が揃っていない: ${JSON.stringify(deep.map(h => h.name))}`);
+    assert.ok(deep.every(h => h.depth > 0), '関数の中の当たりなのに深さ 0 を名乗っている(深さの計測が壊れた)');
+    assert.ok(deep.every(h => /深さ \d+/.test(h.why)),
+      '深さ 1 以上の当たりが深さを名乗っていない — 読み手が「関数の中だ」と分からない (第44条 c)');
+    // 逆側: 名前を作らない五形は一つ残らず捕まえる(S-6 / A45)
+    const bad2 = path.join(box, 'bad2.js');
+    fs.writeFileSync(bad2, [
+      'globalThis.__g = 0;',
+      'module.exports.__m = 0;',
+      "process.env.__E = '0';",
+      'class __C { static n = 0; }',
+      'let { __d1, __d2 } = { __d1: 0, __d2: 0 };',
+    ].join('\n'));
+    const nameless = mutableGlobals([bad2]);
+    assert.strictEqual(nameless.length, 5,
+      `名前を作らない可変の大域を ${nameless.length} 件しか見ていない (S-6 / A45): ${JSON.stringify(nameless)}`);
+    assert.deepStrictEqual(nameless.map(h => h.name).sort(),
+      ['(分割代入)', 'globalThis', 'module.exports', 'n', 'process.env'].sort(),
+      `置き場の名が揃っていない: ${JSON.stringify(nameless.map(h => h.name))}`);
+    const bad = path.join(box, 'bad.js');
+    fs.writeFileSync(bad, [
+      'let counter = 0;',
+      'const SEEN = new Set();',
+      'const TBL = { n: 0 };',
+      'function g() { counter++; SEEN.add(counter); TBL.n = counter; return counter; }',
+      'module.exports = { g };',
+    ].join('\n'));
+    const hits = mutableGlobals([bad]);
+    assert.strictEqual(hits.length, 3,
+      `可変の大域を見逃した — 門になっていない (D-L): ${JSON.stringify(hits)}`);
+    assert.deepStrictEqual(hits.map(h => h.name).sort(), ['SEEN', 'TBL', 'counter']);
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+});
+
 // ── FR-1 冪等鍵 ────────────────────────────────────────────────────────
+
+test('gauge(静的): 静的の門の射程は外から凍らされている (verify / review【重大 D】/ 第21条)', () => {
+  /**
+   * ── **第62条の末文を実体にする**(verify 相の裁定 / review【重大 D】)────────────
+   *
+   * 条は「三本とも**壊して鳴ることを別の門が撃つ**」と名乗っていたが、review の実測では
+   * **(b) の番兵だけが真**で、(a) 並行と (c) 静的を**外から撃つ門は 0 本**だった(grep 実測)。
+   * そして無音の二つ(R3 / L3)は、まさにその「誰も外から撃っていない層」で出た。
+   *
+   * 私は**(ii) 実体を条に合わせる**を採った —— 条の文面を弱めて実体に合わせる道もあったが、
+   * 掟を弱めれば次の走行はその弱い掟の上に建てる。**弱いのは掟ではなく実体だった。**
+   * (a) は `gauge(並行): 競合の裁定は純関数であり、門から呼ばれている` が外から撃つ。
+   * (c) はこの門が外から撃つ。**これで条の三本すべてに外の眼が立つ。**
+   */
+  const selfSrc = fs.readFileSync(__filename, 'utf8');
+  const start = selfSrc.indexOf("test('gauge(静的): 台帳を書く engine は最上位に可変の大域を持たない");
+  const end = selfSrc.indexOf("test('gauge(静的): 大域の門は定数を罪と呼ばない", start);
+  assert.ok(start > 0 && end > start, '静的の門の本文を切り出せていない(前提)— 門の名が変わった');
+  const body = selfSrc.slice(start, end);
+  assert.ok(body.length > 800, `静的の門が ${body.length} 字しか無い — 実質を失っている`);
+  // (1) 射程が**定数**であり、その中身が凍っていること(L3 = 射程の半減を塞ぐ)
+  assert.ok(/const STATIC_SCOPE = \[GAUGE_JS, SPAWN_TRACE_JS\];/.test(body),
+    '静的の門の射程が定数でなくなった — 射程を縮める変異が「見なかった」を「見て何も無かった」に化ける (L3)');
+  assert.ok(/STATIC_SCOPE\.map\(p => path\.basename\(p\)\)\.sort\(\)/.test(body)
+    && /\['gauge\.js', 'spawn-trace\.js'\]/.test(body),
+    '射程の中身を凍らせる assert が消えた — 半分の射程は空の射程の親戚である (第62条 c)');
+  assert.ok(/assert\.strictEqual\(STATIC_SCOPE\.length, 2/.test(body),
+    '射程の本数を凍らせる assert が消えた');
+  // (2) 凍らせた定数が**実際に使われている**こと(凍った定数を誰も渡さなければ意味が無い / 第44条)
+  assert.ok(/mutableGlobals\(STATIC_SCOPE\)/.test(body),
+    '凍らせた射程が mutableGlobals に渡されていない — 定数だけ凍って門は別の物を見ている (第44条)');
+  // (3) G4 の四形すべてを撃っていること(S-6 / A45 が名指した「唯一の目的に対する 3/4 の失敗」)
+  for (const form of ['globalThis', 'module.exports', 'static n = 0', 'let { __a, __b }']) {
+    assert.ok(body.includes(form),
+      `静的の門が G4 の等価形「${form}」を撃っていない — 条が生まれた元凶を 3/4 で見逃す形に戻った (S-6 / A45)`);
+  }
+  /**
+   * ── **(3b) 射程の第二の軸 —— 深さ —— を外から凍らせる**(rework / R-1 / reflect)────────
+   *
+   * reflect の告発: 「射程には**二つの軸**が在る —— どのファイルを見るか(凍っている)と、
+   * **その中のどこまで見るか(凍っていない)**。`if (dep[g3.index] !== 0) continue;` の一行を
+   * 消しても足しても、外の門は一本も鳴らない。」 —— **いま鳴る。**
+   */
+  assert.ok(/const REC_ANCHOR = /.test(body) && /関数の中の四形/.test(body),
+    '静的の門が「関数の中の四形」を撃っていない — G8 の実形(全 492 門が無音だった当の形)が'
+    + '再び見えなくなる (R-1 / reflect)');
+  for (const form of ['f-global.js', 'f-exports.js', 'f-reflect.js', 'f-assign.js']) {
+    assert.ok(body.includes(form), `関数の中の四形のうち「${form}」を撃っていない (R-1)`);
+  }
+  assert.ok(/fh\[0\]\.depth > 0/.test(body),
+    '関数の中の当たりが深さ 1 以上であることを assert していない — 深さの計測が壊れても気づけない (R-1)');
+  // 深さの方針そのものを凍らせる: 深さで切る形は一つだけであり、それは理由を持つ
+  const cut = NAMELESS_FORMS.filter(f => f.topOnly);
+  assert.strictEqual(cut.length, 1,
+    `深さ 0 でのみ罪と呼ぶ形が ${cut.length} 形ある — 深さの門は一形(分割代入)にしか正当性が無い。`
+    + `増やすなら、その形を深さで切ってよい理由をここに書いてから増やせ (第44条 c / 第62条 c): `
+    + JSON.stringify(cut.map(f => f.name)));
+  assert.strictEqual(cut[0].name, '(分割代入)',
+    `深さで切られている形が「${cut[0].name}」— 深さで切ってよいのは束縛の宣言だけである`);
+  assert.ok(cut[0].topWhy && cut[0].topWhy.length > 40,
+    '深さで切る形が理由を持っていない — 射程を切ったなら理由を名乗れ (第44条 c)');
+  for (const f of NAMELESS_FORMS) {
+    if (f.topOnly) continue;
+    assert.strictEqual(f.topWhy, null,
+      `${f.name} が深さで切られていないのに理由を持っている — 表と実装が食い違っている`);
+  }
+  // 門が毎回その方針を画面で名乗ること(第44条 c: 名乗らない射程は隠れた射程である)
+  assert.ok(/namelessDepthPolicy\(\)/.test(body),
+    '静的の門が深さの方針を画面で名乗っていない — 隠れた射程は文書に載らない (第44条 c)');
+  const policy = namelessDepthPolicy();
+  assert.ok(/深さを問わない 7 形/.test(policy) && /深さ 0 のみ 1 形/.test(policy),
+    `名乗りが方針を正しく写していない: ${policy}`);
+  assert.ok(/globalThis/.test(policy) && /Reflect\.set\(globalThis\)/.test(policy),
+    `名乗りが形の名を挙げていない: ${policy}`);
+  // (4) 射程の**外**が残債として名を持っていること(第62条 c の明文)
+  assert.ok(/残債 SM-L = /.test(body) && /pulse\.js:_gateCache/.test(body),
+    '射程の外が残債として名を持っていない — 「射程の外は次の走行の残債として名を持て」に反する (第62条 c)');
+  /**
+   * ── **(4b) 形の射程の外も名を持つ**(rework / R-1 の 5 / 第62条 c)────────────────
+   * SM-L は「どのファイルを見ないか」の残債である。**「どの形を見ないか」の残債は別に要る。**
+   * そして**名が正直であることを実測で確かめる** —— 名指した 4 形が本当に無音でなければ、
+   * その名は「もう払ったのに残債と言い続ける」嘘になる(第38条の裏)。
+   */
+  assert.ok(/STATIC_BLIND_SPOTS/.test(body),
+    '静的の門が「見ていない形」を画面で名乗っていない — 名乗らない射程外は次の走行にとって存在しない (第62条 c / R-1)');
+  assert.ok(/残債 SM-L3/.test(STATIC_BLIND_SPOTS) && /eval/.test(STATIC_BLIND_SPOTS)
+    && /this/.test(STATIC_BLIND_SPOTS) && /動的 require/.test(STATIC_BLIND_SPOTS),
+    `残債 SM-L3 の名乗りが形を挙げていない: ${STATIC_BLIND_SPOTS}`);
+  {
+    const box2 = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-blind-'));
+    try {
+      const STILL_BLIND = [
+        ['eval', "function f() { eval('globalThis.__e = 1'); }\nmodule.exports = { f };"],
+        ['動的 require', "function f() { const m = require('./other'); m.__d = 1; }\nmodule.exports = { f };"],
+        ['this 経由', 'function f() { this.__t = 1; }\nmodule.exports = { f };'],
+        ['関数内の分割代入', 'function f() { let { a, b } = { a: 1, b: 2 }; return a + b; }\nmodule.exports = { f };'],
+      ];
+      for (const [nm, src2] of STILL_BLIND) {
+        const p2 = path.join(box2, nm.replace(/[^\w]/g, '_') + '.js');
+        fs.writeFileSync(p2, src2);
+        assert.strictEqual(mutableGlobals([p2]).length, 0,
+          `残債 SM-L3 が「${nm}」を見ないと名乗っているのに、字句器は見ている — `
+          + '払った形を残債と呼び続けるのは、見ていない形を無罪と呼ぶのと同じ嘘である (第16条)');
+      }
+      // 逆に、払った形は本当に払われていること(名乗りと実体の対を両側から凍らせる)
+      const paid = path.join(box2, 'paid.js');
+      fs.writeFileSync(paid,
+        "function f() { Object.assign(globalThis, { __a: 1 }); Reflect.set(globalThis, '__b', 1); }\n"
+        + 'module.exports = { f };');
+      assert.strictEqual(mutableGlobals([paid]).length, 2,
+        'SM-L2 が名指していた Object.assign / Reflect.set を払ったはずが、まだ見えていない (R-1)');
+    } finally { fs.rmSync(box2, { recursive: true, force: true }); }
+  }
+  // (5) 空の射程を拒む歯が字句器から消えていないこと(Z2 の再発防止を外から凍らせる)
+  assert.throws(() => mutableGlobals([]), /空の射程/,
+    '空の射程を拒む歯が消えた — 何も検めずに緑を出す道である (Z2 / 第37条)');
+  assert.throws(() => mutableGlobals(undefined), /空の射程/, '射程を渡さずに呼べる道が残っている');
+});
 
 test('gauge: 同一 run の二度の record は同じ指紋を名乗る (AC-1a / FR-1)', () => {
   withGaugeSandbox((g, tmp) => {
@@ -4806,6 +5938,193 @@ test('gauge(CLI): audit の信号は「掃除できる欠陥」と「人が読�
     '健全な台帳で鳴った — 鳴りっぱなしの門である');
 });
 
+test('gauge(CLI): audit は競合の跡と人の手を要する事故を文面で分ける — exit の規約は動かさない (D-B γ / 第57条)', () => {
+  const shot = (rows, extra = []) => withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, rows);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit', ...extra],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  const HEAL = /🧹 機械が畳めば消える\(競合の跡\)— 人の手は要らない/;
+  const HUMAN = /🔴 人が読むべき行が/;
+
+  // ── 1. 競合の跡だけ(同一の正規行を二回)── exit 1 のまま、文面は「畳めば消える」 ──
+  const dup = shot([honest, honest]);
+  assert.strictEqual(dup.code, 1,
+    `audit の exit が動いた — 既存 5 門が符号化した規約を破った (第57条): ${dup.code} / ${dup.out}`);
+  assert.ok(/rows=2 distinct=1 duplicates=1 conflicts=0/.test(dup.out), dup.out);
+  assert.ok(HEAL.test(dup.out), `競合の跡が「機械が畳める」と名乗っていない (D-B γ): ${dup.out}`);
+  assert.ok(!HUMAN.test(dup.out), `競合の跡を「人が読むべき事故」と呼んだ: ${dup.out}`);
+
+  // ── 2. 人の手を要する事故(破損行 + 正規行)── exit 2 のまま、🧹 は出ない ──
+  const bad = shot(['{"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr', honest]);
+  assert.strictEqual(bad.code, 2,
+    `audit の exit が動いた — 事故は 2 に予約されている (第57条): ${bad.code} / ${bad.out}`);
+  assert.ok(HUMAN.test(bad.out), `事故が「人が読むべき」と名乗っていない: ${bad.out}`);
+  assert.ok(!HEAL.test(bad.out),
+    `競合の跡と事故が同じ文面になった (D-B γ) — 掃除で消えない行に「畳めば消える」と言った: ${bad.out}`);
+
+  // ── 3. 健全 ── exit 0 のまま、🧹 も 🔴 も出ない ──
+  const ok = shot([honest]);
+  assert.strictEqual(ok.code, 0, `健全な台帳で鳴った — 鳴りっぱなしの門である: ${ok.code} / ${ok.out}`);
+  assert.ok(!HEAL.test(ok.out) && !HUMAN.test(ok.out), `健全なのに欠陥を名乗った: ${ok.out}`);
+
+  // ── 4. --json の healable。**機械が読める信号**(文面の grep に依存させない / 第29条)──
+  const js = (r) => JSON.parse(r.out.split('\n').find(l => l.trim().startsWith('{')));
+  assert.strictEqual(js(shot([honest, honest], ['--json'])).healable, true,
+    '競合の跡が healable=false と名乗った — 掃除スクリプトが回せなくなる (D-B γ)');
+  assert.strictEqual(js(shot(['{"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr', honest], ['--json'])).healable, false,
+    '人の手を要する事故が healable=true と名乗った — 掃除が観測を消しに行く (D-B γ)');
+  assert.strictEqual(js(shot([honest], ['--json'])).healable, true, '健全な台帳が healable=false と名乗った');
+  // 偽の鍵(conflicts に積まれる別種)も healable=false であること — human 一本で足りる根拠
+  assert.strictEqual(js(shot([{ ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+    fp: gauge.fingerprint(honest) }], ['--json'])).healable, false,
+    '偽の鍵が healable=true と名乗った — conflicts の四種すべてが human に積まれていない');
+  // --json を渡しても人が読む一行目は出続ける(既存の読み手を壊さない)
+  assert.ok(/rows=2 distinct=1 duplicates=1/.test(shot([honest, honest], ['--json']).out),
+    '--json が人の読む行を奪った — 既存門の正規表現が掛からなくなる');
+});
+
+test('gauge(CLI): healable は exit code と必ず一致する — 同じ問いに二つの答えを持たない (verify S-4 / 第48条)', () => {
+  /**
+   * **security 相 S-4 の再現**: `metrics:"x"` の一行で **exit 2 かつ `healable:true`**。
+   * `healable` は「掃除を掛ければ消える欠陥しか残っていない」を意味し、
+   * それは **exit 0 か 1** と同じことの言い換えである。旧実装は `conflicts.length` から
+   * **exit とは別に**導いており、**別の式は別の答えを出す**(第48条)。
+   *
+   * ここで撃つのは二段:
+   *   (a) 裁定の純関数 `auditVerdict` —— exit と healable が構造的に一致すること(どの機でも走る)
+   *   (b) CLI を子プロセスで走らせ、**実際の exit code と --json の healable が一致する**こと
+   *       (security が撃った四通り + 健全 + 重複)
+   */
+  // ── (a) 純関数。exit と healable が同じ源から出ている ──
+  const mkA = (conflicts, duplicates) => ({ conflicts, duplicates });
+  const cases = [
+    ['健全', mkA([], 0), 0, true],
+    ['重複だけ(畳めば消える)', mkA([], 3), 1, true],
+    ['人が読むべき事故', mkA([{ kind: 'corrupt' }], 0), 2, false],
+    ['事故 + 重複', mkA([{ kind: 'forged-fp' }], 2), 2, false],
+  ];
+  for (const [name, a, wantExit, wantHealable] of cases) {
+    const v = gauge.auditVerdict(a);
+    assert.strictEqual(v.exit, wantExit, `${name}: exit が規約から外れた (第57条): ${v.exit}`);
+    assert.strictEqual(v.healable, wantHealable, `${name}: healable が ${v.healable}`);
+    assert.strictEqual(v.healable, v.exit !== 2,
+      `${name}: healable と exit が食い違った — 同じ問いに二つの答えがある (S-4 / 第48条)`);
+  }
+  assert.strictEqual(gauge.auditVerdict(undefined).exit, 0, '材料が無いのに事故を名乗った');
+  /**
+   * ── (b) **人が歩く道で**一致を撃つ。純関数が正しくても、CLI が別の式を持てば無意味である。
+   * security 相が破った入力そのものを含む(`metrics:"x"` / `metrics:null` / 裸の値 / 100 行の毒)。
+   */
+  const shot = (rows) => withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, rows);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit', '--json'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  const honest = gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' });
+  const H = JSON.stringify(honest);
+  const inputs = [
+    ['健全', [H]],
+    ['重複', [H, H]],
+    ['metrics が非オブジェクト (S-4 の原因)', [H, '{"ts":"2026-09-01T00:00:00.000Z","slug":"S","scale":"standard","metrics":"x"}']],
+    ['metrics:null', [H, '{"ts":"2026-09-01T00:00:00.000Z","slug":"S","scale":"standard","metrics":null}']],
+    ['裸の値', [H, '42']],
+    ['破損行', [H, '{"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr']],
+    ['偽の鍵', [H, JSON.stringify({ ...gaugeRow({ slug: 'coin', score: 99, ts: '2026-01-02T00:00:00.000Z' }),
+      fp: gauge.fingerprint(honest) })]],
+    ['深すぎる行', [H, deepGaugeRowLine('d', '2026-01-03T00:00:00.000Z', 200)]],
+  ];
+  for (const [name, rows] of inputs) {
+    const r = shot(rows);
+    const j = JSON.parse(r.out.split('\n').find(l => l.trim().startsWith('{')));
+    assert.strictEqual(j.healable, r.code !== 2,
+      `「${name}」で exit=${r.code} と healable=${j.healable} が食い違った — `
+      + `明日 healable を信じて掃除を組んだ者が人の目の要る台帳を機械に掛ける (S-4): ${r.out}`);
+    assert.ok([0, 1, 2].includes(r.code), `exit の規約から外れた: ${r.code} (第57条)`);
+  }
+});
+
+test('gauge(CLI): --json は欄を列挙する — 破損行の生バイトを人向けより多く吐かない (verify S-5)', () => {
+  /**
+   * **security 相 A24 の再現**: `JSON.stringify({ ...a, healable })` の `{...a}` は
+   * `conflicts[].line`(破損行の**生バイト 200 文字**)をそのまま外へ出していた ——
+   * **人の画面は 60 文字で切っているのに、機械の出口は 3.3 倍を吐いていた。**
+   * 展開は列挙ではない。`auditLedger` に欄が増えれば自動的に外へ漏れる。
+   */
+  const payload = 'Z'.repeat(400);
+  const r = withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [`{"ts":"2026-01-01T00:00:00.000Z","slug":"leak","secret":"${payload}`,
+      JSON.stringify(gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' }))]);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit', '--json'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  const j = JSON.parse(r.out.split('\n').find(l => l.trim().startsWith('{')));
+  const c = (j.conflicts || []).find(x => x.kind === 'corrupt');
+  assert.ok(c, `破損行が監査に載っていない(前提): ${r.out}`);
+  assert.ok(c.line.length <= 60,
+    `--json が破損行を ${c.line.length} 文字吐いた — 人向け(60)より多い (S-5 / A24): ${c.line}`);
+  assert.ok(!new RegExp('Z{200}').test(r.out),
+    '台帳の生バイトが 200 文字以上そのまま --json に出た (S-5)');
+  // **列挙であることを凍らせる。** 未知の欄が自動で外へ出る道を塞いだことを門にする。
+  const src = fs.readFileSync(GAUGE_JS, 'utf8');
+  assert.ok(!/console\.log\(JSON\.stringify\(\{ \.\.\.a, healable \}\)\)/.test(src),
+    '--json が `{...a}` の全展開に戻った — 作者が「何が出るか」を数えていない形である (S-5)');
+  assert.ok(/String\(c\.line\)\.slice\(0, 60\)/.test(src),
+    '--json の破損行の刈り込みが消えた — 機械の出口が人の画面より多く吐く (S-5)');
+});
+
+test('gauge(CLI): 読まれずに消える行を監査が名乗る — 101 行を rows=1 と答えて黙らない (verify S-8)', () => {
+  /**
+   * **security 相 A13 の再現**: `metrics` を持たない行 100 本 + 健全 1 行で
+   * **`rows=1 / healable:true / exit 0`**。ファイルに 101 行あるのに 1 行と答えた。
+   * 前任 F-2 は `JSON.parse` に失敗する行を塞いだが、**parse に成功して観測を持たない行**は
+   * 今も静かに消える。**`rows` の意味は動かさない** —— 別の鍵 `ignored` で数えて名乗る。
+   */
+  const honest = JSON.stringify(gaugeRow({ slug: 'coin', score: 10, ts: '2026-01-01T00:00:00.000Z' }));
+  const noise = [];
+  for (let i = 0; i < 100; i++) noise.push(`{"ts":"2026-09-0${i % 9 + 1}T00:00:00.000Z","slug":"n${i}"}`);
+  const r = withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [honest, ...noise]);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit', '--json'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  const j = JSON.parse(r.out.split('\n').find(l => l.trim().startsWith('{')));
+  assert.strictEqual(j.rows, 1, `rows の意味が動いた — 既存の門がこの意味で立っている: ${j.rows}`);
+  assert.strictEqual(j.ignored, 100,
+    `読まれずに消えた 100 行を ${j.ignored} 件と答えた — 101 行を rows=1 と答えて黙る道が残っている (S-8)`);
+  assert.ok(/観測を持たない行が 100 行ある/.test(r.out),
+    `画面が消えた行を名乗っていない — 沈黙は通過ではない (第37条): ${r.out}`);
+  // 健全な台帳では余計な行を出さない(鳴りっぱなしの門にしない / R-2)
+  const clean = withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [honest]);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  assert.strictEqual(clean.code, 0, `健全な台帳で鳴った: ${clean.out}`);
+  assert.ok(!/観測を持たない行/.test(clean.out), `健全な台帳で消えた行を名乗った: ${clean.out}`);
+  // `metrics` が観測の形をしていない行も名乗る(S-4 の原因を数で見える形に)
+  const odd = withGaugeSandbox((g, tmp) => {
+    writeGaugeLedger(tmp, [honest, '{"ts":"2026-09-01T00:00:00.000Z","slug":"S","scale":"standard","metrics":"x"}']);
+    try {
+      return { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit', '--json'],
+        { encoding: 'utf8', env: { ...process.env, PARADISE_CREATIONS: tmp } }) };
+    } catch (e) { return { code: e.status, out: String(e.stdout || '') }; }
+  });
+  assert.strictEqual(JSON.parse(odd.out.split('\n').find(l => l.trim().startsWith('{'))).oddMetrics, 1,
+    `metrics が観測の形をしていない行を数えていない: ${odd.out}`);
+});
+
 // ── P-2: 性能の処置(S-1 を再発させずに) ──────────────────────────────
 
 test('gauge: keyIndex の鍵は再導出であって自己申告ではない (P-2 / S-1 の再発防止)', () => {
@@ -5084,8 +6403,8 @@ test('gauge(故障注入): 私が新たに発明した 5 変異で門が exit 1 
             'raw が行を落とした: ' + g.readLedger({ raw: true }).length);` },
       { tag: 'B2', name: 'b3.audit-silent.js',
         // ★ audit が too-deep を数えず「健全」と答える(第16条違反の再発)
-        mutate: s => s.replace('  return { rows, distinct, tooDeep, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts };',
-                               "  return { rows, distinct, tooDeep: 0, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts: conflicts.filter(c => c.kind !== 'too-deep') };"),
+        mutate: s => s.replace('tooDeep, corrupt: corrupt.length, suspect, ignored, oddMetrics,', 'tooDeep: 0, corrupt: corrupt.length, suspect, ignored, oddMetrics,')
+          .replace('duplicates: Math.max(0, rows - distinct), conflicts };', "duplicates: Math.max(0, rows - distinct), conflicts: conflicts.filter(c => c.kind !== 'too-deep') };"),
         gate: `const a = g.auditLedger([JSON.parse(${deepLine(200)})]);
           assert.strictEqual(a.tooDeep, 1, '読めない行を 0 件と偽った: ' + a.tooDeep);
           assert.ok(a.conflicts.some(c => c.kind === 'too-deep'), '読めない行を名指していない');` },
@@ -5559,6 +6878,74 @@ test('gauge: 先回り毒は正当な観測を刻ませないことができな�
   });
 });
 
+test('gauge: record は台帳を信じ、プロセスの記憶を信じない (D-D / 第55条 e)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const LEDGER = path.join(tmp, 'gauge-ledger.jsonl');   // ★ リテラルで綴る(hermetic の警告欄を汚さない)
+    assert.strictEqual(g.ledgerPath(), LEDGER, '住所が仮倉に振り替わっていない(前提)');
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const a = g.record(run, 'revive');
+    const b = g.record(run, 'revive');
+    assert.strictEqual(b.skipped, true, '二度目が既記録を名乗っていない(前提)');
+    fs.writeFileSync(LEDGER, '');                          // ★ 台帳を外から空にする
+    const c = g.record(run, 'revive');
+    assert.ok(!c.skipped,
+      '台帳を空にしても「既記録」を名乗った — record がプロセスの記憶を信じている (D-D)');
+    assert.strictEqual(g.readLedger({ raw: true }).length, 1,
+      '記録が復活していない — 台帳の第一の徳「記録が失われない」が破れた (第55条 e)');
+    assert.strictEqual(c.fp, a.fp, '復活した行が別の鍵を名乗った');
+  });
+});
+
+test('gauge: ts が読めない既存行は正当な先着ではない (D-E / F-1 の回帰)', () => {
+  withGaugeSandbox((g, tmp) => {
+    const LEDGER = path.join(tmp, 'gauge-ledger.jsonl');
+    const run = path.join(tmp, 'run.json');
+    fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+    const probe = g.record(run, 'poison');                    // 正規の行を一度刻んで fp を得る
+    assert.ok(probe.fp, '前提: 正規の行が指紋を名乗っていない');
+    fs.writeFileSync(LEDGER, JSON.stringify({ ...probe, ts: 'not-a-time' }) + '\n');
+    const r = g.record(run, 'poison');
+    assert.ok(!r.skipped, '読めない ts の行を正当な先着として黙って skip した (D-E / T9)');
+    assert.strictEqual(r.preempted, true, '先回りを名乗っていない');
+    assert.ok(Array.isArray(r.reasons) && r.reasons.some(w => /ts が時刻として読めない/.test(w)),
+      `理由が「読めない ts」を名指していない: ${JSON.stringify(r.reasons)}`);
+    assert.strictEqual(g.readLedger({ raw: true }).length, 2,
+      '正当な観測が刻まれていない — F-1 の窓が再び開いた');
+  });
+});
+
+test('gauge: 先回りの三つの物差しは独立に効く — 一本でも死ねば鳴る (D-E / 第21条 a)', () => {
+  /**
+   * **一つの毒に四つの罪を積んだ行で撃てば、物差しを一本殺しても他の三本が鳴って隠す。**
+   * ゆえに毒を**一種類ずつ**別々の仮倉で撃つ(第21条 a: 一つの口に絞った門は覆いではない)。
+   */
+  const cases = [
+    ['読めない ts', (p) => ({ ...p, ts: 'not-a-time' }), /ts が時刻として読めない/],
+    ['走行の開始より前', (p) => ({ ...p, ts: '2000-01-01T00:00:00.000Z' }), /走行の開始 .* より前に住む/],
+    ['秤が書かない鍵', (p) => ({ ...p, note: 'hand-edited' }), /秤が書かない鍵を持つ: note/],
+    ['未来に住む', (p) => ({ ...p, ts: new Date(Date.now() + 48 * 3600 * 1000).toISOString() }), /より未来に住む/],
+  ];
+  for (const [name, poison, want] of cases) {
+    withGaugeSandbox((g, tmp) => {
+      const LEDGER = path.join(tmp, 'gauge-ledger.jsonl');
+      const run = path.join(tmp, 'run.json');
+      fs.writeFileSync(run, JSON.stringify(makeGaugeRun()));
+      const probe = g.record(run, 'coin');
+      fs.writeFileSync(LEDGER, JSON.stringify(poison(probe)) + '\n');
+      const r = g.record(run, 'coin');
+      assert.strictEqual(r.preempted, true,
+        `物差し「${name}」が死んでいる — 先回りが素通りする (D-E): ${JSON.stringify(r)}`);
+      assert.ok(Array.isArray(r.reasons) && r.reasons.length >= 1,
+        `物差し「${name}」が理由を列挙していない: ${JSON.stringify(r.reasons)}`);
+      assert.ok(r.reasons.some(w => want.test(w)),
+        `物差し「${name}」の名指しが消えた — 理由の文面が物差しを特定できない: ${JSON.stringify(r.reasons)}`);
+      assert.strictEqual(g.readLedger({ raw: true }).length, 2,
+        `物差し「${name}」の毒で正当な観測が刻まれなかった (第55条 e)`);
+    });
+  }
+});
+
 test('gauge: 攻撃者が居なくても起きる — 狂った時計と古い台帳のマージ (F-1 の現実の形)', () => {
   /**
    * F-1 は敵対的攻撃者を要さない。**時計の狂った機**が未来の ts で刻めば、
@@ -5947,6 +7334,196 @@ test('gauge: 呼び出しを跨いで状態を持たない — 別プロセス�
   }
 });
 
+/**
+ * 競合窓に入るための助走(ms)。**門が自分でこの値を凍らせる(prove 相の修理)。**
+ * 変異 Z5(駆動子の `T0` を過去に倒す)は **門を素通りした** ——
+ * 子が barrier を素通りすれば競合は起きず、門は `· skip:` を名乗って**緑で通る**。
+ * skip の名乗り自体は正しい設計(§3-4)だが、**助走を殺すだけで門の歯が消える**のは別の話である。
+ * ゆえに助走を定数にし、その値を門が assert する(N18 の `g1:` と同じ作法)。
+ */
+const RACE_LEAD_MS = 400;
+
+/**
+ * ── **競合の裁定を純関数に持ち上げる**(verify 相 / review【重大 C】)──────────────
+ *
+ * review の実測: 門の `if (raw < 2) {` を `if (true) {` に変えると、
+ * **本題の 5 つの assert(raw===2 / folded===1 / S の数 0 / audit.code===1 / 文面 2 本)が
+ * 全部飛んでも 129 門は緑**だった。定数 `RACE_LEAD_MS` は prove 相が凍らせたが、**分岐は凍っていなかった。**
+ * しかも本機ではその skip 枝に一度も入らない(104 試行中 104 回 `raw===2`)——
+ * **正常機では到達不能な死に枝**であり、Y11 が番兵で踏んだ病と同じ形である。
+ *
+ * ゆえに Y11 と同じ作法を取る:
+ *   (a) 裁定を**どの機でも直接撃てる純関数**に出す(下の門が全ケースを撃つ)
+ *   (b) 門の本文を読んで**呼び出しが在ることを凍らせる**(第44条: 呼ばれない裁定は存在しないのと同じ)
+ * 門の側には**分岐が一つも残らない** —— 材料を集めて `raceVerdict` に渡すだけである。
+ *
+ * 返り値の `kind`:
+ *   'harness' = 器が壊れた(競合の有無とは別問題。赤)
+ *   'skip'    = 競合窓に入らなかった(前提が立たない。名乗って通す / 第58条 e)
+ *   'broken'  = 治癒が成立していない(赤)
+ *   'ok'      = 競合が起き、畳みが読み手を守った
+ */
+function raceVerdict(o) {
+  const { marks, raw, folded, auditCode, auditOut } = o || {};
+  if (typeof marks !== 'string' || marks.length !== 2) {
+    return { kind: 'harness',
+      why: `子が二本とも答えていない — 器が壊れている(競合の有無とは別問題): marks=${JSON.stringify(marks)} raw=${raw}` };
+  }
+  if (!(typeof raw === 'number' && raw >= 1)) {
+    return { kind: 'harness', why: `子が一行も刻んでいない — 器が壊れている: raw=${raw}` };
+  }
+  if (raw < 2) {
+    return { kind: 'skip', why: `競合窓に入らなかった(raw=${raw})— 治癒の門は前提が立ったときだけ判定する` };
+  }
+  if (raw !== 2) return { kind: 'broken', why: `競合の前提が崩れた(重複が 2 行でない): ${raw}` };
+  if (folded !== 1) {
+    return { kind: 'broken',
+      why: `畳みが競合下の重複を拾えなかった — 治癒が成立していない (D-B β): folded=${folded}` };
+  }
+  if ((marks.match(/S/g) || []).length !== 0) {
+    return { kind: 'broken', why: `子が「既記録」を誤報した — 記録が失われる方向の破れ: marks=${marks}` };
+  }
+  if (auditCode !== 1) {
+    return { kind: 'broken', why: `audit の exit が規約から外れた: ${auditCode} / ${auditOut}` };
+  }
+  if (!/rows=2 distinct=1 duplicates=1 conflicts=0 too-deep=0 corrupt=0 suspect=0/.test(String(auditOut))) {
+    return { kind: 'broken', why: `競合の跡が「機械が畳める欠陥」と分類されていない: ${auditOut}` };
+  }
+  if (!/機械が畳めば消える/.test(String(auditOut))) {
+    return { kind: 'broken', why: `AC-15 の文面が競合の跡に出ていない: ${auditOut}` };   // γ と噛み合っていること
+  }
+  return { kind: 'ok', why: null };
+}
+
+test('gauge(並行): 競合で重複が生まれても畳みが読み手を守る — 治癒に寄りかかると決めた以上、治癒を門にする (D-B / 第55条 b / 第62条 a)', () => {
+  assert.ok(RACE_LEAD_MS >= 150,
+    `競合の助走が ${RACE_LEAD_MS}ms に縮んだ — 子が barrier を素通りし、`
+    + '門は skip を名乗って緑のまま歯を失う (D-B / 第38条)。'
+    + '正当に縮めるなら、縮めた値で競合が起きることを実測してからこの門を動かせ');
+  const box = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-gauge-race-'));
+  try {
+    const runFile = path.join(box, 'run.json');
+    fs.writeFileSync(runFile, JSON.stringify(makeGaugeRun()));
+    /**
+     * 子と駆動子は**ファイルとして**書く。`-e` の文字列に入れ子で埋めると
+     * `JSON.stringify` の二重化で壊れ、**壊れたまま exit 0 で帰る**(design 相の実測)。
+     */
+    const childJs = path.join(box, 'race-child.js');
+    fs.writeFileSync(childJs, [
+      'const g = require(process.argv[2]);',      // require を先に済ませる
+      'const T0 = Number(process.argv[4]);',
+      'while (Date.now() < T0) {}',               // spin barrier — setTimeout では窓(10〜20ms)に入らない
+      "const r = g.record(process.argv[3], 'race');",
+      "process.stdout.write(r.skipped ? 'S' : 'W');",
+    ].join('\n'));
+    const driverJs = path.join(box, 'race-driver.js');
+    fs.writeFileSync(driverJs, [
+      "const { spawn } = require('child_process');",
+      'const [, , childPath, gaugePath, runPath] = process.argv;',
+      `const N = 2, T0 = Date.now() + ${RACE_LEAD_MS};`,   // 子 2 本が require を終えるのに十分な余裕
+      "let left = N, marks = '';",
+      'for (let i = 0; i < N; i++) {',
+      "  const p = spawn(process.execPath, [childPath, gaugePath, runPath, String(T0)], { stdio: ['ignore', 'pipe', 'inherit'] });",
+      "  p.stdout.on('data', (d) => { marks += d; });",
+      "  p.on('close', () => { if (--left === 0) process.stdout.write(marks); });",
+      '}',
+    ].join('\n'));
+    const env = { ...process.env, PARADISE_CREATIONS: box };
+    const marks = execFileSync(process.execPath, [driverJs, childJs, GAUGE_JS, runFile],
+      { encoding: 'utf8', env });
+    const L = path.join(box, 'gauge-ledger.jsonl');
+    const raw = fs.existsSync(L) ? fs.readFileSync(L, 'utf8').split('\n').filter(Boolean).length : 0;
+
+    // ── 器が壊れたのか競合しなかったのかを分ける(第16条)──
+    assert.strictEqual(marks.length, 2,
+      `子が二本とも答えていない — 器が壊れている(競合の有無とは別問題): marks=${JSON.stringify(marks)} raw=${raw}`);
+    assert.ok(raw >= 1, `子が一行も刻んでいない — 器が壊れている: raw=${raw}`);
+
+    // ── 材料を集める。**門の側に分岐は一つも無い**(review【重大 C】の修理)──
+    const folded = Number(execFileSync(process.execPath,
+      ['-e', 'console.log(require(process.argv[1]).readLedger().length)', GAUGE_JS],
+      { encoding: 'utf8', env }).trim());
+    let audit;
+    try { audit = { code: 0, out: execFileSync(process.execPath, [GAUGE_JS, 'ledger', '--audit'],
+      { encoding: 'utf8', env }) }; }
+    catch (e) { audit = { code: e.status, out: String(e.stdout || '') }; }
+    const v = raceVerdict({ marks, raw, folded, auditCode: audit.code, auditOut: audit.out });
+    assert.notStrictEqual(v.kind, 'harness', `器が壊れている: ${v.why}`);
+    assert.notStrictEqual(v.kind, 'broken', `治癒が成立していない (D-B): ${v.why}`);
+    /**
+     * **判定したことも名乗る**(review【軽微 e】/ 第37条 の裏側)。
+     * skip だけが名乗る設計では、CI のログから「治癒が確かめられた」が読めず、
+     * **skip が常態化したとき初めて気づく**。対の一行を置いて、後から数えられるようにする。
+     */
+    console.log(v.kind === 'skip'
+      ? `      \u00b7 skip: ${v.why}`
+      : `      \u00b7 競合成立(raw=${raw} → folded=${folded})— 畳みが読み手を守った / audit exit=${audit.code}`);
+  } finally { fs.rmSync(box, { recursive: true, force: true }); }
+});
+
+test('gauge(並行): 競合の裁定は純関数であり、門から呼ばれている (verify / review【重大 C】/ 第44条)', () => {
+  /**
+   * **AC-13 の門の歯は、この門が守る。** review の実測: 門の早期 return の条件を潰すと
+   * **本題の 5 つの assert が全部飛んでも 129 門は緑**だった —— 条件は誰にも凍らされていなかった。
+   * ゆえに裁定を純関数に出し、(a) 全ケースを直接撃ち (b) 門からの呼び出しを凍らせる。
+   * **この門はどの機でも走る**(子プロセスを起こさない = 0ms)。
+   */
+  const OK_OUT = '📒 rows=2 distinct=1 duplicates=1 conflicts=0 too-deep=0 corrupt=0 suspect=0\n'
+    + '  🧹 機械が畳めば消える(競合の跡)— 人の手は要らない';
+  const base = { marks: 'WW', raw: 2, folded: 1, auditCode: 1, auditOut: OK_OUT };
+  // (a1) 健全 —— 競合が起き、畳みが 1 行に戻した
+  assert.strictEqual(raceVerdict(base).kind, 'ok', `健全な競合を赤と呼んだ: ${raceVerdict(base).why}`);
+  // (a2) 前提が立たない —— 名乗って通す(赤にはしない)
+  assert.strictEqual(raceVerdict({ ...base, raw: 1 }).kind, 'skip', '競合窓に入らなかったのを赤にした');
+  assert.ok(/競合窓に入らなかった/.test(raceVerdict({ ...base, raw: 1 }).why),
+    '前提が立たなかった理由を名乗っていない (第58条 e)');
+  // (a3) 器の破れ —— 競合の有無とは別の赤
+  assert.strictEqual(raceVerdict({ ...base, marks: 'W' }).kind, 'harness', '子が一本しか答えなくても通した');
+  assert.strictEqual(raceVerdict({ ...base, marks: '' }).kind, 'harness', '子が黙っていても通した');
+  assert.strictEqual(raceVerdict({ ...base, raw: 0 }).kind, 'harness', '一行も刻まれていないのに通した');
+  assert.strictEqual(raceVerdict(undefined).kind, 'harness', '材料が無いのに裁定を下した (第37条)');
+  // (a4) 治癒の破れ —— 本題の五つを一つずつ殺す。**どれも赤でなければならない**
+  const brokens = [
+    ['畳みが効かない', { ...base, folded: 2 }],
+    ['子が既記録を誤報', { ...base, marks: 'WS' }],
+    ['audit の exit が動いた', { ...base, auditCode: 0 }],
+    ['audit の exit が 2 に化けた', { ...base, auditCode: 2 }],
+    ['内訳が競合の跡でない', { ...base, auditOut: '📒 rows=2 distinct=2 duplicates=0 conflicts=0 too-deep=0 corrupt=0 suspect=0\n  🧹 機械が畳めば消える' }],
+    ['🧹 の文面が消えた', { ...base, auditOut: '📒 rows=2 distinct=1 duplicates=1 conflicts=0 too-deep=0 corrupt=0 suspect=0' }],
+    ['重複が 3 行に化けた', { ...base, raw: 3 }],
+  ];
+  for (const [name, input] of brokens) {
+    const got = raceVerdict(input);
+    assert.strictEqual(got.kind, 'broken',
+      `「${name}」を ${got.kind} と裁いた — 治癒の破れを通した (D-B): ${JSON.stringify(input)}`);
+    assert.ok(got.why && got.why.length > 10, `理由を名乗らずに赤を出した: ${JSON.stringify(got)}`);
+  }
+  /**
+   * ── (b) **配線を凍らせる**(第44条)。正しい裁定も、呼ばれなければ何も守らない。
+   * AC-2 の ⑥〜⑧ と同型に、AC-13 の門の本文を読んで呼び出しと assert を凍らせる。
+   */
+  const selfSrc = fs.readFileSync(__filename, 'utf8');
+  const start = selfSrc.indexOf("test('gauge(並行): 競合で重複が生まれても畳みが読み手を守る");
+  const end = selfSrc.indexOf("test('gauge(並行): 競合の裁定は純関数であり", start);
+  assert.ok(start > 0 && end > start, 'AC-13 の門の本文を切り出せていない(前提)— 門の名が変わった');
+  const body = selfSrc.slice(start, end);
+  assert.ok(body.length > 1000, `AC-13 の門が ${body.length} 字しか無い — 実質を失っている`);
+  assert.ok(/raceVerdict\(\{ marks, raw, folded, auditCode: audit\.code, auditOut: audit\.out \}\)/.test(body),
+    'AC-13 の門が raceVerdict を呼んでいない — 裁定が正しくても、呼ばれなければ治癒は守られない (第44条)');
+  assert.ok(/assert\.notStrictEqual\(v\.kind, 'harness'/.test(body),
+    'AC-13 の門が器の破れを赤にしていない — 裁定を受け取って捨てている');
+  assert.ok(/assert\.notStrictEqual\(v\.kind, 'broken'/.test(body),
+    'AC-13 の門が治癒の破れを赤にしていない — 裁定を受け取って捨てている (review【重大 C】)');
+  /**
+   * **門の側に分岐を残さない。** 早期 return の条件を潰す変異(`if (raw < 2)` → `if (true)`)が
+   * 無音だったのは、**判定が分岐の内側に住んでいた**からである。分岐が戻れば病も戻る。
+   */
+  assert.ok(!/\n\s*if \(raw < 2\)/.test(body),
+    'AC-13 の門に早期 return の分岐が戻った — その条件を潰せば本題の assert が全部飛ぶ (review【重大 C】)');
+  assert.ok(!/\n\s*return;/.test(body),
+    'AC-13 の門に裸の早期 return が戻った — 判定を飛ばす道である (第54条 d / --silent-green が咎める形)');
+});
+
 test('gauge(故障注入): build attempt 4 の新規 8 変異で各門が鳴る (第21条 壊して鳴らす)', () => {
   /**
    * **この環には S-2 → P-1 の前例がある** —— 修理が新しい病を生んだ。
@@ -6129,6 +7706,76 @@ test('gauge→verdict 契約: 秤の実出力がそのまま門に通じる — 
   const bad = verdict.judge({ ...base, trajectory: messy });
   assert.strictEqual(bad.verdict, 'REWORK');
   assert.ok(bad.defects.some(d => /loop-guard tripped/.test(d)), '実出力の loopGuardTrips が門に届くこと');
+});
+
+/** 印を消した走行(stripped)—— 紀元以後に convene され、`tierTrace` を一つも持たない。 */
+function makeStrippedRun() {
+  return {
+    created: '2026-09-10T00:00:00.000Z',        // TIER_EPOCH_AT (2026-09-03T04:54:49.000Z) より後
+    meta: { scale: 'standard' },
+    domains: [{ status: 'ratified', phases: ['a', 'b', 'c', 'd']
+      .map(id => ({ id, status: 'done', attempts: 1 })) }],
+    history: [{ ts: '2026-09-10T00:00:00.000Z', event: 'convene' },
+              { ts: '2026-09-10T00:30:00.000Z', event: 'complete' }],
+  };   // ← `epoch` 鍵も `tierTrace` も持たない = 印を消した走行
+}
+
+test('gauge: 印を消した走行(stripped)は序列の罰を免れない (D-C / 第52条)', () => {
+  const m = gauge.score(makeStrippedRun());
+  assert.strictEqual(m.score, 60,
+    `印を消した走行が ${m.score} 点を得た — 第52条の門を回避できる (D-C)。` +
+    '恩赦は移行のためであって回避のためではない');
+  assert.strictEqual(m.noTier, 4, `罰の対象が ${m.noTier} 相 — 4 相すべてが無印であるべき (D-C)`);
+  assert.strictEqual(m.unobservable, 0,
+    `stripped が unobservable に逃げた (${m.unobservable}) — legacy と同じ扱いになっている (D-C)`);
+  assert.strictEqual(m.complete, true, '完走の run で撃っていない(前提)— 未完走の減点と混ざる');
+  // ── 対照群: 紀元**前**の走行は恩赦される(移行の安全を壊していないこと)──
+  const legacy = gauge.score({ ...makeStrippedRun(), created: '2026-08-01T00:00:00.000Z' });
+  assert.strictEqual(legacy.score, 100, `legacy を遡って有罪にした (${legacy.score}) — 第16条`);
+  assert.strictEqual(legacy.unobservable, 4, '恩赦された走行が unobservable で数えられていない');
+});
+
+test('gauge: 紀元の日付は黙って動かない — TIER_EPOCH_AT の値を固定する (D-C / N18 と同じ作法)', () => {
+  const trace = require(SPAWN_TRACE_JS);          // cache を捨てない — 定数の照合である
+  assert.strictEqual(trace.TIER_EPOCH_AT, '2026-09-03T04:54:49.000Z',
+    '紀元が黙って動いた — engine の一行で全歴史の点が動く (D-C / 第52条)。' +
+    '正当に動かすなら、この門も同じ PR で動かせ(N18 の g1: と同じ掟)。' +
+    '門を先に動かさずに engine だけ動かす道は無い');
+  // 値の固定だけでは足りない — その値が**何を分けるか**も凍らせる(第38条: 数で示せ)
+  assert.strictEqual(trace.epochStatus({ created: '2026-09-10T00:00:00.000Z' }), 'stripped',
+    '紀元以後の無印が stripped と呼ばれていない — 恩赦が回避に化ける (D-C)');
+  assert.strictEqual(trace.epochStatus({ created: '2026-08-01T00:00:00.000Z' }), 'legacy',
+    '紀元以前の走行が legacy でなくなった — 過去の点が後から動く (AC-H3)');
+  assert.strictEqual(trace.epochStatus({}), 'legacy',
+    'created を持たない走行の扱いが変わった — 旧い run-state が遡って有罪になる');
+  /**
+   * ── 境界**ちょうど**を撃つ(prove 相の修理)────────────────────────
+   * 変異 Z9(`t >= Date.parse(TIER_EPOCH_AT)` → `t > …`)は **門を素通りした** ——
+   * 上の三つは紀元から遠い日付(2026-09-10 / 2026-08-01 / 不在)しか撃っておらず、
+   * **境界の一文字が動いたことを誰も見ていなかった**。
+   * 紀元ちょうどに convene された走行は「紀元以後」である —— 恩赦の側に落としてはならない。
+   */
+  assert.strictEqual(trace.epochStatus({ created: trace.TIER_EPOCH_AT }), 'stripped',
+    '紀元ちょうどに convene された走行が恩赦された — 境界の一文字(>= と >)が動いている (D-C)');
+  assert.strictEqual(trace.epochStatus({ created: '2026-09-03T04:54:48.999Z' }), 'legacy',
+    '紀元の 1ms 前が stripped になった — 境界が過去へずれ、旧い走行が遡って有罪になる (AC-H3)');
+});
+
+test('gauge: 同一プロセスで N 回採点しても点は動かない — 決定性は秤の第一の約束 (D-F / 第38条)', () => {
+  withGaugeSandbox((g) => {
+    const run = makeGaugeRun({ reworks: 2 });   // 荒れた走行(上限で潰れた一致を排除する)
+    const seen = [];
+    for (let i = 0; i < 5; i++) seen.push(g.score(run).score);
+    assert.strictEqual(new Set(seen).size, 1,
+      `同じ走行に違う点が付いた — 秤が揺れている (D-F / 第38条): ${JSON.stringify(seen)}`);
+    assert.ok(seen[0] < 100, '満点の走行では「上限で潰れた一致」と区別できない — 荒れた走行で撃て');
+    // stripped(序列の罰が乗る道)でも決定性が要る —— 罰の項が呼び出しを跨いで動かないこと
+    const strippedSeen = [];
+    for (let i = 0; i < 5; i++) strippedSeen.push(g.score(makeStrippedRun()).score);
+    assert.strictEqual(new Set(strippedSeen).size, 1,
+      `序列の罰が呼び出しごとに動いた (D-F): ${JSON.stringify(strippedSeen)}`);
+    assert.ok(strippedSeen[0] < 100, '罰の乗らない走行で撃っている(前提)');
+  });
 });
 
 test('gauge: 手つかずの走行は拒否 — 召集だけで一度も発令されていない run に点は付かない (第37条)', () => {
