@@ -4,9 +4,8 @@
 
 ## セッション開始時
 
-1. `git branch && git status && git log --oneline -3` と `gh pr list` を確認。
-   オープン中の PR があればそのブランチで継続、feature ブランチならそのまま継続。
-2. Claude Code のメモリ(auto memory)を確認 — 過去の決定と未完了タスクはそこにある。
+`git branch && git status && git log --oneline -3` と `gh pr list` を確認。
+オープン中の PR があればそのブランチで継続、feature ブランチならそのまま継続。
 
 ## Git / GitHub (詳細は `/ship` — ここに写経しない)
 
@@ -23,5 +22,3 @@
 
 1. **subagent の「done」を信じない** — 実物とコマンド出力で照合する。
 2. コミット前に `git status` で `.env` / `*.db` の混入を確かめ、個別 add する。
-3. 検証・レビューは適切な agent (code-reviewer / security-reviewer 等) に運ぶ —
-   一覧と使い分けは各 agent の description が語る。

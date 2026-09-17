@@ -8,6 +8,12 @@
       "Bash(git push --force-with-lease:*)",
       "Bash(git reset --hard:*)",
       "Bash(git commit --no-verify:*)",
+      "Bash(git checkout -- *)",
+      "Bash(git restore:*)",
+      "Bash(git clean:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git stash clear:*)",
+      "Bash(git branch -D:*)",
       "Edit(~/.claude/**)",
       "Edit(**/.env)",
       "Read(**/.env)",
@@ -22,7 +28,31 @@
       "Bash(node tests/*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git fetch:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge origin/main:*)",
+      "Bash(git stash:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh run:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)"
     ],
     "defaultMode": "default"
   },
@@ -37,6 +67,19 @@
           }
         ],
         "description": "Paradise: inject the knowledge-graph snapshot (repo abode / 第58条)"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit:*)",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/hooks/paradise-commit-guard.js\""
+          }
+        ],
+        "description": "Paradise: refuse a commit made while standing on main (branch-guard ON_MAIN / 第24条)"
       }
     ]
   }

@@ -1059,7 +1059,9 @@ test('exports --verify EX-1 は実機の permissions を照合する (AC-27)', (
     return;
   }
   assert.strictEqual(v.ok, true, `EX-1 の輸出が腐っている:\n${v.why.join('\n')}`);
-  assert.deepStrictEqual(v.counts, { deny: 9, ask: 1, allow: 5 },
+  // 数は写経しない(第22条): global の掟を引いて数える。2026-09 のハーネス審査で deny 9→15 / allow 5→29 に動いた。
+  const gp = require(path.join(DIR, '..', 'graph', 'apply-guards.js')).policyFor({ mode: 'global' });
+  assert.deepStrictEqual(v.counts, { deny: gp.deny.length, ask: gp.ask.length, allow: gp.allow.length },
     `permissions の数が台帳の記録と違う: ${JSON.stringify(v.counts)}`);
 });
 
@@ -1324,7 +1326,7 @@ test('【正】兄弟倉に神官が 1:1 で居れば緑 — 名も中身も一�
   assert.strictEqual(r.counts.claudeMd, true);
 });
 
-test('【正】現物の兄弟倉が 30 / 19 / 8 で緑 — 作り物だけの門は現実が壊れても鳴らない (§7.2)', () => {
+test('【正】現物の兄弟倉が楽園の派生物と 1:1 で緑 — 作り物だけの門は現実が壊れても鳴らない (§7.2)', () => {
   /**
    * **現物を撃つ。** ただし兄弟倉が無い機(CI)では skip が正しい(AC-49)。
    * ゆえに 0 か「skip を名乗った 0」のどちらかを要求し、**1 だけを赤とする**。
@@ -1336,8 +1338,12 @@ test('【正】現物の兄弟倉が 30 / 19 / 8 で緑 — 作り物だけの�
     console.log('      (この機に兄弟倉が無い — 門は名乗って skip した。AC-49)');
     return;
   }
-  assert.ok(/agents 30 \/ commands 19 \/ rules 8/.test(r.out),
-    `完了条件の数を語っていない (§7.2 は agents 30 / commands 19 / rules 8 を求める):\n${r.out}`);
+  // 数は写経しない(第22条): 楽園側の派生物を数え、同じ数を兄弟倉が名乗ることを求める。
+  // (2026-09 ハーネス審査で 30/19/8 → 14/5/3 に痩せた。固定値なら痩せるたびに門が嘘をつく)
+  const listMd = (d) => { try { return fs.readdirSync(d).filter(f => f.endsWith('.md')).length; } catch { return 0; } };
+  const home = abode.resolve().abode;
+  const want = `agents ${listMd(path.join(home, 'agents'))} / commands ${listMd(path.join(home, 'commands'))} / rules ${listMd(path.join(home, 'rules'))}`;
+  assert.ok(r.out.includes(want), `完了条件の数を語っていない (§7.2 は ${want} を求める):\n${r.out}`);
   assert.ok(/CLAUDE\.md あり/.test(r.out), `CLAUDE.md が配備されていない:\n${r.out}`);
 });
 

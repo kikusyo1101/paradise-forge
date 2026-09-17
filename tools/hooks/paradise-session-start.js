@@ -49,26 +49,51 @@ function main() {
     const kg = path.join(root, 'graph', 'kg.js');
     if (!fs.existsSync(kg)) return;
 
-    // 知識だけを注いでも、受け取った側は「自分が何者で、次に何をすべきか」を
-    // 知らない。実際にそれで新しいセッションが英語で喋り、md を闇雲に検索した。
-    // 記憶より先に、まず役割と最初の一手を渡す。
+    /**
+     * 2026-09 ハーネス審査 3-d: SessionStart の stdout は**モデルが読める唯一の動的文脈**である
+     * (PostToolUse/Stop の stdout は読まれない — 公式 hooks reference)。ゆえにここは
+     * 「前回何をしたか」を機械の出力で渡す場所であり、掟の写経を置く場所ではない。
+     * 静的な役割・掟は CLAUDE.md が担う(同じ文を二度載せれば予算を二度払う / 第39条)。
+     * 文体は事実の陳述にする — 命令形の system 文はモデルの注入防御に引っかかる(同 reference)。
+     */
+    const run = (args, ms = 15000) => {
+      try { return (execFileSync('node', args, { cwd: root, encoding: 'utf8', timeout: ms }) || '').trim(); }
+      catch (e) { return ((e && (e.stdout || '')) + '').trim(); }   // exit≠0 でも stdout は使う(audit は赤で 1 を返す)
+    };
+    const git = (args) => {
+      try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+      catch { return null; }
+    };
+
     const lines = [];
     lines.push('=== 楽園 (PARADISE) — セッション開始 ===');
-    lines.push('あなたは楽園の教主(王)。kikus は神であり、日本語で神託を下す。**日本語で応答すること。**');
-    lines.push(`場所: ${root}`);
-    lines.push('最初に読め: CLAUDE.md (役割と掟) → CONSTITUTION.md (最高法規・19条)');
-    lines.push('闇雲にファイルを探すな。上の2つに、どこを見るべきかが書いてある。');
-    lines.push('');
-    lines.push('掟(要点): main へ直接コミットしない(PR必須・マージは神) / 上流 everything-claude-code は');
-    lines.push('read-only / ~/.claude は成果物なので手で編集しない / subagent の「done」を信じず実物で照合 /');
-    lines.push('神が指摘した欠陥は engine を直し憲法に条を足し回帰テストを書く。');
-    lines.push('');
+    lines.push(`場所: ${root} / 役割と掟は CLAUDE.md に在る(この文脈は前回の状態だけを運ぶ)`);
 
-    let snap = '';
+    // (1) 作業木の状態 — 前回が commit せずに終わっていれば、それが最初の事実である
+    const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+    const dirty = git(['status', '--porcelain']);
+    if (branch) lines.push(`git: branch=${branch}` + (dirty ? ` / 未コミット ${dirty.split('\n').length} 件:` : ' / 作業木は clean'));
+    if (dirty) for (const l of dirty.split('\n').slice(0, 15)) lines.push('  ' + l);
+
+    // (2) 走行帳 — 閉じていない環(第53条)。全走行を並べず、開いている物だけを名指す
+    const audit = run([path.join(root, 'graph', 'conclave.js'), 'audit', '--json'], 20000);
     try {
-      snap = execFileSync('node', [kg, 'snapshot'], { encoding: 'utf8', timeout: 15000 }) || '';
-    } catch { /* 記憶が読めなくても開始の指示は渡す */ }
-    if (snap.trim()) lines.push(snap.trim());
+      const rep = JSON.parse(audit);
+      const open = (rep.ledgers || []).filter(l => l.state !== 'closed');
+      lines.push(`走行帳: 全 ${(rep.ledgers || []).length} / 開いている ${open.length}` +
+                 (rep.abandoned.length ? ` / 見捨てられた ${rep.abandoned.length}` : ''));
+      for (const l of open.slice(0, 8)) lines.push(`  ${l.state === 'abandoned' ? '🔴' : '▶'} ${l.slug} ${l.ratified}/${l.total} domains — ${l.path}`);
+    } catch { if (audit) lines.push('走行帳: (audit --json を読めなかった)'); }
+
+    // (3) 神の課題台帳(任意) — 楽園の外に住むので env で名指されたときだけ読む(第58条(a))
+    if (process.env.PARADISE_TASKS && fs.existsSync(process.env.PARADISE_TASKS)) {
+      const t = run([process.env.PARADISE_TASKS, 'resume']);
+      if (t) { lines.push(''); lines.push(t); }
+    }
+
+    // (4) 記憶
+    const snap = run([kg, 'snapshot']);
+    if (snap) { lines.push(''); lines.push(snap); }
 
     process.stdout.write('\n' + lines.join('\n') + '\n');
   } catch {

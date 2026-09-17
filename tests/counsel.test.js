@@ -1181,7 +1181,8 @@ test('枢機卿 counsel が存在し、6相すべてを統べる', () => {
    * 赤いまま誰にも気付かれずに住み続けていた(第44条)。
    */
   assert.deepStrictEqual(c.priests, ['market-researcher', 'auditor', 'reporter', 'requirements-analyst']);
-  assert.deepStrictEqual(c.believers, ['web-scout', 'feature-ranker', 'data-collector']);
+  // 信徒層は退役した(2026-09 ハーネス審査: spawnTrace 7 走行/108 起動に信徒の起動 0)。
+  assert.deepStrictEqual(c.believers, [], '退役した信徒が組織図に戻っている');
   assert.strictEqual(c.reviewClass, 'executor');
 });
 
@@ -1224,7 +1225,7 @@ const OVERLAY_AGENTS = path.join(ROOT, 'overlay', 'agents');
 for (const [name, want] of [
   ['auditor', { model: 'claude-sonnet-5', effort: 'high', needsTask: true }],
   ['reporter', { model: 'claude-sonnet-5', effort: 'high', needsTask: true }],
-  ['data-collector', { model: 'haiku', effort: null, needsTask: false }],
+  // data-collector(信徒)は 2026-09 のハーネス審査で退役 — 起動 0 の実体は配備しない。
 ]) {
   test(`overlay/agents/${name}.md が実在し、位階どおりの宣言を持つ`, () => {
     const file = path.join(OVERLAY_AGENTS, `${name}.md`);
@@ -1259,9 +1260,10 @@ for (const [name, want] of [
 test('新エージェント3体は overlay.json の own に登録されている(配備に乗る)', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'overlay', 'overlay.json'), 'utf8'));
   const own = (cfg.own && cfg.own.agents) || [];
-  for (const f of ['auditor.md', 'reporter.md', 'data-collector.md']) {
+  for (const f of ['auditor.md', 'reporter.md']) {
     assert.ok(own.includes(f), `overlay.json の own.agents に ${f} が無い — 配備されず宙吊りになる`);
   }
+  assert.ok(!own.includes('data-collector.md'), '退役した信徒 data-collector が own に戻っている(2026-09 ハーネス審査)');
 });
 
 test('信徒 data-collector に務めの説明がある(名前だけの階層を作らない)', () => {

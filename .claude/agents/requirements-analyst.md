@@ -1,7 +1,7 @@
 ---
 name: requirements-analyst
 description: Turns a small human wish into a rigorous specification — requirements, user stories, and acceptance criteria. The first gate of the Paradise creation pipeline. Spec is the source of truth.
-tools: Read, Grep, Glob, Write, Task
+tools: Read, Grep, Glob, Write
 model: claude-sonnet-5
 effort: high
 ---

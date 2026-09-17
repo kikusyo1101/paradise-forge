@@ -27,8 +27,9 @@ force-push・`~/.claude` 手編集・`.env` 読み書きは **permissions が拒
 (`node graph/apply-guards.js verify` が証拠 — 数はその出力が語る)。
 仕事は必ずブランチ → PR — main への **push** は GitHub の保護が拒み、
 **マージは神の御手のみ** (CODEOWNERS + 保護)。
-だが **main へのローカル commit を拒む機構は無い**(`.git/hooks/` は空)。
-ここと `node graph/branch-guard.js` を切る前に走らせることだけが散文の掟である。
+main へのローカル commit は `tools/hooks/paradise-commit-guard.js`(PreToolUse)が拒む —
+`branch-guard.js` の ON_MAIN を機構にしたもの。前セッションの状態(作業木・開いた走行帳)は
+SessionStart の hook が注ぐ。ここに写経しない。
 
 ## 機械が強制できない判断則 (だからここに書く)
 

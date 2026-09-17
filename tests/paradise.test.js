@@ -989,11 +989,15 @@ test('conclave completes when all domains are ratified', () => {
   assert.strictEqual(step.phase, 'complete');
 });
 
-test('clergy marshals believers under a priest (priest→believer layer)', () => {
+test('clergy marshals a priest without believers — the believer layer is retired (2026-09 harness audit)', () => {
+  // 実測: 追跡された 7 走行 / 108 起動の spawnTrace に信徒の起動 0、入れ子起動 0/108。
+  // 起動されない実体を配備しない(第25条の裏返し)。位階の語彙は残る。
   const plan = clergy.marshalPlan('discover');
   assert.strictEqual(plan.priest, 'market-researcher', 'discover priest is the market-researcher');
-  assert.ok(plan.believers.length >= 1, 'the priest can marshal believers');
-  assert.ok(plan.division.every(d => d.does), 'each believer has a defined role');
+  assert.strictEqual(plan.believers.length, 0, 'no believer bodies are marshalled');
+  assert.strictEqual(plan.mode, 'no-believers', 'the plan names the mode instead of pretending a nested spawn');
+  assert.strictEqual(clergy.allBelievers().length, 0, 'no cardinal declares believers');
+  assert.ok(clergy.RANKS.believer, 'the rank vocabulary survives (the hierarchy is still told)');
 });
 
 // --- Model policy by rank (Constitution Art. 12) ---
@@ -1041,7 +1045,8 @@ test('apply-models resolves each agent to its rank (policy is mechanised)', () =
   assert.strictEqual(am.rankOf('cardinal'), 'cardinal');
   assert.strictEqual(am.rankOf('executor'), 'executor');
   assert.strictEqual(am.rankOf('self-critic'), 'executor', 'tribunal officers hold the executor rank');
-  assert.strictEqual(am.rankOf('web-scout'), 'believer');
+  // 信徒層は退役した(2026-09 ハーネス審査)。名だけ残った旧信徒は既定の priest に落ちる。
+  assert.strictEqual(am.rankOf('web-scout'), 'priest');
   assert.strictEqual(am.rankOf('architect'), 'priest');
 });
 
@@ -1883,15 +1888,17 @@ test('the session hook tells the agent who it is, not just what it knows', () =>
   const hookPath = path.join(__dirname, '..', 'tools', 'hooks', 'paradise-session-start.js');
   const out = require('child_process').execFileSync('node', [hookPath],
     { encoding: 'utf8', timeout: 30000, env: Object.assign({}, process.env, { PARADISE_ROOT: path.join(__dirname, '..') }) });
-  assert.ok(/日本語/.test(out), 'the language to answer in must be stated, or the agent defaults to English');
-  assert.ok(/教主|Pontiff/.test(out), 'the role must be stated');
-  assert.ok(/CLAUDE\.md/.test(out) && /CONSTITUTION\.md/.test(out),
-    'the agent must be told where to look instead of searching blindly');
-  assert.ok(/PR|main/.test(out), 'the non-negotiable rules must arrive with the memory');
-  // 指示は記憶より先に来ること。後ろに置くと長い記憶に埋もれる。
-  const roleAt = out.indexOf('教主');
+  // 2026-09 ハーネス審査 3-d: 役割・言語・掟は CLAUDE.md(静的・毎セッション自動ロード)が担い、
+  // この hook は**前回の状態**(作業木・開いた走行帳)だけを運ぶ。同じ文を二度載せない(第39条)。
+  assert.ok(/CLAUDE\.md/.test(out), 'the hook points at CLAUDE.md for role and law instead of restating them');
+  assert.ok(!/日本語で応答すること/.test(out) && !/闇雲にファイルを探すな/.test(out),
+    'the hook must not transcribe the static briefing that CLAUDE.md already carries');
+  assert.ok(/git: branch=/.test(out), 'the working-tree state (branch / uncommitted) is the first fact delivered');
+  assert.ok(/走行帳: 全 \d+ \/ 開いている \d+/.test(out), 'open conclave runs (Art.53) are counted from conclave.js audit --json');
+  // 状態は記憶より先に来ること。後ろに置くと長い記憶に埋もれる。
+  const stateAt = out.indexOf('git: branch=');
   const memAt = out.indexOf('KNOWLEDGE SNAPSHOT');
-  if (memAt >= 0) assert.ok(roleAt >= 0 && roleAt < memAt, 'the briefing must precede the memory dump');
+  if (memAt >= 0) assert.ok(stateAt >= 0 && stateAt < memAt, 'the state must precede the memory dump');
 });
 
 test('CLAUDE.md exists and states the working language and the hard rules', () => {
@@ -8096,11 +8103,14 @@ test('diet: 現物の global CLAUDE.md と rules は予算内 (第40条)', () =>
 
 test('diet: ファイル種の掟 3本は paths: スコープを持ち、写経の病巣は再発しない (第40条)', () => {
   const rulesDir = path.join(__dirname, '..', 'overlay', 'rules');
-  // (1) file-type rules must be path-scoped — they load only when relevant
-  for (const f of ['coding-style.md', 'patterns.md', 'testing.md']) {
-    const text = fs.readFileSync(path.join(rulesDir, f), 'utf8');
-    const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    assert.ok(m && /^paths:/m.test(m[1]), `${f} must carry a paths: frontmatter scope`);
+  // (1) 2026-09 ハーネス審査: ファイル種の掟 3 本(coding-style/patterns/testing)と agents/performance は
+  //     **drop** した — 楽園で守れない規則(console.log 674 箇所・zod 無し・coverage 道具無し)を
+  //     毎セッション読ませればモデルは規則を無視することを学ぶ。残る rules は無スコープでも薄い。
+  const ov0 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'overlay', 'overlay.json'), 'utf8'));
+  for (const f of ['coding-style.md', 'patterns.md', 'testing.md', 'agents.md', 'performance.md']) {
+    assert.ok(!fs.existsSync(path.join(rulesDir, f)), `${f} must not return to overlay/rules — it was dropped with a measured reason`);
+    assert.ok(ov0.drop && ov0.drop.rules && typeof ov0.drop.rules[f] === 'string' && ov0.drop.rules[f].length > 40,
+      `${f} must be listed under overlay.json drop.rules with a measured reason`);
   }
   // (2) the named diseases stay dead: no phantom-agent table, no model table,
   //     no hooks-config transcription re-entering always-on prose
@@ -8122,8 +8132,11 @@ test('diet: /ship command は手順の全文を引き受けている (第40条)'
     assert.ok(ship.includes(need), `/ship must carry the procedure detail: ${need}`);
   const ov = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'overlay', 'overlay.json'), 'utf8'));
   assert.ok(ov.own.commands.includes('ship.md'), 'ship.md must be owned in overlay.json or deploy never carries it');
-  for (const r of ['agents', 'coding-style', 'git-workflow', 'hooks', 'patterns', 'performance', 'security', 'testing'])
+  // 上流 rules 8 本のうち 3 本は楽園版で置換、5 本は drop(2026-09 ハーネス審査)。全てに帰属が在る。
+  for (const r of ['git-workflow', 'hooks', 'security'])
     assert.ok(ov.replace[`rules/${r}.md`], `rules/${r}.md must be replaced by the paradise version in overlay.json`);
+  for (const r of ['agents', 'coding-style', 'patterns', 'performance', 'testing'])
+    assert.ok(ov.drop.rules[`${r}.md`], `rules/${r}.md must be dropped in overlay.json`);
 });
 
 test('diet: 太った global CLAUDE.md と無スコープ rules の総量超過を門が名指しで捕らえる (第21条: 壊して鳴らす)', () => {
@@ -9570,9 +9583,12 @@ test('鍛造器が実際に産んだ役者は既存の発令を乗っ取らな�
     const text = fs.readFileSync(md, 'utf8');
     const want = clergyT.modelFor(probe, 'priest');
     assert.ok(text.includes(`model: ${want.model}`), 'model が位階の方針から生成されていない');
-    // construction は信徒を擁するので、産まれた神官は起動の権能を要する
-    assert.ok(text.includes(clergyT.SPAWN_TOOL),
-      `信徒を擁する枢機卿の神官なのに ${clergyT.SPAWN_TOOL} が無い — apply-spawn verify が後で鳴る`);
+    // 信徒層は退役した(2026-09)。信徒を擁しない枢機卿の神官に起動の権能は要らない —
+    // 要らない権能を配れば apply-spawn verify と食い違う。擁するなら要る(旧来の検査)。
+    const hasBelievers = (clergyT.COLLEGE[cardinal].believers || []).length > 0;
+    assert.strictEqual(text.includes(clergyT.SPAWN_TOOL), hasBelievers,
+      hasBelievers ? `信徒を擁する枢機卿の神官なのに ${clergyT.SPAWN_TOOL} が無い`
+                   : `信徒を擁しない枢機卿の神官に ${clergyT.SPAWN_TOOL} が配られている — 権能は必要から生まれる`);
   });
 
   // 🔒 **現物は 1 バイトも動いていない**(第58条(c))

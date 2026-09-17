@@ -777,7 +777,9 @@ test('台帳 EX-1 は実機で生きている (輸出の腐食を見張る / AC-
   if (v.skipped) skip(v.skipped);          // ★ 黙って return しない (AC-42 の後段)
   assert.ok(v.ok, `EX-1 の輸出が腐っている(実機 ${v.path}):\n        ` + v.why.join('\n        ')
     + '\n      → node graph/apply-guards.js apply');
-  assert.deepStrictEqual(v.counts, { deny: 9, ask: 1, allow: 5 },
+  // 数は写経しない(第22条): global の掟を引いて数える。2026-09 のハーネス審査で deny 9→15 / allow 5→29 に動いた。
+  const gp = require(path.join(DIR, '..', 'graph', 'apply-guards.js')).policyFor({ mode: 'global' });
+  assert.deepStrictEqual(v.counts, { deny: gp.deny.length, ask: gp.ask.length, allow: gp.allow.length },
     `実機の permissions の数が台帳の記録と違う: ${JSON.stringify(v.counts)}`);
 });
 
