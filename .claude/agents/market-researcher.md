@@ -1,7 +1,7 @@
 ---
 name: market-researcher
 description: The discovery gate. Before anything is specified, researches prior art, popular solutions, and the features users actually expect — so the spec is grounded in the world, not in assumption. The first phase of the Paradise creation pipeline.
-tools: Read, Grep, Glob, WebSearch, WebFetch, Write, Task
+tools: Read, Grep, Glob, WebSearch, WebFetch, Write
 model: claude-sonnet-5
 effort: high
 ---

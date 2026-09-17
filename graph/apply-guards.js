@@ -147,6 +147,44 @@ const FORBIDDEN_HOOKS = [
     match: 'Unnecessary documentation file creation',
     reason: '仕事の規約をグローバルで強制していた。他所の OSS を開くとそのリポジトリが壊れる。規約はプロジェクトへ。',
   },
+  /**
+   * 2026-09 ハーネス審査 2-1〜2-5: everything-claude-code 由来の汎用 hook 10 本は、
+   * この機(Windows / package.json 無し / 楽園の CLI 出力が console.log)で**実効 0** だった。
+   * 全て実測(審査記録 reform/harness-diet/findings.md):
+   *   tmux reminder      … TMUX は常に未設定 → 全 Bash 呼び出しで stderr 2 行の雑音
+   *   push reminder      … 自分で「Continuing with push (remove this hook…)」と no-op を名乗る
+   *   prettier / tsc     … 設定も tsconfig も無い。npx を毎 Edit で起動し try/catch で握り潰す
+   *   console.log ×2     … graph/*.js に console.log 674 箇所(CLI の正規出力)→ 常時偽陽性
+   *   session-*.js 他 4  … ~/.claude/sessions/*.tmp は全件 258B の空テンプレ、skills/learned は 0 件。
+   *                        session-start は「N 件見つけた」と言うだけで何もロードしない
+   *   PR logger          … PostToolUse の stdout はモデルに届かない(公式 hooks reference)
+   * 一致は **~/.claude/scripts/hooks/ 配下の実パス**や固有の文言で取り、テスト用の
+   * 短い偽 command(`node suggest-compact.js`)には当たらないようにしてある。
+   */
+  { event: 'PreToolUse',  match: 'process.env.TMUX',
+    reason: 'tmux reminder — Windows で TMUX は常に未設定。全 Bash 呼び出しに stderr 2 行の雑音を足すだけ(実測)。' },
+  { event: 'PreToolUse',  match: 'Continuing with push',
+    reason: 'push reminder — 出力自身が「Continuing with push (remove this hook to add interactive review)」と no-op を名乗る。' },
+  { event: 'PreToolUse',  match: 'scripts/hooks/suggest-compact.js',
+    reason: 'strategic-compact — /compact の提案を stderr に出すが PreToolUse の stderr はモデルに届かない(exit 0)。' },
+  { event: 'PreCompact',  match: 'scripts/hooks/pre-compact.js',
+    reason: 'pre-compact — compaction-log.txt に 1 行足すだけ。誰も読まない(実測 357B)。' },
+  { event: 'SessionStart', match: 'scripts/hooks/session-start.js',
+    reason: 'vendor session-start — sessions/*.tmp の件数を言うだけで何もロードせず、package manager 選択を毎回促す(楽園に package.json は無い)。楽園の SessionStart は tools/hooks/paradise-session-start.js が担う。' },
+  { event: 'SessionEnd',  match: 'scripts/hooks/session-end.js',
+    reason: 'session-end — 空テンプレを書くだけ(実測: sessions/*.tmp 全件 258B、"[Session context goes here]" のまま)。' },
+  { event: 'SessionEnd',  match: 'scripts/hooks/evaluate-session.js',
+    reason: 'evaluate-session — 文言を 1 行出すのみ、skills/learned は 0 件(実測)。SessionEnd の stdout はモデルに届かない。' },
+  { event: 'PostToolUse', match: 'To review: gh pr review',
+    reason: 'PR logger — PostToolUse の stdout はモデルに届かない(公式 hooks reference)。PR URL は gh の出力に既に在る。' },
+  { event: 'PostToolUse', match: 'npx prettier --write',
+    reason: 'prettier — 設定無し。毎 Edit で npx を起動し失敗を try/catch で握り潰す(時間だけ払う)。' },
+  { event: 'PostToolUse', match: 'npx tsc --noEmit',
+    reason: 'tsc — tsconfig.json が無い。tsconfig を探して見つからず終わる処理を毎 Edit で払う。' },
+  { event: 'PostToolUse', match: 'console.log found in',
+    reason: 'console.log 警告 — graph/*.js は CLI で console.log が正規出力(674 箇所)。常時偽陽性は警告無視を学習させる。' },
+  { event: 'Stop',        match: 'console.log found in',
+    reason: 'console.log 警告(Stop) — 同上。毎応答後に git diff を走らせて偽陽性を出す。' },
 ];
 
 /** その group が禁じられた強制か。該当すれば理由を返す。 */
@@ -185,6 +223,15 @@ const BASE_DENY = [
   'Bash(git push --force-with-lease:*)',
   'Bash(git reset --hard:*)',
   'Bash(git commit --no-verify:*)',
+  // 作業木を黙って消す手(2026-09 ハーネス審査 4-3)。実測事故: PR 前の未コミット木で
+  // `git checkout -- <file>` が新設の門 13 本と engine の編集を一撃で消した。
+  // 楽園の reform は「PR まで意図的に uncommitted」なので、これらは force-push と同じ重さ。
+  'Bash(git checkout -- *)',
+  'Bash(git restore:*)',
+  'Bash(git clean:*)',
+  'Bash(git stash drop:*)',
+  'Bash(git stash clear:*)',
+  'Bash(git branch -D:*)',
   // 第19条: 配備物は成果物である。手で触らず deploy.js で建て直す。
   // deploy.js は Node の fs で書くので Edit ツールを通らない → 配備は妨げない。
   // ⚠️ この一行は **神の住処** を守る(EX-1 の守備範囲)。第4段以降、楽園の配備物は
@@ -224,6 +271,35 @@ const POLICY_ALLOW = [
   'Bash(git status:*)',
   'Bash(git diff:*)',
   'Bash(git log:*)',
+  // ── 2026-09 ハーネス審査 4-2: 実運用は default モード(実測: ~/.claude.json に bypass
+  //    無し、transcript の permissionMode=default)。allow 5 件では git add/commit/push・
+  //    gh pr create・node -e が**毎回プロンプト**になり、全自律の長時間走行がそこで止まる
+  //    (skill に「無言・timeout の prompt は同意ではない」と記録された事故そのもの)。
+  //    deny が先勝ちなので、ここに足しても force-push / checkout -- は通らない。
+  'Bash(git fetch:*)',
+  'Bash(git branch:*)',
+  'Bash(git checkout -b:*)',
+  'Bash(git switch:*)',
+  'Bash(git add:*)',
+  'Bash(git commit:*)',
+  'Bash(git push:*)',
+  'Bash(git merge origin/main:*)',
+  'Bash(git stash:*)',
+  'Bash(git show:*)',
+  'Bash(git rev-parse:*)',
+  'Bash(git ls-files:*)',
+  'Bash(gh pr create:*)',
+  'Bash(gh pr list:*)',
+  'Bash(gh pr view:*)',
+  'Bash(gh pr checks:*)',
+  'Bash(gh pr edit:*)',
+  'Bash(gh run:*)',
+  'Bash(node:*)',
+  'Bash(ls:*)',
+  'Bash(cat:*)',
+  'Bash(grep:*)',
+  'Bash(wc:*)',
+  'Bash(mkdir:*)',
 ];
 
 /**
@@ -730,6 +806,17 @@ const REPO_HOOKS = {
     hooks: [{ type: 'command',
               command: 'node "$CLAUDE_PROJECT_DIR/tools/hooks/paradise-session-start.js"' }],
     description: 'Paradise: inject the knowledge-graph snapshot (repo abode / 第58条)',
+  }],
+  /**
+   * main への直コミットを機械で拒む(2026-09 ハーネス審査 4-4)。CLAUDE.md が自白していた
+   * 「拒む機構は無い」を機構にする。`if` で `git commit` に絞るので、他の Bash は 1 プロセスも
+   * 起動しない。ハンドラは exit 2 でのみ止め、判定不能なら名乗って通す(第16条)。
+   */
+  PreToolUse: [{
+    matcher: 'Bash',
+    hooks: [{ type: 'command', if: 'Bash(git commit:*)',
+              command: 'node "$CLAUDE_PROJECT_DIR/tools/hooks/paradise-commit-guard.js"' }],
+    description: 'Paradise: refuse a commit made while standing on main (branch-guard ON_MAIN / 第24条)',
   }],
 };
 

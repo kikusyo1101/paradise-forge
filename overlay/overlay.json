@@ -50,37 +50,17 @@
    "reason": "楽園は conclave/forge で階層的に統べるため、上流の逐次オーケストレーションとは思想が異なる。",
    "source": "overlay/commands/orchestrate.md"
   },
-  "rules/agents.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
-   "source": "overlay/rules/agents.md"
-  },
-  "rules/coding-style.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
-   "source": "overlay/rules/coding-style.md"
-  },
   "rules/git-workflow.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
+   "reason": "第40条: 常時ロードの散文は予算で裁く。上流版は /ship の写経だった。楽園版は指すだけ。",
    "source": "overlay/rules/git-workflow.md"
   },
   "rules/hooks.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
+   "reason": "第40条: 常時ロードの散文は予算で裁く。楽園版は「hooks は機構であり、一覧は node graph/apply-guards.js diagnose が語る」の2行に薄めた。",
    "source": "overlay/rules/hooks.md"
   },
-  "rules/patterns.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
-   "source": "overlay/rules/patterns.md"
-  },
-  "rules/performance.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
-   "source": "overlay/rules/performance.md"
-  },
   "rules/security.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
+   "reason": "第40条: 常時ロードの散文は予算で裁く。上流版の実在しない agent 表と写経を落とした薄版。",
    "source": "overlay/rules/security.md"
-  },
-  "rules/testing.md": {
-   "reason": "第40条: 常時ロードの散文は予算で裁く。上流の rules 8本(9,720B)は無スコープで毎セッション全ロードされ、実在しない agent 表・hooks の写経・モデル表の三重記述を含んでいた。楽園版は paths: スコープ(coding-style/patterns/testing)と薄化で置換する。",
-   "source": "overlay/rules/testing.md"
   }
  },
  "own": {
@@ -94,29 +74,17 @@
    "ship.md"
   ],
   "agents": [
-   "acceptance-criteria-writer.md",
    "auditor.md",
    "cardinal.md",
-   "coverage-checker.md",
    "creation-judge.md",
-   "data-collector.md",
-   "data-modeler.md",
    "executor.md",
-   "feature-ranker.md",
-   "interface-designer.md",
-   "linter.md",
    "market-researcher.md",
-   "module-builder.md",
    "requirements-analyst.md",
    "reporter.md",
-   "secret-scanner.md",
    "self-critic.md",
-   "test-writer.md",
-   "user-story-writer.md",
-   "ux-reviewer.md",
-   "web-scout.md"
+   "ux-reviewer.md"
   ],
-  "$note": "楽園固有。overlay/ 配下に原本を持ち、上流の増減に影響されない。信徒(believers)も実体としてここに住む — 名前だけの階層を二度と作らない(第25条)。"
+  "$note": "楽園固有。overlay/ 配下に原本を持ち、上流の増減に影響されない。信徒(believers)は 2026-09-18 のハーネス審査で退役した — 7 走行 108 起動の spawnTrace に信徒の起動は 0 件(入れ子 0/108)。名前だけの階層を置かない(第25条)のと同じ理由で、起動されない実体も置かない。"
  },
  "adopted": {
   "$note": "上流が削除したが楽園が使い続けるもの。`upstream.js adopt` が自動追従せず、ここへ退避させる。現時点では空。",
@@ -130,5 +98,37 @@
   "paradise_hooks": [
    "tools/hooks/paradise-session-start.js"
   ]
+ },
+ "drop": {
+  "$note": "第五の関係 drop — vendor に**素材として残す**が**配備はしない**(第19条(b): 取り込んだ物は自由に改変できる。第20条: 上流無しで建つ)。refresh が上流から再び運んできても、ここに名が在る限り deploy.plan は運ばない。判断の根拠は reason に**実測**で書く — 「使わなそう」は理由ではない。",
+  "agents": {
+   "build-error-resolver.md": "spawnTrace 7走行/108起動 + Claude Code 全 transcript で起動 0。forge/clergy のどの相も名指さない。12.8KB の description が毎セッション Task 定義に載っていた。",
+   "e2e-runner.md": "同上: 起動 0、engine 参照 0。20.6KB。Playwright 前提だが楽園の創造物は単一 HTML で visual-verify.js が実ブラウザ検証を担う。",
+   "refactor-cleaner.md": "同上: 起動 0、engine 参照 0。8.0KB。",
+   "planner.md": "同上: 起動 0、engine 参照 0(clergy.modelFor の例外表に名は残るが、それは位階の宣言であって発令ではない)。楽園の計画は synod.js が担う。"
+  },
+  "commands": {
+   "build-fix.md": "Claude Code 全 transcript でコマンド起動 0。上流の npm/TypeScript 前提の手順で、楽園には package.json も tsconfig も無い。",
+   "checkpoint.md": "起動 0。git の手順の写経 — /ship が楽園の道。",
+   "code-review.md": "起動 0。code-reviewer agent の呼び方の写経 — description が語る。",
+   "e2e.md": "起動 0。e2e-runner(drop)と対。11.2KB。",
+   "eval.md": "起動 0。eval-harness skill(神の私物)への入口。楽園の評価は gauge.js。",
+   "learn.md": "起動 0。continuous-learning(SessionEnd hook)と対 — その hook は本改革で退役。",
+   "plan.md": "起動 0。planner(drop)と対。楽園の計画は synod.js / /conclave の道。",
+   "refactor-clean.md": "起動 0。refactor-cleaner(drop)と対。",
+   "setup-pm.md": "起動 0。package manager 選択 — 楽園に package.json は無い。",
+   "tdd.md": "起動 0。8.6KB。tdd-guide agent は環が発令するので command は要らない。",
+   "test-coverage.md": "起動 0。coverage ツール前提 — 楽園に無い。",
+   "update-codemaps.md": "起動 0。codemap 生成 — 楽園の図は atlas.js。",
+   "update-docs.md": "起動 0。README の数は census.js fix が書く(第22条)。",
+   "verify.md": "起動 0。verification-loop の写経 — 楽園の verify 相は forge が担う。"
+  },
+  "rules": {
+   "agents.md": "第40条+審査1-1: 「ALWAYS parallel / split-role subagents」は cardinal.md の「over-fragment するな」と正面衝突し、実測では入れ子起動 0/108。モデルの判断を固定文で縛っていた。",
+   "performance.md": "審査1-2: 「ultrathink + Plan Mode」は思考法の指図。effort は settings.json と frontmatter が機械で決める(第31条)。",
+   "coding-style.md": "審査1-3: 「no console.log / NEVER mutate / zod」— 楽園の graph/*.js は console.log 674 箇所(CLI の正規出力)、conclave は台帳を mutate する状態機械。守れない規則を毎セッション読ませればモデルは規則を無視することを学ぶ。",
+   "testing.md": "審査1-4: 「coverage 80% / Playwright」— 測る道具が楽園に無い。楽園の検証は tests/*.test.js + visual-verify + atlas check。",
+   "patterns.md": "審査1-4: TypeScript/React の型 — *.ts スコープなので実害 0 だが死文。"
+  }
  }
 }

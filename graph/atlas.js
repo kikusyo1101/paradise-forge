@@ -332,7 +332,9 @@ function irDispatch(phaseId) {
   push('cardinal', 'pontiff', '批准を請う', 'return');
   push('pontiff', 'tribunal', '召喚 → SHIP / REWORK / BLOCK', 'security');
   push('pontiff', 'god', '答えのみ', 'return');
-  const bottom = y + 20;
+  // 信徒行が退役して行数が 1 減った(2026-09)。描画器の schema は高さ 480 を下限に課すので、
+  // 語る行が減っても図の器は下限に留める — 縮められない図は器で支える。
+  const bottom = Math.max(y + 20, 420);
 
   const seg = (from, to, label) => ({ from, to, label });
   return {

@@ -71,6 +71,11 @@ function relations(c) {
   for (const f of (c.adopted && c.adopted.files) || []) {
     rel.set(f, { kind: 'adopted', detail: {} });
   }
+  // drop — 上流の変更は取り込む(vendor は素材)が配備しない。上流が触っても再判断は要らない。
+  for (const [kind, files] of Object.entries(c.drop || {})) {
+    if (kind.startsWith('$') || !files || typeof files !== 'object') continue;
+    for (const f of Object.keys(files)) rel.set(`${kind}/${f}`, { kind: 'drop', detail: { reason: files[f] } });
+  }
   return rel;
 }
 

@@ -131,8 +131,14 @@ function plan() {
     // 楽園は取り込んだ資産で建つ。上流はもはや供給元ではない。
     const primaryDir = fs.existsSync(vnDir) && listMd(vnDir).length ? vnDir : upDir;
     const fromLabel = primaryDir === vnDir ? 'vendor' : 'upstream';
+    // 第五の関係 `drop`(2026-09 ハーネス審査): vendor に素材として残すが**配備しない**。
+    // 実測(spawnTrace 7 走行 / 108 起動、Claude Code 全 transcript)で一度も起動されない
+    // agent 4 体・command 14 本・rules 5 本が毎セッション Task 定義と常時ロード散文に
+    // 載っていた。`refresh` が上流から再び運んできても、ここに名が在る限り運ばない。
+    const dropped = (c.drop && c.drop[kind]) || {};
     for (const f of listMd(primaryDir)) {
       const relKey = `${kind}/${f}`;
+      if (Object.prototype.hasOwnProperty.call(dropped, f)) continue; // drop: 素材はあるが配備しない
       if (c.replace && c.replace[relKey]) continue; // replace が勝つので後段で入れる
       if ((c.own && c.own[kind] || []).includes(f)) continue; // own が勝つ
       steps.push({ kind, file: f, from: fromLabel, src: path.join(primaryDir, f), dst: path.join(dstDir, f), relation: 'plain' });
@@ -278,8 +284,33 @@ function check() {
                    why: `env.${e.key} が展開されない参照を含む: ${e.detail}` });
     }
   }
+  // 計画に無い配備物(stale)。2026-09 ハーネス審査: overlay から agent 12 体・rules 5 本を
+  // 退役させても、deploy は「足す」しか知らず、派生物の木に 30 体が残り続けた。
+  // 派生は真実の写しである(第29条) — 写しに余分が在るのも乖離である。
+  for (const s of stalePaths(p)) {
+    drift.push({ kind: s.kind, file: s.file, from: 'stale', dst: s.dst,
+                 why: '計画に無い配備物が住処に残っている — overlay から退役した物。node graph/deploy.js --write が除く' });
+  }
   return { ok: drift.length === 0, skipped: false, mode: where.mode, home: HOME,
            drift, checked: p.steps.length + 2, transforms: p.transforms };
+}
+
+/**
+ * 住処に在るが計画に無い .md(kinds 配下だけ)。root 直下や settings は見ない —
+ * そこは神/座/掟の物であり、ここが除いてよいのは overlay が建てた木だけである。
+ */
+function stalePaths(p) {
+  const c = up.cfg();
+  const planned = new Set(p.steps.map(s => path.resolve(s.dst)));
+  const out = [];
+  for (const kind of c.kinds) {
+    const dir = path.join(p.home, kind);
+    for (const f of listMd(dir)) {
+      const dst = path.join(dir, f);
+      if (!planned.has(path.resolve(dst))) out.push({ kind, file: f, dst });
+    }
+  }
+  return out;
 }
 
 function write() {
@@ -327,6 +358,9 @@ function write() {
     }
   }
   const done = [];
+  // 退役した配備物を除く(第29条: 写しに余分が在るのも乖離)。計画に無い kinds 配下の .md だけ。
+  const removed = [];
+  for (const s of stalePaths(p)) { fs.rmSync(s.dst); removed.push(`stale: ${s.kind}/${s.file}`); }
   for (const s of p.steps) {
     fs.mkdirSync(path.dirname(s.dst), { recursive: true });
     fs.copyFileSync(s.src, s.dst);
@@ -382,7 +416,7 @@ function write() {
            : `deny ${require('./apply-guards.js').POLICY.deny.length} / ask ${require('./apply-guards.js').POLICY.ask.length} / allow ${require('./apply-guards.js').POLICY.allow.length}${g.changed ? ` (更新 ${g.changes.length})` : ''}`;
   } catch (e) { return { ok: false, deployed: done.length, error: `guards: ${e.message}` }; }
 
-  return { ok: true, deployed: done.length, seeded, mode: where.mode,
+  return { ok: true, deployed: done.length, removed, seeded, mode: where.mode,
            transforms: applied, pontiff_seat: seat, guards, home: p.home };
 }
 

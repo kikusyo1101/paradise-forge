@@ -207,13 +207,23 @@ const PARALLEL_SAFE = {
  * ただのラベルであり、教主が神官を直接呼んで階層を素通りしていた。
  */
 const COLLEGE = {
+  /**
+   * ⚠️ `believers: []` — 信徒層は 2026-09 のハーネス審査で**退役**した。
+   * 実測: 追跡された 7 走行 / 108 起動の spawnTrace に信徒の起動は 0 件、入れ子起動
+   * (`parentToolUseId` 有り)も 0/108。神官 7 体は Task を持ちながら一度も信徒を呼ばず、
+   * cardinal.md の「over-fragment するな(1 起動 25–35k tokens)」を守った結果である。
+   * 一度も起動されない実体 12 体が毎セッション Task 定義 3KB を占めていた。
+   * 位階(RANKS.believer)と `believerRole` の語彙は残す — 階層の**語り**は要るが、
+   * 起動されない**実体**は置かない(第25条の裏返し)。復活させるなら spawnTrace に
+   * 入れ子起動が現れる改革を先に通すこと。
+   */
   'discovery': {
     agent: 'cardinal',
     domain: 'Discovery (調査)',
     governs: ['discover'],
     priests: ['market-researcher'],
     work: 'research',      // 独立した問い → 信徒を並列に放てる
-    believers: ['web-scout', 'feature-ranker'],
+    believers: [],
     reviewClass: 'pontiff',           // the pontiff ratifies findings before spec
     pdca: 'plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search',
   },
@@ -223,7 +233,7 @@ const COLLEGE = {
     governs: ['analyze', 'specify'],
     priests: ['requirements-analyst'],
     work: 'design',        // 仕様判断は後続を縛る → 逐次
-    believers: ['user-story-writer', 'acceptance-criteria-writer'],
+    believers: [],
     reviewClass: 'cardinal:discovery', // requirements checked against discovery
     pdca: 'plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps',
   },
@@ -233,7 +243,7 @@ const COLLEGE = {
     governs: ['design', 'detail', 'ux', 'identity'],
     priests: ['architect'],
     work: 'design',        // 設計は分割すると整合しない → 逐次
-    believers: ['data-modeler', 'interface-designer'],
+    believers: [],
     reviewClass: 'cardinal:requirements',
     pdca: 'plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise',
   },
@@ -243,7 +253,7 @@ const COLLEGE = {
     governs: ['build', 'build-ui', 'tests', 'prove'],
     priests: ['architect', 'tdd-guide'],
     work: 'build',         // 実装は暗黙の決定を運ぶ → 逐次(Cognition/Anthropic の警告)
-    believers: ['module-builder', 'test-writer'],
+    believers: [],
     reviewClass: 'cardinal:quality',
     pdca: 'plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green',
   },
@@ -253,7 +263,7 @@ const COLLEGE = {
     governs: ['review', 'security', 'docs', 'verify', 'ux-review'],
     priests: ['code-reviewer', 'security-reviewer', 'doc-updater', 'ux-reviewer'],
     work: 'review',        // 同じ物を別の観点で見る → 並列が効く
-    believers: ['linter', 'coverage-checker', 'secret-scanner'],
+    believers: [],
     reviewClass: 'executor',           // quality feeds the tribunal
     pdca: 'plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass',
   },
@@ -278,7 +288,7 @@ const COLLEGE = {
     // いた**(第25条)。指揮系統を跨がせるのではなく、麾下に加えて正す。
     priests: ['market-researcher', 'auditor', 'reporter', 'requirements-analyst'],
     work: 'research',      // 独立した問い(外の世界 / 手元の実測) → 並列が効く
-    believers: ['web-scout', 'feature-ranker', 'data-collector'],
+    believers: [],
     reviewClass: 'executor',           // 諐問の結論は執行官が検める — 断罪ではなく助言の質を
     pdca: 'plan: 問いを立てる → do: 外を調べ手元を測る → check: 反証に耐えたか? → act: 根拠を足すか結論を弱める',
   },
@@ -305,7 +315,7 @@ const COLLEGE = {
     // 図は一つの絵に収束せねばならない。主題を分けて並列に描けば、
     // 同じ事実を別の流儀で語る二枚が生まれる — 設計と同じ性質である。
     work: 'design',
-    believers: ['data-collector', 'interface-designer'],
+    believers: [],
     // 図が事実を写経していないかは、事実を持つ engine を知る者にしか裁けない。
     // ゆえに審査は執行官 — 図は楽園自身を語るので、どの枢機卿も自分の領分に
     // ついて自分に都合よく描きうる(自らを批准しない)。

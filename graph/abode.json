@@ -1,78 +1,78 @@
 {
-  "$schema": "graph/abode.js が validateLedger() で強制する。engine には追記する口が無い (第54条(d))",
-  "$note": "この台帳を書けるのは神だけである。変更は PR を通り、マージは神の御手のみ (CODEOWNERS + ブランチ保護)。",
-  "exports": [
-    {
-      "id": "EX-1",
-      "target": "~/.claude/settings.json#/permissions",
-      "kind": "settings-key",
-      "writer": "graph/apply-guards.js",
-      "scope": "machine",
-      "reason": "deny 9 件 (force-push 3 種 / git reset --hard / commit --no-verify / Edit(~/.claude/**) / Edit(**/.env) / Read(**/.env) / Read(**/.env.*)) は神の全プロジェクトを守る。出所は楽園だが守備範囲はマシン全体である。楽園内へ引けば、神が他所のリポジトリで作業した瞬間に force-push が通る。実測: node graph/apply-guards.js verify → deny 9 / ask 1 / allow 5。",
-      "ordainedBy": "god",
-      "ordainedOn": "2026-09-10",
-      "ordainedVia": "reform/sovereign-abode — 教主の反論1を神が受諾 (requirements.md §1.4)",
-      "verify": "node graph/apply-guards.js verify"
-    },
-    {
-      "id": "EX-2",
-      "target": "<creations-root>/.claude/{agents,commands,rules,CLAUDE.md}",
-      "kind": "deploy-tree",
-      "writer": "graph/deploy.js",
-      "scope": "sibling-worktree",
-      "reason": "創造物は兄弟倉に住む (第30条)。そこで起動した環から神官 30 体が見えなければ、環は神官を失ったまま緑を出す。実測: ../paradise-creations/.claude は存在しない = 現在この倉には神官が一体も居ない。--add-dir は CLAUDE.md も rules も hooks も読まない (discovery-scoping §4 の実測) ため代替にならない。",
-      "ordainedBy": "god",
-      "ordainedOn": "2026-09-10",
-      "ordainedVia": "reform/sovereign-abode — 教主の反論2を神が受諾 (requirements.md §1.4 / §11.1 甲案)",
-      "verify": "node graph/abode.js check --creations"
-    },
-    {
-      "id": "EX-3",
-      "target": "~/.claude/scripts/{hooks,lib}",
-      "kind": "deploy-tree",
-      "writer": "graph/apply-hooks.js",
-      "scope": "machine",
-      "reason": "撤収は「消す」ではなく「移す」である。神の settings.json は汎用フック 5 本 (suggest-compact / pre-compact / session-start / session-end / evaluate-session) を楽園の倉の絶対パスで握っていた (AC-30 の逆向き依存 6 件のうち 5 件)。この 5 本は楽園を一切参照せず ~/.claude/sessions/ と skills/learned/ と os.tmpdir() へ書く、神の全プロジェクトのための機能である。倉から引くだけでは神の日常が黙って壊れ、倉に残せば逆向き依存が消えない。ゆえに神の住処へ複製し、hook の道をそちらへ向け直す。実測: 5 本は require('../lib/utils') を引き package-manager.js も require('./utils') を引くので lib/ も複製が要る。evaluate-session.js は path.join(__dirname,'..','..','skills','continuous-learning','config.json') を読むため、~/.claude/scripts/hooks/ に置けば ~/.claude/skills/continuous-learning/config.json を指し、それは実機に既在する (409 B)。偽のホームへ複製して 5 本すべてを撃ち exit 0 を確認済み。",
-      "ordainedBy": "god",
-      "ordainedOn": "2026-09-12",
-      "ordainedVia": "reform/sovereign-abode — 第6段の撤収計画に対する神の裁可 1-A",
-      "verify": "node graph/apply-hooks.js verify"
-    }
-  ],
-  "external": [
-    {
-      "id": "EXT-1",
-      "target": "~/AppData/Local/hermes/cron/jobs.json",
-      "kind": "external-asset",
-      "scope": "machine",
-      "reason": "cron は本質的にマシン単位の資産であり、神が意図的に登録した (jobs 2 件)。第46条により発火器は道を指すのであって写経しない。楽園は読むだけで書かない。",
-      "ordainedBy": "god",
-      "ordainedOn": "2026-09-10",
-      "ordainedVia": "reform/sovereign-abode — requirements.md §1.5 (障害物18 を OUT と裁定)",
-      "verify": "tests/paradise.test.js:6282 「cron: 日次の発火は道を写経せず、道を指す (第46条)」"
-    },
-    {
-      "id": "EXT-2",
-      "target": "~/AppData/Local/hermes/scripts/paradise-catchup.py",
-      "kind": "external-asset",
-      "scope": "machine",
-      "reason": "第43条の見逃し窓の監視。hermes の cron が呼ぶため hermes 側に住む必然がある。正典は tools/paradise-catchup.py であり、配備実物との一致を門が検める。",
-      "ordainedBy": "god",
-      "ordainedOn": "2026-09-10",
-      "ordainedVia": "reform/sovereign-abode — requirements.md §1.5 (障害物18 を OUT と裁定)",
-      "verify": "tests/paradise.test.js:6155 「watchdog: 監視スクリプトは正典に住み、配備された実物と一致する (第43条)」"
-    }
-  ],
-  "closed": [
-    {
-      "id": "CL-1",
-      "subject": "~/.claude/settings.json#/env/PATH の復元",
-      "question": "apply-guards.js の repairEnv() が神の env.PATH ($PATH:/c/Program Files/GitHub CLI) をキーごと削除した。神託「グローバルには私が直接依頼した物だけ」は、この削除自体が違反だったことを含意する。復元すべきか。",
-      "verdict": "実測の上で不要と裁定",
-      "evidence": "$ which gh  →  /c/Program Files/GitHub CLI/gh   ── gh は既に素の PATH に居り、失われた env.PATH は現在いかなる実害も無い。第34条の実測どおり $PATH: 前置は展開されず、その行は何も足さず PATH を破壊してフック 15/15 を殺していた。",
-      "closedOn": "2026-09-10",
-      "closedBy": "pontiff",
-      "closedVia": "reform/sovereign-abode design — 教主の実測による裁定 (神の名指しがあれば EX-3 として再開する)"
-    }
-  ]
+ "$schema": "graph/abode.js が validateLedger() で強制する。engine には追記する口が無い (第54条(d))",
+ "$note": "この台帳を書けるのは神だけである。変更は PR を通り、マージは神の御手のみ (CODEOWNERS + ブランチ保護)。",
+ "exports": [
+  {
+   "id": "EX-1",
+   "target": "~/.claude/settings.json#/permissions",
+   "kind": "settings-key",
+   "writer": "graph/apply-guards.js",
+   "scope": "machine",
+   "reason": "deny(force-push 3 種 / git reset --hard / commit --no-verify / 作業木を消す git checkout -- ・restore・clean・stash drop/clear・branch -D / Edit(~/.claude/**) / Edit(**/.env) / Read(**/.env) / Read(**/.env.*)) は神の全プロジェクトを守る。出所は楽園だが守備範囲はマシン全体である。楽園内へ引けば、神が他所のリポジトリで作業した瞬間に force-push が通る。allow は default モードの全自律走行がプロンプトで止まらないための読み書き系 git/gh/node(2026-09 ハーネス審査 4-2、deny が先勝ちなので破壊操作は通らない)。数は写経しない — node graph/apply-guards.js verify が語る(第22条)。",
+   "ordainedBy": "god",
+   "ordainedOn": "2026-09-10",
+   "ordainedVia": "reform/sovereign-abode — 教主の反論1を神が受諾 (requirements.md §1.4)",
+   "verify": "node graph/apply-guards.js verify"
+  },
+  {
+   "id": "EX-2",
+   "target": "<creations-root>/.claude/{agents,commands,rules,CLAUDE.md}",
+   "kind": "deploy-tree",
+   "writer": "graph/deploy.js",
+   "scope": "sibling-worktree",
+   "reason": "創造物は兄弟倉に住む (第30条)。そこで起動した環から神官 30 体が見えなければ、環は神官を失ったまま緑を出す。実測: ../paradise-creations/.claude は存在しない = 現在この倉には神官が一体も居ない。--add-dir は CLAUDE.md も rules も hooks も読まない (discovery-scoping §4 の実測) ため代替にならない。",
+   "ordainedBy": "god",
+   "ordainedOn": "2026-09-10",
+   "ordainedVia": "reform/sovereign-abode — 教主の反論2を神が受諾 (requirements.md §1.4 / §11.1 甲案)",
+   "verify": "node graph/abode.js check --creations"
+  },
+  {
+   "id": "EX-3",
+   "target": "~/.claude/scripts/{hooks,lib}",
+   "kind": "deploy-tree",
+   "writer": "graph/apply-hooks.js",
+   "scope": "machine",
+   "reason": "撤収は「消す」ではなく「移す」である。神の settings.json は汎用フック 5 本 (suggest-compact / pre-compact / session-start / session-end / evaluate-session) を楽園の倉の絶対パスで握っていた (AC-30 の逆向き依存 6 件のうち 5 件)。この 5 本は楽園を一切参照せず ~/.claude/sessions/ と skills/learned/ と os.tmpdir() へ書く、神の全プロジェクトのための機能である。倉から引くだけでは神の日常が黙って壊れ、倉に残せば逆向き依存が消えない。ゆえに神の住処へ複製し、hook の道をそちらへ向け直す。実測: 5 本は require('../lib/utils') を引き package-manager.js も require('./utils') を引くので lib/ も複製が要る。evaluate-session.js は path.join(__dirname,'..','..','skills','continuous-learning','config.json') を読むため、~/.claude/scripts/hooks/ に置けば ~/.claude/skills/continuous-learning/config.json を指し、それは実機に既在する (409 B)。偽のホームへ複製して 5 本すべてを撃ち exit 0 を確認済み。",
+   "ordainedBy": "god",
+   "ordainedOn": "2026-09-12",
+   "ordainedVia": "reform/sovereign-abode — 第6段の撤収計画に対する神の裁可 1-A",
+   "verify": "node graph/apply-hooks.js verify"
+  }
+ ],
+ "external": [
+  {
+   "id": "EXT-1",
+   "target": "~/AppData/Local/hermes/cron/jobs.json",
+   "kind": "external-asset",
+   "scope": "machine",
+   "reason": "cron は本質的にマシン単位の資産であり、神が意図的に登録した (jobs 2 件)。第46条により発火器は道を指すのであって写経しない。楽園は読むだけで書かない。",
+   "ordainedBy": "god",
+   "ordainedOn": "2026-09-10",
+   "ordainedVia": "reform/sovereign-abode — requirements.md §1.5 (障害物18 を OUT と裁定)",
+   "verify": "tests/paradise.test.js:6282 「cron: 日次の発火は道を写経せず、道を指す (第46条)」"
+  },
+  {
+   "id": "EXT-2",
+   "target": "~/AppData/Local/hermes/scripts/paradise-catchup.py",
+   "kind": "external-asset",
+   "scope": "machine",
+   "reason": "第43条の見逃し窓の監視。hermes の cron が呼ぶため hermes 側に住む必然がある。正典は tools/paradise-catchup.py であり、配備実物との一致を門が検める。",
+   "ordainedBy": "god",
+   "ordainedOn": "2026-09-10",
+   "ordainedVia": "reform/sovereign-abode — requirements.md §1.5 (障害物18 を OUT と裁定)",
+   "verify": "tests/paradise.test.js:6155 「watchdog: 監視スクリプトは正典に住み、配備された実物と一致する (第43条)」"
+  }
+ ],
+ "closed": [
+  {
+   "id": "CL-1",
+   "subject": "~/.claude/settings.json#/env/PATH の復元",
+   "question": "apply-guards.js の repairEnv() が神の env.PATH ($PATH:/c/Program Files/GitHub CLI) をキーごと削除した。神託「グローバルには私が直接依頼した物だけ」は、この削除自体が違反だったことを含意する。復元すべきか。",
+   "verdict": "実測の上で不要と裁定",
+   "evidence": "$ which gh  →  /c/Program Files/GitHub CLI/gh   ── gh は既に素の PATH に居り、失われた env.PATH は現在いかなる実害も無い。第34条の実測どおり $PATH: 前置は展開されず、その行は何も足さず PATH を破壊してフック 15/15 を殺していた。",
+   "closedOn": "2026-09-10",
+   "closedBy": "pontiff",
+   "closedVia": "reform/sovereign-abode design — 教主の実測による裁定 (神の名指しがあれば EX-3 として再開する)"
+  }
+ ]
 }
