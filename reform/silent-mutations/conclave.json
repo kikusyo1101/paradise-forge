@@ -1,0 +1,590 @@
+{
+  "meta": {
+    "wish": "楽園の門の網目を締める: gauge.js record の 読む→検める→追記 の三段が二プロセス同時走行で競合しないか未実測(TOCTOU)、および門が捕らえられない無音の変異が残っている",
+    "scale": "reform",
+    "created": "2026-09-16T22:57:41.339Z",
+    "constitution": [
+      "Spec is the source of truth — code serves the spec, not the reverse.",
+      "Every phase is gated — no phase advances on unverified assumptions.",
+      "Independent work runs in parallel; dependent work runs in order.",
+      "Verification precedes judgment; judgment precedes shipping.",
+      "Evidence-based memory — only what actually happened is remembered.",
+      "No secrets in code; security is reviewed, never assumed."
+    ],
+    "gates": [
+      "discover",
+      "specify",
+      "design",
+      "prove",
+      "verify",
+      "reflect",
+      "verdict"
+    ],
+    "produces": "artifact"
+  },
+  "created": "2026-09-16T22:57:41.391Z",
+  "epoch": {
+    "tier": "v1",
+    "at": "2026-09-16T22:57:41.391Z"
+  },
+  "domains": [
+    {
+      "seq": 0,
+      "cardinal": "discovery",
+      "domain": "Discovery (調査)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "discover",
+          "agent": "market-researcher",
+          "goal": "楽園自身を実測せよ: 楽園の門の網目を締める: gauge.js record の 読む→検める→追記 の三段が二プロセス同時走行で競合しないか未実測(TOCTOU)、および門が捕らえられない無音の変異が残っている。憶測を書くな。全ての門(tests/paradise.test.js, check-agents, census, apply-models verify, deploy check, upstream impact)を実際に走らせ、critic.js review graph --self をかけ、欠陥を**数**にして出す。「〜のはず」は証拠ではない",
+          "deps": [],
+          "gate": true,
+          "artifact": "findings.md",
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/findings.md",
+          "dispatchedAt": "2026-09-16T22:59:41.616Z",
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "pontiff",
+      "pdca": "plan: frame questions → do: research → check: are must-haves grounded? → act: refine or widen search"
+    },
+    {
+      "seq": 1,
+      "cardinal": "requirements",
+      "domain": "Requirements (要件)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "specify",
+          "agent": "requirements-analyst",
+          "goal": "実測された欠陥から、直すべきものを選び受入条件を書く。artifact でなく pipeline を直すこと(第9条)。「この門が、この入力で、こう鳴る」まで具体化する",
+          "deps": [
+            "discover"
+          ],
+          "gate": true,
+          "artifact": "requirements.md",
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/requirements.md",
+          "dispatchedAt": "2026-09-17T00:05:35.650Z",
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:discovery",
+      "pdca": "plan: derive from findings → do: write spec → check: every must-have has an AC? → act: fill gaps"
+    },
+    {
+      "seq": 2,
+      "cardinal": "architecture",
+      "domain": "Architecture (設計)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "design",
+          "agent": "architect",
+          "goal": "機構を設計する: どの engine を、どう変えるか。憲法に条を足すべきか。既存の門との重複・矛盾はないか。**この変更で嘘になる既存の門**を洗い出す(依存関係を変えたら、古い前提を符号化した門を全て読み直す)",
+          "deps": [
+            "specify"
+          ],
+          "gate": true,
+          "artifact": "design.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/design.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:requirements",
+      "pdca": "plan: shape the system → do: design + decompose → check: does design satisfy the spec? → act: revise"
+    },
+    {
+      "seq": 3,
+      "cardinal": "construction",
+      "domain": "Construction (建造)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "build",
+          "agent": "architect",
+          "goal": "engine を実装し、憲法条を追記し、CLAUDE.md/README の該当箇所を更新する",
+          "deps": [
+            "design"
+          ],
+          "gate": false,
+          "artifact": "implementation",
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/build.md",
+          "dispatchedAt": "2026-09-17T00:58:32.077Z",
+          "resumes": 0
+        },
+        {
+          "id": "prove",
+          "agent": "tdd-guide",
+          "goal": "**門を、わざと壊して鳴るか試す。** 実在しない名を仕込む/腐った数を仕込む/上流を隠すなど、欠陥を意図的に注入し、門がそれを名指しで捕らえることを回帰テストで固定する。健全な系で緑になるだけの門は証明されていない",
+          "deps": [
+            "build"
+          ],
+          "gate": true,
+          "artifact": "tests",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/prove.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "cardinal:quality",
+      "pdca": "plan: take the tasks → do: implement + test → check: do tests pass? → act: fix until green"
+    },
+    {
+      "seq": 4,
+      "cardinal": "quality",
+      "domain": "Quality (品質)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "review",
+          "agent": "code-reviewer",
+          "goal": "機構の質を審査する。教主の実装を、教主でない者が読む(第11条)。設計意図と実装の乖離、命名、既存 engine との一貫性",
+          "deps": [
+            "build",
+            "prove"
+          ],
+          "gate": false,
+          "artifact": "review.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/review.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "security",
+          "agent": "security-reviewer",
+          "goal": "秘密の混入、任意コード実行、パス走査、CI 権限の過剰付与を検める。楽園の engine は開発者の環境で走る — 危害の射程は creations より広い",
+          "deps": [
+            "build"
+          ],
+          "gate": false,
+          "artifact": "security-report.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/security.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "docs",
+          "agent": "doc-updater",
+          "goal": "CLAUDE.md の門一覧・憲法表、README の該当節を更新し、`node graph/census.js check` が通ることを確認する(第22条)",
+          "deps": [
+            "build"
+          ],
+          "gate": false,
+          "artifact": "docs",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/docs.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "verify",
+          "agent": "verification-loop",
+          "goal": "全門を通常環境と**素の環境**(PARADISE_UPSTREAM=/nonexistent CLAUDE_HOME=/nonexistent)の両方で走らせる。片方でも赤なら未完(第20条)",
+          "deps": [
+            "review",
+            "security",
+            "prove"
+          ],
+          "gate": true,
+          "artifact": "verification-report",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/verify.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "executor",
+      "pdca": "plan: define gates → do: review+scan+verify → check: all gates green? → act: send back or pass"
+    },
+    {
+      "seq": 5,
+      "cardinal": "tribunal",
+      "domain": "Tribunal (断罪機関)",
+      "status": "ratified",
+      "reworks": 0,
+      "phases": [
+        {
+          "id": "reflect",
+          "agent": "self-critic",
+          "goal": "敵対的自己批評: node graph/critic.js review graph --self --lessons graph/lessons.json。この改修が生んだ**新しい盲点**を探す。門を足したなら、その門自身は誰が見張るのか",
+          "deps": [
+            "verify",
+            "docs"
+          ],
+          "gate": true,
+          "artifact": "critique.md",
+          "status": "done",
+          "attempts": 0,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/reflect.md",
+          "dispatchedAt": null,
+          "resumes": 0
+        },
+        {
+          "id": "verdict",
+          "agent": "creation-judge",
+          "goal": "楽園の改革を裁く: SHIP / REWORK / BLOCK。裁いた上で PR を出す — マージは神のみ",
+          "deps": [
+            "reflect"
+          ],
+          "gate": true,
+          "artifact": "verdict",
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/verdict.md",
+          "dispatchedAt": "2026-09-17T07:27:20.203Z",
+          "resumes": 0
+        }
+      ],
+      "reviewClass": "god",
+      "pdca": "reflect (adversarial self-critique) precedes verdict (SHIP/REWORK/BLOCK)"
+    }
+  ],
+  "history": [
+    {
+      "ts": "2026-09-16T22:57:41.391Z",
+      "event": "convene",
+      "detail": "6 domains, 11 phases"
+    },
+    {
+      "ts": "2026-09-16T22:59:41.617Z",
+      "event": "dispatch",
+      "detail": "discover"
+    },
+    {
+      "ts": "2026-09-17T00:05:28.679Z",
+      "event": "done",
+      "detail": "discover → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/findings.md"
+    },
+    {
+      "ts": "2026-09-17T00:05:35.602Z",
+      "event": "ratify",
+      "detail": "Discovery (調査) ratified by pontiff"
+    },
+    {
+      "ts": "2026-09-17T00:05:35.650Z",
+      "event": "dispatch",
+      "detail": "specify"
+    },
+    {
+      "ts": "2026-09-17T00:24:32.582Z",
+      "event": "done",
+      "detail": "specify → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/requirements.md"
+    },
+    {
+      "ts": "2026-09-17T00:24:32.629Z",
+      "event": "ratify",
+      "detail": "Requirements (要件) ratified by cardinal:discovery"
+    },
+    {
+      "ts": "2026-09-17T00:58:31.975Z",
+      "event": "done",
+      "detail": "design → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/design.md"
+    },
+    {
+      "ts": "2026-09-17T00:58:32.026Z",
+      "event": "ratify",
+      "detail": "Architecture (設計) ratified by cardinal:requirements"
+    },
+    {
+      "ts": "2026-09-17T00:58:32.078Z",
+      "event": "dispatch",
+      "detail": "build"
+    },
+    {
+      "ts": "2026-09-17T02:32:04.409Z",
+      "event": "done",
+      "detail": "build → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/build.md"
+    },
+    {
+      "ts": "2026-09-17T02:32:04.460Z",
+      "event": "done",
+      "detail": "prove → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/prove.md"
+    },
+    {
+      "ts": "2026-09-17T02:32:19.308Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-17T05:58:47.108Z",
+      "event": "done",
+      "detail": "review → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/review.md"
+    },
+    {
+      "ts": "2026-09-17T05:58:47.194Z",
+      "event": "done",
+      "detail": "security → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/security.md"
+    },
+    {
+      "ts": "2026-09-17T05:58:47.293Z",
+      "event": "done",
+      "detail": "docs → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/docs.md"
+    },
+    {
+      "ts": "2026-09-17T05:58:47.378Z",
+      "event": "done",
+      "detail": "verify → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/verify.md"
+    },
+    {
+      "ts": "2026-09-17T05:58:53.795Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-17T07:27:20.155Z",
+      "event": "done",
+      "detail": "reflect → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/reflect.md"
+    },
+    {
+      "ts": "2026-09-17T07:27:20.204Z",
+      "event": "dispatch",
+      "detail": "verdict"
+    },
+    {
+      "ts": "2026-09-17T08:07:36.774Z",
+      "event": "done",
+      "detail": "verdict → C:/Users/kikus/Documents/workspace/paradise/reform/silent-mutations/verdict.md"
+    },
+    {
+      "ts": "2026-09-17T08:07:36.822Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
+    }
+  ],
+  "spawnTrace": {
+    "discover": [
+      {
+        "phase": "discover",
+        "agent": "market-researcher",
+        "toolUseId": "sa-0-aaeded21",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T00:05:28.630Z",
+        "kind": "observed"
+      }
+    ],
+    "specify": [
+      {
+        "phase": "specify",
+        "agent": "requirements-analyst",
+        "toolUseId": "sa-0-0f2a756c",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T00:24:32.532Z",
+        "kind": "observed"
+      }
+    ],
+    "design": [
+      {
+        "phase": "design",
+        "agent": "architect",
+        "toolUseId": "sa-0-c74335bb",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T00:58:31.924Z",
+        "kind": "observed"
+      }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-5b2e6ffb",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T02:32:04.315Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-5b2e6ffb",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T02:32:04.360Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-01f7a6c2",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T05:58:47.061Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-babdeaf1",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T05:58:47.150Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-0-3b427d1a",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T05:58:47.235Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-3a68dfd8",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T05:58:47.334Z",
+        "kind": "observed"
+      }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "sa-0-ad7aef1d",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T07:27:20.108Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "sa-0-a7a43635",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-17T08:07:36.728Z",
+        "kind": "observed"
+      }
+    ]
+  },
+  "tierTrace": {
+    "discover": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: market-researcher"
+      ],
+      "at": "2026-09-17T00:05:28.679Z"
+    },
+    "specify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: requirements-analyst"
+      ],
+      "at": "2026-09-17T00:24:32.581Z"
+    },
+    "design": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-17T00:58:31.975Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-17T02:32:04.408Z"
+    },
+    "prove": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: tdd-guide"
+      ],
+      "at": "2026-09-17T02:32:04.459Z"
+    },
+    "review": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: code-reviewer"
+      ],
+      "at": "2026-09-17T05:58:47.108Z"
+    },
+    "security": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: security-reviewer"
+      ],
+      "at": "2026-09-17T05:58:47.193Z"
+    },
+    "docs": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: doc-updater"
+      ],
+      "at": "2026-09-17T05:58:47.292Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: verification-loop"
+      ],
+      "at": "2026-09-17T05:58:47.378Z"
+    },
+    "reflect": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: self-critic"
+      ],
+      "at": "2026-09-17T07:27:20.155Z"
+    },
+    "verdict": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: creation-judge"
+      ],
+      "at": "2026-09-17T08:07:36.774Z"
+    }
+  }
+}

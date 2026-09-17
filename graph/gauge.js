@@ -786,11 +786,49 @@ function auditLedger(entries, opts = {}) {
   const rows = list.length;
   const distinct = byFp.size + tooDeep;
   /**
+   * **読まれずに消えた行を数える(verify 相 S-8 / 第16条)。**
+   * 前任 F-2 は `JSON.parse` に失敗する行(`corrupt`)を塞いだが、
+   * **parse には成功して観測を持たない行**(`null` / 配列 / 裸の文字列 / `{}` /
+   * `metrics` 欠落 / `metrics:null`)は今も静かに消える。
+   * security 相 A13 の実測: **ファイル 101 行が `rows=1`** と答えた。
+   * `rows` の意味は一字も変えない(既存の門がこの意味で立っている)—— **別の鍵で数えて名乗る。**
+   */
+  const ignored = Math.max(0, all.length - list.length - corrupt.length);
+  /**
+   * **観測の形をしていない `metrics` を名乗る(verify 相 / S-4 の実測から)。**
+   * `metrics:"x"` のような行は `rows` に数えられ、鍵も導かれ、**exit 0「健全」で通る** ——
+   * だが中身は観測ではない。**exit の規約は動かさない**(第57条)ので数えて名乗るに留める。
+   */
+  const oddMetrics = list.filter(e => typeof e.metrics !== 'object').length;
+  /**
    * **`tooDeep` / `corrupt` / `suspect` を返り値に載せる(第16条 / P-1 / F-2 / F-1)。**
    * 「読めなかった行が何行あるか」は `conflicts` の中に埋もれさせてよい数ではない ——
    * 呼び手(CLI)がこれを見て「健全」と答えない義務を負う。0 で埋めず、数えて名乗る。
    */
-  return { rows, distinct, tooDeep, corrupt: corrupt.length, suspect, duplicates: Math.max(0, rows - distinct), conflicts };
+  return { rows, distinct, tooDeep, corrupt: corrupt.length, suspect, ignored, oddMetrics,
+    duplicates: Math.max(0, rows - distinct), conflicts };
+}
+
+/**
+ * ── **監査の裁定。exit と `healable` を同じ源から導く**(verify 相 S-4 / 第48条)──────
+ *
+ * security 相 S-4: `healable = (conflicts.length === 0)` は **exit code を決める式とは別の式**であり、
+ * 「同じ問いに二つの答え」を持っていた。`healable` の意味は
+ * 「掃除(FR-8)を掛ければ消える欠陥しか残っていない」 ——
+ * それは **exit 0(健全)か exit 1(畳めば消える)** と**同じことの言い換え**である。
+ *
+ * **exit の規約は一切動かさない**(既存 5 門が符号化している / 第57条)。動かすのは `healable` の側:
+ * `healable` を exit から**導く**。二度と食い違えない形にし、その一致を門が撃つ。
+ *
+ *   exit 0 = 健全                      → healable: true
+ *   exit 1 = 機械が畳めば消える(重複)  → healable: true
+ *   exit 2 = 人が読むまで消えない事故    → healable: false
+ */
+function auditVerdict(a) {
+  const human = (a && Array.isArray(a.conflicts) ? a.conflicts.length : 0);
+  const duplicates = (a && Number(a.duplicates)) || 0;
+  const exit = human > 0 ? 2 : (duplicates > 0 ? 1 : 0);
+  return { human, exit, healable: exit !== 2 };   // ★ healable は exit から導く(第48条)
 }
 
 function compare(a, b) {
@@ -924,6 +962,19 @@ function main() {
         const raw = readLedger({ raw: true, withCorrupt: true });
         const a = auditLedger(raw);
         console.log(`📒 rows=${a.rows} distinct=${a.distinct} duplicates=${a.duplicates} conflicts=${a.conflicts.length} too-deep=${a.tooDeep} corrupt=${a.corrupt} suspect=${a.suspect}`);
+        /**
+         * **読まれずに消えた行を名乗る(verify 相 S-8)。** `rows` の意味は動かさないが、
+         * 「ファイルに 101 行あって rows=1」を黙って通す道は塞ぐ。0 のときは足さない
+         * (既存門の正規表現は一行目の前半に錨を打っている — 常態の画面を変えない)。
+         */
+        if (a.ignored > 0) {
+          console.log(`  ⚠️ 観測を持たない行が ${a.ignored} 行ある — 監査の数(rows)に載らず静かに消える行である`
+            + '(JSON として読めるが metrics を持たない / null / 配列 / 裸の値)');
+        }
+        if (a.oddMetrics > 0) {
+          console.log(`  ⚠️ metrics が観測の形をしていない行が ${a.oddMetrics} 行ある`
+            + ' — rows には数えられるが中身は観測ではない(第16条: 測れなかったものを埋めない)');
+        }
         for (const c of a.conflicts) {
           if (c.kind === 'too-deep') {
             console.log(`  ⚠️ 読めない行: ${c.slug} — 入れ子が深すぎて鍵を導けない(> ${MAX_CANONICAL_DEPTH}。畳みでも掃除でも消してはならない)@ ${c.observations[0].ts}`);
@@ -935,9 +986,39 @@ function main() {
             console.log(`  ⚠️ 矛盾: ${c.slug} — 名乗る指紋 ${c.declared} が中身から導かれる ${c.actual} と食い違う (@ ${c.observations[0].ts}, score ${c.observations[0].score})`);
           }
         }
-        const human = a.conflicts.length;   // forged-fp / too-deep / corrupt / 先回り はどれも人の手が要る
-        if (human > 0) { console.log(`  🔴 人が読むべき行が ${human} 件ある — 掃除では消えない`); process.exit(2); }
-        process.exit(a.duplicates > 0 ? 1 : 0);
+        /**
+         * **裁定は `auditVerdict` 一本に住む(第48条 / verify S-4)。**
+         * 旧実装は `healable = (human === 0)` を exit を決める式とは**別に**書いており、
+         * security 相 S-4 が `metrics:"x"` の一行で **exit 2 かつ healable:true** を実測した。
+         * いま `healable` は exit から導かれる —— **二つが食い違う道が構造的に無い。**
+         */
+        const V = auditVerdict(a);
+        const human = V.human;
+        /**
+         * **`--json` は欄を列挙する。展開しない(verify 相 S-5)。**
+         * 旧実装は `JSON.stringify({ ...a, healable })` であり、
+         * `conflicts[].line`(破損行の**生バイト 200 文字**)がそのまま外へ出ていた ——
+         * **人が読む画面は 60 文字で切っているのに、機械が読む出口は切っていなかった**(security A24)。
+         * そして `{...a}` は「何が出るか」を作者が数えていない証拠であり、
+         * `auditLedger` に欄が増えれば**自動的に外へ漏れる**。**出す物は名前で並べる。**
+         */
+        if (argv.includes('--json')) {
+          console.log(JSON.stringify({
+            rows: a.rows, distinct: a.distinct, duplicates: a.duplicates,
+            tooDeep: a.tooDeep, corrupt: a.corrupt, suspect: a.suspect, ignored: a.ignored,
+            oddMetrics: a.oddMetrics,
+            conflicts: a.conflicts.map(c => ({
+              slug: c.slug, kind: c.kind, declared: c.declared, actual: c.actual,
+              reasons: c.reasons || undefined,
+              line: c.line === undefined ? undefined : String(c.line).slice(0, 60),   // 人向けと同じ 60 文字
+              observations: c.observations,
+            })),
+            healable: V.healable,
+          }));
+        }
+        if (human > 0) { console.log(`  🔴 人が読むべき行が ${human} 件ある — 掃除では消えない`); process.exit(V.exit); }
+        if (a.duplicates > 0) console.log('  🧹 機械が畳めば消える(競合の跡)— 人の手は要らない');
+        process.exit(V.exit);
       }
       /**
        * **台帳は一度しか読まない(R-8 / P-6)。** 旧実装は `readLedger()` と
@@ -1000,4 +1081,10 @@ module.exports = {
    * 純関数として直に撃てる形にする —— 撃てない実装は守られていない実装である(第21条)。
    */
   renderLedger,
+  /**
+   * ── 監査の裁定(verify 相 S-4 / 第48条)──────────────────────────────
+   * `healable` を exit から導く唯一の場所。門が**直接**撃てなければ、
+   * 「exit と `healable` が一致する」は主張であって測定ではない(第21条)。
+   */
+  auditVerdict,
 };

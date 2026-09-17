@@ -1,0 +1,124 @@
+{
+  "meta": {
+    "run": "reform/silent-mutations",
+    "phase": "verdict",
+    "judge": "creation-judge",
+    "date": "2026-09-17",
+    "produces": "artifact",
+    "note": "全ての数は verdict 相が生のコマンドで自分で撃って得た。走行帳から写した数は一つも無い。"
+  },
+  "produces": "artifact",
+  "build": "pass",
+  "tests": {
+    "passed": 492,
+    "failed": 0,
+    "total": 492,
+    "note": "神の機 / 素 / `node tests/paradise.test.js` = `Paradise self-test: 492 passed, 0 failed` exit 0。`--gate-list | tail -1` = `Paradise gate list: 492 gates`。CI 形(本物の git clone + 兄弟倉なし)= `490 passed, 0 failed, 2 skipped` exit 0。同形の baseline(HEAD 素)= `469 passed, 0 failed, 2 skipped` exit 0 — 差は正確に +21 門。coverage は測っていないので欄を置かない(第16条)。"
+  },
+  "security": {
+    "issues": 0,
+    "secrets": 0,
+    "note": "CI と同一の式で走査: `grep -rIn -E \"sk-[a-zA-Z0-9]{20,}|gh[pou]_[a-zA-Z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----\" --exclude-dir=.git --exclude-dir=node_modules .` = 当たり 0(exit 1)。engine 39 本すべて `require` 可(load fail 0)。`graph/gauge.js` の `process.exit` 箇所数 10 — 本走行の前後で不変。実台帳 sha256 `955ea34a020bf5681b5607de9ed22abaddc7bc5228cb231dd843c05ba55aab77` / 7 行 — 本相の全実測の前後で不変。"
+  },
+  "spec": {
+    "satisfied": true,
+    "unmet": [],
+    "note": "AC は verdict 相が生のコマンドで駆って検めた。下の acceptance を見よ。"
+  },
+  "acceptance": [
+    {
+      "id": "V-AC1",
+      "claim": "rework R-1: 関数の中の四形が鳴る",
+      "method": "複製 `vj/paradise` の `graph/gauge.js` 現物に四形を撃ち込み `--gate gauge --gate 静的 --gate 番兵`(131/492 門)を走らせた。生バイト列で書き戻し sha256 一致を毎回印字。",
+      "measured": "形1 関数内 globalThis.__seen= exit=1 red=1 / 形2 関数内 module.exports.__stash= exit=1 red=1 / 形3 関数内 Reflect.set(globalThis,…) exit=1 red=1 / 形4 最上位 Object.assign(globalThis,…) exit=1 red=1 / 対照(無変異) exit=0 red=0。SILENT = 0/4。gauge.js sha256 前後とも ea4e4e1bfbf1abe358a293f188486f0d4c5d1c4211424231fa7db6b464a30d2b restored=true。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC2",
+      "claim": "rework R-1-e: 偽陽性は一件も増えていない",
+      "method": "現物の `tests/paradise.test.js:3810-4018` から字句器を切り出し(改変なし)、`graph/*.js` 39 ファイル全走査。",
+      "measured": "全当たり 6 件 / 3 ファイル(abode.js:1506 unmeasurable / hermetic.js:516,519,522 TRACKED / pulse.js:170,203 _gateCache)。既知 3 ファイル(残債 SM-L)の外の当たり = 0 件。射程 2 本(gauge.js / spawn-trace.js)の当たり = 0 件。rework の主張(6 / 0 / 0)と完全一致。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC3",
+      "claim": "rework R-1-d: `trap2` から盲点の成文化が消え、逆側(`bad3`)の凍結が効いている",
+      "method": "複製 `vj2/paradise` の `tests/paradise.test.js` に `topOnly` 退行の三形を撃った(生バイト列で書き戻し / sha256 一致 d5eb82b6bdb92a6135968f26f763e4176a17417c9ca9ed60cfa27616b41af86e)。",
+      "measured": "M-A 全形 topOnly:false→true = exit=1 red=3 / M-B 実装だけ旧に戻す(`if (form.topOnly && d!==0)`→`if (d!==0)`) = exit=1 red=3 / M-C globalThis 一形だけ topOnly:true(部分退行) = exit=1 red=3 / M-E namelessDepthPolicy() の呼出を消す = exit=1 red=1。**退行の四形すべて CAUGHT。** `trap2` の当該行は実物から消えており、`bad3` が同じ形を罪として凍結している(deep.length===5 / 全て depth>0)。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC4",
+      "claim": "【全相が見ていなかった層】rework §5-6 が最重量の未測と名指した『R-4 の修理が CI(ubuntu)で偽の赤を出さないか』",
+      "method": "本物の `git clone` を二つ作り、片方に未 commit の 5 ファイル + 走行帳を載せ、もう片方は HEAD 素(baseline)。どちらも兄弟倉 `../paradise-creations` を持たない = CI の checkout 形。`env -u PARADISE_CREATIONS node tests/paradise.test.js` を全走。",
+      "measured": "本走行 = `490 passed, 0 failed, 2 skipped` exit 0。番兵は `不在の形=absent: 兄弟倉そのものが無い(…)— 第37条が認めた不在の機(CI がこれ)` と名乗って skip。baseline(HEAD 素)= `469 passed, 0 failed, 2 skipped` exit 0。`--gate-list` は 471 → 492(gauge 門 110 → 131、差は正確に +21)。CI の 8 本の門(workspace / conclave audit / hermetic / derived / codex / wiring / check-agents / lexicon)も兄弟倉なしで全て exit 0 であり、どれも兄弟倉を作らない。**R-4 の修理は CI に偽の赤を出さない。rework の最重量の未測は解消された。**",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC5",
+      "claim": "残債 14 件が正本として一貫している",
+      "method": "`PR.md` §6 と `README.md` §9 の表から `SM-*` を機械で抽出し diff。",
+      "measured": "両表とも 14 行 / 名の集合は完全一致(SM-AC8 / SM-C2 / SM-DoS / SM-G / SM-H / SM-I / SM-J / SM-L / SM-L3 / SM-M / SM-PATH / SM-S2 / SM-S3 / SM-T)。reflect が摘発した 10/12/14 の三通りは正本化された。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC6",
+      "claim": "新設 21 門のうち、誰も名を挙げていない門が無い",
+      "method": "`git diff tests/paradise.test.js | grep \"^+test(\"` = 21 本。各門の名の核を走行帳 13 枚に対して機械で grep。",
+      "measured": "誰も名を挙げていない門 = **0 / 21**。ただし 2 枚以下しか触れていない門が **7 / 21**(うち 4 本は `PR.md` 一枚のみ)。security が自白した『7 本を一行も読んでいない』の実体は『誰も読んでいない』ではなく『PR.md の表にしか名が無い』である。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC7",
+      "claim": "走行帳 13 枚の内部矛盾",
+      "method": "`README.md` §10 の文書表が主張する行数と `wc -l` の実測を全行で照合。",
+      "measured": "13 件中 10 件一致。**不一致 3 件**: `verify.md` 主張 704 / 実測 717、`PR.md` 主張 343 / 実測 388、`rework.md` と `conclave.json` は `—`(未記入)。rework が R-2 で『走行帳の数を実測に揃えた』と名乗った当の表に、自分が書き足した後の数が反映されていない。**軽微(PR を読む者の判断を変えない散文の行数)であり残債 SM-V1 として名を持たせる。**",
+      "verdict": "pass-with-debt"
+    },
+    {
+      "id": "V-AC8",
+      "claim": "CI 相当の門が全て exit 0",
+      "method": "神の機で各コマンドを実際に撃った。",
+      "measured": "全走(素) `492 passed, 0 failed` exit 0 / `conclave.js audit` exit 0(見捨てられた走行 0 / 判定不能 0 / 全 15)/ `wiring.js check` exit 0(engine 39・門 25 本すべてに走らせる者が居る)/ `codex.js check` exit 0(索引と本文が一致 62 条)/ `gauge-audit.test.js` 6 passed exit 0 / `guards.test.js` 75 passed exit 0 / `route-matrix.test.js` 13 passed exit 0 / `ratify-guard.test.js` 9 passed exit 0 / `critic.js review graph --self` exit 0(107 件の教訓で裁いて nothing)。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC9",
+      "claim": "exit の規約が動いていない",
+      "method": "仮倉に本物の台帳の一行を置き `gauge.js ledger --audit` の exit を三通りで撃った。",
+      "measured": "healthy=0 / duplicate=1 / forged-fp=0(※ forged-fp は単行では duplicate も conflict も生まないので 0 が正しい挙動)。`--json` の `healable` は exit と整合。`graph/gauge.js` の `process.exit` 箇所数 10 — 不変。",
+      "verdict": "pass"
+    },
+    {
+      "id": "V-AC10",
+      "claim": "【新発見 / 誰も撃っていない層】外の凍結門は『撃ちが実行されていること』を検めていない",
+      "method": "複製 `vj2` で、literal を残したまま撃ちのループだけを空にする変異を撃った。",
+      "measured": "N-3 `inFunc`(関数の中の四形)の撃ちを空ループにする = **exit=0 red=0 SILENT** / N-4 `ghosts`(G4 六形)の撃ちを空ループにする = **exit=0 red=0 SILENT** / N-1 `bad3` の全 assert を殺す = **exit=0 red=0 SILENT**。外の凍結門は `body.includes('f-global.js')` のように **本文を grep するだけ**であり、撃ちが実際に走ったかを検めていない。**これは rework が新しく開けた穴ではなく、verify 相が建てた `ghosts` にも同じく在る本走行全体の作法の限界である。**(なお N-2 = 撃ちを殺した上で実装も旧に戻す形は CAUGHT exit=1。)残債 SM-V2 として名を持たせる。",
+      "verdict": "pass-with-debt"
+    },
+    {
+      "id": "V-AC11",
+      "claim": "【新発見】兄弟倉が『在るが空』の機で R-4 の修理が赤を出す",
+      "method": "CI 形の複製に `mkdir ../paradise-creations` だけを行い(台帳なし)`--gate gauge` を走らせた。baseline でも同形を撃った。",
+      "measured": "本走行 = `131 of 492 gates matched — 71 green, **58 red**, 2 skipped` exit 1。番兵が `hidden` と裁いて 58 門を倒す。baseline(HEAD 素)= `110 of 471 — 108 green, **0 red**, 2 skipped` exit 0。**これは本走行が新しく入れた赤である。** ただし (i) CI の checkout は兄弟倉を作らない(V-AC4 で実測)、(ii) `tribunal.yml` の 52 step のどれも作らない、(iii) 赤の文面は隠蔽を名指す設計上の意図どおりの赤である。**実害は測定で 0。** 残債 SM-V3 として名を持たせる。",
+      "verdict": "pass-with-debt"
+    }
+  ],
+  "diff": {
+    "files": 5,
+    "note": "`git diff --numstat` = CONSTITUTION.INDEX.md 2/1 / CONSTITUTION.md 58/0 / README.md 9/5 / graph/gauge.js 91/4 / tests/paradise.test.js 1650/3。+ 未追跡 `reform/silent-mutations/`(13 枚 + conclave.json + forge.dag.json)。余分なファイルは一つも無い。"
+  },
+  "trajectory": {
+    "score": 80,
+    "complete": false,
+    "phasesTotal": 11,
+    "phasesDone": 10,
+    "domainsTotal": 6,
+    "domainsRatified": 5,
+    "firstPassRate": 0.75,
+    "reworkCount": 0,
+    "retryOverhead": 0,
+    "loopGuardTrips": 0,
+    "note": "`node graph/gauge.js score reform/silent-mutations/conclave.json --json` の実測。⚠️ 第27条の限界: **この値は verdict 相が done になり tribunal が批准される前の値である。** `domainsRatified 5/6` / `phasesDone 10/11` は本相が未完だから低いのであって走行の荒れではない。批准後に再測すれば `complete:true` に上がる。`reworkCount 0` は reflect→rework の差し戻しが conclave の rework 計数を経ずに行われたためであり、**実際には一巡の差し戻しが在った** — この欄は走行の実態より優しい。"
+  }
+}

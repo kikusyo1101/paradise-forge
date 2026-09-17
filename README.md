@@ -135,18 +135,22 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 471 本
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 492 本
 ```
 > 語るのは**門の総数**であって「通った数」ではない。第3段以降、門は住処や兄弟倉の
 > 不在を**名乗って**飛ばす(第58条(e))ので、`passed` は測る機械の資産で変わる ——
-> 神の機械で `469 passed, 0 failed`、CI の裸の機械で `459 passed, 0 failed, 10 skipped`。
-> **どちらも嘘ではない。** 機械が変わっても動かない数だけを散文に書く(第22条)。
+> **かつて実測された一つの版**では、神の機械が `469 passed, 0 failed`、CI の裸の機械が
+> `459 passed, 0 failed, 10 skipped` を名乗った —— **同じ版に対して二つの数が出た。**
+> **どちらも嘘ではない。** ゆえに `passed` は版の性質ではなく、ここには書かない。
+> 機械が変わっても動かない数 —— 門の総数 —— だけを散文に書き、それは census が数え直す(第22条)。
 検証内容: グラフエンジン・知識グラフ（co-change学習・forget）・forge（scale適応・discover/reflectゲート）・
 verdict（SHIP/REWORK/BLOCK）・critic（欠陥検出・self-sourceモード・lesson再発検出）・
 orchestrator（wave周回・context handoff・REWORK・loop-guard）・contract（reconcile・fail-closed）・
 clergy/conclave（聖職位階・入れ子PDCA・ratify・domain rework・中断からの再開）・synod（計画サイクル）・
 domains/ordain（分野の適合・役者の鍛造）・spawn-trace（起動の証跡と**序列の門**・第52条）・
-gauge（走行の採点と**台帳の冪等性**・指紋/畳み/監査・故障注入で門が鳴ることまで・第38条・第55条）。
+gauge（走行の採点と**台帳の冪等性**・指紋/畳み/監査・故障注入で門が鳴ることまで・
+**実台帳の番兵**(全走の各仮倉で実台帳の指紋を照合し、汚した門を名指す)・**競合下の治癒**(二プロセスで同時に刻ませ、畳みが読み手を守ることを凍結)・
+**engine の可変大域をソースで読む静的の門**・第38条・第55条・**第62条**）。
 
 ### 門を絞る（開発中の一本を撃つとき）
 ```bash
@@ -224,7 +228,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/spawn-trace.js` | **起動の証跡と序列の門**。誰が起動されたかを三値(observed/asserted-only/no-trace)で観測し、教主の権能の三段(委譲/編成/教主の手)を実測と突合して裁く。**閾値も判定表もここ一箇所に住む** — `tiers` が数を語り、`tier` が事後に突合し、`audit` が全走行を監査する(第27条・第52条) |
 | `graph/critic.js` | **敵対的自己批評**。決定的チェックリスト＋過去の教訓で欠陥を自力発見（exit 0/1） |
 | `graph/verdict.js` | **裁きの門**。SHIP / REWORK / BLOCK を憲法に照らし裁定。走行(trajectory)も読む(第38条) |
-| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条)。**台帳は冪等** — 行は材料(`slug`+`scale`+`metrics`)から導かれる指紋を持ち、同じ観測は二度刻まれない。予防(`record` が追記前に検める)と治癒(`readLedger` が読み時に畳む)の二重。`ledger --audit` が重複・偽の指紋・深すぎて読めない行を名指す — **exit 0 健全 / 1 掃除で消える重複 / 2 人が読むまで消えない事故(偽の指紋・読めない行) / 3 命令の誤り**。生の全行は `readLedger({raw:true})` だけが返す(CLI の `--raw` は無い)(第55条) |
+| `graph/gauge.js` | **証明の秤**。run-state から走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する(第38条)。**台帳は冪等** — 行は材料(`slug`+`scale`+`metrics`)から導かれる指紋を持ち、同じ観測は二度刻まれない。予防(`record` が追記前に検める)と治癒(`readLedger` が読み時に畳む)の二重。`ledger --audit` が重複・偽の指紋・深すぎて読めない行を名指す — **exit 0 健全 / 1 掃除で消える重複 / 2 人が読むまで消えない事故(偽の指紋・読めない行) / 3 命令の誤り**。**掃除で消える欠陥しか残っていない台帳には `🧹` の一行が出て、`--audit --json` が `healable` を名乗る — exit code は一切動かさない**(第57条: 信号の分離は文面と欄で行う)。生の全行は `readLedger({raw:true})` だけが返す(CLI の `--raw` は無い)(第55条・第62条) |
 | `graph/lessons.js` | **Reflexion記憶**。知識グラフの lesson を critic 用にエクスポート |
 | `graph/identity.js` | **視覚語彙の選定**。family重複禁止・採用履歴で反復を構造的に禁止（第17条） |
 | `graph/visual-verify.js` | **表層の実測**。コントラスト/階調分離/非文字3:1/最小24px/状態/焦点等を数値で裁く（第18条） |
