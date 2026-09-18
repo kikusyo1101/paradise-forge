@@ -252,11 +252,7 @@ jobs:
       - name: 🏠 Abode(撤収)— 実機の hooks が楽園を指していないか (AC-30 / 第20条の鏡像)
         run: node graph/abode.js check --backrefs
 
-      # ── 輸出 EX-3 (第7段 / 裁可 1-A) ──
-      # 汎用フック 5 本 + lib 2 本の複製が神の住処で源と sha256 一致するか。
-      # CI には神の住処が無いので **skip を名乗って exit 0**(第58条(e))。
-      - name: 🪝 Apply-hooks(EX-3)— 移した汎用フックが源と一致するか
-        run: node graph/apply-hooks.js verify
+      # (EX-3 は 2026-09-18 に閉じた — graph/abode.json closed[CL-2]。apply-hooks.js は退役。)
 
       # ── 兄弟倉への配備 (第5段 / EX-2 / AC-46〜50) ──
       # CI には兄弟倉が無い。ゆえにここは **`· skip: creations abode 不在: …` を

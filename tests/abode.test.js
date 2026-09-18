@@ -613,7 +613,8 @@ test('【逆・欠陥B / AC-23 の実現】台帳から EX-1 を抜けば apply-
    */
   const led = JSON.parse(fs.readFileSync(path.join(ROOT, 'graph', 'abode.json'), 'utf8'));
   led.exports = led.exports.filter(e => e.id !== 'EX-1');
-  assert.strictEqual(led.exports.length, 2, '仕掛けに失敗した — EX-1 が抜けていない');
+  // 数は写経しない: 台帳の輸出数から 1 減っていることを見る(EX-3 は 2026-09-18 に閉じた)
+  assert.strictEqual(led.exports.length, abode.ledger().exports.length - 1, '仕掛けに失敗した — EX-1 が抜けていない');
   const box = mktmp('no-ex1');
   const fakeLedger = path.join(box, 'abode.json');
   fs.writeFileSync(fakeLedger, JSON.stringify(led, null, 2) + '\n');
@@ -1112,7 +1113,7 @@ function fakeSides(tag, opts = {}) {
            fromKg, toKg, fromDaily, toDaily };
 }
 
-test('移設が完全なら緑 — 行数と sha256 の集合が一致する (AC-9 の正)', () => {
+test('移設が完全なら緑 — 旧の全行が新に在る (AC-9 の正)', () => {
   const s = fakeSides('mig-ok');
   const v = abode.migrateVerify({ from: s.from, to: s.to });
   assert.strictEqual(v.ok, true, '完全な移設が赤になった: ' + JSON.stringify(v.rows));
@@ -1136,6 +1137,38 @@ test('【逆】移設先の nodes.jsonl から 1 行削ると赤くなり、数�
   assert.strictEqual(row.to, 4);
   // **数を名指せ。**「一致しない」だけでは、どちらが欠けたか判らず直せない。
   assert.ok(/5 期待 \/ 4 実測/.test(row.why), `数を名指していない: ${row.why}`);
+  assert.ok(/1 行が移設先に無い/.test(row.why), `消えた行数を名指していない: ${row.why}`);
+});
+
+test('移設先が育っても緑 — 完了条件は「一致」ではなく「旧⊆新」である (2026-09-18)', () => {
+  /**
+   * 実測: 移設の後に repo 側の KG は走行のたびに育つ(nodes.jsonl 122 → 142)。
+   * 「集合の一致」を要求する門は移設の翌日から永久に赤く、次の者に閾値を緩めさせる。
+   * 守るべき性質は「旧の行が新から消えていない」だけである。
+   */
+  const s = fakeSides('mig-grown');
+  const p = path.join(s.toKg, 'nodes.jsonl');
+  fs.appendFileSync(p, JSON.stringify({ id: 'grown-after-migrate', kind: 'lesson' }) + '\n');
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  const row = v.rows.find(r => r.file === 'nodes.jsonl');
+  assert.strictEqual(row.from, 5);
+  assert.strictEqual(row.to, 6);
+  assert.strictEqual(row.sha, true, `育った移設先を赤にした: ${row.why}`);
+  assert.strictEqual(v.ok, true);
+});
+
+test('【逆】移設先が育っていても、旧の 1 行が差し替わっていれば赤 — 行数では誤魔化せない', () => {
+  const s = fakeSides('mig-swap');
+  const p = path.join(s.toKg, 'nodes.jsonl');
+  const lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
+  lines[0] = JSON.stringify({ id: 'tampered', kind: 'lesson' });
+  lines.push(JSON.stringify({ id: 'extra-1' }), JSON.stringify({ id: 'extra-2' }));
+  fs.writeFileSync(p, lines.join('\n') + '\n');
+  const v = abode.migrateVerify({ from: s.from, to: s.to });
+  const row = v.rows.find(r => r.file === 'nodes.jsonl');
+  assert.strictEqual(row.to > row.from, true, '前提: 移設先の方が多い');
+  assert.strictEqual(row.sha, false, '旧の行が消えているのに、行数が多いだけで緑を出した');
+  assert.ok(/1 行が移設先に無い/.test(row.why), `消えた行を名指していない: ${row.why}`);
 });
 
 test('【逆】移設先が丸ごと無ければ赤 — 「移した」の自己申告では通らない (AC-10)', () => {
@@ -1159,7 +1192,7 @@ test('【逆】行数が同じでも中身が違えば赤 — 数の一致は偶
   const row = v.rows.find(r => r.file === 'edges.jsonl');
   assert.strictEqual(row.from, row.to, '前提が崩れている(行数は等しいはず)');
   assert.strictEqual(row.sha, false);
-  assert.ok(/sha256 の集合が違う/.test(row.why), `中身の違いを名指していない: ${row.why}`);
+  assert.ok(/行が移設先に無い/.test(row.why), `中身の違いを名指していない: ${row.why}`);
 });
 
 test('移設元が無いのは「検められなかった」= exit 2 — 0 にも 1 にも混ぜない (第37条 / §1.4)', () => {
@@ -1209,11 +1242,11 @@ test('現物の移設は済んでいる — CLI が exit 0 で行数と sha を�
   const r = cli(['migrate', '--verify']);
   assert.notStrictEqual(r.code, 1, `現物の移設が不完全である:\n${r.out}`);
   if (r.code === 0) {
-    assert.ok(/nodes\.jsonl/.test(r.out) && /sha256 集合の一致: true/.test(r.out),
+    assert.ok(/nodes\.jsonl/.test(r.out) && /旧⊆新: true/.test(r.out),
       `照合の中身を語っていない:\n${r.out}`);
     const v = abode.migrateVerify();
     const nodes = v.rows.find(x => x.file === 'nodes.jsonl');
-    assert.strictEqual(nodes.from, nodes.to, '現物の行数が食い違っている');
+    assert.ok(nodes.to >= nodes.from, `移設先が移設元より少ない: ${nodes.from} → ${nodes.to}`);   // 育つのは正常(旧⊆新)
     assert.ok(nodes.to > 0, '移設先が空である — 0 行の一致を移設と呼んではならない');
   } else {
     assert.strictEqual(r.code, 2, `想定外の exit ${r.code}:\n${r.out}`);
