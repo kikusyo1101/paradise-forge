@@ -289,9 +289,12 @@ test('apply preserves every unrelated key', () => {
   // ⚠️ `env` はこの一覧に **無い**。FIXTURE の env.PATH は展開されない `$PATH` を
   // 持つ壊れた値であり、第三の職責がこれを削除する(それが正しい振る舞いである)。
   // env の保存/削除は下の「env health」の節が専任で裁く。
-  for (const k of ['model', 'effortLevel', 'theme', 'language', 'extraKnownMarketplaces', 'enableWorkflows']) {
+  // `model` / `effortLevel` は無関係ではない — 楽園の座であり、神の住処(= repo 外の file)からは
+  // 引かれる(2026-09-18 神託「進めたい」)。神のキーだけが保存の対象である。
+  for (const k of ['theme', 'language', 'extraKnownMarketplaces', 'enableWorkflows']) {
     assert.deepStrictEqual(after[k], before[k], `キー ${k} が保存されていない`);
   }
+  assert.ok(!('model' in after) && !('effortLevel' in after), '神の住処に楽園の座が残っている');
   // hooks の中身(コマンド・説明・件数)も matcher 以外は保存されねばならない
   assert.strictEqual(after.hooks.PreToolUse.length, 2);
   assert.strictEqual(after.hooks.PreToolUse[0].description, 'push reminder');
@@ -420,7 +423,7 @@ test('apply deletes the broken env.PATH line — 足していないものを消�
   assert.strictEqual(r.changed, true);
   const s = G.readSettings(f);
   assert.strictEqual(s.env, undefined, 'env が空になったら器ごと消す');
-  assert.strictEqual(s.model, 'fable', '無関係のキーは触らない');
+  assert.ok(!('model' in s), '神の住処の座は引かれる(env の修復とは別の職責だが同じ走行で為す)');
   assert.ok(r.changes.some(c => c.kind === 'env' && c.key === 'PATH'), '何を消したかを名指すこと');
 });
 
@@ -451,14 +454,15 @@ test('env repair is idempotent — twice yields byte-identical files', () => {
   assert.ok(a1.equals(a2), '冪等でない機構は、走らせるたびに配備物を揺らす');
 });
 
-test('apply with a broken env preserves model/effortLevel/hooks/permissions/theme/language', () => {
+test('apply with a broken env preserves hooks/permissions/theme/language (座は神の住処から引かれる)', () => {
   const before = FIXTURE();
   const f = tmpSettings(before, 'envpreserve.json');
   G.apply(f);
   const after = G.readSettings(f);
-  for (const k of ['model', 'effortLevel', 'theme', 'language']) {
+  for (const k of ['theme', 'language']) {
     assert.deepStrictEqual(after[k], before[k], `キー ${k} が env の修復で失われた`);
   }
+  assert.ok(!('model' in after) && !('effortLevel' in after), '楽園の座は神の住処から引かれる');
   assert.strictEqual(after.env, undefined, 'FIXTURE の env は PATH ただ一つ — 器ごと消える');
   assert.strictEqual(Object.keys(after.hooks).length, Object.keys(before.hooks).length, 'hooks の事象が減った');
   assert.strictEqual(after.hooks.PreToolUse.length, 2);
@@ -829,6 +833,39 @@ test('【逆】神の住処へは楽園のフックを 1 本も足さない — 
     'buildDesired が神の住処へ楽園のフックを足した');
   assert.ok(!r.changes.some(c => c.kind === 'repo-hook'),
     '神の住処に対して repo-hook の変更を立てた');
+});
+
+console.log('\n教主の座の撤収 (神託 2026-09-18「進めたい」— 第7段の裁可待ち 2 キー):');
+
+test('【正】神の住処の settings から楽園の座 model / effortLevel を引く — 座は repo に住む (第31条 / 第58条)', () => {
+  /**
+   * 原初設定(settings.json.pre-wire.bak)に `model` は無い — 楽園が書いたキーである。
+   * 座が `<repo>/.claude/settings.json` へ移った後も神の住処に写しが残り、
+   * 楽園の外の全プロジェクトの既定 model を楽園が決めていた。
+   */
+  const godFile = path.join(TMP, 'god-seat', 'settings.json');
+  const s = { theme: 'dark', model: 'fable', effortLevel: 'xhigh', permissions: {} };
+  const r = G.buildDesired(s, { file: godFile });
+  assert.ok(!('model' in r.next) && !('effortLevel' in r.next), '神の住処に楽園の座が残っている');
+  assert.strictEqual(r.next.theme, 'dark', '神のキーに触った');
+  const w = r.changes.filter(c => c.kind === 'seat-withdrawn');
+  assert.strictEqual(w.length, 2, '引いたことを changes に立てていない');
+  assert.ok(w.every(c => c.note && c.was), '何を引いたか(元の値)を名指していない');
+});
+
+test('【逆】repo の住処の settings からは座を引かない — そこが座の住処である', () => {
+  const s = { model: 'fable', effortLevel: 'xhigh', permissions: {} };
+  const r = G.buildDesired(s, { file: G.repoSettingsFile() });
+  assert.strictEqual(r.next.model, 'fable');
+  assert.strictEqual(r.next.effortLevel, 'xhigh');
+  assert.ok(!r.changes.some(c => c.kind === 'seat-withdrawn'), 'repo の座を引いた — 教主が無統治になる');
+});
+
+test('【正】座が無い神の住処は二度撃っても変わらない (冪等)', () => {
+  const godFile = path.join(TMP, 'god-seat-idem', 'settings.json');
+  const s = { theme: 'dark', permissions: {} };
+  const r = G.buildDesired(s, { file: godFile });
+  assert.ok(!r.changes.some(c => c.kind === 'seat-withdrawn'), '無い物を引いたと報告した');
 });
 
 test('【正】移送先の宣言は二度撃っても増えない (冪等)', () => {
