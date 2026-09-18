@@ -521,7 +521,6 @@ for (const [wish, why] of PONTIFF_STRONG_WORLDLY) {
 const STRONG_WORLDLY_EVERY_NAME = {
   'abode': 'abode 不動産アプリを作って',
   'apply-guards': 'apply-guards という警備員シフト管理アプリが欲しい',
-  'apply-hooks': 'apply-hooks 釣り針通販サイトを作れ',
   'apply-models': 'apply-models ファッションモデル事務所の名簿アプリ',
   'apply-seat': 'apply-seat 劇場の座席予約サイトを作って',
   'apply-spawn': 'apply-spawn 養殖場の稚魚管理アプリが欲しい',

@@ -25,18 +25,6 @@
    "ordainedOn": "2026-09-10",
    "ordainedVia": "reform/sovereign-abode — 教主の反論2を神が受諾 (requirements.md §1.4 / §11.1 甲案)",
    "verify": "node graph/abode.js check --creations"
-  },
-  {
-   "id": "EX-3",
-   "target": "~/.claude/scripts/{hooks,lib}",
-   "kind": "deploy-tree",
-   "writer": "graph/apply-hooks.js",
-   "scope": "machine",
-   "reason": "撤収は「消す」ではなく「移す」である。神の settings.json は汎用フック 5 本 (suggest-compact / pre-compact / session-start / session-end / evaluate-session) を楽園の倉の絶対パスで握っていた (AC-30 の逆向き依存 6 件のうち 5 件)。この 5 本は楽園を一切参照せず ~/.claude/sessions/ と skills/learned/ と os.tmpdir() へ書く、神の全プロジェクトのための機能である。倉から引くだけでは神の日常が黙って壊れ、倉に残せば逆向き依存が消えない。ゆえに神の住処へ複製し、hook の道をそちらへ向け直す。実測: 5 本は require('../lib/utils') を引き package-manager.js も require('./utils') を引くので lib/ も複製が要る。evaluate-session.js は path.join(__dirname,'..','..','skills','continuous-learning','config.json') を読むため、~/.claude/scripts/hooks/ に置けば ~/.claude/skills/continuous-learning/config.json を指し、それは実機に既在する (409 B)。偽のホームへ複製して 5 本すべてを撃ち exit 0 を確認済み。",
-   "ordainedBy": "god",
-   "ordainedOn": "2026-09-12",
-   "ordainedVia": "reform/sovereign-abode — 第6段の撤収計画に対する神の裁可 1-A",
-   "verify": "node graph/apply-hooks.js verify"
   }
  ],
  "external": [
@@ -73,6 +61,16 @@
    "closedOn": "2026-09-10",
    "closedBy": "pontiff",
    "closedVia": "reform/sovereign-abode design — 教主の実測による裁定 (神の名指しがあれば EX-3 として再開する)"
+  },
+  {
+   "id": "CL-2",
+   "subject": "EX-3 ~/.claude/scripts/{hooks,lib} — 汎用 hook 5 本 + lib 2 本の複製",
+   "question": "裁可 1-A(2026-09-12)は vendor 由来の汎用 hook 5 本を神の住処へ複製して道を向け直した。2026-09-18 のハーネス審査で、その 5 本を含む hook 10 本がこの機で実効 0 と実測され(PR #59)、apply-guards が神の settings.json から全て除いた。参照者を失った複製 7 本を台帳に残すべきか。",
+   "verdict": "閉じる — 輸出は宛先を失った",
+   "evidence": "PR #59 マージ後の実機: ~/.claude/settings.json の hooks は全 6 事象で 0 本(PreToolUse/PreCompact/SessionStart/PostToolUse/Stop/SessionEnd)。~/.claude/scripts/{hooks,lib} の 7 本を呼ぶ command は 1 本も無い。実効 0 の根拠: TMUX 未設定・sessions/*.tmp 全件 258B 空テンプレ・skills/learned 0 件・SessionEnd/PostToolUse の stdout はモデルに届かない(公式 hooks reference)。神託「残りも終わらせよ」(2026-09-18)により複製を %LOCALAPPDATA%/Temp/paradise-retreat-<epoch>/ へ退避して除いた。writer(旧 apply-hooks engine)は退役。",
+   "closedOn": "2026-09-18",
+   "closedBy": "god",
+   "closedVia": "reform/harness-diet-2 — 神託「残りも終わらせよ」を受けた教主の実行(PR で確定)"
   }
  ]
 }

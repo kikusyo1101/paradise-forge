@@ -1483,6 +1483,30 @@ function sameContent(a, b, kind) {
 }
 
 /**
+ * 移設元の全行が移設先に**在る**か(jsonl の多重集合の包含)。
+ *
+ * 移設の完了条件は「集合の一致」ではなく「**旧の全行が新に在り、新は旧以上**」である。
+ * 一致を要求すれば、移設の翌日に repo 側の KG が 1 行育った瞬間から門は永久に赤い
+ * (実測 2026-09-18: nodes.jsonl 122 → 142、旧 122 行は全て新に在るのに赤)。
+ * 永久に赤い門は次の者に閾値を緩めさせる(第57条の禁じ手への誘惑)。
+ * 包含なら「旧の行が新から**消えた**」ときだけ赤く、それが移設で守るべき唯一の性質である。
+ * 非 jsonl(paradise-daily.json)は走行状態なので従来どおり sha 一致で裁く。
+ * @returns {{ok:boolean, missing:number}}
+ */
+function containsContent(a, b, kind) {
+  if (!a.exists || !b.exists) return { ok: false, missing: null };
+  if (kind !== 'jsonl') return { ok: a.sha === b.sha, missing: null };
+  const pool = new Map();
+  for (const s of b.shas) pool.set(s, (pool.get(s) || 0) + 1);
+  let missing = 0;
+  for (const s of a.shas) {
+    const n = pool.get(s) || 0;
+    if (n === 0) missing++; else pool.set(s, n - 1);
+  }
+  return { ok: missing === 0 && b.shas.length >= a.shas.length, missing };
+}
+
+/**
  * 移設が完全かを検める(AC-9 / AC-10)。
  *
  * **「移した」という自己申告では通らない。** 行数と sha256 の多重集合の両方が
@@ -1512,9 +1536,13 @@ function migrateVerify(opts = {}) {
       row.why = `${r.file}: ${a.lines} 期待 / 移設先が無い (${r.toPath})`;
       return row;
     }
-    row.sha = sameContent(a, b, r.kind);
-    if (a.lines !== b.lines) row.why = `${r.file}: ${a.lines} 期待 / ${b.lines} 実測 — 行数が一致しない`;
-    else if (!row.sha) row.why = `${r.file}: 行数は ${a.lines} で一致するが sha256 の集合が違う — 中身が別物である`;
+    const c = containsContent(a, b, r.kind);
+    row.sha = c.ok;
+    if (!c.ok) {
+      if (r.kind === 'jsonl' && c.missing > 0) row.why = `${r.file}: 移設元の ${c.missing} 行が移設先に無い(${a.lines} 期待 / ${b.lines} 実測) — 移設で行が消えた`;
+      else if (r.kind === 'jsonl') row.why = `${r.file}: 移設先 ${b.lines} 行 < 移設元 ${a.lines} 行 — 新は旧以上でなければならない`;
+      else row.why = `${r.file}: sha256 が一致しない — 中身が別物である`;
+    }
     return row;
   });
   return { ok: unmeasurable.length === 0 && rows.every(r => r.sha === true), rows, unmeasurable };
@@ -2276,7 +2304,7 @@ function printMigrate(rest) {
   for (const r of v.rows) {
     const mark = r.sha === true ? '✓' : r.sha === false ? '✗' : '·';
     console.log(`  ${mark} ${r.file.padEnd(18)} ${r.from === null ? '(元 無し)' : r.from + ' 行'} → ` +
-      `${r.to === null ? '(先 無し)' : r.to + ' 行'}  sha256 集合の一致: ${r.sha === null ? '検められず' : r.sha}`);
+      `${r.to === null ? '(先 無し)' : r.to + ' 行'}  旧⊆新: ${r.sha === null ? '検められず' : r.sha}`);
     if (r.why) console.log(`     ${r.why}`);
   }
   if (v.unmeasurable.length) {
@@ -2285,7 +2313,7 @@ function printMigrate(rest) {
     console.log('═══════════════════════════════════════');
     return 2;
   }
-  if (v.ok) console.log('  ✓ 行数と sha256 の集合が一致した — 記憶は移り、失われていない');
+  if (v.ok) console.log('  ✓ 移設元の全行が移設先に在る — 記憶は移り、失われていない');
   else console.log('✗ 移設が不完全である — 「移した」という自己申告では通らない (AC-10)');
   console.log('═══════════════════════════════════════');
   return v.ok ? 0 : 1;
