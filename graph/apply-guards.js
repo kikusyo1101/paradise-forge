@@ -944,6 +944,21 @@ function buildDesired(settings, opts = {}) {
     }
   }
 
+  // (e) **教主の座を神の住処から引く**(神託 2026-09-18「進めたい」— 第7段の裁可待ち 2 キー)。
+  //     `model` / `effortLevel` は楽園が書いたキーで(原初設定 pre-wire.bak に無い)、
+  //     座は `<repo>/.claude/settings.json` に住む(第4段の反転以後、apply-seat が repo へ書く)。
+  //     神の住処に残った写しは、楽園の外の全プロジェクトの既定 model を楽園が決めている状態
+  //     であった。**神の住処のときだけ**除く — repo の住処では座は在るべき物である。
+  //     EX-1 の writer がこのファイルを書く権能を持つ(permissions と同じ settings.json)。
+  if (opts.file && !isRepoSettingsFile(opts.file)) {
+    for (const k of ['model', 'effortLevel']) {
+      if (!(k in next)) continue;
+      changes.push({ kind: 'seat-withdrawn', key: k, was: next[k],
+        note: `神の住処から楽園の座 ${k} を引く — 座は <repo>/.claude/settings.json に住む(第31条 / 第58条)` });
+      delete next[k];
+    }
+  }
+
   return { next, changes, proposals };
 }
 
@@ -1091,6 +1106,8 @@ if (require.main === module) {
     for (const c of d.changes) {
       if (c.kind === 'permissions') console.log(`     🔴 permissions — ${c.note}  ⇒ deny ${c.counts.deny} / ask ${c.counts.ask} / allow ${c.counts.allow}`);
       else if (c.kind === 'env') console.log(`     🔴 env.${c.key} — ${c.note}`);
+      else if (c.kind === 'seat-withdrawn') console.log(`     🔴 ${c.key} = ${JSON.stringify(c.was)} — ${c.note}`);
+      else if (c.kind === 'repo-hook') console.log(`     🔴 ${c.event} — ${c.note}`);
       else if (c.kind === 'unconditional-block' || c.kind === 'forbidden-hook') {
         const tag = c.kind === 'forbidden-hook' ? '禁じられた強制' : '無条件 BLOCK';
         console.log(`     🔴 ${c.event}[${c.index}] ${tag} を外す — matcher: ${c.matcher}`);
