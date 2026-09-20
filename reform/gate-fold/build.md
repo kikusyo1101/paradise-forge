@@ -981,3 +981,28 @@ $ node graph/abode.js check                                → EXIT=0
 $ node tests/paradise.test.js --gate-list | tail -1        → Paradise gate list: 499 gates
 $ node tests/fold.test.js                                  → Fold self-test: 20 passed, 0 failed / EXIT=0
 ```
+
+---
+
+## 最後に撃った命令
+
+```
+$ git status --porcelain
+(空 — 作業木は綺麗。commit 済み / **push はしていない**。PR は教主が開く)
+
+$ git log --oneline -5
+622225f feat(fold): 同じ入力の走行を二度撃たない機構 — 台帳・鍵・畳み (reform/gate-fold / build 相)
+6641e3b Merge pull request #61 from kikusyo1101/reform/harness-diet-3
+7d8fa79 refactor(harness): 引き算(3) — 教主の座 model/effortLevel を神の住処から引く(第7段の裁可待ち 2 キー、神託「進めたい」)
+6184d4c Merge pull request #60 from kikusyo1101/reform/harness-diet-2
+69f06d3 fix(test): counsel の強い名コーパスから退役した apply-hooks を除く — 消えた engine の門は嘘をつく (AC-37/F-4、CI が正しく赤にした)
+
+$ git branch --show-current
+reform/gate-fold
+```
+
+**`CLAUDE.md` は書き換えていない。`overlay/vendor/` は一行も触れていない**(第20条)。
+`README.md` の 1 行は `node graph/census.js fix` が直した(門を 7 本足したので 492 → 499)——
+**手で書いた数ではない。機械が数え直した数である**(第22条)。
+
+**S-10(CI 実走)は教主の分である。** 本相はここで終わる。
