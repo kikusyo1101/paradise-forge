@@ -39,11 +39,15 @@ const CURRENT_GATE = { name: null };
 const GATE = (() => {
   const argv = process.argv.slice(2);
   const inc = [], exc = [];
-  let list = false;
+  let list = false, noFold = false;
   const die = (msg) => { process.stderr.write(msg + '\n'); process.exit(2); };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--gate-list') { list = true; continue; }
+    // 畳みの出口 (reform/gate-fold / AC-18)。**受理だけ。意味づけは塊の外**(:133 の FOLD)。
+    // 塊の die() が未知の旗を exit 2 で殺すので、ここで受けねば AC-18 が実現不能になる
+    // (design §4.4 / :55 の生ソース)。この 2 行に禁じられた綴りを書いてはならない。
+    if (a === '--no-fold') { noFold = true; continue; }
     if (a === '--gate' || a === '--gate-not') {
       const v = argv[i + 1];
       if (v === undefined || v === '' || /^--/.test(v)) {
@@ -62,7 +66,7 @@ const GATE = (() => {
   const INC = comp(inc), EXC = comp(exc);
   const SAY = process.stdout.write.bind(process.stdout);
   return {
-    list,
+    list, noFold,
     active: INC.length > 0 || EXC.length > 0 || list,
     total: 0,      // 登録された門の総数 (= 分母)
     matched: 0,    // 絞り込みを通った門の数 (= 分子)
@@ -130,6 +134,60 @@ function test(name, fn) {
   finally { if (typeof CURRENT_GATE !== 'undefined') CURRENT_GATE.name = null; }
 }
 // <<< gate-filter: 絞り込み塊 ここまで  (AC-16 の門がこの対を読む — 対を消すな)
+
+/**
+ * **畳みの出口と入口**(reform/gate-fold / requirements §5 / AC-18)。
+ *
+ * ⚠️ **この宣言は絞り込み塊(:32-132)の外に住まねばならない。**
+ * 塊は環境変数を一つも読めず、**その禁則は註釈にも及ぶ** ——
+ * 門「gate-filter: 絞り込みは環境変数を読まない」は塊の中の綴りを**数える**のであって、
+ * 構文木を歩かない。実測(design D-3 / raw/d3-nofold-placement.txt): 塊の内側に置けば、
+ * コードでも**註釈でも** exit 1 で赤くなる(V1・V2)。塊の外・後なら緑(V4)。
+ *
+ * ⚠️ **typeof で守る理由は test() の docblock と同じ。** 塊を子プロセスへ抜き出す門
+ * (門ヘルパー: test() の失敗が必ず数に載る)はこの宣言を連れて行かない。
+ * **絞り込みが無い世界でも test() は単体で正しく数える。**
+ */
+const FOLD = {
+  off: process.env.PARADISE_NO_FOLD === '1' || (typeof GATE !== 'undefined' && GATE.noFold === true),
+};
+
+/**
+ * **畳みの判断と、その恒等式の錠**(reform/gate-fold / FR-05 / AC-09 / AC-14 / AC-15)。
+ *
+ * ここは門が一本も走る前である。畳むなら**門の本体を一つも呼ばずに**終える ——
+ * それが「同じ入力の走行を二度撃たない」ことの意味である。
+ *
+ * ⚠️ **畳んだ走行は `Paradise self-test:` を名乗らない。**
+ * 名乗れば NFR-02 の数え方(`grep -c 'Paradise self-test: [0-9]* passed'`)が
+ * 畳んだ走行まで数え、**全走が一本も無い CI が緑に見える**。綴りは契約である
+ * (requirements §4.1 / `passed` `failed` の語は census.js:57 の保険経路も拾う)。
+ *
+ * ⚠️ **恒等式の錠(`E + reused == N`)は畳みの関数の外に立つ**(AC-15 / 第56条 b)。
+ * `test()` を通らないので `--gate` でも `--gate-not` でも消せない。
+ * 門の内側に置いた錠は、その門が選び落とされた瞬間に一緒に黙る。
+ */
+const fold = require(path.join(DIR, '..', 'graph', 'fold.js'));
+if (!GATE.active) {
+  const d = fold.decide({ off: FOLD.off });
+  const N = 1;
+  const E = d.fold ? 0 : 1;
+  const reused = N - E;
+  // **錠。** 畳みの判断が何を返そうと、数が閉じなければ走行が倒れる(門ではなく走行が)。
+  if (E + reused !== N) {
+    SAY('Paradise fold: 数が閉じない — ' + `executed=${E} reused=${reused} total=${N}。`
+      + '総数と実行数が別の数として閉じない走行は、測定ではない (AC-15 / 第22条)\n');
+    process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
+  }
+  if (d.fold) {
+    SAY(fold.say('Paradise fold:', 'runs', d, { total: N }) + '\n');
+    // 写し元を名指す(第21条 b: 辿れない発見は直せない発見である)。
+    // **領収書の総括行をそのまま出さない** —— `passed` の語が census.js:57 に拾われる。
+    SAY(`Paradise fold: 写し元の領収書 at=${d.receipt.at} exit=${d.receipt.exit} key=${d.key}\n`);
+    process.exit(0);
+  }
+  SAY(fold.say('Paradise fold:', 'runs', d, { total: N }) + '\n');
+}
 
 /**
  * engine が返した `skipped` を**理由つきの skip** に写す。
@@ -2915,7 +2973,14 @@ test('census: 名乗りが無ければ null — 保険経路は死んでいる (
     { passed: 455, failed: 0, skipped: 0 }, '名乗りが在るのに読めない — 修理が掟を狭めすぎた (第57条の鏡像)');
 
   // 呼び手は null を「測れなかった」として扱い、**緑を返さない**(第37条)
-  const res = census.check({ runTests: true, testTimeoutMs: 1 });   // 必ず打ち切られる
+  /**
+   * ⚠️ **畳みを切って撃つ**(reform/gate-fold)。この門が裁くのは
+   * **打ち切られた子プロセスの部分出力を拾わないこと**である。畳みが効けば
+   * 子プロセスは起きず、領収書の総括行が返るので**打ち切りが起きない** ——
+   * 門は `timeoutMs: 1` を渡したのに打ち切りを観測できず、赤くなる(実測で踏んだ)。
+   * **測りたい経路を名指しで開けるのが門の作法である**(第16条)。
+   */
+  const res = census.check({ runTests: true, testTimeoutMs: 1, noFold: true });   // 必ず打ち切られる
   assert.strictEqual(res.census.tests, null, '打ち切られた走行から部分値を拾っている');
   assert.strictEqual(res.ok, false, '測れなかったのに緑を返した — 不在は通過ではない (第37条)');
   assert.ok(res.findings.some(f => f.kind === 'unmeasured'),
@@ -10838,6 +10903,257 @@ test('gate-filter: 名指した門を走らせない走行は測定ではない 
   } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
 });
 
+// --- 畳みの機構を見張る常駐の門 (reform/gate-fold / FR-11 / 第56条 b) ---
+/**
+ * **なぜ 7 本だけがここに住むのか**(design §8.1)。
+ *
+ * 第56条(b):「門番は絞り込みの外に立つ。選ぶ機構を見張る門が、その機構自身によって
+ * 選び落とせるなら、それは門番ではない —— **機械が無料で緑に保つ飾りである**」。
+ *
+ *  - **AC-15 / AC-20** は「錠が `test()` の外に在る」ことを裁く。裁く対象がこの
+ *    ファイルに住む以上、**門も同じファイルに居なければ写経になる**。
+ *  - **AC-10** は `=global` を子プロセスで実際に撃つ。`tests/fold.test.js` に置けば
+ *    📒 Fold 段が `PARADISE_NO_FOLD=1` で走るので、**畳みが切られた世界で**
+ *    「畳まれないこと」を確かめる**常に緑の門**になる(第48条 c)。
+ *  - **AC-14 / AC-21 / AC-22 / AC-24** は全走の名乗りと門の総数を読む。
+ */
+console.log('\n畳みの機構 (fold / reform/gate-fold):');
+
+/** 畳みの門が使う作り物の台帳。**現物は一度も触らない**(第58条 c / AC-24)。 */
+const foldSand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-fold-resident-'));
+const foldLedger = (tag) => path.join(foldSand, tag + '.jsonl');
+/** 現物の台帳の指紋。**番兵がこれを前後で照合する**(AC-24)。 */
+const foldReal = () => {
+  const abode = require(path.join(DIR, '..', 'graph', 'abode.js'));
+  try { return require('crypto').createHash('sha256')
+    .update(fs.readFileSync(abode.pathFor('foldLedger'))).digest('hex'); }
+  catch (e) { return e.code === 'ENOENT' ? 'absent' : 'unreadable:' + e.code; }
+};
+const FOLD_REAL_BEFORE = foldReal();
+
+test('fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条)', () => {
+  /**
+   * **本要件で最も重い AC**(AC-10)。`=global` の結果は `~/.claude` という
+   * **宣言外の状態**に依る —— findings §1.3 の実測で **6 門が別の答え**を出す。
+   * 鍵が同じなら global の赤が repo の緑で上書きされる。
+   *
+   * ⚠️ **設定を読むのではなく走行を読む**(第16条 / requirements §3.3)。
+   * ゆえに `PARADISE_ABODE=global` を**子プロセスで実際に撃ち**、
+   * 出力に `reused` の語が現れないことを確かめる。
+   *
+   * ⚠️ **緑であることを求めてはならない。** この機の `=global` は赤である
+   * (findings §1.3)。求めるのは**畳まれないこと**だけ ——
+   * 緑を求めれば、CI では緑・この機では赤という環境差が門を偽の赤にする
+   * (第62条 b: 偽の赤は真の赤より有害である)。
+   */
+  const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
+  const file = foldLedger('ac10');
+  // **global の緑の領収書が在る状態を作る。** それでも畳まれてはならない。
+  const gkey = fld.key({ env: { ...process.env, PARADISE_ABODE: 'global' } });
+  fld.append({ key: gkey, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
+  assert.strictEqual(fld.read({ file }).length, 1, '前提が作れていない — 領収書が台帳に無い');
+
+  // ① 器の裁定: 鍵も見ずに undeclared-state
+  const d = fld.decide({ file, env: { ...process.env, PARADISE_ABODE: 'global' } });
+  assert.strictEqual(d.fold, false, '=global を畳んだ — 宣言外の状態に依る走行である (揟2)');
+  assert.strictEqual(d.bail, 'undeclared-state', `=global の bail が ${d.bail}`);
+  assert.strictEqual(d.key, null,
+    '=global で鍵を計算している — 「条件次第で畳める機構」は、条件が一つ緩んだ日に global を畳む');
+
+  // ② **走行を読む**: 子プロセスで実際に撃ち、reused の語が出ないことを見る
+  const r = require('child_process').spawnSync(process.execPath, [__filename, '--gate-list'],
+    { encoding: 'utf8', cwd: path.join(DIR, '..'),
+      env: { ...process.env, PARADISE_ABODE: 'global', PARADISE_FOLD_LEDGER: file } });
+  assert.strictEqual((String(r.stdout).match(/reused/g) || []).length, 0,
+    `=global の走行が reused を名乗った: ${String(r.stdout).split('\n').slice(-3).join(' / ')}`);
+
+  // ③ **壊して鳴らす**: =global を畳める経路を 1 本でも通すと、この門が鳴る
+  const FOLD_JS = path.join(DIR, '..', 'graph', 'fold.js');
+  const s = fs.readFileSync(FOLD_JS, 'utf8');
+  const broken = s.replace("  if (mode !== 'repo') {", '  if (false) {');
+  assert.notStrictEqual(broken, s, '故障注入が当たらなかった — 変異点の形が変わった (第37条)');
+  const mut = path.join(DIR, '..', 'graph', `.fold-global-probe-${process.pid}.js`);
+  try {
+    fs.writeFileSync(mut, broken);
+    const rr = require('child_process').spawnSync(process.execPath, ['-e',
+      `const f=require(${JSON.stringify(mut)});` +
+      `const d=f.decide({file:${JSON.stringify(file)},env:{...process.env,PARADISE_ABODE:'global'}});` +
+      'console.log("fold="+d.fold+" bail="+d.bail);'],
+      { encoding: 'utf8', cwd: path.join(DIR, '..') });
+    assert.match(String(rr.stdout), /fold=true/,
+      `global の禁を外した写しがまだ畳まなかった — 注入が当たっていない: ${rr.stdout}${rr.stderr}`);
+  } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
+});
+
+test('fold: 総数と実行数は別の数である (第22条 / 揟4)', () => {
+  const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
+  const file = foldLedger('ac14');
+  /**
+   * ⚠️ **住処を宣言して撃つ。** 周囲の `PARADISE_ABODE` を継げば、`=global` の段で
+   * この門は `bail=undeclared-state` を受け取って赤くなる —— **環境差が生む偽の赤**である
+   * (第62条 b: 偽の赤は真の赤より有害である)。裁く対象は「畳めるときの名乗り」であって
+   * 「この機の住処」ではない。実測で踏んだ: `=global` の全走でこの門が 2 本赤くなった。
+   *
+   * ⚠️ **鍵も同じ宣言で採る。** 領収書を周囲の env の鍵で刻めば、
+   * 宣言した住処の鍵と食い違って `key-miss` になる —— 前提が作れない。
+   */
+  const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+  const k = fld.key({ env: asRepo });
+  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
+  const folded = fld.decide({ file, env: asRepo });
+  assert.strictEqual(folded.fold, true, '前提が崩れた — 畳める状態を作れていない');
+  // **畳んだ走行が `Executed 1 out of 1` と名乗ったら赤である**(AC-14)
+  const line = fld.say('Paradise fold:', 'runs', folded, { total: 1 });
+  const m = line.match(/Executed (\d+) out of (\d+) runs \((\d+) reused/);
+  assert.ok(m, `名乗りの綴りが契約と違う: ${line}`);
+  assert.strictEqual(m[1], '0', `畳んだのに Executed ${m[1]} と名乗った — E と N が同じ変数から出ている`);
+  assert.strictEqual(m[2], '1');
+  assert.strictEqual(Number(m[1]) + Number(m[3]), Number(m[2]),
+    `E + reused != N: ${line}`);
+  // 畳まなかった走行は Executed 1 / reused 0
+  const bailed = fld.decide({ file: foldLedger('ac14-empty'), env: asRepo });
+  const l2 = fld.say('Paradise fold:', 'runs', bailed, { total: 1 });
+  assert.match(l2, /Executed 1 out of 1 runs \(0 reused, bail=/, `畳まなかったときの名乗り: ${l2}`);
+  // **壊して鳴らす**: E と N を同じ数から出すと、畳んだ走行が Executed 1 out of 1 と名乗る
+  const s = fs.readFileSync(path.join(DIR, '..', 'graph', 'fold.js'), 'utf8');
+  assert.ok(/const executed = d\.fold \? total - 1 : total;/.test(s),
+    'E を N から導く式が消えた — 総数と実行数が別の数でなくなった (AC-14)');
+});
+
+test('fold: 数が閉じる — 錠は畳みの関数の外に立つ', () => {
+  /**
+   * **AC-15。** 錠が `test()` の内側に在れば、その門が選び落とされた瞬間に一緒に黙る
+   * (第56条 b / findings §4.4 の既往症: `if (GATE.list)` → `if (GATE.active)` の
+   *  **一行**で `5 of 454 gates matched — 0 green, 0 red` が exit 0 で通った)。
+   */
+  const src = fs.readFileSync(__filename, 'utf8');
+  const lock = src.match(/if \(E \+ reused !== N\) \{/);
+  assert.ok(lock, '畳みの恒等式の錠が消えている — 数が閉じない走行が緑で通る (AC-15)');
+  // 錠は絞り込み塊の**外**に在る = test() を通らない = --gate でも --gate-not でも消せない
+  const blockEnd = src.indexOf('// <<<' + ' gate-filter: 絞り込み塊 ここまで');
+  assert.ok(blockEnd > 0 && lock.index > blockEnd,
+    '錠が絞り込み塊の内側に在る — --gate で消せる錠は錠ではない');
+  // 錠は `test(` の中に在ってはならない。**門より前(最上位)に在るのが正しい姿**である ——
+  // 畳みは門が一本も走る前に裁くのだから。門の後ろへ移されたときのために、
+  // 「直前の `test(` が既に閉じているか」も併せて測る。
+  const beforeLock = src.slice(0, lock.index);
+  const lastTest = beforeLock.lastIndexOf('\ntest(');
+  const lastClose = beforeLock.lastIndexOf('\n});');
+  assert.ok(lastTest === -1 || lastClose > lastTest,
+    '錠が test() の内側に移った — 門が選び落とされれば錠も黙る (AC-15 / 第56条 b)');
+});
+
+test('fold: 畳みの門番は絞り込みの外に立つ', () => {
+  /**
+   * **AC-20。** `--gate-not '^fold:'` で畳みの門番を全部消しても、
+   * **恒等式の錠は依然として効く**。第56条(b) の処方そのものである。
+   */
+  const r = require('child_process').spawnSync(process.execPath,
+    [__filename, '--gate-not', '^fold:', '--gate', '^gate-filter: census'],
+    { encoding: 'utf8', cwd: path.join(DIR, '..') });
+  assert.strictEqual(r.status, 0,
+    `門番を消した走行が exit ${r.status}: ${String(r.stderr).slice(0, 200)}`);
+  assert.strictEqual((String(r.stdout).match(/^ {2}[✓✗] fold: /gm) || []).length, 0,
+    '--gate-not \'^fold:\' で畳みの門が消えていない — 絞り込みが効いていない');
+  // **その走行でも錠は在る。** 錠はソースの位置で保証される(上の AC-15 が撃つ)ので、
+  // ここでは「門番を消しても走行が数を閉じたまま緑である」ことを見る。
+  assert.match(String(r.stdout), /gates matched — \d+ green, 0 red/,
+    `門番を消した走行の名乗りが読めない: ${String(r.stdout).trim().split('\n').pop()}`);
+});
+
+test('fold: 何もかも畳む機構は測定ではない', () => {
+  /**
+   * **AC-21 / R-4。** 鍵の比較を `true` に潰す**一行の故障注入**を施した写しを
+   * 子プロセスで撃つ。判定基準は **`Executed 0 out of N` を名乗りながら
+   * 台帳に対応する領収書が無いこと**。
+   *
+   * ⚠️ この門は**ソースを静的にも読む**(第62条 c)。振る舞いの門は写しを
+   * 子プロセスで撃つので `require.cache` を捨て、**モジュール大域を見ない**。
+   */
+  const FOLD_JS = path.join(DIR, '..', 'graph', 'fold.js');
+  const s = fs.readFileSync(FOLD_JS, 'utf8');
+  const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // ① 静的: 鍵の比較が定数に潰れていない
+  assert.ok(/rows\.filter\(r => r\.key === k\)/.test(code),
+    '鍵の比較が消えている — 何もかも畳む機構は測定ではない (AC-21)');
+  assert.ok(!/\bfold:\s*true\b[^\n]*\/\/\s*always/.test(code), '常に畳む経路が在る');
+  // ② 振る舞い: 比較を true に潰した写しは、領収書が無いのに畳む
+  const broken = s.replace('  const hits = rows.filter(r => r.key === k);',
+                           '  const hits = rows.length ? rows : [{ key: k, exit: 0, summary: \'\' }];');
+  assert.notStrictEqual(broken, s, '故障注入が当たらなかった — 変異点の形が変わった');
+  const mut = path.join(DIR, '..', 'graph', `.fold-all-probe-${process.pid}.js`);
+  const file = foldLedger('ac21');
+  try {
+    fs.writeFileSync(mut, broken);
+    // 台帳には**別の鍵の**領収書しか無い。健全なら key-miss、壊れていれば畳む。
+    const fld = require(FOLD_JS);
+    fld.append({ key: '0'.repeat(16), exit: 0, summary: 'x' }, { file });
+    // **住処を宣言して撃つ**(上の AC-14 と同じ理由。環境差の偽の赤を避ける)
+    const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+    assert.strictEqual(fld.decide({ file, env: asRepo }).bail, 'key-miss', '前提が崩れた — 健全な器が key-miss を返さない');
+    const rr = require('child_process').spawnSync(process.execPath, ['-e',
+      `const f=require(${JSON.stringify(mut)});` +
+      `const d=f.decide({file:${JSON.stringify(file)},env:{...process.env,PARADISE_ABODE:'repo'}});` +
+      'console.log("fold="+d.fold+" key="+d.key+" receiptKey="+(d.receipt&&d.receipt.key));'],
+      { encoding: 'utf8', cwd: path.join(DIR, '..') });
+    assert.match(String(rr.stdout), /fold=true/,
+      `鍵の比較を潰した写しがまだ畳まなかった — 注入が当たっていない: ${rr.stdout}${rr.stderr}`);
+    const m = String(rr.stdout).match(/receiptKey=(\S+)/);
+    assert.ok(m && m[1] !== f0key(fld),
+      `畳んだ根拠の領収書が鍵と一致している — 故障注入の意味が失われた: ${rr.stdout}`);
+  } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
+});
+function f0key(fld) { return fld.key(); }
+
+test('fold: 改修は門を減らしていない — 本数が基準を下回らない', () => {
+  /**
+   * **AC-22 / NFR-01(最重要)。** 基準値 **492** は改修前の実測値である。
+   * **散文に書いた数は腐る**(第22条)ので、この門が機械可読な形で握る。
+   * 畳みの門番を足した分だけ**増える**ことは許す —— 減ることだけを禁じる。
+   */
+  const BASELINE = 492;
+  const r = require('child_process').spawnSync(process.execPath, [__filename, '--gate-list'],
+    { encoding: 'utf8', cwd: path.join(DIR, '..') });
+  assert.strictEqual(r.status, 0, `--gate-list が exit ${r.status}`);
+  const last = String(r.stdout).trim().split('\n').pop();
+  const m = last.match(/Paradise gate list: (\d+) gates/);
+  assert.ok(m, `門の本数の名乗りが読めない: ${last}`);
+  assert.ok(Number(m[1]) >= BASELINE,
+    `門が ${m[1]} 本 — 基準 ${BASELINE} を下回った。**この改修は門を一本も減らさない** (NFR-01)`);
+  // 自分自身も数のうちである(この門を消せば本数が 1 減る)
+  assert.ok(/fold: 改修は門を減らしていない/.test(String(r.stdout)),
+    'この門が --gate-list に現れない — 門番が門の一覧に居なければ、消されても気づけない');
+});
+
+test('fold: 台帳の番兵は汚した門を名指す', () => {
+  /**
+   * **AC-24 / NFR-03。** 第62条(b):「不可侵を主張ではなく測定にせよ」
+   * 「汚した門を名で呼べ」「現物が無い機では skip を名乗り、そこでは**作り物の現物で
+   * 門の歯を撃て**」。
+   *
+   * ⚠️ この門が補うのは **AC-27 の盲点③**(環境変数で住所を振り替える門は、
+   * 振替を壊す変異を見ない)。第62条の実測 W1:「住所解決を壊した変異は門の防御を
+   * 素通りして現物の台帳に 14 行を書いた」。
+   */
+  // ① 現物の指紋が、この走行の間に動いていないこと(番兵そのもの)
+  const now = foldReal();
+  assert.strictEqual(now, FOLD_REAL_BEFORE,
+    `現物の台帳の指紋が ${FOLD_REAL_BEFORE} → ${now} に動いた — ` +
+    `この走行の門が現物を汚した(直前に走った門: ${CURRENT_GATE.name}) (第58条 c / 第62条 b)`);
+  // ② **作り物の現物で門の歯を撃つ**: 汚したら、汚したことが指紋で判る
+  const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
+  const file = foldLedger('ac24');
+  fs.writeFileSync(file, '');
+  const fp = () => require('crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const before = fp();
+  fld.append({ key: 'f'.repeat(16), exit: 0, summary: 'probe' }, { file });
+  assert.notStrictEqual(fp(), before,
+    '作り物の台帳へ書いたのに指紋が動かない — 番兵の歯が立っていない(測っていないものを緑と呼ぶな)');
+  // ③ 番兵が**門の名を握っている**こと(名指しできねば直せない — 第21条 b)
+  assert.ok(CURRENT_GATE.name === 'fold: 台帳の番兵は汚した門を名指す',
+    `番兵が今の門の名を知らない (${CURRENT_GATE.name}) — 名指ししない門は直せない`);
+});
+
 // --- report ---
 // 名乗りは三者に消費される契約である (census.js:55 / tribunal.yml:306 / 人間)。
 // 局所走行は決して `Paradise self-test:` を名乗らない。`passed` / `failed` の語も
@@ -10847,7 +11163,31 @@ test('gate-filter: 名指した門を走らせない走行は測定ではない 
 // 0 件のときに `, 0 skipped` を足せば、README の主張の綴りが変わる版と変わらない版が
 // 生まれる —— 契約の綴りは一つでなければならない。
 if (!GATE.active) {
-  console.log(`\nParadise self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : ''));
+  const summary = `Paradise self-test: ${pass} passed, ${fail} failed` + (skipped ? `, ${skipped} skipped` : '');
+  console.log(`\n${summary}`);
+  /**
+   * **全走は領収書を刻む**(FR-01 / AC-01)。
+   *
+   * ⚠️ **この刻みは `!GATE.active` の枝の中に在らねばならない**(AC-02 / 第56条 c)。
+   * 絞り込み走行が領収書を刻めば、**部分の緑が全体の緑を騙る**。
+   *
+   * ⚠️ **刻めなかったことを、刻んだことと混同しない**(第37条)。台帳が書けないのは
+   * 走行の赤ではない —— 走行は既に緑である。だが黙って飲み込めば、次の段は
+   * `bail=no-receipt` を名乗りながら**なぜ領収書が無いのかを誰も知らない**。
+   *
+   * ⚠️ **`=global` では刻めないのが正しい。** 住処が倉の外を指すので
+   * `abode.guardWrite` が拒む(第58条 f)—— それは AC-10 の
+   * 「畳める経路が物理的に無い」ことの住所の側からの現れである。
+   * **警告として騒がず、事実として一行名乗る。**
+   */
+  const rec = fold.recordRun({ key: fold.key(), exit: fail === 0 ? 0 : 1, summary });
+  if (!rec.written) {
+    const outward = /倉の外への書き込みを拒んだ/.test(rec.why || '');
+    SAY(outward
+      ? 'Paradise fold: 領収書を刻まない — 住処が倉の外を指すので台帳への経路が無い '
+        + '(宣言外の状態に依る走行は畳めない / AC-10 / 第58条 f)\n'
+      : `Paradise fold: 領収書を刻めなかった — ${rec.why}\n`);
+  }
 } else if (GATE.matched === 0) {
   SAY(`Paradise gate list: 0 of ${GATE.total} gates matched — nothing was measured\n`);
 } else if (GATE.list) {

@@ -1,0 +1,6 @@
+census(runTests:false) = 3 ms (0.0s)
+tests 欄 = null  (runTests:false なので null)
+
+CI の Census 段 = 423s (findings §1.1)
+→ 自己診断の子を除いた census 自身の仕事 = 0.0s
+→ Census 段のうち自己診断の子が占める代 = 423 - 0.0 = 423.0s

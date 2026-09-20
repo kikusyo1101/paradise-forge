@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const workspace = require('./workspace.js');   // 第30条: 創造物の住所を知るのは workspace.js だけ
+const fold = require('./fold.js');             // reform/gate-fold: 鍵と台帳を知るのは fold.js だけ
 
 const ROOT = path.join(__dirname, '..');
 
@@ -120,8 +121,35 @@ function census(opts = {}) {
      */
     const TIMEOUT_MS = Number(opts.testTimeoutMs || process.env.CENSUS_TEST_TIMEOUT_MS || 600000);
     try {
-      const out = execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
-        { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
+      /**
+       * **畳み(reform/gate-fold / FR-04 / AC-04)。**
+       *
+       * 実測(findings §1.1 / M-3): この段の 423s のほぼ全部がこの子プロセスである
+       * (census 自身の仕事は 3ms)。Self-test 段と**同一入力**であることを鍵が
+       * 保証するなら、撃たずに領収書の総括行を読む。
+       *
+       * ⚠️ **呼び口は 1 箇所 / 引数は 1 個のまま**でなければならない。
+       * 門「gate-filter: census は自己診断を素で呼ぶ」がソースを静的に読む ——
+       * 実測(design D-11): **三項で包むのは緑 / 引数を足すと赤 / 呼び口を増やすと赤**。
+       * ゆえに三項で包む。`--no-fold` を子へ**引数で渡してはならない**。
+       *
+       * ⚠️ **`tests = summaryOf(out)` を通ることが AC-04 の核心である。**
+       * `c.tests` が `null` にならないので `measurable()` は真を返し、
+       * **「README テスト数」の主張は裁かれ続ける**。M-5 が実証した `--no-tests` の罠
+       * (exit 0 / findings 0 を出すが第22条の旗艦の数が黙って無検査になる)を
+       * 構造的に回避する。**畳みは「撃たない」であって「裁かない」ではない。**
+       */
+      const receipt = opts.noFold || process.env.PARADISE_NO_FOLD === '1'
+        ? null : fold.find(fold.key());
+      const out = receipt ? receipt.summary
+        : execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
+            { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
+      if (opts.sayFold !== false) {
+        // 綴りは契約である(requirements §4.2)。総数と実行数は**別の数**として名乗る。
+        const d = receipt ? { fold: true, bail: null, key: receipt.key }
+          : fold.decide({ off: opts.noFold || process.env.PARADISE_NO_FOLD === '1' });
+        console.log(fold.say('Census self-test:', 'runs', d, { total: 1 }));
+      }
       tests = summaryOf(out);
     } catch (e) {
       // 打ち切り (ETIMEDOUT / SIGTERM) は「測れなかった」。部分出力を採らない
@@ -494,14 +522,34 @@ if (require.main === module) {
   // FR-06: 自己診断を回さないモード。内部 API は既に opts.runTests !== false の
   // 分岐を持つので、CLI フラグをそこへ繋ぐだけでよい。**既定挙動は変えない。**
   const noTests = process.argv.includes('--no-tests');
+  /**
+   * **畳みの出口**(reform/gate-fold / requirements §5 / AC-18)。
+   * 三者(paradise.test.js / census.js / atlas.js)で**同じ綴り・同じ意味**である。
+   */
+  const noFold = process.argv.includes('--no-fold');
+  /**
+   * **未知の旗を黙って通さない**(AC-19 / 第37条)。
+   * 綴り違いの `--no-fould` が黙殺されれば、畳みが有効なまま静かに走る ——
+   * 走った後で「切ったはずだ」と言う者を、出力は否定できない。
+   * 強さは `paradise.test.js:55` の `die()` に揃える(exit 2 = 測れなかった)。
+   */
+  const KNOWN_FLAGS = new Set(['--no-tests', '--no-fold', '--help', '-h']);
+  for (const a of process.argv.slice(3)) {
+    if (a.startsWith('--') && !KNOWN_FLAGS.has(a)) {
+      console.error(`Census: unknown flag ${a} — 知らない旗を黙って通せば、` +
+        '切ったつもりの機構が走り続ける (AC-19)');
+      process.exit(2);
+    }
+  }
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    console.log('commands: show [--no-tests] | check [--no-tests] | fix');
+    console.log('commands: show [--no-tests] [--no-fold] | check [--no-tests] [--no-fold] | fix');
+    console.log('  --no-fold    畳みを切る。台帳を一切読まず、自己診断を必ず撃つ (AC-18)。');
     console.log('  --no-tests   自己診断 (tests/paradise.test.js) を回さない。');
     console.log('               既定では回す — 実測 120,072ms かかり、同期経路では待てない。');
     process.exit(0);
   }
   if (cmd === 'show') {
-    const c = census({ runTests: !noTests });
+    const c = census({ runTests: !noTests, noFold });
     console.log('═══════ 🔢 PARADISE CENSUS ═══════');
     console.log('  constitution articles :', c.articles);
     console.log('  self-test             :', c.tests ? `${c.tests.passed} passed, ${c.tests.failed} failed`
@@ -514,7 +562,7 @@ if (require.main === module) {
     process.exit(0);
   }
   if (cmd === 'check') {
-    const res = check({ runTests: !noTests });
+    const res = check({ runTests: !noTests, noFold });
     console.log('═══════ 🔢 CENSUS CHECK ═══════');
     if (res.ok) console.log('  ✓ every number the paradise claims about itself is true');
     for (const f of res.findings) {
@@ -527,7 +575,7 @@ if (require.main === module) {
     process.exit(res.ok ? 0 : 1);
   }
   if (cmd === 'fix') {
-    const r = fix({ runTests: !noTests });
+    const r = fix({ runTests: !noTests, noFold });
     for (const f of r.fixed) console.log(`  ✏️  ${f.label}: ${f.claimed} → ${f.actual}`);
     for (const f of r.failed) console.log(`  🔴 ${f.label}: 書き換えできなかった — ${f.error}`);
     // 測れなかったことは必ず口で名乗る — 黙って「nothing to fix」と言えば嘘になる (第54条(c))

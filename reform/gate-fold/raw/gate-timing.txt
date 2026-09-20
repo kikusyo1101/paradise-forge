@@ -1,0 +1,67 @@
+# 門ごとの計時 (注入計測) — 原本 tests/paradise.test.js の写しに hrtime を一箇所挟んだ走行
+
+子プロセスの終了コード: 0   ※ 写しは自分のソースを読む門を赤くしうる。代の計測が目的であり、緑の根拠ではない (第56条d)
+走行の名乗り: Paradise self-test: を名乗らない (AC-13 / 第22条)
+計時できた門(緑になった門のみ): 492 本
+門の本体の合計: 365.6 s
+
+## 1 秒を超えた門
+本数: 6 本 / 合計 341.0 s  (計時できた門の代の 93.3%)
+
+    237.7 s  atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)
+     95.2 s  atlas: 門は己の残骸で落ちない — 同じ作業場で二度走る (第21条)
+      2.9 s  atlas: 本当に溢れる図は OVERFLOW と画素数で鳴る (§8.4 #1)
+      2.8 s  abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (第53条)
+      1.3 s  atlas: 出力が限度を越えたことを「JSON の壊れ」と混同しない (第34条)
+      1.2 s  gauge(故障注入): prove attempt 2 の新変異 13 種で各門が exit 1 で鳴る
+
+## 名に atlas を含む門
+本数: 19 本 / 合計 339.2 s  (92.8%)
+    237.7 s  atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)
+     95.2 s  atlas: 門は己の残骸で落ちない — 同じ作業場で二度走る (第21条)
+      2.9 s  atlas: 本当に溢れる図は OVERFLOW と画素数で鳴る (§8.4 #1)
+      1.3 s  atlas: 出力が限度を越えたことを「JSON の壊れ」と混同しない (第34条)
+      0.8 s  atlas: 5つの主題すべてに IR が在り、種別が宣言と一致する
+      0.8 s  atlas: 全ての主題が動きを名乗る — 黙秘は静止画への同意である (第50条a)
+      0.5 s  atlas: 描画器の実行時故障を「溢れた」と呼ばない — 実経路で撃つ (§8.4 #2)
+      0.0 s  atlas: 同じ入力は同じ図を生む — 乱択は決定的である (第29条)
+      0.0 s  atlas: 描画器が取り込まれ、電話をかけずに動く (第20条)
+      0.0 s  atlas: 交差を隠さない — 平面化不能なら standard を名乗り理由を書く (第47条)
+      0.0 s  atlas: 門は他プロセスと作業場を共有しない — 並走で転ばない (第21条c)
+      0.0 s  atlas: 事実を写経せず、位階の engine から読む (第29条)
+      0.0 s  atlas: 測定できなかったことを「溢れた」と呼ばない (第16条 / 第42条)
+      0.0 s  atlas: 動きの検器が実在し、門がそれを見ている (第50条c)
+      0.0 s  atlas: 描画器の子は自らの名乗りを切らない — 出力は最後まで届く (第37条)
+      0.0 s  atlas: 巻物の許しは長さにだけ効く — 読めない字は免除しない (第48条e)
+      0.0 s  atlas: 版元の既定値を記憶ではなく正典から引く (第50条d)
+      0.0 s  atlas: 自画像は生成物であり追跡されない (第29条)
+      0.0 s  atlas: 静止を選んだ走行は、黙るのではなく断る (第50条a)
+
+## 上位 20 門
+    237.69 s  atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)
+     95.20 s  atlas: 門は己の残骸で落ちない — 同じ作業場で二度走る (第21条)
+      2.88 s  atlas: 本当に溢れる図は OVERFLOW と画素数で鳴る (§8.4 #1)
+      2.80 s  abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (第53条)
+      1.28 s  atlas: 出力が限度を越えたことを「JSON の壊れ」と混同しない (第34条)
+      1.18 s  gauge(故障注入): prove attempt 2 の新変異 13 種で各門が exit 1 で鳴る
+      0.99 s  gauge(故障注入): build attempt 4 の新規 8 変異で各門が鳴る (第21条 壊して鳴らす)
+      0.97 s  lexicon: 門は己の作業場の残骸で鳴らないが、版管理下の散文では鳴る (教訓 gate-own-debris / 第21条)
+      0.80 s  atlas: 5つの主題すべてに IR が在り、種別が宣言と一致する
+      0.79 s  wiring: 結線の図は engine から生まれ、写経しない (第29条 / 第47条)
+      0.78 s  atlas: 全ての主題が動きを名乗る — 黙秘は静止画への同意である (第50条a)
+      0.66 s  gauge(故障注入): prove attempt 3 の無音 11 種のうち engine 側 6 種で各門が鳴る
+      0.65 s  gauge(故障注入): 私が新たに発明した 5 変異で門が exit 1 で鳴る (build attempt 3)
+      0.60 s  gauge(並行): 競合で重複が生まれても畳みが読み手を守る — 治癒に寄りかかると決めた以上、治癒を門にする (D-B / 第55条 b / 第62条 a)
+      0.54 s  S-4 [MEDIUM]: 巨大な未追跡ファイルで measure が死なない — 上限で足切りする
+      0.52 s  C-1 [BLOCK]: 成果物を測れなかったら緑を出さない — artifact 不在の実経路で撃つ
+      0.52 s  branch guard: a stale base is caught, not merely written down (Art.24)
+      0.49 s  atlas: 描画器の実行時故障を「溢れた」と呼ばない — 実経路で撃つ (§8.4 #2)
+      0.48 s  C-2 [BLOCK]: critic は教訓 0 件/読めない帳で「何も見つからなかった」と述べない
+      0.44 s  gauge(CLI): healable は exit code と必ず一致する — 同じ問いに二つの答えを持たない (verify S-4 / 第48条)
+
+## 赤/飛ばしになった門(写しゆえの副作用を含む — 正直に全部載せる)
+  · AC-10b: package.json が無いか、dependencies が 0 件  (skipped: package.json が無い: C:\Users\kikus\Documents\workspace\paradise\package.json — 依存ゼロの証は他の門が握る)
+  · 射程: graph/gauge.js / graph/spawn-trace.js の最上位のみ — hermetic.js は git の一覧の memo(:516 TRACKED)を正当に持つため射程外(第57条: 射程を広げるのは別の走行。残債 SM-L = pulse.js:_gateCache / hermetic.js:TRACKED / abode.js:unmeasurable)
+  · 静的の門の深さの射程: 深さを問わない 7 形 [globalThis / module.exports / process.env / require.cache / Object.assign(globalThis) / Reflect.set(globalThis) / Object.defineProperty(globalThis)] / 深さ 0 のみ 1 形 [(分割代入)]
+  · 残債 SM-L3(修理後もなお見えない 4 形 / rework 相の実測): ① eval("globalThis.x = 1") — 字句器は文字列の中を影で潰すので原理的に見えない / ② 動的 require した別 module の属性への代入(require("./m").x = 1)— 名が実行時に決まる / ③ 非 strict の関数内 this への代入(this.x = 1)— this の指す先は呼ばれ方で決まる / ④ 関数の中の分割代入(let {a} = …)— **意図して見ない**(局所束縛であり大域ではない)。①②③ は静的字句器の原理的な限界であり、払うには AST か実行時の観測が要る(第62条 c)
+  · 競合成立(raw=2 → folded=1)— 畳みが読み手を守った / audit exit=1

@@ -1,0 +1,6 @@
+quick  47945 ms  rc=0
+standard  47732 ms  rc=0
+full  47576 ms  rc=0
+reform  47617 ms  rc=0
+counsel  47809 ms  rc=0
+cartography  48045 ms  rc=0

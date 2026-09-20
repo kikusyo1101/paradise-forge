@@ -1,0 +1,25 @@
+現物の改行: CRLF
+絞り込み塊: 行 32 〜 132
+
+V0: 素(何も足さない) — 基準
+    注入=★当たらなかった  exit=0
+    ✓ gate-filter: 絞り込みは環境変数を読まない
+    Paradise gate-filter: 1 of 492 gates matched — 1 green, 0 red
+V1: 塊の内側(GATE の返り値)で env を読む
+    注入=あり  exit=1
+    ✗ gate-filter: 絞り込みは環境変数を読まない
+      絞り込み塊が process.env を 1 箇所読んでいる — census が env を継承する以上これは第22条違反
+    Paradise gate-filter: 1 of 492 gates matched — 0 green, 1 red
+V2: 塊の内側の**註釈**に env の綴りを書くだけ
+    注入=あり  exit=1
+    ✗ gate-filter: 絞り込みは環境変数を読まない
+      絞り込み塊が process.env を 1 箇所読んでいる — census が env を継承する以上これは第22条違反
+    Paradise gate-filter: 1 of 492 gates matched — 0 green, 1 red
+V3: 塊の**外・前**(CURRENT_GATE の直後)で env を読む
+    注入=あり  exit=0
+    ✓ gate-filter: 絞り込みは環境変数を読まない
+    Paradise gate-filter: 1 of 492 gates matched — 1 green, 0 red
+V4: 塊の**外・後**(終了マーカーの直後)で env を読む
+    注入=あり  exit=0
+    ✓ gate-filter: 絞り込みは環境変数を読まない
+    Paradise gate-filter: 1 of 492 gates matched — 1 green, 0 red

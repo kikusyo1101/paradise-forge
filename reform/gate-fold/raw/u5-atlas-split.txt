@@ -1,0 +1,10 @@
+draw(skipBrowser) hierarchy     185 ms
+draw(skipBrowser) conclave      227 ms
+draw(skipBrowser) dispatch      178 ms
+draw(skipBrowser) dag           188 ms
+draw(skipBrowser) run           175 ms
+draw(skipBrowser) wiring       1030 ms
+
+1道あたり 図の作成のみ 合計: 1983 ms (2.0s)
+参考: 6道の check 実測 = 286.7s / 道 47.8s (findings §1.6)
+→ 1道 47.8s のうち 図の作成は 2.0s、残り 45.8s がブラウザ検査

@@ -41,6 +41,16 @@ graph/kg-store/
 .claude/paradise-daily.json
 .claude/paradise-daily.json.lock
 
+# ── 畳みの走行台帳も追跡しない (reform/gate-fold / 第58条) ─────────────
+#
+# 領収書は**一回の CI 走行の中でだけ有効な走行状態**であって原本ではない。
+# 走るたびに追記され、並行PRでは必ず衝突し、手で解決する術が無い ——
+# 直上の `paradise-daily.json` を追跡しない理由と全く同型である。
+# 台帳が無ければ fold は `bail=no-receipt` を名乗って全走する。
+# それは欠損ではなく初期状態である(AC-08)。
+.claude/paradise-fold-ledger.jsonl
+.claude/paradise-fold-ledger.jsonl.lock
+
 # 創造物は別の倉に住む (憲法 第30条) — github.com/kikusyo1101/paradise-creations
 creations/
 

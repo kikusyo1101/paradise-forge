@@ -1,0 +1,10 @@
+A: path.join(ROOT, ".claude", "…") — .claude を綴る
+    exit=1  fold.js を名指した行: ["graph/fold.js:5  const LEDGER = path.join(ROOT, '.claude', 'paradise-fold-ledger.jsonl');"]
+B: abode.resolve() を通して住処を得る
+    exit=1  fold.js を名指した行: (なし)
+C: ROOT 直下の隠しファイル(.claude を綴らない)
+    exit=1  fold.js を名指した行: (なし)
+D: os.homedir() を直に呼ぶ(禁じ手の対照)
+    exit=1  fold.js を名指した行: ["graph/fold.js:6  const LEDGER = path.join(os.homedir(), '.paradise-fold-ledger.jsonl');"]
+E: graph/kg-store/ の下(既に gitignore 済みの倉)
+    exit=1  fold.js を名指した行: (なし)

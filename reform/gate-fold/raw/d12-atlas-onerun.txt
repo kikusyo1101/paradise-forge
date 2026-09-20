@@ -1,0 +1,14 @@
+1 プロセスで 6 道 × 6 主題 = 36 図を作った: 11529ms (11.5s)
+Atlas inspect: Executed 32 out of 72 inspections (40 reused)
+恒等式 E + reused == N : 32 + 40 == 72 → true
+相異なる成果物: 16 種
+
+畳まれた写し元の例:
+   html=d185c1ff4425b032  ← hierarchy@quick
+   html=9e39a4495e7553f8  ← conclave@quick
+   html=fe4450eb25974fc3  ← dispatch@quick
+   html=7b0eb88b1550005e  ← dag@quick
+
+判定: **一つのプロセスで 36 図すべてを見られる**。ゆえに AC-11 の綴りは
+      CI の段を「道ごとに 6 プロセス」から「1 プロセスで 6 道」に変えれば
+      台帳を跨がずに成立する(D-7: 道の中だけでは 0 回しか畳めない)。

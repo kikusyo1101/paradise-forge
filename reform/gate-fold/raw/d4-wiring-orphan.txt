@@ -1,0 +1,29 @@
+── 0: 複製したまま(基準)──
+    engine 38 / 内の辺 72
+    ✓ 門 25 本すべてに走らせる者が居る (第44条)
+    ✓ 全ての engine に呼ぶ者が居り、宙吊りの参照は無い
+    exit=0
+── 1: graph/fold.js を足す。require する者ゼロ / どの面も名を呼ばない ──
+    engine 39 / 内の辺 72
+    🔴 孤児 1: fold
+    ✓ 門 25 本すべてに走らせる者が居る (第44条)
+    🔴 結線が破れている
+    exit=1
+── 2: tests/fold.test.js も足す。CI にも統べる試験にも無い ──
+    engine 39 / 内の辺 72
+    🔴 孤児 1: fold
+    🔴 孤児の門 1:
+    tests/fold.test.js — 建てられているが、CI も paradise.test.js も走らせない
+    🔴 結線が破れている
+    exit=1
+── 3: CI に `node tests/fold.test.js` の段を足す(門の結線のみ)──
+    engine 39 / 内の辺 72
+    🔴 孤児 1: fold
+    ✓ 門 26 本すべてに走らせる者が居る (第44条)
+    🔴 結線が破れている
+    exit=1
+── 4: census.js が ./fold.js を require する(engine の結線)──
+    engine 39 / 内の辺 73
+    ✓ 門 26 本すべてに走らせる者が居る (第44条)
+    ✓ 全ての engine に呼ぶ者が居り、宙吊りの参照は無い
+    exit=0

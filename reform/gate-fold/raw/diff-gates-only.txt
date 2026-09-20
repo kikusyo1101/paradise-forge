@@ -1,0 +1,20 @@
+114c114
+<   ✓ every phase in every forge scale names an agent that actually exists
+---
+>   · every phase in every forge scale names an agent that actually exists  (skipped: no harness at this path — nothing to verify (mode=global))
+144c144
+<   ✓ deploy: the deployed tree matches its declared sources
+---
+>   ✗ deploy: the deployed tree matches its declared sources
+178,180c178,180
+<   ✓ hierarchy: believers have bodies, not merely names (Art.25)
+<   ✓ hierarchy: a priest with believers can actually dispatch them (Art.25)
+<   ✓ hierarchy: the gate fires when a believer loses its body (Art.25)
+---
+>   · hierarchy: believers have bodies, not merely names (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+>   · hierarchy: a priest with believers can actually dispatch them (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+>   · hierarchy: the gate fires when a believer loses its body (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+491c491
+<   ✓ conclave: 配備された道は正典と一致する (第29条)
+---
+>   · conclave: 配備された道は正典と一致する (第29条)  (skipped: mode=global (source=env) で未配備: C:\Users\kikus\.claude\commands\conclave.md)
