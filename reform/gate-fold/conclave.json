@@ -108,8 +108,8 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "ratified",
-      "reworks": 2,
+      "status": "active",
+      "reworks": 3,
       "phases": [
         {
           "id": "build",
@@ -120,7 +120,7 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "done",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": "reform/gate-fold/rework2.md",
           "dispatchedAt": null,
@@ -135,9 +135,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
-          "artifactPath": "reform/gate-fold/prove.md",
+          "artifactPath": null,
           "dispatchedAt": "2026-09-20T23:28:24.229Z",
           "resumes": 0
         }
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "ratified",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -162,9 +162,9 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
-          "artifactPath": "reform/gate-fold/review.md",
+          "artifactPath": null,
           "dispatchedAt": "2026-09-21T06:29:05.325Z",
           "resumes": 0
         },
@@ -177,9 +177,9 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
-          "artifactPath": "reform/gate-fold/security.md",
+          "artifactPath": null,
           "dispatchedAt": "2026-09-21T06:29:05.325Z",
           "resumes": 0
         },
@@ -192,9 +192,9 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
-          "artifactPath": "reform/gate-fold/docs.md",
+          "artifactPath": null,
           "dispatchedAt": "2026-09-21T06:29:05.326Z",
           "resumes": 0
         },
@@ -209,9 +209,9 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "done",
+          "status": "rework",
           "attempts": 1,
-          "artifactPath": "reform/gate-fold/verify.md",
+          "artifactPath": null,
           "dispatchedAt": "2026-09-21T08:30:22.424Z",
           "resumes": 0
         }
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "ratified",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -236,9 +236,9 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "done",
+          "status": "rework",
           "attempts": 0,
-          "artifactPath": "reform/gate-fold/reflect.txt",
+          "artifactPath": null,
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "done",
+          "status": "rework",
           "attempts": 0,
-          "artifactPath": "reform/gate-fold/verdict.txt",
+          "artifactPath": null,
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -452,6 +452,11 @@
       "ts": "2026-09-21T10:37:23.448Z",
       "event": "ratify",
       "detail": "Tribunal (断罪機関) ratified by god"
+    },
+    {
+      "ts": "2026-09-21T11:11:13.339Z",
+      "event": "domain-rework",
+      "detail": "Quality (品質) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 3); un-ratified construction, quality, tribunal"
     }
   ],
   "spawnTrace": {
