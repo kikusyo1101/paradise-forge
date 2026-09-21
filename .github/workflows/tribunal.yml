@@ -32,7 +32,15 @@ jobs:
         #    「畳まなかった」のか「畳む機構が壊れていた」のかが出力から区別できなくなる。
         #    台帳が空なので `bail=no-receipt` を名乗って全走する —— それが正しい名乗りである(AC-08)。
         env:
-          PARADISE_FOLD_LEDGER: ${{ github.workspace }}/.claude/paradise-fold-ledger.jsonl
+          PARADISE_FOLD_LEDGER: ${{ runner.temp }}/paradise-fold-ledger.jsonl
+          # **台帳は checkout の外に住む**(security S-2 / BLOCK)。
+          # `github.workspace` に置けば PR が `git add -f` で台帳そのものを持ち込め、
+          # `.gitignore` は checkout を縛らない —— **データ 1 本で 4 段が偽の緑になる**。
+          # 正しい形は畳みを見張る段が既に持っていた。四段をそれに揃える。
+          # **一走行に閉じる**(security S-1 / requirements §7-6)。領収書の `run` 欄が
+          # 走行を跨いだ再利用を拒む。**同じ job の段はすべて同じ値を名乗る** ——
+          # でなければ畳みが一切効かない。`run_attempt` を含めるのは再実行が別の走行だからである。
+          PARADISE_FOLD_RUN: gh-${{ github.run_id }}-${{ github.run_attempt }}
         run: node tests/paradise.test.js
 
       - name: 🏛️ Workspace — 創造物が楽園に紛れていないか (第30条)
@@ -137,7 +145,15 @@ jobs:
         #    第22条の旗艦の数が**黙って無検査になる**(第37条違反)。
         #    畳みは「撃たない」であって「裁かない」ではない。
         env:
-          PARADISE_FOLD_LEDGER: ${{ github.workspace }}/.claude/paradise-fold-ledger.jsonl
+          PARADISE_FOLD_LEDGER: ${{ runner.temp }}/paradise-fold-ledger.jsonl
+          # **台帳は checkout の外に住む**(security S-2 / BLOCK)。
+          # `github.workspace` に置けば PR が `git add -f` で台帳そのものを持ち込め、
+          # `.gitignore` は checkout を縛らない —— **データ 1 本で 4 段が偽の緑になる**。
+          # 正しい形は畳みを見張る段が既に持っていた。四段をそれに揃える。
+          # **一走行に閉じる**(security S-1 / requirements §7-6)。領収書の `run` 欄が
+          # 走行を跨いだ再利用を拒む。**同じ job の段はすべて同じ値を名乗る** ——
+          # でなければ畳みが一切効かない。`run_attempt` を含めるのは再実行が別の走行だからである。
+          PARADISE_FOLD_RUN: gh-${{ github.run_id }}-${{ github.run_attempt }}
         run: node graph/census.js check
 
       - name: 📒 Fold — 畳みの機構が己の掟を守るか (FR-11 / 第56条 b)
@@ -182,7 +198,15 @@ jobs:
         # ⚠️ **検査の総数 72 は 1 つも減らない。** 減るのは「同じ成果物を二度検める」分だけである
         #    (揟8 / 第37条)。畳んだ件は `(reused: html=<sha16>)` で写し元を名指す(AC-12)。
         env:
-          PARADISE_FOLD_LEDGER: ${{ github.workspace }}/.claude/paradise-fold-ledger.jsonl
+          PARADISE_FOLD_LEDGER: ${{ runner.temp }}/paradise-fold-ledger.jsonl
+          # **台帳は checkout の外に住む**(security S-2 / BLOCK)。
+          # `github.workspace` に置けば PR が `git add -f` で台帳そのものを持ち込め、
+          # `.gitignore` は checkout を縛らない —— **データ 1 本で 4 段が偽の緑になる**。
+          # 正しい形は畳みを見張る段が既に持っていた。四段をそれに揃える。
+          # **一走行に閉じる**(security S-1 / requirements §7-6)。領収書の `run` 欄が
+          # 走行を跨いだ再利用を拒む。**同じ job の段はすべて同じ値を名乗る** ——
+          # でなければ畳みが一切効かない。`run_attempt` を含めるのは再実行が別の走行だからである。
+          PARADISE_FOLD_RUN: gh-${{ github.run_id }}-${{ github.run_attempt }}
         run: node graph/atlas.js check --all-scales
 
       - name: 🔗 Wiring — 機構の結線に孤児と宙吊りが無いか (第44条 / 第48条)
@@ -325,7 +349,15 @@ jobs:
         # 畳みの対象。Self-test 段と**同一入力**であることを鍵が保証する。
         # 鍵が一致しなければ `bail=key-miss` を名乗って全走する —— 畳めないことは赤ではない。
         env:
-          PARADISE_FOLD_LEDGER: ${{ github.workspace }}/.claude/paradise-fold-ledger.jsonl
+          PARADISE_FOLD_LEDGER: ${{ runner.temp }}/paradise-fold-ledger.jsonl
+          # **台帳は checkout の外に住む**(security S-2 / BLOCK)。
+          # `github.workspace` に置けば PR が `git add -f` で台帳そのものを持ち込め、
+          # `.gitignore` は checkout を縛らない —— **データ 1 本で 4 段が偽の緑になる**。
+          # 正しい形は畳みを見張る段が既に持っていた。四段をそれに揃える。
+          # **一走行に閉じる**(security S-1 / requirements §7-6)。領収書の `run` 欄が
+          # 走行を跨いだ再利用を拒む。**同じ job の段はすべて同じ値を名乗る** ——
+          # でなければ畳みが一切効かない。`run_attempt` を含めるのは再実行が別の走行だからである。
+          PARADISE_FOLD_RUN: gh-${{ github.run_id }}-${{ github.run_attempt }}
         run: PARADISE_ABODE=repo node tests/paradise.test.js
 
       - name: 🏠 Abode(global 自己診断)— 実機の住処で緑か (AC-53b)

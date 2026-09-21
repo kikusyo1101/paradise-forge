@@ -11078,9 +11078,17 @@ test('fold: 何もかも畳む機構は測定ではない', () => {
     '鍵の比較が消えている — 何もかも畳む機構は測定ではない (AC-21)');
   assert.ok(!/\bfold:\s*true\b[^\n]*\/\/\s*always/.test(code), '常に畳む経路が在る');
   // ② 振る舞い: 比較を true に潰した写しは、領収書が無いのに畳む
-  const broken = s.replace('  const hits = rows.filter(r => r.key === k);',
-                           '  const hits = rows.length ? rows : [{ key: k, exit: 0, summary: \'\' }];');
+  //    ⚠️ **走行の絞り(security S-1)も併せて外す。** 外さねば、鍵の比較を潰しても
+  //       `run` が合わずに畳まれず、**「注入が当たったのに鳴らない」**と読めてしまう(第37条)。
+  const broken = s
+    .replace('  const sameKey = rows.filter(r => r.key === k);',
+             '  const sameKey = rows.length ? rows : [{ key: k, exit: 0, summary: \'\', run: null }];')
+    .replace('  const mine = run === null ? [] : sameKey.filter(r => r.run === run);',
+             '  const mine = sameKey;');
   assert.notStrictEqual(broken, s, '故障注入が当たらなかった — 変異点の形が変わった');
+  assert.ok(!/rows\.filter\(r => r\.key === k\)/.test(broken) &&
+    !/sameKey\.filter\(r => r\.run === run\)/.test(broken),
+    '**注入が片方しか当たっていない** — 二つの絞りのどちらかが残れば、この門は鳴らない理由を取り違える (第37条)');
   const mut = path.join(DIR, '..', 'graph', `.fold-all-probe-${process.pid}.js`);
   const file = foldLedger('ac21');
   try {

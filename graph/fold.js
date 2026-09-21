@@ -44,6 +44,40 @@ function ledgerPath(opts = {}) {
 }
 function lockPath(file) { return file + '.lock'; }
 
+/**
+ * **この走行の一意識別**(security S-1 / requirements §7-6)。
+ *
+ * requirements §7-6:「本改修の台帳は **1 回の CI 走行の中でのみ有効**」。
+ * だが実装にはその境界が無かった —— **走行を跨いだ領収書を `find()` が採っていた**。
+ * security S-1 の実測: 鍵は秘密でない(`fold-key` が名乗る)ので、
+ * 形の正しい一行を置くだけで **4 段が「走らせずに緑」**になった。
+ *
+ * ★ **出所の選び方**(rework の判断。security.md §1.4(b) を実装に落とす):
+ *
+ *   ① `PARADISE_FOLD_RUN` が在ればそれ。CI では `tribunal.yml` が
+ *      `gh-${{ github.run_id }}-${{ github.run_attempt }}` を**同じ job の全段に**渡す ——
+ *      **段を跨いで同じ値でなければ畳みが一切効かない**。再実行(`run_attempt`)は
+ *      別の走行である(材料が同じでも runner が違う)。
+ *   ② 無く、かつ **CI に居る**なら `null` = **畳まない**(fail-closed / 揟7)。
+ *      CI で名乗りが無いのは「走行を特定できない」ことであり、疑わしきは畳まない。
+ *      ⚠️ ここで推測可能な既定値(hostname 等)を据えれば、S-1 が runner 上で再演する。
+ *   ③ 手元では **端末と倉**から定数を作る。手元の台帳は走行を跨いで生き、
+ *      それが手元での畳みの値打ちそのものである(AC-08 / 神は自分の倉の主である)。
+ *      **手元の偽造を防ぐのはこの欄ではない** —— 防ぐのは S-2(CI の台帳を
+ *      `runner.temp` へ移す)である。**両方が揃って初めて塞がる。**
+ *
+ * 門は自分の走行を自分で宣言する(`tests/fold.test.js` が
+ * `PARADISE_FOLD_RUN` を自ら立てる)—— F-1 と同じ作法である。
+ */
+function runId(opts = {}) {
+  const env = opts.env || process.env;
+  const named = env.PARADISE_FOLD_RUN;
+  if (named) return String(named);
+  if (env.CI === 'true' || env.GITHUB_ACTIONS === 'true') return null;
+  const seed = [require('os').hostname(), ROOT].join('\0');
+  return 'local-' + crypto.createHash('sha256').update(seed).digest('hex').slice(0, 16);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // bail — 閉じた語彙 (AC-16 / requirements §4.3)
 // ══════════════════════════════════════════════════════════════════════
@@ -307,14 +341,30 @@ function withLock(file, fn, opts = {}) {
        * ゆえに `EEXIST` と同じく**待つべき競合**として扱う。
        */
       if (e.code !== 'EEXIST' && e.code !== 'EPERM' && e.code !== 'EACCES') throw e;
+      /**
+       * **どの枝を通っても `waitMs` で必ず抜ける**(security S-4 / HIGH)。
+       *
+       * 実測で踏んだ: `.lock` が**ディレクトリ**のとき `openSync(lock,'wx')` は
+       * `EEXIST` を返し(Windows)、`rmSync(lock, {force:true})` は `recursive` が無いので
+       * `ERR_FS_EISDIR` で失敗する。`catch {}` がそれを飲んで `continue` —— **stale 枝が
+       * 毎周成立して `waitMs` の検めを飛び越え、CPU を焼く無限ループになった**:
+       *
+       *     $ time timeout 20 node s4-probe.js   # recordRun(..., {waitMs:2000, staleMs:1})
+       *     real 0m20.085s  EXIT=124             ← 2000ms の期限を 10 倍超えて戻らなかった
+       *
+       * **期限の検めを枝より先に置く**ことが本質である。stale 回収は「早く進むための
+       * 最適化」であって、**期限より強い権限を持ってはならない**。
+       */
+      if (Date.now() - t0 > waitMs) {
+        throw new Error(`fold: 台帳の錠が ${waitMs}ms 解けない: ${lock}`);
+      }
       // 死んだ走行の錠を永久に待たない。**古い錠は腐らせる**(daily-guard の lease と同じ形)。
       let st = null; try { st = fs.statSync(lock); } catch {}
       if (st && Date.now() - st.mtimeMs > (opts.staleMs || 30000)) {
-        try { fs.rmSync(lock, { force: true }); } catch {}
+        // **`recursive` を落とすな。** ディレクトリの錠は `ERR_FS_EISDIR` で消せず、
+        // 消えない錠を毎周「腐った」と判じ続ける形が S-4 の無限ループであった。
+        try { fs.rmSync(lock, { force: true, recursive: true }); } catch {}
         continue;
-      }
-      if (Date.now() - t0 > waitMs) {
-        throw new Error(`fold: 台帳の錠が ${waitMs}ms 解けない: ${lock}`);
       }
       /**
        * 待つ。**同期に待たねばならない** —— `append()` は同期の口であり、
@@ -340,6 +390,20 @@ function validateReceipt(r) {
   }
   if (typeof r.summary !== 'string') throw new Error('fold: 領収書に summary が無い');
   if (typeof r.at !== 'string' || !r.at) throw new Error('fold: 領収書に at が無い');
+  /**
+   * **走行の名乗り**(security S-1)。台帳は 1 回の走行の中でのみ有効である
+   * (requirements §7-6)。
+   *
+   * ★ **欠落は「壊れた行」ではない。** 古い台帳の行や、外から足された行は
+   * この欄を持たない —— それを `ledger-unreadable`(赤)にすれば、
+   * **旧い台帳が 1 本あるだけで CI が倒れる**(第62条 b: 偽の赤)。
+   * ゆえに形としては許し、**`selectRows()` が決して採らない**。
+   * **疑わしきは畳まない**(揟7)—— 畳まないのは赤ではない。
+   * 許さないのは**型の違う run**(数・物・空文字)だけである。
+   */
+  if (!(r.run === undefined || r.run === null || (typeof r.run === 'string' && r.run.length > 0))) {
+    throw new Error(`fold: 領収書の run(走行の識別)が文字列でも null でもない: ${JSON.stringify(r.run)}`);
+  }
   return r;
 }
 
@@ -350,7 +414,9 @@ function validateReceipt(r) {
  */
 function append(receipt, opts = {}) {
   const file = ledgerPath(opts);
-  const r = validateReceipt({ at: new Date().toISOString(), ...receipt });
+  // **走行の名乗りは刻む側が付ける**(security S-1)。呼び手が明示すればそれを尊ぶ。
+  const run = Object.prototype.hasOwnProperty.call(receipt, 'run') ? receipt.run : runId(opts);
+  const r = validateReceipt({ at: new Date().toISOString(), run, ...receipt });
   const line = JSON.stringify(r) + '\n';
   try { fs.mkdirSync(path.dirname(file), { recursive: true }); } catch {}
   withLock(file, () => fs.appendFileSync(file, line), opts);
@@ -405,18 +471,65 @@ function read(opts = {}) {
 }
 
 /**
+ * **読む側の検め**(security S-3 / review F-2)。
+ *
+ * `validateReceipt` は長らく `append()`(書く側)からしか呼ばれなかった ——
+ * **台帳は外から 1 行足せる面**であり、書く側の検めは足された行を一度も見ない。
+ * ゆえに読む側でも同じ法で裁く。**形の壊れた行は黙って読み飛ばさない**
+ * (prove M-12 の教訓: 落ちた領収書は不在と区別できない)。
+ *
+ * @returns {{rows:object[], mine:object[], otherRun:number}}
+ *   `mine` = **この走行**で刻まれ、鍵の一致する行(exit は問わない)
+ */
+function selectRows(k, opts = {}) {
+  const rows = read(opts);
+  for (const r of rows) {
+    try { validateReceipt(r); }
+    catch (e) {
+      // **不能は不在と別の値である**(AC-16 / 第62条 b ①)。skip ではなく赤。
+      const err = new Error(`fold: 台帳に形の壊れた領収書がある (${e.message}): ${ledgerPath(opts)}`);
+      err.bailCode = 'ledger-unreadable';
+      throw err;
+    }
+  }
+  const run = runId(opts);
+  const sameKey = rows.filter(r => r.key === k);
+  // **走行を跨いだ領収書は採らない**(security S-1 / requirements §7-6)。
+  // `run === null`(走行を特定できない)なら一本も採らない —— 疑わしきは畳まない。
+  const mine = run === null ? [] : sameKey.filter(r => r.run === run);
+  /**
+   * **同じ入力が二つの答えを出したなら、それは畳める状態ではない**(security S-3 / 第37条)。
+   * `hits[hits.length-1]` は「最後の緑」を採る —— **本物の赤の後ろに偽の緑を 1 行足せば
+   * 赤が上書きされる**。同じ走行・同じ鍵で exit が食い違う台帳は、読めない台帳である。
+   */
+  const exits = new Set(mine.map(r => r.exit));
+  if (exits.size > 1) {
+    const err = new Error(
+      `fold: 同じ走行の同じ鍵で exit が食い違う台帳: ${[...exits].map(String).join(' / ')} — ` +
+      `同じ入力が二つの答えを出したなら畳める状態ではない (第37条): ${ledgerPath(opts)}`);
+    err.bailCode = 'ledger-unreadable';
+    throw err;
+  }
+  return { rows, mine, otherRun: sameKey.length - mine.length };
+}
+
+/**
  * 鍵の一致する**緑の**領収書。無ければ null。
  *
  * ⚠️ **`===` を `==` に緩めてはならない**(prove 相 M-05 の無音)。
  * 緩い等号は `exit: "0"` / `exit: false` / `exit: []` を**緑と読む**。
  * 台帳は JSONL であり、**外から 1 行足せる面**である ——
  * 偽造された領収書が畳みの根拠になれば findings §4.1 Tuist #8570 が再演する。
+ *
+ * ⚠️ **読めない台帳を `null`(=不在)に潰さない**(review F-2 / AC-16)。
+ * 以前はここに `catch { return null; }` が在り、**不能を不在として飲み込んでいた** ——
+ * 台帳が壊れて畳みが永久に効かない CI が、誰にも気づかれないまま秒を払い続ける。
+ * **呼び手は `err.bailCode === 'ledger-unreadable'` を読んで赤にせよ。**
  */
 function find(k, opts = {}) {
-  let rows;
-  try { rows = read(opts); } catch { return null; }
-  const hits = rows.filter(r => r.key === k && r.exit === 0);
-  return hits.length ? hits[hits.length - 1] : null;
+  const { mine } = selectRows(k, opts);
+  const green = mine.filter(r => r.exit === 0);
+  return green.length ? green[green.length - 1] : null;
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -448,19 +561,26 @@ function decide(opts = {}) {
   }
 
   const k = key({ env, root: opts.root });
-  let rows;
-  try { rows = read(opts); }
+  let sel;
+  try { sel = selectRows(k, opts); }
   catch (e) { return { ...bail('ledger-unreadable', { error: e.message }), key: k, receipt: null }; }
 
-  const hits = rows.filter(r => r.key === k);
-  if (!hits.length) {
+  const { rows, mine, otherRun } = sel;
+  if (!mine.length) {
+    /**
+     * **走行を跨いだ領収書は畳みの根拠にならない**(security S-1 / requirements §7-6)。
+     * 語彙は 7 語のまま増やさない(AC-16 は表を凍らせている / 第57条)——
+     * 「この走行の台帳に該当の鍵が無い」は `no-receipt` である。
+     * **だが辿れねば直せない**(第21条 b)ので、跨いだ本数を `otherRun` で名乗る。
+     */
+    if (otherRun) return { ...bail('no-receipt', { otherRun }), key: k, receipt: null };
     return { ...bail(rows.length ? 'key-miss' : 'no-receipt'), key: k, receipt: null };
   }
-  const green = hits.filter(r => r.exit === 0);
+  const green = mine.filter(r => r.exit === 0);
   if (green.length) return { fold: true, bail: null, key: k, receipt: green[green.length - 1] };
   // **緑しか畳まない**(FR-03 / AC-07)。findings §4.1 Tuist #8570 —
   // 鍵が content hash だけで結果を見なかったため timeout で落ちた試験が passed と報告された。
-  if (hits.some(r => r.exit === null)) return { ...bail('truncated'), key: k, receipt: null };
+  if (mine.some(r => r.exit === null)) return { ...bail('truncated'), key: k, receipt: null };
   return { ...bail('not-green'), key: k, receipt: null };
 }
 
@@ -629,9 +749,9 @@ function main(argv) {
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
 module.exports = {
-  ROOT, BAIL_CODES, ROOT_DOCS, ledgerPath, lockPath,
+  ROOT, BAIL_CODES, ROOT_DOCS, ledgerPath, lockPath, runId,
   materials, key, keyExplain, artifactKey,
-  append, recordRun, read, find, withLock, validateReceipt,
+  append, recordRun, read, find, selectRows, withLock, validateReceipt,
   decide, say, status, inspected,
   pooledBrowserFactory, VISUAL_CHECK, main,
 };

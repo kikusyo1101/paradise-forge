@@ -139,19 +139,37 @@ function census(opts = {}) {
        * (exit 0 / findings 0 を出すが第22条の旗艦の数が黙って無検査になる)を
        * 構造的に回避する。**畳みは「撃たない」であって「裁かない」ではない。**
        */
-      const receipt = opts.noFold || process.env.PARADISE_NO_FOLD === '1'
-        ? null : fold.find(fold.key());
+      /**
+       * ⚠️ **`find()` が投げる `ledger-unreadable` を `null` に潰さない**(review F-2 / AC-16)。
+       *
+       * 以前の綴りは `fold.find(fold.key())` を直に呼び、`find()` の中の
+       * `catch { return null; }` が**不能を不在として飲み込んでいた** ——
+       * 台帳が壊れて畳みが永久に効かない CI が、**誰にも気づかれないまま秒を払い続ける**。
+       * 第62条 b ①:「読めないは skip ではなく赤である」。
+       *
+       * ゆえに `decide()` 経由に寄せ、読めない台帳は **その場で throw する**。
+       * 呼び手(`check()` の `catch`)は**これを打ち切りと混同しない** ——
+       * `truncatedish` が偽なので `tests` は `summaryOf('')` になり、census は倒れる。
+       */
+      const d0 = opts.noFold || process.env.PARADISE_NO_FOLD === '1'
+        ? { fold: false, bail: 'disabled', key: null, receipt: null } : fold.decide({});
+      if (d0.bail === 'ledger-unreadable') {
+        const e = new Error(`census: 台帳が読めない — 畳みの機構が壊れている (bail=ledger-unreadable / AC-16): ${d0.error}`);
+        e.foldUnreadable = true;
+        throw e;
+      }
+      const receipt = d0.fold ? d0.receipt : null;
       const out = receipt ? receipt.summary
         : execFileSync(process.execPath, [path.join(ROOT, 'tests', 'paradise.test.js')],
             { encoding: 'utf8', cwd: ROOT, timeout: TIMEOUT_MS });
       if (opts.sayFold !== false) {
         // 綴りは契約である(requirements §4.2)。総数と実行数は**別の数**として名乗る。
-        const d = receipt ? { fold: true, bail: null, key: receipt.key }
-          : fold.decide({ off: opts.noFold || process.env.PARADISE_NO_FOLD === '1' });
-        console.log(fold.say('Census self-test:', 'runs', d, { total: 1 }));
+        console.log(fold.say('Census self-test:', 'runs', d0, { total: 1 }));
       }
       tests = summaryOf(out);
     } catch (e) {
+      // **読めない台帳は「測れなかった」ではない。倒れるべき赤である**(AC-16 / review F-2)。
+      if (e && e.foldUnreadable) throw e;
       // 打ち切り (ETIMEDOUT / SIGTERM) は「測れなかった」。部分出力を採らない
       const killed = !!(e && (e.killed || e.signal || e.code === 'ETIMEDOUT'));
       if (killed) {
@@ -562,7 +580,21 @@ if (require.main === module) {
     process.exit(0);
   }
   if (cmd === 'check') {
-    const res = check({ runTests: !noTests, noFold });
+    /**
+     * **読めない台帳は赤である**(AC-16 / review F-2)。`check()` が投げるので、
+     * **理由を人の読める一行で名乗ってから倒れる** —— 積み跡だけでは
+     * 「辿れない発見は直せない発見である」(第21条 b)。
+     */
+    let res;
+    try { res = check({ runTests: !noTests, noFold }); }
+    catch (e) {
+      if (!e || !e.foldUnreadable) throw e;
+      console.log('═══════ 🔢 CENSUS CHECK ═══════');
+      console.log(`  🔴 ${e.message}`);
+      console.log('       読めないは skip ではなく赤である。台帳を直すか --no-fold で切れ (AC-16)');
+      console.log('═══════════════════════════════');
+      process.exit(1);
+    }
     console.log('═══════ 🔢 CENSUS CHECK ═══════');
     if (res.ok) console.log('  ✓ every number the paradise claims about itself is true');
     for (const f of res.findings) {
