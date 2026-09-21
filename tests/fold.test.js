@@ -269,6 +269,173 @@ async function main() {
       });
   });
 
+  await test('fold: 鍵は門が読む現物を覆う (prove M-02)', () => {
+    /**
+     * **prove 相で見つけた最大の穴を、二度と開かないように凍らせる門。**
+     *
+     * 実測(prove M-02): 鍵の材料は **137 本**しか無く、版管理下の 605 本のうち
+     * 残りは鍵の外に在った。「壊すと門が赤くなるが鍵が動かない」現物を全数で探すと
+     * **7 本**見つかった —— `overlay/root/CLAUDE.md` を潰した走行は
+     * **鍵が 1 ビットも動かず** `Paradise fold: Executed 0 out of 1 runs (1 reused, …)` と
+     * `Census … ✓ every number the paradise claims about itself is true` を
+     * **exit 0** で出した(素の全走なら 2 門が赤い状態である)。
+     * **findings §4.2 Jest #8702 と同型の「鍵の漏れ」である。**
+     *
+     * ⚠️ **この門は「本数」で裁かない。** 数は改修のたびに動くので、
+     * 数で縛れば偽の赤になる(第62条 b)。裁くのは**覆いの形**である ——
+     * 門が中身を読む木と根の文書が、材料の綴りに**在ること**。
+     */
+    const fold2 = require(FOLD_JS);
+    const mat = new Set(fold2.materials());
+    // ① **門が中身を読む木は、すべて覆われていること**(名指しで狭く切る / 第44条 c)
+    const TREES = ['tests/', 'graph/', 'overlay/', 'dashboard/', 'tools/', '.github/workflows/'];
+    for (const t of TREES) {
+      assert.ok([...mat].some(f => f.startsWith(t)),
+        `鍵の材料が ${t} を一本も覆っていない — そこを壊した日、畳みは偽の緑を出す (prove M-02)`);
+    }
+    // ② **根の文書**。走査では拾えないので名簿だが、名簿が腐ればここで鳴る
+    for (const doc of fold2.ROOT_DOCS) {
+      if (!fs.existsSync(path.join(ROOT, doc))) continue;   // 不在は穴ではない
+      assert.ok(mat.has(doc),
+        `${doc} が鍵の材料に無い — 門がその中身を裁くのに、壊しても鍵が動かない (prove M-02)`);
+    }
+    // ③ **`overlay/vendor/archify` だけを覆う綴りへ戻っていないこと**(退行の形を名指す)
+    const outsideArchify = [...mat]
+      .filter(f => f.startsWith('overlay/') && !f.startsWith('overlay/vendor/archify/'));
+    assert.ok(outsideArchify.length > 10,
+      `overlay/ のうち archify 以外が ${outsideArchify.length} 本しか材料に無い — ` +
+      '**配備の正典が鍵の外に落ちている**。`overlay/root/CLAUDE.md` を壊しても畳みが効く (prove M-02)');
+    // ④ Atlas の裁定を下す実行体(`.mjs`)が落ちていないこと
+    assert.ok(mat.has('graph/motion-probe.mjs'),
+      'graph/motion-probe.mjs が材料に無い — 動きの裁定を下す実行体が鍵の外に在る (atlas.js:74 の PROBE)');
+
+    // ⑤ **振る舞いで撃つ**(第16条: 設定ではなく走行を読む)。
+    //    **現物は触らない** —— 複製の倉を作り、そこで壊して鍵が動くかを測る。
+    const repo = path.join(SAND, 'cover-repo');
+    fs.rmSync(repo, { recursive: true, force: true });
+    for (const d of ['tests', 'graph', 'overlay/root', 'dashboard', '.github/workflows']) {
+      fs.mkdirSync(path.join(repo, d), { recursive: true });
+    }
+    fs.writeFileSync(path.join(repo, 'tests', 'paradise.test.js'), 'module.exports={};\n');
+    fs.writeFileSync(path.join(repo, 'graph', 'x.js'), 'module.exports={};\n');
+    fs.writeFileSync(path.join(repo, '.github', 'workflows', 'tribunal.yml'), 'name: t\n');
+    const victims = ['overlay/root/CLAUDE.md', 'dashboard/index.html', 'README.md'];
+    for (const v of victims) fs.writeFileSync(path.join(repo, v), '正典 A\n');
+    for (const v of victims) {
+      const k1 = fold2.key({ root: repo });
+      fs.writeFileSync(path.join(repo, v), '正典 B(壊した)\n');
+      const k2 = fold2.key({ root: repo });
+      assert.notStrictEqual(k1, k2,
+        `${v} を壊しても鍵が動かない (${k1}) — **その破壊は畳みで消える**。` +
+        'findings §4.2 Jest #8702 と同型の鍵の漏れである (prove M-02)');
+    }
+
+    // ⑥ **壊して鳴らす**: 覆いを `overlay/vendor/archify` だけへ戻すと、この門が鳴る
+    withMutant(
+      s => s.replace("  walkAll(root, 'overlay', out);", "  walkAll(root, 'overlay/vendor/archify', out);"),
+      (mut) => {
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          const m=f.materials();
+          console.log('outside=' + m.filter(x=>x.startsWith('overlay/')&&!x.startsWith('overlay/vendor/archify/')).length);`);
+        assert.match(String(r.stdout), /outside=0/,
+          `覆いを狭めた写しがまだ overlay を覆っている — 注入が当たっていない: ${r.stdout}${r.stderr}`);
+      });
+  });
+
+  await test('fold: 領収書の緑は型で裁く — 偽装された exit は畳めない (prove M-05)', () => {
+    /**
+     * **prove 相 M-05 の無音を塞ぐ門。**
+     *
+     * 実測: `find()` の `r.exit === 0` を `r.exit == 0`(緩い等号)へ緩めても、
+     * **20 門も 7 門も一本も鳴らなかった**。台帳は JSONL であり **外から 1 行足せる面**
+     * である —— `{"exit":"0"}` / `{"exit":false}` / `{"exit":[]}` はすべて
+     * 緩い等号の下で**緑と読まれる**。それは findings §4.1 Tuist #8570
+     * (落ちた試験が passed と報告された)の型を、台帳の側から再現する道である。
+     *
+     * ⚠️ **ソースを読むだけでは足りない**(第16条)。緩い等号は綴りで探せるが、
+     * `Number(r.exit) === 0` のような**別の緩め方**は綴りが違う。ゆえに
+     * **偽装された領収書を実際に置いて、畳まれないことを走行で撃つ。**
+     */
+    const fold2 = require(FOLD_JS);
+    const k = fold2.key();
+    /** 緩い等号なら緑と読まれるが、**厳密には緑でない** exit の値。 */
+    const IMPOSTORS = [
+      { v: '0', name: '文字列の "0"' },
+      { v: false, name: '真偽値の false' },
+      { v: [], name: '空の配列' },
+      { v: '', name: '空文字' },
+      { v: '0x0', name: '16 進の綴り' },
+      { v: 0.0, name: '0.0(これは本当に 0 である)', green: true },
+    ];
+    for (const imp of IMPOSTORS) {
+      const file = tmpLedger('m05');
+      // `append` は形を検めるので、**生の行を直に書く**(外から足された行の模倣)
+      fs.writeFileSync(file, JSON.stringify({
+        at: new Date().toISOString(), key: k, exit: imp.v,
+        summary: 'Paradise self-test: 499 passed, 0 failed',
+      }) + '\n');
+      const d = fold2.decide({ file, env: { ...process.env, PARADISE_ABODE: 'repo' } });
+      if (imp.green) {
+        assert.strictEqual(d.fold, true, `${imp.name} は本当に 0 である — 畳めねばならない`);
+        continue;
+      }
+      assert.strictEqual(d.fold, false,
+        `**${imp.name} を緑と読んで畳んだ** — 緩い等号は偽造された領収書を畳みの根拠にする ` +
+        '(findings §4.1 Tuist #8570 / prove M-05)');
+      assert.strictEqual(fold2.find(k, { file }), null,
+        `find() が ${imp.name} の領収書を返した — 緑しか畳まない (FR-03)`);
+    }
+    // **壊して鳴らす**: 緩い等号へ戻すと、この門が鳴る
+    withMutant(
+      s => s.replace('  const hits = rows.filter(r => r.key === k && r.exit === 0);',
+                     '  const hits = rows.filter(r => r.key === k && r.exit == 0);'),
+      (mut) => {
+        const file = tmpLedger('m05-broken');
+        fs.writeFileSync(file, JSON.stringify({
+          at: new Date().toISOString(), key: k, exit: '0', summary: 'x' }) + '\n');
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          console.log('found=' + (f.find(f.key(), {file:${JSON.stringify(file)}}) !== null));`);
+        assert.match(String(r.stdout), /found=true/,
+          `緩い等号に戻した写しがまだ拒んだ — 注入が当たっていない: ${r.stdout}${r.stderr}`);
+      });
+  });
+
+  await test('fold: P-2 の恒等式の錠は数を配る口の上に立つ (prove M-07)', () => {
+    /**
+     * **prove 相 M-07 の無音を塞ぐ門。**
+     *
+     * 実測: `inspected().closed()` を `return true` に潰しても**一本も鳴らなかった**。
+     * 理由は単純である —— **誰も `closed()` を呼んでいなかった**
+     * (`grep -rn '.closed()'` の答えが 0 件)。
+     * AC-15 は「錠は畳みの関数の外に立つ」と言うが、**呼ばれない錠は外でも内でもない。**
+     * ゆえに `tally()`(数が読まれる唯一の口)が自ら恒等式を検める形へ移した。
+     */
+    const fold2 = require(FOLD_JS);
+    // ① 健全な写像は数を配る
+    const seen = fold2.inspected();
+    seen.take('a#first-screen', 's@quick', () => ({ ok: true }), 1);
+    seen.take('a#first-screen', 's@full', () => ({ ok: true }), 1);
+    const t = seen.tally();
+    assert.strictEqual(t.total, 2);
+    assert.strictEqual(t.executed + t.reused, t.total, '健全な写像で恒等式が閉じない');
+    assert.strictEqual(seen.closed(), true, 'closed() が健全な写像で偽を返した');
+    // ② **錠が数を配る口の上に在ること。** そこで倒れねば誰も気づかない
+    const src = fs.readFileSync(FOLD_JS, 'utf8');
+    assert.ok(/tally\(\) \{[\s\S]{0,80}if \(executed \+ reused !== total\) \{[\s\S]{0,200}throw new Error/.test(src),
+      '`tally()` が恒等式を検めていない — **呼ばれない `closed()` は錠ではない** (prove M-07)');
+    // ③ **壊して鳴らす**: 錠を `tally()` から抜く
+    withMutant(
+      s => s.replace('      if (executed + reused !== total) {', '      if (false) {'),
+      (mut) => {
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          const s=require('fs').readFileSync(${JSON.stringify(mut)},'utf8');
+          console.log('locked=' + /tally\\(\\) \\{[\\s\\S]{0,80}if \\(executed \\+ reused !== total\\)/.test(s));`);
+        assert.match(String(r.stdout), /locked=false/,
+          `錠を抜く注入が当たっていない: ${r.stdout}${r.stderr}`);
+      });
+  });
+
+
   await test('fold: 緑しか畳まない — 赤い領収書は再走を呼ぶ', () => {
     const k = fold.key();
     // (a) exit != 0 の領収書しか無い
@@ -405,6 +572,104 @@ async function main() {
       `細工した成果物が畳まれた(実行数 ${t2.executed} が ${t.executed} のまま)— ` +
       '中身が違う成果物を同一と見なしている (AC-11)');
     assert.strictEqual(t2.executed, 42, `細工後の実行数が ${t2.executed}(期待 42 = 32 + 5 道 × 2 検査)`);
+  });
+
+  await test('fold: 成果物の鍵は成果物の全長から採る (prove M-08)', () => {
+    /**
+     * **prove 相 M-08 の無音を塞ぐ門。**
+     *
+     * 実測: `artifactKey` を **HTML の先頭 1KB だけ**から採る変異を撃ったところ、
+     * **20 門も 7 門も一本も鳴らなかった**。理由は第62条そのものである ——
+     * 上の AC-11 の門は `fold.inspected()` に**作り物の鍵**(`same-hierarchy` 等)を
+     * 与えて数を数えており、**鍵がどこから来たかを一度も撃っていなかった。**
+     * 門の作法(写像に数を入れて数える)が、鍵の由来の層を丸ごと隠していた。
+     *
+     * 先頭 1KB は 6 主題すべてで同じ `<!DOCTYPE html>…` である。
+     * その変異の下では **72 検査すべてが 1 つの裁定に畳まれ**、71 件が誰にも検められない。
+     * **`Executed 1 out of 72` を名乗る畳みは、測定ではない。**
+     */
+    const fold2 = require(FOLD_JS);
+    // ① **後ろだけが違う二つの成果物は、別の鍵を持たねばならない**
+    const head = Buffer.from('<!DOCTYPE html><html><head><style>' + 'x'.repeat(4000) + '</style></head><body>');
+    const a = Buffer.concat([head, Buffer.from('<svg id="hierarchy"></svg></body></html>')]);
+    const b = Buffer.concat([head, Buffer.from('<svg id="conclave"!></svg></body></html>')]);
+    assert.strictEqual(a.slice(0, 1024).equals(b.slice(0, 1024)), true,
+      '前提が崩れた — 先頭 1KB が同じ二つの成果物を作れていない');
+    assert.notStrictEqual(fold2.artifactKey(a), fold2.artifactKey(b),
+      '**先頭が同じで後ろが違う成果物が同じ鍵を持った** — 後ろの差を見逃す鍵は ' +
+      '72 検査を 1 つの裁定に畳む (prove M-08 / AC-11)');
+    // ② **長さだけが違う成果物**も別の鍵(長さ検査に逃げていないことの裏面)
+    assert.notStrictEqual(fold2.artifactKey(a), fold2.artifactKey(Buffer.concat([a, Buffer.from('\n')])),
+      '末尾に 1 バイト足しても鍵が動かない');
+    // ③ バイト同一なら同じ鍵(畳みが成立する条件そのもの)
+    assert.strictEqual(fold2.artifactKey(a), fold2.artifactKey(Buffer.from(a)),
+      'バイト同一の成果物が別の鍵を持った — 畳みが一度も効かなくなる');
+    // ④ **壊して鳴らす**: 先頭 1KB だけから採る変異を入れる
+    withMutant(
+      s => s.replace('  const buf = Buffer.isBuffer(fileOrBuffer) ? fileOrBuffer : fs.readFileSync(fileOrBuffer);\n  const h = crypto.createHash(\'sha256\');\n  h.update(buf);',
+                     '  const buf0 = Buffer.isBuffer(fileOrBuffer) ? fileOrBuffer : fs.readFileSync(fileOrBuffer);\n  const buf = buf0.slice(0, 1024);\n  const h = crypto.createHash(\'sha256\');\n  h.update(buf);'),
+      (mut) => {
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          const head=Buffer.from('<!DOCTYPE html><head><style>'+'x'.repeat(4000)+'</style>');
+          const a=Buffer.concat([head,Buffer.from('<svg id="hierarchy"></svg>')]);
+          const b=Buffer.concat([head,Buffer.from('<svg id="conclave"!></svg>')]);
+          console.log('same=' + (f.artifactKey(a) === f.artifactKey(b)));`);
+        assert.match(String(r.stdout), /same=true/,
+          `先頭だけを食わせる注入が当たっていない: ${r.stdout}${r.stderr}`);
+      });
+  });
+
+  await test('fold: 領収書の形は台帳へ入る前に裁かれる (prove M-13)', () => {
+    /**
+     * **prove 相 M-13 の無音を塞ぐ門。**
+     *
+     * 実測: `validateReceipt` の本体を素通しにする変異(`return r;` を先頭に置く)を
+     * 撃っても、**一本も鳴らなかった**。門は `append()` の**成功**しか撃っておらず、
+     * **拒むべきものを拒むか**を一度も撃っていなかった —— 第62条 c の言う
+     * 「無罪と宣言した形」の裏返しであり、**法に書かれた盲点**である。
+     *
+     * 形の検めが死ぬと、`key` が 4 桁の行や `exit` が文字列の行が台帳へ入る。
+     * その台帳は次の走行で `ledger-unreadable` にもならず、**静かに畳みの根拠になる。**
+     */
+    const fold2 = require(FOLD_JS);
+    /** **拒まれねばならない形**(負の fixture。一行ずつ理由を持つ)。 */
+    const MALFORMED = [
+      { r: { key: 'abcd', exit: 0, summary: 's', at: 'x' }, why: 'key が 16 桁でない' },
+      { r: { key: 'Z'.repeat(16), exit: 0, summary: 's', at: 'x' }, why: 'key が 16 進でない' },
+      { r: { key: 'a'.repeat(16), exit: '0', summary: 's', at: 'x' }, why: 'exit が整数でも null でもない' },
+      { r: { key: 'a'.repeat(16), exit: 1.5, summary: 's', at: 'x' }, why: 'exit が整数でない' },
+      { r: { key: 'a'.repeat(16), exit: 0, at: 'x' }, why: 'summary が無い' },
+      { r: { key: 'a'.repeat(16), exit: 0, summary: 's', at: '' }, why: 'at が空' },
+      { r: null, why: '領収書が物ですらない' },
+    ];
+    for (const m of MALFORMED) {
+      const file = tmpLedger('m13');
+      assert.throws(() => fold2.append(m.r, { file }),
+        `**${m.why} 形の領収書が台帳へ入った** — 形の検めが死ねば、壊れた行が静かに畳みの根拠になる (prove M-13)`);
+      // 拒まれた行が**台帳に残っていない**こと(投げた後に半分書けていないか)
+      const rows = (() => { try { return fold2.read({ file }); } catch { return ['読めない']; } })();
+      assert.strictEqual(rows.length, 0,
+        `拒んだはずの領収書が台帳に ${rows.length} 行残った (${m.why})`);
+    }
+    // **正しい形は通る**(負の fixture だけでは「何も通さない実装」が緑になる)
+    const ok = tmpLedger('m13-ok');
+    assert.doesNotThrow(() => fold2.append({ key: 'a'.repeat(16), exit: 0, summary: 's' }, { file: ok }));
+    assert.doesNotThrow(() => fold2.append({ key: 'b'.repeat(16), exit: null, summary: '' }, { file: ok }),
+      '打ち切り (exit: null) の領収書が拒まれた — truncated を刻めなくなる (AC-07 b)');
+    assert.strictEqual(fold2.read({ file: ok }).length, 2);
+    // **壊して鳴らす**: 検めを素通しにする
+    withMutant(
+      s => s.replace("function validateReceipt(r) {\n  if (!r || typeof r !== 'object') throw new Error('fold: 領収書が物ではない');",
+                     "function validateReceipt(r) {\n  return r;\n  if (!r || typeof r !== 'object') throw new Error('fold: 領収書が物ではない');"),
+      (mut) => {
+        const file = tmpLedger('m13-broken');
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          let threw=false;
+          try { f.append({key:'abcd',exit:0,summary:'s'},{file:${JSON.stringify(file)}}); } catch { threw=true; }
+          console.log('threw=' + threw);`);
+        assert.match(String(r.stdout), /threw=false/,
+          `検めを素通しにする注入が当たっていない: ${r.stdout}${r.stderr}`);
+      });
   });
 
   await test('fold: 写した裁定は元を名指す (第21条 b)', () => {
@@ -559,7 +824,65 @@ async function main() {
       assert.ok(/--no-fold/.test(fs.readFileSync(f, 'utf8')),
         `${path.basename(f)} が --no-fold を知らない — 三者で同じ綴りでなければ出口ではない (requirements §5)`);
     }
+    /**
+     * ④ **綴りが在ることは、効くことではない**(prove 相 M-10 / M-11 の無音)。
+     *
+     * 実測: `atlas.js` の `const folding = !(opts.noFold || …)` を `= true` に潰す変異
+     * (M-10)と、`census.js` の畳みを `--no-fold` でも切らない変異(M-11)は、
+     * **どちらも一本も鳴らなかった** —— ③ の検めが**ソースの綴り**しか見ておらず、
+     * 「旗を受け取るが何もしない」実装を素通ししていたからである(第16条)。
+     *
+     * ゆえに**三者すべてを実際に撃ち、畳みが切れたことを出力で読む。**
+     * census / atlas は本体が重いので、**畳みの判断だけを露わにする口**
+     * (`fold-status`)ではなく、engine を require して `noFold` の経路を直に撃つ。
+     */
+    const fld = require(FOLD_JS);
+    const kk = fld.key();
+    const fl = tmpLedger('ac18-behaviour');
+    fld.append({ key: kk, exit: 0, summary: 'Paradise self-test: 499 passed, 0 failed' }, { file: fl });
+    // atlas: `--no-fold` の下で `folding` が偽になる = 写像を一度も使わない
+    const atlasSrc = fs.readFileSync(path.join(GRAPH, 'atlas.js'), 'utf8');
+    assert.ok(/const folding = !\(opts\.noFold \|\| process\.env\.PARADISE_NO_FOLD === '1'\);/.test(atlasSrc),
+      'atlas の `folding` が旗を読んでいない — **旗を受け取るが何もしない**実装である (prove M-10)');
+    // atlas を**実際に撃つ**: `--no-fold` を付けた走行は畳んだ件数 0 を名乗らねばならない
+    //   (ブラウザを起こさない `--static` の道で、畳みの算法だけを見る)
+    const ar = spawnSync(process.execPath, [path.join(GRAPH, 'atlas.js'), 'check',
+      '--scale', 'quick', '--static', '--no-fold'],
+      { encoding: 'utf8', cwd: ROOT, timeout: 120000, env: { ...process.env, PARADISE_FOLD_LEDGER: fl } });
+    assert.strictEqual((String(ar.stdout).match(/reused: html=/g) || []).length, 0,
+      `atlas --no-fold の走行が reused を名乗った — 旗を黙殺している (prove M-10): ` +
+      `${String(ar.stdout).split('\n').slice(-4).join(' / ')}`);
+    // census: `noFold` を渡すと**領収書を読まない**(畳まない)
+    const census = require(path.join(GRAPH, 'census.js'));
+    const censusSrc = fs.readFileSync(path.join(GRAPH, 'census.js'), 'utf8');
+    assert.ok(/opts\.noFold \|\| process\.env\.PARADISE_NO_FOLD === '1'\s*\n?\s*\?\s*null\s*:\s*fold\.find\(/.test(censusSrc),
+      'census の畳みが旗を読んでいない — **旗を受け取るが何もしない**実装である (prove M-11)');
+    assert.strictEqual(typeof census.census, 'function', 'census の口が消えた');
+    // **壊して鳴らす**: 旗を黙殺する形にすると、上の二つの検めが鳴る
+    for (const [file, from, to, who] of [
+      [path.join(GRAPH, 'atlas.js'),
+        "  const folding = !(opts.noFold || process.env.PARADISE_NO_FOLD === '1');",
+        '  const folding = true;', 'atlas'],
+    ]) {
+      const raw = fs.readFileSync(file);
+      const before = require('crypto').createHash('sha256').update(raw).digest('hex');
+      try {
+        const s = raw.toString('utf8');
+        // **CRLF の現物に LF の綴りは当たらない**(prove 相で踏んだ)
+        const needle = s.includes(from) ? from : from.replace(/\n/g, '\r\n');
+        assert.ok(s.includes(needle), `${who} の変異点が見つからない — 形が変わった (第37条)`);
+        fs.writeFileSync(file, s.replace(needle, to));
+        const broken = fs.readFileSync(file, 'utf8');
+        assert.ok(!/const folding = !\(opts\.noFold/.test(broken),
+          `${who} の注入が当たっていない — 当たらない注入で「鳴らない」と結論してはならない`);
+      } finally {
+        fs.writeFileSync(file, raw);
+        assert.strictEqual(require('crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex'),
+          before, `${who} の復元に失敗した — 現物を壊したまま残してはならない (第58条 c)`);
+      }
+    }
   });
+
 
   await test('fold: 綴り違いの旗は黙殺されない', () => {
     const r = spawnSync(process.execPath, [PARADISE, '--no-fould'], { encoding: 'utf8', cwd: ROOT });
@@ -614,12 +937,27 @@ async function main() {
     assert.ok(selfTest, 'Self-test 段が消えた — 畳みの根拠を作る段である (NFR-02)');
     assert.ok(!/--no-fold/.test(runOnly(selfTest)),
       'Self-test 段に --no-fold が書かれている — 畳まなかったのか機構が壊れていたのか出力から区別できない');
-    assert.ok(/PARADISE_FOLD_LEDGER/.test(selfTest),
-      'Self-test 段が台帳の住所を渡していない — 領収書が刻まれない (AC-23)');
+    /**
+     * ⚠️ **綴りの部分一致で読んではならない**(prove 相 W-04 の無音)。
+     *
+     * 実測: Self-test 段の `PARADISE_FOLD_LEDGER:` を `PARADISE_FOLD_LEDGER_DISABLED:` へ
+     * **改名**する変異を撃ったところ、**一本も鳴らなかった** ——
+     * この検めが `/PARADISE_FOLD_LEDGER/` の部分一致だったので、
+     * **接尾辞の影に隠れて素通りした**。変数は死んでいるのに綴りは残る。
+     * 領収書が刻まれない CI が緑で通る。
+     *
+     * ゆえに**環境変数の名を、行頭から `:` までで正確に読む。**
+     */
+    const envName = (step, name) =>
+      new RegExp(`^\\s*${name}:\\s`, 'm').test(step);
+    assert.ok(envName(selfTest, 'PARADISE_FOLD_LEDGER'),
+      'Self-test 段が台帳の住所を渡していない — 領収書が刻まれない (AC-23 / prove W-04)。' +
+      '**接尾辞つきの名(…_DISABLED 等)は別の変数である**');
     // 📒 Fold 段は**畳まれない**(畳みを見張る門が畳まれれば第56条 b の穴が開く)
     const foldStep = steps.find(s => /📒 Fold/.test(s));
     assert.ok(foldStep, '📒 Fold 段が無い — 建てた門を誰も走らせない (第44条 b)');
-    assert.ok(/PARADISE_NO_FOLD: '1'/.test(foldStep), '📒 Fold 段が畳みを切っていない');
+    assert.ok(/^\s*PARADISE_NO_FOLD:\s*'1'/m.test(foldStep),
+      "📒 Fold 段が畳みを切っていない — 名は行頭から `:` まで正確に読む (prove W-04)");
     assert.ok(!/github\.workspace/.test(runOnly(foldStep)),
       '📒 Fold 段が現物の台帳を掴んでいる — 門が台帳を壊せば後続の段が偽の赤を出す (第58条 c)');
   });
@@ -736,6 +1074,54 @@ async function main() {
   });
 
   // ── 現物を汚していないことを、門が自分で検める(NFR-03 の同型)──────
+  await test('fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)', () => {
+    /**
+     * **prove 相 B-02 / B-03 の無音を塞ぐ門**(第62条 c: 振る舞いの門が届かない層は
+     * ソースを静的に読む門で補え)。
+     *
+     * 実測した二つの無音は、**どちらも「門を空転させる変異」だった**:
+     *
+     *   B-02 `withMutant` の `assert.notStrictEqual(broken, src)` を殺す
+     *        → **当たらなかった注入を「鳴った」と読む**道が開く。
+     *          `tests/paradise.test.js` は CRLF であり、LF の綴りは**一つも当たらない** ——
+     *          この検めが死ねば、19 本の「壊して鳴らす」が**全部空振りのまま緑**になる。
+     *   B-03 AC-16 の「健全な decide が倒れない」assert を消す
+     *        → **負の fixture(無罪と宣言した形)が黙って消える**。
+     *
+     * どちらも `fold.test.js` 自身の中の変異なので、**この門が自分のソースを読む**。
+     * 盲点: **この門自身を消す変異は、この門では捕まらない** ——
+     * それを捕まえるのは `paradise.test.js` の AC-22(門の本数)である(第62条 c)。
+     */
+    const src = fs.readFileSync(__filename, 'utf8');
+    // ① **注入が当たったことの検め**が `withMutant` の中に在る(B-02)
+    assert.ok(/const broken = mutate\(src\);\s*\n\s*assert\.notStrictEqual\(broken, src,/.test(src),
+      '`withMutant` が「注入が当たったか」を検めていない — ' +
+      '**当たらない注入で「鳴らない」と結論する道が開く**。この現物は CRLF を含む一族であり、' +
+      'LF の綴りは一つも当たらない (第37条 / prove B-02)');
+    // ② その検めが**実際に投げる**こと(綴りだけ残して無力化されていないか)
+    let landed = false;
+    try {
+      withMutant(s => s, () => { landed = true; });
+    } catch (e) {
+      assert.match(String(e.message), /故障注入が当たらなかった/,
+        `注入が当たらないときの理由が違う: ${e.message}`);
+      landed = false;
+    }
+    assert.strictEqual(landed, false,
+      '**当たらない注入(恒等な mutate)が素通りした** — `withMutant` の検めが無力化されている (prove B-02)');
+    // ③ **負の fixture が生きていること**(B-03)。
+    //    「健全な経路が倒れない」を凍らせる assert は、**病そのものではなく法である** ——
+    //    だが法が黙って消えれば、倒れる実装が緑で通る。ゆえに形を凍らせる。
+    assert.ok(/assert\.ok\(!threw, '健全な decide が倒れた'\);/.test(src),
+      'AC-16 の「健全な decide が倒れない」負の fixture が消えた — ' +
+      '**無罪と宣言した形が黙って消えれば、倒れる実装が緑で通る** (prove B-03 / 第62条 c)');
+    assert.ok(/assert\.ok\(!vocabGuard, '健全な経路が倒れた'\);/.test(src),
+      'AC-16 の「健全な経路が倒れない」負の fixture が消えた (prove B-03)');
+    // ④ **撃ちのループが空でないこと**(B-01 は鳴ったが、形を凍らせておく)
+    assert.ok(/const SCALES = \['quick', 'standard', 'full', 'reform', 'counsel', 'cartography'\];/.test(src),
+      'AC-11 の道の一覧が痩せた — **空のループは空転であって測定ではない** (第37条)');
+  });
+
   await test('fold: この門は現物の台帳を汚していない', () => {
     const after = realLedgerFingerprint();
     assert.strictEqual(after, REAL_BEFORE,

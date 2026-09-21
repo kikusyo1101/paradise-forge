@@ -11105,6 +11105,47 @@ test('fold: 何もかも畳む機構は測定ではない', () => {
 });
 function f0key(fld) { return fld.key(); }
 
+test('fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコードの後ろへ移らない (prove M-14)', () => {
+  /**
+   * **prove 相 M-14 の無音を塞ぐ門。**
+   *
+   * 実測: 畳んだ走行が出す「写し元の領収書 at=… exit=… key=…」の行を
+   * `process.exit(0)` の**後ろへ移す**変異(死にコード化)を撃ったところ、
+   * **20 門も 7 門も一本も鳴らなかった**。AC-12「写した裁定は元を名指す」は
+   * **Atlas の裁定行**しか撃っておらず、**全走の畳み**の名乗りを誰も読んでいなかった。
+   *
+   * 写し元が消えると、畳んだ緑が**いつ・どの領収書に由来するか**を辿れなくなる ——
+   * 第21条 b:「辿れない発見は直せない発見である」。
+   *
+   * ⚠️ **設定ではなく走行を読む**(第16条)。ゆえに**畳める台帳を作って実際に撃つ。**
+   */
+  const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
+  const file = foldLedger('m14');
+  const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+  const k = fld.key({ env: asRepo });
+  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 499 passed, 0 failed' }, { file });
+  const r = require('child_process').spawnSync(process.execPath, [__filename],
+    { encoding: 'utf8', cwd: path.join(DIR, '..'), timeout: 120000,
+      env: { ...asRepo, PARADISE_FOLD_LEDGER: file } });
+  const out = String(r.stdout);
+  // ① 畳んだこと自体(前提。崩れていたら測っていない)
+  assert.match(out, /Paradise fold: Executed 0 out of 1 runs \(1 reused, key=/,
+    `前提が崩れた — 畳める台帳を作れていない: ${out.split('\\n').slice(0, 3).join(' / ')}`);
+  // ② **写し元の名乗りが実際に出ていること**(死にコードへ移っていないこと)
+  const m = out.match(/Paradise fold: 写し元の領収書 at=(\S+) exit=(\S+) key=(\S+)/);
+  assert.ok(m,
+    '**畳んだ走行が写し元を名乗らなかった** — 名乗りが process.exit の後ろに在れば死にコードである。' +
+    `辿れない緑は直せない (第21条 b / prove M-14): ${out.split('\\n').slice(0, 4).join(' / ')}`);
+  // ③ 名乗った中身が**台帳の領収書と一致する**(空欄や undefined を名乗っていない)
+  assert.strictEqual(m[3], k, `名乗った鍵が台帳の鍵と違う: ${m[3]} != ${k}`);
+  assert.strictEqual(m[2], '0', `名乗った exit が 0 でない: ${m[2]}`);
+  assert.ok(/^\d{4}-\d{2}-\d{2}T/.test(m[1]), `名乗った刻が刻の形でない: ${m[1]}`);
+  assert.strictEqual(r.status, 0, `畳んだ走行が exit ${r.status}`);
+  // ④ **綴りの衝突を作っていない**(requirements §4.1 / census.js:57 の保険経路)
+  assert.strictEqual((out.match(/passed/g) || []).length, 0,
+    '畳んだ走行が passed の語を出した — census.js:57 が拾い、偽の数になる');
+});
+
 test('fold: 改修は門を減らしていない — 本数が基準を下回らない', () => {
   /**
    * **AC-22 / NFR-01(最重要)。** 基準値 **492** は改修前の実測値である。

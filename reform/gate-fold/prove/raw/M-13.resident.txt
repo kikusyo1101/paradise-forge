@@ -1,0 +1,65 @@
+Graph engine:
+Knowledge graph:
+Co-change learning:
+Forge (creation pipeline):
+Verdict (judgment):
+Critic (self-critique):
+Orchestrator (supervisor):
+Subagent contract:
+Clergy (hierarchy):
+Conclave (recursive orchestration):
+Model policy (rank → model):
+Synod (planning cycle):
+Lesson scoping (the fence around a past-miss):
+Self-review scope subject (the engine judging itself):
+Daily guard (quota + catch-up):
+
+密閉性 (第58条(c)):
+
+Workspace (Art.30):
+
+Dashboard gates (Art.22 / G-01..G-10):
+
+Pontiff seat (Art.31):
+
+Gauge (証明の秤, 第38条):
+
+Gauge 台帳の冪等性 (第55条):
+
+Gauge 先回りと破損の門 (build attempt 4):
+
+Diet gate (第39条):
+
+Harness diet gate (第40条):
+
+Lexicon gate (第41条):
+日次の営み (第43条):
+日次の営みは道を歩く (第46条):
+
+Atlas (自画像):
+
+結線 (第48条):
+
+作図の道 (第49条):
+
+序列 (第52条):
+
+rework (審査の差し戻しを塞ぐ):
+
+rework2 (reflect の差し戻しを塞ぐ):
+
+第53条 走行の門 (abandoned-run):
+
+門の絞り込み (gate-filter / 第22条):
+
+畳みの機構 (fold / reform/gate-fold):
+  ✓ fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条)
+  ✓ fold: 総数と実行数は別の数である (第22条 / 揟4)
+  ✓ fold: 数が閉じる — 錠は畳みの関数の外に立つ
+  ✓ fold: 畳みの門番は絞り込みの外に立つ
+  ✓ fold: 何もかも畳む機構は測定ではない
+  ✓ fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコードの後ろへ移らない (prove M-14)
+  ✓ fold: 改修は門を減らしていない — 本数が基準を下回らない
+  ✓ fold: 台帳の番兵は汚した門を名指す
+Paradise gate-filter: 注意 — 絞り込み走行は門の依存を保証しない。共有状態を前段の門に頼る門は単独走行で偽の赤を出しうる (security D-2)
+Paradise gate-filter: 8 of 500 gates matched — 8 green, 0 red

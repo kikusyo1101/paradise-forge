@@ -108,7 +108,7 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -120,9 +120,9 @@
           ],
           "gate": false,
           "artifact": "implementation",
-          "status": "pending",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/gate-fold/build.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -135,10 +135,10 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "pending",
-          "attempts": 0,
+          "status": "running",
+          "attempts": 1,
           "artifactPath": null,
-          "dispatchedAt": null,
+          "dispatchedAt": "2026-09-20T23:28:24.229Z",
           "resumes": 0
         }
       ],
@@ -307,6 +307,16 @@
       "ts": "2026-09-20T20:20:48.370Z",
       "event": "ratify",
       "detail": "Architecture (設計) ratified by cardinal:requirements"
+    },
+    {
+      "ts": "2026-09-20T23:28:24.170Z",
+      "event": "done",
+      "detail": "build → reform/gate-fold/build.md"
+    },
+    {
+      "ts": "2026-09-20T23:28:24.229Z",
+      "event": "dispatch",
+      "detail": "prove"
     }
   ],
   "spawnTrace": {
@@ -342,6 +352,17 @@
         "at": "2026-09-20T20:20:48.253Z",
         "kind": "observed"
       }
+    ],
+    "build": [
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-1ae9d35f",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-20T23:28:24.108Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -368,6 +389,14 @@
         "序列1: 1 件の起動を観測: architect"
       ],
       "at": "2026-09-20T20:20:48.310Z"
+    },
+    "build": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 1 件の起動を観測: architect"
+      ],
+      "at": "2026-09-20T23:28:24.169Z"
     }
   }
 }

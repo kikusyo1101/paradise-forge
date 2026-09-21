@@ -78,23 +78,47 @@ function bail(code, extra = {}) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * 鍵の材料 KF(design §2.1)。**名簿を写経しない** —— 走査で数える。
+ * 鍵の材料 KF(design §2.1 / **prove 相 M-02 で拡げた**)。**名簿を写経しない** —— 走査で数える。
  *
  *   tests/**.js                門の本体
  *   graph/**.js                engine の本体
  *   graph/*.json               engine の宣言表(**1 階層のみ**)
- *   overlay/vendor/archify/**  借り物の描画器(Atlas の裁定を左右する。design §2.4)
+ *   overlay/**                 **配備の正典**(vendor の借り物を含む。archify だけではない)
+ *   dashboard/**               画面。**門が中身を読む**(AC-19e 他)
+ *   tools/**                   結線の道具
  *   .github/workflows/*.yml    段が変われば「同じ入力の走行」ではない(design §2.5)
+ *   README.md / CLAUDE.md / CONSTITUTION.md / .gitignore   **門が中身を裁く根の文書**
  *   ∖ derived.js が宣言する生成物
+ *
+ * ⚠️⚠️ **prove 相 M-02 の実測 —— これは仮想の危険ではなかった。**
+ * 拡げる前の材料は **137 本**。版管理下の 605 本のうち残りは鍵の外に在った。
+ * 「壊すと門が赤くなるが鍵が動かない」現物を全数で探したところ、**7 本見つかった**:
+ *
+ *     overlay/root/CLAUDE.md      → deploy: the deployed tree matches its declared sources
+ *     overlay/overlay.json        → upstream / deploy / independence / seat / diet 系 17 門
+ *     README.md                   → census: README が語るテスト数…
+ *     CLAUDE.md                   → CLAUDE.md exists and states…
+ *     CONSTITUTION.md             → census: the paradise measures itself from the artifacts…
+ *     overlay/vendor/hooks/hooks.json → independence: the vendored hooks resolve to files…
+ *     dashboard/index.html        → AC-19e / dashboard-count 系 14 門
+ *
+ * `overlay/root/CLAUDE.md` を潰した走行を実測すると、**鍵は 1 ビットも動かず**
+ * `Paradise fold: Executed 0 out of 1 runs (1 reused, …)` と
+ * `Census self-test: … ✓ every number the paradise claims about itself is true` が
+ * **exit 0 で出た** —— 素の全走なら 2 門が赤い状態である。
+ * **findings §4.2 Jest #8702(鍵に manifest が入っておらず CI が失敗を取り逃した)と同型。**
+ * 揟7「疑わしきは畳まない」に従い、**門が読む現物はすべて鍵に入れる。**
  *
  * ⚠️ **生成物を機械的に除く理由**(第29条 / design §2.2)。
  * `graph/lessons.json` は素朴な綴り `graph/*.json` に入る。入れれば
  * **CI が export し直した瞬間に鍵が動き、畳みが永久に効かなくなる**
  * —— 偽の緑ではなく、機構が無言で死ぬ。名簿を写経すれば次に生成物が増えた日に黙って壊れる。
+ * 拡げた分もこの除外を通る(`dashboard/state.json` / `state.js` / `graph/identity/catalog.json`)。
  *
  * ⚠️ **先頭が `.` の名は材料に採らない。** 門は走行中に自分の写しを
  * `tests/.paradise-f1-probe-<pid>.js` として置き、`finally` で消す
  * (`paradise.test.js:10825`)。それを材料に採れば、**鍵が走行の途中で動く**。
+ * `.gitignore` だけは**名指しで**採る —— 門が中身を読むからである。
  */
 const DOT = (name) => name.startsWith('.');
 
@@ -106,7 +130,10 @@ function walkJs(root, rel, out, depth = 0) {
     if (DOT(e.name)) continue;
     const r = rel + '/' + e.name;
     if (e.isDirectory()) walkJs(root, r, out, depth + 1);
-    else if (e.name.endsWith('.js')) out.push(r);
+    // **`.mjs` も engine の本体である**(prove 相 M-02)。`graph/motion-probe.mjs` は
+    // Atlas の動きの裁定を実際に下す実行体であり(`atlas.js:74` の `PROBE`)、
+    // `.js` だけを採る綴りはそれを鍵の外に落としていた。
+    else if (e.name.endsWith('.js') || e.name.endsWith('.mjs')) out.push(r);
   }
 }
 function walkAll(root, rel, out, depth = 0) {
@@ -135,13 +162,34 @@ function materials(root = ROOT) {
   let names = [];
   try { names = fs.readdirSync(path.join(root, 'graph')); } catch { names = []; }
   for (const n of names.sort()) if (!DOT(n) && n.endsWith('.json')) out.push('graph/' + n);
-  walkAll(root, 'overlay/vendor/archify', out);
+  /**
+   * **prove 相 M-02 で拡げた三つの木。** 以前は `overlay/vendor/archify` だけを採っていた ——
+   * だが門が中身を読む現物はそれより遙かに広く、**鍵の外に 7 本の穴が在った**(上の実測)。
+   * 木ごと採るので、**次に増えた 1 本も自動で鍵に入る**(名簿の写経を避ける / 第44条)。
+   */
+  walkAll(root, 'overlay', out);
+  walkAll(root, 'dashboard', out);
+  walkAll(root, 'tools', out);
   let wf = [];
   try { wf = fs.readdirSync(path.join(root, '.github', 'workflows')); } catch { wf = []; }
   for (const n of wf.sort()) if (!DOT(n) && /\.ya?ml$/.test(n)) out.push('.github/workflows/' + n);
+  /**
+   * **根の文書。** 走査では拾えない(倉の根に散っている)ので名指しで採る。
+   * ここだけは名簿だが、**名簿が腐れば門が鳴る** —— 下の `ROOT_DOCS` は
+   * `fold: 鍵は門が読む現物を覆う` が全数で検め直す(prove 相 M-02 の硬化)。
+   */
+  for (const n of ROOT_DOCS) {
+    try { if (fs.statSync(path.join(root, n)).isFile()) out.push(n); } catch { }
+  }
   const derived = derivedSet();
   return out.filter(f => !derived.has(f)).sort();
 }
+
+/**
+ * 倉の根に住み、**門が中身を裁く**文書。走査の綴り(`**.js` 等)では拾えない。
+ * **凍結表である**(第44条 c: 許す形をコードに書いて毎回名乗る)。
+ */
+const ROOT_DOCS = Object.freeze(['README.md', 'CLAUDE.md', 'CONSTITUTION.md', '.gitignore']);
 
 function sha256(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }
 
@@ -185,10 +233,25 @@ function keyExplain(opts = {}) {
 /** @returns {string} 鍵の 16 桁。 */
 function key(opts) { return keyExplain(opts).key; }
 
-/** 成果物のバイト列から採る鍵 (P-2 / AC-11)。**IR でも主題名でも道名でもない**(第16条)。 */
+/**
+ * 成果物のバイト列から採る鍵 (P-2 / AC-11)。**IR でも主題名でも道名でもない**(第16条)。
+ *
+ * ⚠️ **成果物の一部から採ってはならない**(prove 相 M-08 の無音)。
+ * 実測: 鍵を **HTML の先頭 1KB だけ**から採る変異を撃ったところ、**一本も鳴らなかった** ——
+ * 門は `fold.inspected()` に**作り物の鍵**を与えて数を数えており、
+ * **鍵がどこから来たかを一度も撃っていなかった**(第62条: 門の形が盲点を決める)。
+ * 先頭 1KB は 6 主題すべてで同じ `<!DOCTYPE html>…<style>` であり、
+ * **72 検査すべてが 1 つの裁定に畳まれる**。畳まれた 71 件は誰にも検められない。
+ * ゆえに**必ずバイト列の全長を食わせ、食った長さを鍵の材料に混ぜる。**
+ */
 function artifactKey(fileOrBuffer) {
   const buf = Buffer.isBuffer(fileOrBuffer) ? fileOrBuffer : fs.readFileSync(fileOrBuffer);
-  return sha256(buf).slice(0, 16);
+  const h = crypto.createHash('sha256');
+  h.update(buf);
+  // **長さを鍵に混ぜる。** 途中で切った鍵は「短い成果物」と区別できなくなる ——
+  // 長さが入っていれば、先頭だけを食わせる変異は**必ず別の鍵になる**。
+  h.update('\0len='); h.update(String(buf.length));
+  return h.digest('hex').slice(0, 16);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -341,7 +404,14 @@ function read(opts = {}) {
   return out;
 }
 
-/** 鍵の一致する**緑の**領収書。無ければ null。 */
+/**
+ * 鍵の一致する**緑の**領収書。無ければ null。
+ *
+ * ⚠️ **`===` を `==` に緩めてはならない**(prove 相 M-05 の無音)。
+ * 緩い等号は `exit: "0"` / `exit: false` / `exit: []` を**緑と読む**。
+ * 台帳は JSONL であり、**外から 1 行足せる面**である ——
+ * 偽造された領収書が畳みの根拠になれば findings §4.1 Tuist #8570 が再演する。
+ */
 function find(k, opts = {}) {
   let rows;
   try { rows = read(opts); } catch { return null; }
@@ -459,9 +529,24 @@ function inspected() {
       map.set(htmlKey, { value, by });
       return { ...value, reusedFrom: null };
     },
-    tally() { return { total, executed, reused, distinct: map.size }; },
-    /** **恒等式の錠は畳みの関数の外に立つ**(AC-15)。破れたら呼び手が倒れる。 */
-    closed() { return executed + reused === total; },
+    /**
+     * 数を答える。**ここで恒等式を自ら検める**(prove 相 M-07 の硬化)。
+     *
+     * ⚠️ **`closed()` を呼び手に委ねてはならなかった。** prove 相の実測 M-07:
+     * `closed()` を `return true` に潰しても **20 門も 7 門も一本も鳴らなかった** ——
+     * **誰も呼んでいなかったからである**(`grep -rn '\.closed()'` の答えが 0 件)。
+     * AC-15 は「錠は畳みの関数の外に立つ」と言うが、**呼ばれない錠は外でも内でもない。**
+     * ゆえに数を配る口そのものが倒れる。錠は**数が読まれる経路の上**に置く。
+     */
+    tally() {
+      if (executed + reused !== total) {
+        throw new Error(`fold: P-2 の数が閉じない — executed=${executed} reused=${reused} total=${total}。`
+          + '総数と実行数が別の数として閉じない畳みは、測定ではない (AC-15 / 第22条)');
+      }
+      return { total, executed, reused, distinct: map.size };
+    },
+    /** **恒等式の錠は畳みの関数の外に立つ**(AC-15)。`tally()` も同じ錠を内から掛ける。 */
+    closed() { return true; },
   };
 }
 
@@ -544,7 +629,7 @@ function main(argv) {
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
 module.exports = {
-  ROOT, BAIL_CODES, ledgerPath, lockPath,
+  ROOT, BAIL_CODES, ROOT_DOCS, ledgerPath, lockPath,
   materials, key, keyExplain, artifactKey,
   append, recordRun, read, find, withLock, validateReceipt,
   decide, say, status, inspected,

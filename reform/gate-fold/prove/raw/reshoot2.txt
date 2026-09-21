@@ -1,0 +1,19 @@
+--- M-14 [注入が当たらなかった] tests/paradise.test.js
+    M-14: **注入が当たらなかった** — tests/paradise.test.js の変異点の形が変わったか、CRLF のファイルに LF の綴りを当てている。当たらない注入で「鳴らない」と結論してはならない (第37条)
+--- B-02 [鳴った] tests/fold.test.js
+    壊したもの: **注入が当たったことの検めを消す** — `withMutant` の `assert.notStrictEqual(broken, src)` を殺す
+    期待       : 門が己の空転に気づくか。当たらない注入で「鳴った」と読む形が残っていないか
+    fold: exit=1 鳴った門: fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)
+--- B-03 [鳴った] tests/fold.test.js
+    壊したもの: **負の fixture を問う**: AC-16 の「健全な decide が倒れない」assert を消す
+    期待       : 門の中の「無罪と宣言した形」が消えても誰も気づかないか
+    fold: exit=1 鳴った門: fold: 全走が一本も走らない CI は測定ではない (第56条 d) | fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)
+--- W-04 [鳴った] .github/workflows/tribunal.yml
+    壊したもの: Self-test 段の `PARADISE_FOLD_LEDGER` を **`..._DISABLED` へ改名**する(綴りは残るが変数は死ぬ)
+    期待       : AC-23 の門は部分一致で読む。改名を捕らえるか、それとも綴りの影で通すか
+    fold: exit=1 鳴った門: fold: 全走が一本も走らない CI は測定ではない (第56条 d)
+    resident: exit=0
+
+撃った変異 4 件 / 無音 0 件
+**当たらなかった注入 1 件**(無音と数えない): M-14
+EXIT=0

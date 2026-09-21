@@ -1,0 +1,13 @@
+SKIP graph/.paradise-source (壊せない)
+鍵不動  **門赤**  overlay/vendor/hooks/hooks.json
+      鳴った門: independence: the vendored hooks resolve to files that actually exist
+鍵不動  門緑    overlay/vendor/commands/plan.md
+SKIP overlay/agents/atlas-cartographer.md (読めない)
+鍵不動  **門赤**  dashboard/index.html
+      鳴った門: AC-19e: 8 領域すべてが index に存在する | dashboard-count 系: dashboard-links が緑 (G-01/02/04/06) | 画面の数はすべて断面由来 — 数の看板に固定値が 1 つも無い | dashboard-count 系: dashboard-no-hardcode が緑 (G-01/02/04/06) | AC-RT-1: 降格・昇格の一行ログが画面に在る | AC-N03c: 同時接続の上限に触れる文言が画面に在る | dashboard-count 系: dashboard-transport が緑 (G-01/02/04/06) | AC-07c: 3 区分すべてが画面に実在する | dashboard-count 系: dashboard-freshness が緑 (G-01/02/04/06) | AC-20a: 全パネルが起動時から data-state を持つ(「どれでもない」を作らない) | dashboard-count 系: dashboard-states が緑 (G-01/02/04/06) | AC-13d: 軌跡指標 5 種すべてが画面に存在する | AC-13e: 矛盾の規則が断面で成立し、画面に印が在る | dashboard-count 系: dashboard-run-panel が緑 (G-01/02/04/06)
+鍵不動  門緑    tools/wire-paradise-hooks.js
+鍵不動  門緑    graph/motion-probe.mjs
+
+撃った現物 5 本 / **偽の緑の穴 2 本**:
+  overlay/vendor/hooks/hooks.json → independence: the vendored hooks resolve to files that actually exist
+  dashboard/index.html → AC-19e: 8 領域すべてが index に存在する | dashboard-count 系: dashboard-links が緑 (G-01/02/04/06) | 画面の数はすべて断面由来 — 数の看板に固定値が 1 つも無い | dashboard-count 系: dashboard-no-hardcode が緑 (G-01/02/04/06) | AC-RT-1: 降格・昇格の一行ログが画面に在る | AC-N03c: 同時接続の上限に触れる文言が画面に在る | dashboard-count 系: dashboard-transport が緑 (G-01/02/04/06) | AC-07c: 3 区分すべてが画面に実在する | dashboard-count 系: dashboard-freshness が緑 (G-01/02/04/06) | AC-20a: 全パネルが起動時から data-state を持つ(「どれでもない」を作らない) | dashboard-count 系: dashboard-states が緑 (G-01/02/04/06) | AC-13d: 軌跡指標 5 種すべてが画面に存在する | AC-13e: 矛盾の規則が断面で成立し、画面に印が在る | dashboard-count 系: dashboard-run-panel が緑 (G-01/02/04/06)
