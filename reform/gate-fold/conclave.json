@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "active",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -236,9 +236,9 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/gate-fold/reflect.txt",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -251,9 +251,9 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "rework",
+          "status": "done",
           "attempts": 0,
-          "artifactPath": null,
+          "artifactPath": "reform/gate-fold/verdict.txt",
           "dispatchedAt": null,
           "resumes": 0
         }
@@ -437,6 +437,21 @@
       "ts": "2026-09-21T10:30:49.792Z",
       "event": "ratify",
       "detail": "Quality (品質) ratified by executor"
+    },
+    {
+      "ts": "2026-09-21T10:37:23.242Z",
+      "event": "done",
+      "detail": "reflect → reform/gate-fold/reflect.txt"
+    },
+    {
+      "ts": "2026-09-21T10:37:23.375Z",
+      "event": "done",
+      "detail": "verdict → reform/gate-fold/verdict.txt"
+    },
+    {
+      "ts": "2026-09-21T10:37:23.448Z",
+      "event": "ratify",
+      "detail": "Tribunal (断罪機関) ratified by god"
     }
   ],
   "spawnTrace": {
@@ -637,6 +652,28 @@
         "at": "2026-09-21T10:30:49.682Z",
         "kind": "observed"
       }
+    ],
+    "reflect": [
+      {
+        "phase": "reflect",
+        "agent": "self-critic",
+        "toolUseId": "pontiff-critic",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:37:23.189Z",
+        "kind": "observed"
+      }
+    ],
+    "verdict": [
+      {
+        "phase": "verdict",
+        "agent": "creation-judge",
+        "toolUseId": "pontiff-verdict",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:37:23.320Z",
+        "kind": "observed"
+      }
     ]
   },
   "tierTrace": {
@@ -711,6 +748,22 @@
         "序列1: 2 件の起動を観測: verification-loop, verification-loop"
       ],
       "at": "2026-09-21T10:30:49.738Z"
+    },
+    "reflect": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: self-critic"
+      ],
+      "at": "2026-09-21T10:37:23.241Z"
+    },
+    "verdict": {
+      "declared": 2,
+      "state": "observed",
+      "lines": [
+        "序列2: 1 件の起動を観測: creation-judge"
+      ],
+      "at": "2026-09-21T10:37:23.375Z"
     }
   }
 }

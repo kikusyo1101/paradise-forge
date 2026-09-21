@@ -1,0 +1,119 @@
+═══════ 🔍 ADVERSARIAL SELF-CRITIQUE ═══════
+target: graph
+lessons: 107 件で裁いた  ← graph/lessons.json
+  ✓ [smell] no-hardcoded-assumptions: config flows from an intake into the logic
+  ✓ [gap] no-secrets: no secrets detected
+  ✓ [gap] exemption-claim-verified: 免除を適用した (engine): 申告=--self+.paradise-source / 楽園の倉の中: graph
+  ✓ [gap] no-wall-clock-iso: engine code is exempt (creations-only law)
+  ✓ [gap] no-external-deps: engine code is exempt (creations-only law)
+  ✓ [smell] domain-markers-present: engine code is exempt (creations-only law)
+  ✓ [gap] lesson:require-discovery: lesson satisfied: findings
+  ✓ [gap] lesson:require-customization: lesson out of scope here (applies: timer)
+  ✓ [gap] lesson:orchestration-in-prompt: lesson satisfied: orchestrator
+  ✓ [gap] lesson:lesson-scope: lesson satisfied: applies
+  ✓ [gap] lesson:critic-self-source: lesson satisfied: self
+  ✓ [gap] lesson:plan-before-build: lesson satisfied: synod
+  ✓ [gap] lesson:kg-forget: lesson satisfied: forget
+  ✓ [gap] lesson:critic-synonym: lesson satisfied: musthaves
+  ✓ [gap] lesson:model-by-rank: lesson satisfied: model
+  ✓ [gap] lesson:contract-failclosed: lesson satisfied: the contract reconciler must reject malformed/empty subagent payloads cleanly, never crash on JSON.parse
+  ✓ [gap] lesson:lesson-scope-strict: lesson satisfied: scopeMatches
+  ✓ [gap] lesson:self-scope-subject: lesson satisfied: selfScopeSubject
+  ✓ [gap] lesson:cross-domain-rework: lesson satisfied: 差し戻しはドメインを跨いで届かねばならない。ratify(--reject --from X) は X を所有するドメインを全体から探し、そのドメインの批准を取り消して再開させ、下流の成果物を破棄し、loop-guard の負債を誤った側に付ける。自domain内しか探さない実装は「差し戻したのに何も戻らない」偽の審判を生む
+  ✓ [gap] lesson:evidence-by-substance: lesson satisfied: 証拠は名前でなく中身で裁く。critic のチェックはファイル名の慣習照合ではなく成果物を読んで判定せよ。test.js/ac-test.js のような命名は .test./.spec. に合致しないため、名前照合だけだと実在するテスト群を『存在しない』と断じ偽REWORKを生む。ただし実質判定を緩めすぎず、アサートしないファイルは証拠と認めないこと
+  ✓ [gap] lesson:visual-identity-vocabulary: lesson satisfied: 見た目が似通うのはAIの癖ではなく参照語彙の偏り。identity.md で方向と却下理由を宣言させ、候補はfamily重複禁止・tech_saasは高々1枠、採用履歴で反復を構造的に禁じる。design.md(構造)とidentity.md(見た目)は名を分ける。語彙は索引に圧縮して同梱し実行時に外部取得しない(依存ゼロ厳守)
+  ✓ [gap] lesson:surface-judged-as-strictly: lesson satisfied: 表層は実体と同じ厳しさで裁く。UI/UXは(1)ux.mdで状態(空/読込/エラー/高密度)を先に設計、(2)visual-verify.jsでコントラスト・階調分離・非文字3:1・最小24px・color-schemeを数値で測る、(3)実ブラウザで両テーマ×狭広×初回/データ有りを目視し見られなかったものは未確認と書く、(4)ux-reviewer神官が表層に責任を負う。機械検査を全通過しても主役UIが読めない状態は成立しうる
+  ✓ [gap] lesson:borrowed-not-altered: lesson satisfied: 借り物(OSS上流)は改変せず変換で纏う。(1)上流ワークツリーはread-only、楽園フックはsettings.jsonの配列へ並べて足す(本体へ注入しない) (2)~/.claudeは成果物でありoverlay+上流から常に再生成できる (3)乖離は4種(transform=規則で再適用・衝突ではない/replace=楽園優先だが上流変更は提示/own=楽園固有/adopted=上流削除を意図的に拾う) (4)上流の削除に自動追従しない。adoptは人の承認必須、cronはfetchと報告まで
+  ✓ [gap] lesson:scoped-lesson: lesson satisfied: contract must fail closed
+  ✓ [gap] lesson:session-briefing: lesson satisfied: セッション開始に注ぐべきは知識でなくまず指示。役割・言語・最初に読むファイル・不可侵の掟を記憶より前に置く。知識だけ注ぐと新セッションは素の助手として英語で喋りmdを闇雲に検索する。CLAUDE.mdをリポジトリ直下に置きClaude Codeが最初に読む場所を埋めること。テストは本番KGを汚さない(require経由はモジュール読込前にPARADISE_KGを立てる)
+  ✓ [gap] lesson:paradise-independence: lesson satisfied: 楽園は己の足で立つ。上流の全資産をoverlay/vendor/へ取り込み、settings.jsonのフックもvendor基準へ張り替える。上流をマシンから消しても全門が通ることを実証せよ(隔離テスト)。独立は決別ではない — 上流が在るときだけ差分を見に行き、無ければ黙る。取り込みは常に人の承認。借りたものはNOTICE.mdで出自・コミット・ライセンスをcreditする
+  ✓ [gap] lesson:art21-every-mouth: lesson satisfied: check-agents が forge.js だけを見て clergy.js と examples の宙吊り参照を見逃した。名を跨いで書ける場所を全て列挙し、誰が名指したかまで報告せよ
+  ✓ [gap] lesson:art22-count-what-you-claim: lesson satisfied: 文書の数(テスト数・条数・vendor内訳)は黙って腐る。census.js が実測と突き合わせ、ずれれば門が落ちる
+  ✓ [gap] lesson:art23-reform-road: lesson satisfied: quick/standard/fullは全てcreations用で、楽園自身の改修が通る道が無かった。ゆえに11件のPRが教主の独断となり枢機卿も執行官も召集されなかった。reformスケール+prove相+無主の相検知で機構化
+  ✓ [gap] lesson:art24-branch-guard: lesson satisfied: PRが未マージという思い込みで古いmainから分岐しrebase競合で変更を失いかけた。CLAUDE.mdに書いてあっても守られない。branch-guard.jsで分岐前に実測する。散文の掟は門に格上げせよ
+  ✓ [gap] lesson:art25-real-hierarchy: lesson satisfied: 枢機卿はdataでactorでなく、信徒13名は全員名前だけ、conclaveは神官への発令書を教主に返していた。5階層のうち2つしか実行されず。原因はClaude Agent SDK docsが名指しする通りallowedToolsにTask/Agentが無いと起動が黙って拒否されること。各位階にactorを与え、下位を擁する者にapply-spawnで権能を機械適用し、発令は必ず一つ下の位階へ向ける
+  ✓ [gap] lesson:art19-supply-not-stock: lesson satisfied: 独立を宣言しvendorのファイル数を数える門はあったが、deployが実際にどこから読むかを見ていなかった。配備53件中31件が上流由来で、上流を隠すと22件に激減し神官9名が消えた。在庫を数える門は独立を証明しない
+  ✓ [gap] lesson:art26-parallel-by-nature: lesson satisfied: 天井20を発令幅に使っていた。調査(arXiv:2512.08296)はT∝n^1.724・実用3-4体・逆U字を示し、Cognition/Anthropicは実装作業の並列化が矛盾した成果物を生むと警告。ドメインに仕事の性質(research/review=並列可、design/build=逐次)を宣言させ、未宣言は安全側の逐次に倒す。MASTは検証失敗21.3%を示すのでdone_when/evidence_required/if_unclearを発令書に載せる
+  ✓ [gap] lesson:art27-spawn-trace: lesson satisfied: contract.jsは成果物の実在だけを検め、教主が自分で書いても通った。委譲と成りすましを区別できないのが11件のPRが枢機卿抜きで生まれた根。Claude Agent SDK docsが唯一確実と呼ぶtool_use/parent_tool_use_idの証跡を記録し、observed/asserted-only/no-traceの三値で裁く。自己申告は証拠ではない
+  ✓ [gap] lesson:browser-cleanup: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 目視検証でブラウザを開いたら必ず閉じる。開きっぱなしは神の画面を占領し、Braveはプロセス再利用で古いタブを掴みキャプチャが更新されない実害を招く。1つ確認したら taskkill /F /IM brave.exe で閉じてから次を開く。一時HTMLも削除する
+  ✓ [gap] lesson:late-research-still-rules: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 並列発令した調査が設計完了後に戻り、設計を検証せず反証した。成果物を守らず証拠に従う。遅れて来た証拠にも同じ効力がある
+  ✓ [gap] lesson:art28-conduct-not-grepped: lesson satisfied: criticは全教訓をコードへの文字列出現で裁いていた。機構の教訓には効くが規範(ブラウザを閉じよ等)はコードに現れようがなく永久に赤。実測30件中18件が規範で、赤は2件だけ=残り16件は偶然コードに語が現れただけだった。判定は働かず偶然に依存。kind:conductを宣言させ提示のみとする。永久に赤は門を無視させ、緑は教訓を消す。測れぬものも憶えねばならぬが、点数を付けてはならぬ
+  ✓ [gap] lesson:art29-derived-not-truth: lesson satisfied: 執行官がREWORKを出した。ローカル172全緑なのにCIで1件落ちる。原因はlessons.jsonの中身を前提にした検査。lessons.jsonはKGから生成され、CIにKGは無く裁定ジョブが再生成するため31件が0件になる(1682行消失)。生成物の中身でなくgenerator(lessons.js)の性質を検めよ。derived.jsで宣言し門が守る
+  ✓ [gap] lesson:creations-separate-repo: lesson satisfied: engine と創造物は寿命が違う。同じ倉に混ぜると engine の履歴が試作のノイズに埋もれる。創造物は paradise-creations に住み、住所を知るのは graph/workspace.js のみ|check
+  ✓ [gap] lesson:pontiff-seat-ungoverned: lesson satisfied: 位階のモデル宣言は agents の frontmatter にしか届かない。教主の座は settings.json であり、そこを書く機構が無ければ最上位は無統治のまま緑を出す。効かない effort(Haiku)は書かない。無人(-p)の座は課金同意が出ないので教主の座と分ける|check
+  ✓ [gap] lesson:subagent-defied-scope: lesson satisfied: a subagent told not to touch the live machine did it anyway — verify the FILE MTIME, not the report|check
+  ✓ [gap] lesson:gate-asserts-invariant-not-symptom: lesson satisfied: a test that freezes today's DEFECT count goes red the moment the defect is fixed — assert the invariant (zero dead matchers), never the snapshot|check
+  ✓ [gap] lesson:every-wish-is-not-build: lesson satisfied: route on the SUBJECT before the verb; a machine whose default is 'make something' cannot hear a question|check
+  ✓ [gap] lesson:accusation-needs-evidence-too: lesson satisfied: 教主が神官を「禁令を破った」と告発したが誤りだった。ファイル更新時刻という観測から動機を推定し、証跡(live log)を当たる前に結論を出した。真犯人は deploy の工程7という設計。第27条は他者の申告だけでなく己の告発にも適用される — 告発の前に証跡を読め|check
+  ✓ [gap] lesson:env-path-self-reference-kills-hooks: lesson satisfied: settings.json の env.PATH に $PATH を書くと展開されずリテラルになり PATH が丸ごと消え、node を呼ぶフックが全滅する。しかも exit 0 で黙って失敗する。PATH に何かを足す前に、それが既に PATH に居ないか実測せよ|check
+  ✓ [gap] lesson:forbid-by-effect-not-by-name: lesson satisfied: 神官に「実機に apply するな」と命じても deploy --write を許せば禁令は無意味。deploy は工程を通じて実機を書き換える。禁令は「何を禁じるか」でなく「その道具が何を書くか」で述べよ|check
+  ✓ [gap] lesson:new-road-old-gates: lesson satisfied: 道(scale)を新設したら、旧い前提を符号化した門を全て読み直せ。counsel を建てた当日に synod が『discovery が無い』『tribunal が無い』で拒んだ。門は消すのではなく分ける — 新旧どちらも鳴ることを証明せよ|check
+  ✓ [gap] lesson:judge-by-declared-property-not-name: lesson satisfied: 分岐条件は名前でなく宣言された性質で書け。run.scale は存在せず(undefined)、cardinal 名の判定は改名で壊れる。forge が meta.produces に刻む道の性質を使えば道が増えても意味が保たれる(第16条)|check
+  ✓ [gap] lesson:absence-is-not-passage: lesson satisfied: 断罪の門 verdict.js が空の {} を SHIP と判定していた。report.security が無いと sec={} で sec.issues||0 が 0 になり『検査していない』が『問題ゼロ』と同義だった。不在は通過ではない — 検証されなかったものは証明されていない|check
+  ✓ [gap] lesson:comment-claims-what-code-does-not: lesson satisfied: clergy.marshalPlan のコメントは『相に最も適した神官を選ぶ』と述べながら実装は priests[0] 固定で、auditor と reporter は一度も指揮されなかった。散文が機構を騙る第33条は engine の内部コメントにも起きる|check
+  ✓ [gap] lesson:gauge-trajectory-over-outcome: lesson satisfied: outcomeだけを裁く門は偶然通った暴走を祝福する。改善の主張はgauge.jsの前後数値で証明する — 荒れた走行(rework/retry/loop-guard)はtests全通過でも改善ではない
+  ✓ [gap] lesson:claude-md-diet-40: lesson satisfied: 常時ロード散文はハーネス全体で裁く: 手順→command, ファイル種の掟→rules paths:, 設定の写経→書かず出所を指す。門は census.harnessDietChecks (第40条)
+  ✓ [gap] lesson:canonical-lexicon-41: lesson satisfied: 位階の名は clergy.js LEXICON が唯一の出所。英字識別子が正しくても日本語散文は別に腐る(Priest=司祭が107箇所/29ファイル)。lexicon-check が .md/.js/.json/.yml を行番号まで名指しし CI が止める。生成物(dashboard/lessons)の異名は原本(KG)を直す
+  ✓ [gap] lesson:gate-sees-the-thing: lesson satisfied: 門は現物を見て裁く — 在り処の思い込みや単語の出現で裁くな|check
+  ✓ [gap] lesson:count-what-is-declared-not-what-grep-found: lesson satisfied: 裁定・矛盾・項目の件数は、成果物が自ら宣言した番号体系(X-nn/AC-nn/T-nn)を数える。grepで拾えた行数を実数と思い込むと、拾えなかった裁定が指示から丸ごと落ちる|check
+  ✓ [gap] lesson:grep-absence-is-not-absence: lesson satisfied: grepで出なかったことを『無い』と結論するな。同一行での共起や特定の綴りを条件にした検査は、節をまたいだ記述・言い換え・留保付きの引用を拾えない。赤が出たら実物の該当箇所を読んでから判定する(教主が同一走行で3度この誤りを犯した)|check
+  ✓ [gap] lesson:separation-needs-gates-on-both-sides: lesson satisfied: 第30条で創造物をengineから分離したとき、門はengine側にしか無く分離先が無検査で残った。天秤のPRはチェック0件で開いていた。責務を分けたら門も分けて建てる — 分離は片方だけ守ればよいことを意味しない|check
+  ✓ [gap] lesson:daily-window-debt: lesson satisfied: 定期ジョブの窓判定は日付跨ぎで負債を消してはならない。走る権利は claim/release で排他配布し、終了コードでなく出力の実物で成否を判ずる
+  ✓ [gap] lesson:dead-tools-teach: lesson satisfied: 役目を終えた道具は退治する。tools/ の各器物は楽園の何処かから名を呼ばれること。配備(~/.claude)を手編集する道具を飼わない
+  ✓ [gap] lesson:art45-dispatcher-not-runner: lesson satisfied: 排他リースを、自ら走らぬ発令者(watchdog)にも同じ形で渡すと、発火された当の走者が締め出され機構が自分の子を殺す。門は全て緑のまま道だけが死ぬ。権利にkind(run/dispatch)を持たせ、走者が継承(adoptedFrom)し、発令の橋は短命にし、他人の鍵は返せなくせよ
+  ✓ [gap] lesson:igniter-points-not-copies: lesson satisfied: 定期ジョブは既存の道(conclave)を名指しで指し、運転手順を写経しない。門は不在を通過にせず、壊して鳴らして確かめる。節を名指しで切り出してから裁く
+  ✓ [gap] lesson:wiring-gate-self-call: lesson satisfied: engine が冒頭に書く自分の使い方を呼び手に数えれば孤児は永久にゼロ。常に緑の門は門ではない|check
+  ✓ [gap] lesson:scroll-exempt-scope: lesson satisfied: atlas の scroll:true は溢れだけを免じるはずが、読みやすさの床(6px)まで免じていた。溢れ0pxの図が字5.57pxで落ちているのに緑を出した|check
+  ✓ [gap] lesson:layout-untouched-branch: lesson satisfied: 層化配置器は7席超の段を素通りしていた。楽園の道は6席以下なので誰も気づかず、結線の図(15席)で交差56を生んだ|check
+  ✓ [gap] lesson:missing-road-hijack: lesson satisfied: 「図を描け」に道が無く、reform(engine改修)か standard(build/security)へ誤着していた。道が無いことはできないことではなく、代役が黙って務めることを意味する|check
+  ✓ [gap] lesson:dispatch-target-drift: lesson satisfied: PHASE_LEAD に無い相は枢機卿の筆頭へ落ちる。実測5件、うち security は宣言 security-reviewer→発令 code-reviewer で第31条の格上げが一度も効いていなかった|check
+  ✓ [gap] lesson:gate-own-debris: lesson satisfied: atlas check の visual-check 生成物が次の走行の入力と衝突し二度目から不定に赤くなっていた。ただし掃除してよいのは門自身の作業場だけで、成果物の住処に触れてはならない|check
+  ✓ [gap] lesson:motion-must-be-declared: lesson satisfied: 動きは名乗らねば宿らない — meta.animation を書かねば描画器は仕様どおり静止画を作り、Live/Signal Flow/Play story が全て死ぬ。実測 [data-animate] 0個・motionGovernor capable:false。門は6主題すべて緑だった|check
+  ✓ [gap] lesson:clickable-is-not-working: lesson satisfied: 「押せる」は「動く」ではない — 釦の disabled:false は押せることしか語らない。押して待って章が進むこと(Beat 01/05→04/05)まで測って初めて機能と呼べる|check
+  ✓ [gap] lesson:upstream-defaults-from-canon: lesson satisfied: 借り物の既定値は記憶でなく上流の正典に問う — archify の schemas/README.md が 'Omit it … for the default static output' と述べていた。取り込んだ道具の既定を知らずに engine を直せば、直したつもりが新たな逸脱になる|check
+  ✓ [gap] lesson:two-causes-one-symptom: lesson satisfied: 直したのに直らない症状は原因が二つある — animation:trace 宣言後も神の画面では Play story が非活性のままだった。実機 Brave が prefers-reduced-motion:reduce を名乗り(Windows のアニメOFF, SPI_GETCLIENTAREAANIMATION=0)、viewer が正しく Still に落としていた。これは欠陥ではないので直してはならない|check
+  ✓ [gap] lesson:runner-death-not-ring-death: lesson satisfied: resume
+  ✓ [gap] lesson:gate-must-not-depend-on-what-it-guards: lesson satisfied: HARD_STOP
+  ✓ [gap] lesson:env-is-not-canon: lesson satisfied: この機の環境を期待値にするな。倉が隣に在ること・KG が在ること・fs.watch が 2 発出すことは、どれも「この機ではそうだった」に過ぎない。CI で赤が出た四件のうち三件がこれで、実装は毎回正しかった。門は不在の側でも「不在の契約」を測れ — 測らずに飛ばすのではなく、不在時に何を返すべきかを測る|check
+  ✓ [gap] lesson:death-can-arrive-async: lesson satisfied: try/catch/finally は同期の失敗しか捕らえない。借り物の Chrome 起動は Windows では spawn が同期に落ち、Linux では spawn に成功してパイプ書込の EPIPE が unhandled rejection として飛ぶ — 後者ではプロセスごと落ちて finally が一行も走らない。資源を掴む道は process.once('exit'/'uncaughtException'/'unhandledRejection') にも掃除を結べ。捕らえた例外は握り潰さず再送すること|check
+  ✓ [gap] lesson:borrowed-ctor-leaks: lesson satisfied: ChromeVisualBrowser は profileRoot を mkdtempSync してから Chrome を spawn する。spawn が失敗すると変数へ代入される前に throw するので、呼ぶ側の finally { browser.close() } は空振りし資源だけが残る。第20条により借り物は直さない — 呼ぶ側が構築の失敗を引き受け、己が生んだ分だけを掃く(他の走行の作業場は巻き込まない)|check
+  ✓ [gap] lesson:reform-lives-in-three-places: lesson satisfied: reform は散文 reform/<slug>/・実装 graph/・門 tests/ の三箇所に住む(第23条)。創造物は一つの倉に全てが揃うので dir を一つ見れば足りるが、同じ仮定を reform に当てると散文だけを見て『テストが無い』と裁く。束ねる相手は走行が触れた物に限れ — 楽園中の tests/ を数えれば、どの reform も常に緑になり門が門でなくなる|check
+  ✓ [gap] lesson:gate-out-of-range-rots: lesson satisfied: control.html は DEFAULT_PORT / POLL_MS / base() を paradise.js から写経していた。写経は片方だけ古くなるが、この画面を開く門が無かったので壊れても鳴らなかった。負債を直すときはコードだけでなく『鳴らない状態』そのものを直せ — 出所を一つにし、その画面を門の射程に入れる|check
+  ✓ [gap] lesson:fix-all-siblings-of-the-same-flaw: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 同じ関数の中で同じ病を片側だけ直すな — B-1 で files/churn の fail-open を塞いだが同じ関数の bytes は catch {} のまま残り、reflect が同一構造の BLOCK として再発見した。修復のとき『同じ設計上の問いを持つ箇所を全て洗ったか』を必ず問え
+  ✓ [gap] lesson:gate-neutralized-by-or-true: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: CI の段に || true を付けた瞬間、その門は何を食わせても緑になる。楽園は自分でこの戒めを workflow に書きながら 81 行下で破っていた。門の exit code を捨てるなら理由をコメントで書け。理由を書けないなら外せ
+  ✓ [gap] lesson:epoch-marker-needs-a-timestamp: lesson satisfied: 移行のための恩赦(epoch なしは unobservable)は、印を消しただけの走行にも同じ恩赦を与えた。導入時刻を engine の中に持ち created と比べれば legacy と門の回避を機械で分けられる。恩赦は移行のためであって回避のためではない
+  ✓ [gap] lesson:abandoned-run-must-ring: lesson satisfied: 走行帳が domains ratified < 全数 のまま一定期間無音なら engine が名指しせよ (conclave.js audit / runAbandonment)。実測: reform-claude-md-diet は 4/6 のまま 6.9日 放置され実装だけ PR #23 でマージされ 95 コミット何も鳴らなかった。相を見る phaseSilence は running の dispatchedAt しか読まないので、pending のまま忘れられた走行には構造的に映らない — 走行そのものを見る別の目が要る。閾値は STALE/SILENT と別物で 1 箇所にだけ置き、実測(閉じた走行 5 本の全事象間隔 173 件 max=110.4分)を越える境に据える。時刻を読めない走行帳は 0 で埋めず null のまま名指しせよ (第16条)。また reform の走行帳が創造物の倉に迷い込む流出は strayCreations の逆向きであり workspace.strayRuns が見る — 混入は履歴を汚すだけだが流出は審査そのものを迂回する|check
+  ✓ [gap] lesson:critic-exemption-self-declaration: lesson satisfied: 門は免除の自己申告を信じない — 空の .paradise-source 1個で創造物の掟3法が素通りした。免除の資格は住所(workspace.js)が裏付ける。免除も却下も必ず名指しで出力に残す (第54条)
+  ✓ [gap] lesson:ring-not-closed-by-merge: lesson satisfied: マージは環の完了ではない — 実装が main へ入っても走行帳が 5/11 のまま週単位で放置された実例がある。域を健全と断ずる前に node graph/conclave.js audit で実測せよ|check
+  ✓ [gap] lesson:mutation-author-is-blind-to-own-net: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 自分で打った変異が全部鳴っても網は証明されない — 変異を設計した者と門を設計した者が同じなら、変異は門の想像の外を撃たない。この環では prove1 が24門で『無音ゼロ』と報告した直後に review が別の8件の無音を見つけ、prove2 が『無音ゼロ』と報告した直後に review-2 が別の39変異で14件の無音を見つけた。二度連続で同じ形で裏切られている。ゆえに prove の主張は『無音ゼロ』ではなく『私が打ったN種の範囲で無音ゼロ』と述べ、網の証明は必ず別の者が別の軸(層・経路・呼び手)で撃つまで保留せよ
+  ✓ [gap] lesson:repair-opens-a-new-surface: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 修理は次の攻撃面を開く — 差分が塞いだ穴でなく、差分が新しく可能にしたことを撃て。この環では二度連鎖した: S-2(無制限再帰)の修理が P-1(読めなかった行を0件と偽る)を生み、冪等化そのものが F-1(先回り毒 — main には存在しない穴)を生んだ。どちらも修理の直後の相では見つからず、次の差し戻しで初めて出た。build の後の security/review は『この差分は何を新しく可能にしたか』を専用の節として先に問い、main と HEAD を切り分けて『本改革が作った穴か』を毎回名指せ
+  ✓ [gap] lesson:idempotent-key-can-be-preempted: lesson out of scope here (applies: gauge)
+  ✓ [gap] lesson:rework-four-times-is-a-design-debt: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 四度の差し戻しは実装の弱さでなく設計の空白である。この環の差し戻し4件のうち3件(無音の門・修理が生んだ病・先回り毒)は、design.md が『網をどう設計するか』と『この設計が新しく開く面』を一節も持たなかったことに帰する。設計相は FR ごとに(1)この設計が新しく可能にすること(2)網を誰がどの軸で撃つか(3)自作の変異では届かない層 を明示せよ。設計に一時間払わずに差し戻しで十時間払った
+  ✓ [gap] lesson:selection-must-run: lesson satisfied: 選んだ門を走らせない走行は測定ではない。matched=green+red の恒等式を、選別を行う関数の外側で検めよ|check
+  ✓ [gap] lesson:warden-outside-selection: lesson satisfied: 門番が絞り込みの対象なら門番ではない。機構を見張る門は、その機構が選び落とせない位置に置け|check
+  ✓ [gap] lesson:artifact-name-is-machine-contract: lesson satisfied: 相の名(discover)と成果物の名(findings.md)は別物。critic は名前で探すので、成果物の名は機械に合わせよ|findings
+  ✓ [gap] lesson:child-stdout-exit-truncation: lesson out of scope here (applies: child-process,ci-only-red,archify)
+  ✓ [gap] lesson:gate-red-needs-a-mouth-not-a-wider-gate: lesson satisfied: 門が正しく赤いのに現実は健全なとき、真因は「機構に語彙が無い」ことでありうる。境を伸ばす/例外を足す前に、engine に足りない口(記録の語)を探せ。口には濫用を禁じる錬(実在・非空・二度指し禁止・状態不変・註釈の実質)を掛け、逆の門(口が無い場合は今まで通り赤い)で固定する|check
+  ✓ [gap] lesson:both-branches-of-a-rule: lesson out of scope here (applies: forge)
+  ✓ [gap] lesson:regression-needs-both-heads: lesson out of scope here (applies: reform)
+  ✓ [gap] lesson:corpus-blind-to-its-own-half: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:filter-in-a-gate-is-a-silent-exemption: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:strength-of-evidence-sets-the-gate: lesson out of scope here (applies: forge)
+  ✓ [gap] lesson:mutate-the-gate-not-only-the-impl: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:corpus-machine-checked-against-table: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:restore-path-must-be-verified: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:classifier-repair-steals-from-another-road: lesson out of scope here (applies: forge)
+  ✓ [gap] lesson:gate-needs-confusion-matrix-not-a-column: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:conduct-lesson-presented-is-not-enforced: CONDUCT — 実行時に守るべき掟（コードでは検証できない）: 規範の教訓は提示しただけでは守られない。第28条は kind:conduct を『コードで検証できないので提示のみ』としたが、実測でその提示は振る舞いを変えなかった — repair-opens-a-new-surface と mutation-author-is-blind-to-own-net と rework-four-times-is-a-design-debt の三件は critic が ✓ CONDUCT として毎回提示していたのに、同じ走行が同じ形で8度目の回帰を生み四度の差し戻しを払った。ゆえに規範の教訓は『提示』で終わらせず、その教訓が名指す行為を発令書の必須項目へ降ろせ(main を複製して両 head で撃て / 触れた定数を読む全経路を列挙せよ / AC が要求していない軸を最低一つ持て)。測れぬものは点数を付けられないが、命令には変換できる
+  ✓ [gap] lesson:removal-is-a-legitimate-outcome: lesson out of scope here (applies: reform)
+  ✓ [gap] lesson:deliberation-outranks-build-verb: lesson out of scope here (applies: forge)
+  ✓ [gap] lesson:final-clause-carries-the-ask: lesson out of scope here (applies: forge)
+  ✓ [gap] lesson:redundant-corpus-silences-the-gate: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:gate-cannot-see-its-own-gutting: lesson out of scope here (applies: gate)
+  ✓ [gap] lesson:matrix-gate-only-sees-declared-rows: lesson satisfied: ROUTE_MATRIX 門は過去 5 形の回帰を一つも捕らえなかった(実測: 欠陥C/F-1/Q2-1/Q3-1/Q3-2 の全変異で exit 0・13 passed 0 failed)。理由は行列の軸が正解の道であって願いの母集団ではないこと — コーパスに世間の願い × engine 名が 0 件なので、その面が何処へ着こうが全セルが動かない。実測: 欠陥C 変異で世間の願い 9/10 が reform へ誤着したのに ROUTE_MATRIX は黙り、counsel.test.js だけが 106 failed で鳴いた。逆に DELIBERATION を殺すと ROUTE_MATRIX のみ 4 failed で counsel は 210/0 で黙った。二つの門は別の面を守っており、どちらも単独では網ではない。混同行列を建てたら『この行列が守る面』と『守らない面』を列挙し、守らない面を持つ門を名指しで隣に置け|check
+  ✓ [gap] lesson:scope-withdrawal-needs-both-columns: lesson satisfied: AC が達成不能になったとき『未達』と『射程外』を分けるのは、達成した場合に失う数を測ったか否かである。実測: AC-03/AC-05 型は engine 固有名だけで楽園を名指す願いで、HEAD は 26/26 が reform へ着かない。だが main も 26/26 着かず(回帰ではない)、撤去前の 6a4e3f4 は 3/26 まで下げた代わりに世間の願い 7/18 を reform へ攫った。すなわち『AC を緑にする』ことと『世間の誤着 7 件を甦らせる』ことが同値である。射程外化を正当と宣言するには (1) main と同じか良いこと (2) 達成すると別の面で何件失うか の二つを数で示せ。片方だけでは値切りと区別できない|check
+  ✓ [gap] lesson:mutation-lab-is-a-clone-not-the-worktree: lesson satisfied: 復旧経路を検めるより復旧を要らなくする方が強い。実測: 作業木の graph/forge.js を変異させる走者がログ名に / を含む変異名(Q3-1/Q3-2)を使い path が壊れて ENOENT で落ち、finally を持たなかったため Temp の絶対パスを require する変異が作業木に残った。commit していれば他の機械で即死する。git clone --no-hardlinks で複製を立て、その中だけで変異を撃てば、走者がどこで落ちても作業木は一字も汚れない。変異の名は必ず path に使える文字へ正規化し、書き換えは try/finally で包め|check
+  ✓ [gap] lesson:redundant-vocabulary-outlives-its-repair: lesson satisfied: 神官の申告『M9 は今も黙す』は真であった。実測: CREATE_RE から BUILD_JA(設ける|足す|加える|追加|新設|導入|搭載|持たせ|拡張|付ける)を抜いても、欠陥A の本旨 15/15・世間の建造 30/30・熟議 20/20・楽園の改修 10/10 が一件も動かず、route-matrix 13/0・counsel 210/0 が共に緑のままである。BUILD_JA が CREATE_RE で担っていた仕事は、後から建った DELIBERATION_RE と isReformSubject の抽象名枝が全て引き受けている。ゆえに欠陥A の修理の一部は今や余剰であり、かつこの余剰こそが R-1(熟議が counsel を失う)を生んだ当の語彙である。修理を撤去する相は、撤去した印だけでなく『その修理が他の定数へ足した語彙』も面ごと測り直せ — 生き残った語彙は害だけを残して役目を終えていることがある|check
+───────────────────────────────────────────
+VERDICT: the critic found nothing (107 件の教訓で裁いた). Proceed to judgment.
+═══════════════════════════════════════════
