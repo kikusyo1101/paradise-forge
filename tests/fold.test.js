@@ -133,6 +133,30 @@ function runNode(script, env = {}) {
   return spawnSync(process.execPath, [f], { encoding: 'utf8', cwd: ROOT, env: { ...process.env, ...env } });
 }
 
+/**
+ * **atlas の単道走行を一度だけ撃ち、写しを配る**(review F-3 / F-15 が同じ走行を読む)。
+ *
+ * ⚠️ **`--static` を付けてはならない**(実測)。`--static` は `ir.meta.animation` を
+ * 止めるので `motionGovernor` が赤になり、**総括行の内訳が出ない** ——
+ * F-15 が測りたい算法に到達できなくなる(第37条: 測れなかったものを緑と呼ばない)。
+ * 実 Chrome は `--static` でも起きるので**速くもならない**(review F-11 の訂正)。
+ *
+ * ⚠️ **門の依存にはならない。** 呼ばれた門が最初なら自分で撃つ(memo が空なら走る)——
+ * `--gate` で 1 本だけ撃っても正しく測れる。
+ */
+const ATLAS_MEMO = new Map();
+function atlasQuick(extra = []) {
+  const k = extra.join(' ');
+  if (!ATLAS_MEMO.has(k)) {
+    const fl = path.join(SAND, `atlas-quick-${ATLAS_MEMO.size}.jsonl`);
+    ATLAS_MEMO.set(k, spawnSync(process.execPath,
+      [path.join(GRAPH, 'atlas.js'), 'check', '--scale', 'quick', ...extra],
+      { encoding: 'utf8', cwd: ROOT, timeout: 300000,
+        env: { ...process.env, PARADISE_FOLD_LEDGER: fl } }));
+  }
+  return ATLAS_MEMO.get(k);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 
 async function main() {
@@ -492,7 +516,9 @@ async function main() {
     const t = seen.tally();
     assert.strictEqual(t.total, 2);
     assert.strictEqual(t.executed + t.reused, t.total, '健全な写像で恒等式が閉じない');
-    assert.strictEqual(seen.closed(), true, 'closed() が健全な写像で偽を返した');
+    assert.strictEqual(seen.closed, undefined,
+      '**飾りの錠 `closed()` が戻ってきた** — rework 相で消した (review R-1 / 第48条 c)。' +
+      '本物の錠は `tally()` にただ一つ在る');
     // ② **錠が数を配る口の上に在ること。** そこで倒れねば誰も気づかない
     const src = fs.readFileSync(FOLD_JS, 'utf8');
     assert.ok(/tally\(\) \{[\s\S]{0,80}if \(executed \+ reused !== total\) \{[\s\S]{0,200}throw new Error/.test(src),
@@ -1557,6 +1583,162 @@ async function main() {
           console.log('bail=' + f.decide({file:${JSON.stringify(dir)}}).bail);`);
         assert.match(String(rr.stdout), /bail=no-receipt/,
           `読めないを不在に潰す注入が当たっていない: ${rr.stdout}${rr.stderr}`);
+      });
+  });
+
+  await test('fold: 畳みを切った atlas も名乗る (F-3 回帰)', () => {
+    /**
+     * **review F-3 (HIGH) の回帰の門。**
+     *
+     * `--no-fold` の走行は `seen.take()` を通らず `total` が 0 のままになり、
+     * **`Atlas inspect:` の行が丸ごと落ちていた**(review F-3 の実測)。
+     * requirements §5 は三者(`paradise.test.js` / `census.js` / `atlas.js`)で
+     * **同じ綴り・同じ意味**を求め、AC-14 は「すべての畳み走行の stdout に
+     * `Executed <E> out of <N>` が現れる」と要求する。
+     * **切ったことを一言も言わない走行は、切れたことを証明できない**(第37条)。
+     *
+     * ⚠️ 註釈の訂正(review F-11): **`--static` はブラウザを起こさない旗ではない。**
+     * 制御するのは `ir.meta.animation` だけであり、実 Chrome は起きる(実測 49s)。
+     * さらに `--static` は `motionGovernor` を赤に落とすので**この門では使わない**。
+     * `timeout` と `status` を**自分で検める** —— 打ち切りを緑と読まない。
+     */
+    const off = atlasQuick(['--no-fold']);
+    assert.ok(String(off.stdout),
+      '**走行が出力を出さなかった** — 打ち切りを緑と読んではならない (第37条 / review F-11)');
+    assert.match(String(off.stdout), /Atlas inspect: Executed (\d+) out of (\d+) inspections \(0 reused, bail=disabled\)/,
+      `**--no-fold の atlas が畳みについて一言も名乗らない** — ` +
+      `requirements §5 は三者で同じ綴りを求める (review F-3): ${String(off.stdout).split('\n').slice(-5).join(' / ')}`);
+    const m = String(off.stdout).match(/Executed (\d+) out of (\d+) inspections/);
+    assert.strictEqual(m[1], m[2],
+      `畳みを切った走行で executed(${m[1]})と total(${m[2]})が違う — 切ったなら全て実行である`);
+    // 畳んだ走行は `bail=disabled` を名乗らない(**負の fixture**。
+    // 「常に disabled と書く実装」は切れたことの証明にならない)
+    assert.ok(!/Atlas inspect:.*bail=disabled/.test(String(atlasQuick([]).stdout)),
+      '畳んだ走行が bail=disabled を名乗った — **切っていないのに切ったと言う**のは第37条違反である');
+    /**
+     * **壊して鳴らす — 二つの層を別々に撃つ**(第21条)。現物の `atlas.js` は触らない
+     * (在庫の門「hermetic: 楽園の門は今この瞬間、版管理下の現物を汚していない」が
+     *  復元しても窓の開いた瞬間を名指す / 第58条 c)。
+     *
+     *   層① **engine**: 数えの口を抜けば `total` が 0 になる ——
+     *        F-3 の病の根である(`take()` を通らない走行は数を持たなかった)。
+     *   層② **atlas の綴り**: `folding` が偽の二つの枝が**どちらも**数えを呼ぶ。
+     *        片方だけなら `Executed 6 out of 12` のような**半分の名乗り**になる。
+     */
+    withMutant(
+      s => s.replace('    count(weight = 1) { total += weight; executed += weight; },',
+                     '    count(weight = 1) { void weight; },'),
+      (mut) => {
+        const rr = runNode(`const f=require(${JSON.stringify(mut)});
+          const s=f.inspected(); s.count(1); s.count(1);
+          console.log('total=' + s.tally().total);`);
+        assert.match(String(rr.stdout), /total=0/,
+          `数えの口を抜く注入が当たっていない: ${rr.stdout}${rr.stderr}`);
+      });
+    const atlasSrc2 = fs.readFileSync(path.join(GRAPH, 'atlas.js'), 'utf8');
+    const counts = (atlasSrc2.match(/\(seen\.count\(1\), \{ \.\.\./g) || []).length;
+    assert.strictEqual(counts, 2,
+      `**畳まない枝のうち ${counts} 本しか数えていない** — ` +
+      '1 主題 2 検査のうち片方だけ数えれば、名乗りは半分の嘘になる (review F-3 / 第22条)');
+    assert.match(atlasSrc2, /if \(!t\.total\) \{[\s\S]{0,200}process\.exit\(2\)/,
+      '**`total === 0` で黙って飛ぶ道が戻った** — 「検めなかった」を「閉じた」と呼んではならない (review F-16 / 第37条)');
+  });
+
+  await test('fold: 総括は数えた数と名指した名を食い違わせない (F-15 回帰)', () => {
+    /**
+     * **review F-15 (MEDIUM) の回帰の門**(第22条 / requirements §1.2:
+     * 「同じ量が二つの数として散文に残る」ことの禁)。
+     *
+     * `--all-scales` の実走で読まれた総括行(review §8):
+     *   `✓ 36 主題すべてが検査に通る（うち 7 件は平面化不能のため standard: wiring, dag）`
+     * **二つの嘘が同居していた**: ①主題は 6 であって 36 ではない(36 は 6 主題 × 6 道の行数)、
+     * ②`7 件`(行)と `wiring, dag`(2 個 / 主題)が食い違う ——
+     * **数を畳まず、名だけ畳んでいた。**
+     *
+     * ⚠️ **6 道 72 検査の実走はこの門では撃たない**(数分・ブラウザ 32 起動)。
+     * 撃つのは `--scale quick --static` の単道である。**総括行の算法**を裁くのであって
+     * 実走の数ではない —— 数を門で縛れば `draw()` が変わった日に偽の赤が出る(第62条 a の盲点)。
+     */
+    const out = String(atlasQuick([]).stdout);
+    assert.ok(out, '**走行が出力を出さなかった** — 打ち切りを緑と読まない (第37条)');
+    /**
+     * **壊して鳴らす — 検めそのものを先に撃つ**(第21条)。
+     * 生きた走行が緑とは限らない(atlas は今日赤いかもしれない)ので、
+     * **病んだ総括の文字列を fixture として直に食わせ、検めが鳴ることを毎回測る**。
+     * これは atlas の色に依らない —— **門が門であることの証明が、外の色に人質を取られない。**
+     */
+    const check = (line) => {
+      const cm = line.match(/(\d+) 主題 × (\d+) 道 = (\d+) 件/);
+      if (!cm) return '主題・道・件を別々の語で名乗っていない';
+      if (Number(cm[1]) * Number(cm[2]) !== Number(cm[3])) return '掛け算が総括と合わない';
+      const dm = line.match(/うち (\d+) 主題は平面化不能のため standard: ([^）]+)）/);
+      if (dm) {
+        const names = dm[2].split(',').map(s => s.trim()).filter(Boolean);
+        if (Number(dm[1]) !== names.length) return `数 ${dm[1]} と名 ${names.length} 個が食い違う`;
+        if (new Set(names).size !== names.length) return '名が重複している';
+      }
+      return null;
+    };
+    // review §8 が読んだ**現物の病んだ行**。これを素通しする検めは検めではない
+    assert.ok(check('  ✓ 36 主題すべてが検査に通る（うち 7 件は平面化不能のため standard: wiring, dag）'),
+      '**review §8 の病んだ総括を検めが素通しした** — この門は鳴らない (第48条 c)');
+    assert.strictEqual(check('  ✓ 6 主題 × 6 道 = 36 件すべてが検査に通る（うち 2 主題は平面化不能のため standard: wiring, dag）'), null,
+      '**健やかな総括を検めが赤と言った** — 偽の赤を出す門は門を殺す (第62条 a)');
+    assert.ok(check('  ✓ 6 主題 × 6 道 = 36 件すべてが検査に通る（うち 7 主題は平面化不能のため standard: wiring, dag）'),
+      '数と名の食い違いを見逃した');
+    assert.ok(check('  ✓ 6 主題 × 2 道 = 36 件すべてが検査に通る'), '掛け算の破れを見逃した');
+    // 主題の行を数える(`✓`/`🔴` で始まる主題行)
+    const subjectLines = out.split('\n').filter(l => /^\s+[✓🔴]\s+\w+\s+\[/.test(l));
+    assert.ok(subjectLines.length >= 6, `主題の行が ${subjectLines.length} 本しか無い: ${out.slice(-400)}`);
+    const summary = out.split('\n').find(l => /件すべてが検査に通る|図が壊れている/.test(l));
+    assert.ok(summary, `総括行が無い: ${out.split('\n').slice(-5).join(' / ')}`);
+    if (/図が壊れている/.test(summary)) {
+      // 赤い走行では総括の内訳が出ない。**測れなかったと名乗る**(第37条)——
+      // 検めの鳴動は上で測り終えているので、この門は飾りにはなっていない
+      console.error(`      ⚠ 生きた atlas は今赤い — 総括行の**実走**は測れなかった: ${summary.trim()}`);
+      return;
+    }
+    // 生きた走行の総括を同じ検めで裁く
+    assert.strictEqual(check(summary), null,
+      `**生きた atlas の総括が病んでいる** (review F-15 / 第22条): ${summary}`);
+    const cm = summary.match(/(\d+) 主題 × (\d+) 道 = (\d+) 件/);
+    assert.strictEqual(Number(cm[3]), subjectLines.length,
+      `総括の件数 ${cm[3]} が主題の行数 ${subjectLines.length} と違う — **同じ量を二つの数で語っている**`);
+  });
+
+  await test('fold: 恒等式の錠は一つしか無い — 飾りの錠は住まない (R-1 回帰)', () => {
+    /**
+     * **review R-1 (MEDIUM) の裁定「`closed()` を消せ」の回帰の門。**
+     *
+     * `closed() { return true; }` は**入力に依らず必ず通る飾り**であり(第48条 c)、
+     * しかも註釈が己を「**恒等式の錠**」と名乗っていた ——
+     * 次の誰かが「錠は二つある」と読み、**`tally()` の本物の錠を外して飾りを残す**道が
+     * 開いていた(第58条:「住処が二つ在れば真が二通りに割れる」)。
+     *
+     * AC-15 が求める「錠は畳みの関数の外に立つ」は **`tally()` が満たしている** ——
+     * 数が読まれる唯一の口であり、**そこで倒れる**。
+     */
+    const src = fs.readFileSync(FOLD_JS, 'utf8');
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(!/closed\s*\(\s*\)\s*\{/.test(code),
+      '**飾りの錠 `closed()` が戻ってきた** — 常に緑の門は門ではなく、' +
+      '飾りが「錠」を名乗れば次の誰かが本物を外す (review R-1 / 第48条 c)');
+    assert.ok(!/\.closed\(\)/.test(code), '`closed()` の呼び手が生えた — 常に緑の検めである');
+    // **錠が `tally()` に在ることを、実際に倒して示す**(文面ではなく走行で / 第16条)
+    const seen = fold.inspected();
+    seen.count(3);                       // 畳まない走行の数えでも錠は効く
+    assert.deepStrictEqual(seen.tally(), { total: 3, executed: 3, reused: 0, distinct: 0 },
+      '畳まない走行の数えが恒等式を閉じない');
+    // 錠が**倒す**ことの実測: `total` だけを進める壊れた写像を作って撃つ
+    withMutant(
+      s => s.replace('    count(weight = 1) { total += weight; executed += weight; },',
+                     '    count(weight = 1) { total += weight; },'),
+      (mut) => {
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          const s=f.inspected(); s.count(2);
+          try { s.tally(); console.log('通った'); } catch (e) { console.log('倒れた:' + e.message.slice(0, 60)); }`);
+        assert.match(String(r.stdout), /倒れた:.*数が閉じない/,
+          `**数が閉じないのに tally() が通った** — 錠が tally() に立っていない (AC-15): ${r.stdout}${r.stderr}`);
       });
   });
 

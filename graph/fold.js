@@ -650,6 +650,19 @@ function inspected() {
       return { ...value, reusedFrom: null };
     },
     /**
+     * **畳まない走行でも数を数える**(review F-3 / AC-14)。
+     *
+     * `--no-fold` の走行は `take()` を通らないので `total` が 0 のままになり、
+     * `atlas.js` の名乗りが**行ごと落ちていた** —— 実測(review F-3):
+     * `node graph/atlas.js check --scale quick --static --no-fold` の出力に
+     * **`Atlas inspect:` の行が存在しなかった**。
+     * **切ったつもりの機構が走り続けることを、出力が否定できない**(第37条)。
+     *
+     * 畳まない走行では**すべてが実行である** —— `total` と `executed` を共に進める。
+     * 写像には**触れない**(`map` に入れれば、切ったはずの畳みが裏で効く)。
+     */
+    count(weight = 1) { total += weight; executed += weight; },
+    /**
      * 数を答える。**ここで恒等式を自ら検める**(prove 相 M-07 の硬化)。
      *
      * ⚠️ **`closed()` を呼び手に委ねてはならなかった。** prove 相の実測 M-07:
@@ -657,6 +670,14 @@ function inspected() {
      * **誰も呼んでいなかったからである**(`grep -rn '\.closed()'` の答えが 0 件)。
      * AC-15 は「錠は畳みの関数の外に立つ」と言うが、**呼ばれない錠は外でも内でもない。**
      * ゆえに数を配る口そのものが倒れる。錠は**数が読まれる経路の上**に置く。
+     *
+     * ⚠️ **`closed()` は消した**(review R-1 の裁定 / 第48条 c)。
+     * `closed() { return true; }` は**入力に依らず必ず通る飾り**であり、
+     * しかも註釈が己を「錠」と名乗っていた —— 次の誰かが「錠は二つある」と読み、
+     * **`tally()` の本物の錠を外して飾りを残す**道が開いていた。
+     * **本物の錠はここに在る。** その形は `fold.test.js` の
+     * 『fold: P-2 の恒等式の錠は数を配る口の上に立つ (prove M-07)』が
+     * ソースで凍らせ、**錠を抜く変異を撃って鳴らす**。
      */
     tally() {
       if (executed + reused !== total) {
@@ -665,8 +686,6 @@ function inspected() {
       }
       return { total, executed, reused, distinct: map.size };
     },
-    /** **恒等式の錠は畳みの関数の外に立つ**(AC-15)。`tally()` も同じ錠を内から掛ける。 */
-    closed() { return true; },
   };
 }
 

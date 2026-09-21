@@ -1450,7 +1450,8 @@ function check(opts = {}) {
       // 実ブラウザで第一画面に収まるか。巻物と宣言した主題だけ免除する。
       const fs2 = opts.skipBrowser ? { ok: true, kind: 'skipped', overflow: 0, unreadable: 0, reusedFrom: null }
         : folding ? seen.take(`${htmlKey}#first-screen`, by, () => firstScreen(r.html, opts), 1)
-        : { ...firstScreen(r.html, opts), reusedFrom: null };
+        // **畳まない走行も数を数える**(review F-3 / AC-14)。数えねば名乗りが行ごと落ちる。
+        : (seen.count(1), { ...firstScreen(r.html, opts), reusedFrom: null });
       // 巻物の宣言は「長い」ことだけを許す。読めないことは決して許さない。
       // **測定不能も許さない** — 測らなかったものに巻物の許しを与えれば、
       // 門は「見なかった」を「収まっていた」と言い換えることになる(第16条)。
@@ -1460,7 +1461,7 @@ function check(opts = {}) {
       // Live も Signal Flow も Play story も全て死んでいる。
       const mo = opts.skipBrowser ? { ok: true, reusedFrom: null }
         : folding ? seen.take(`${htmlKey}#motion`, by, () => motionAlive(r.html), 1)
-        : { ...motionAlive(r.html), reusedFrom: null };
+        : (seen.count(1), { ...motionAlive(r.html), reusedFrom: null });
       rows.push({
         subject, type: r.type, profile: r.profile, minCrossings: r.minCrossings,
         scale: scaleTag,
@@ -1610,18 +1611,45 @@ function main() {
      * 錠は畳みの関数の外、すなわちここに在る。
      */
     const t = res.tally;
-    if (t && t.total) {
-      console.log(`Atlas inspect: Executed ${t.executed} out of ${t.total} inspections (${t.reused} reused)`);
+    /**
+     * ⚠️ **`t.total === 0` で錠ごと飛ばさない**(review F-16 / 第37条)。
+     * `total === 0` は「検めなかった」であって「閉じた」ではない。
+     */
+    if (t) {
+      if (!t.total) {
+        console.error('Atlas inspect: 検査を一件も撃たなかった — 測れなかった (第37条)');
+        process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
+      }
+      /**
+       * **畳みを切った走行も名乗る**(review F-3 / AC-14 / requirements §5)。
+       * 以前は `folding` が偽だと `total` が 0 のままで**行ごと落ちていた** ——
+       * 「切ったつもりの機構が走り続ける」ことを出力が否定できなかった。
+       * 綴りは三者(`paradise.test.js` / `census.js` / `atlas.js`)で同じ意味である。
+       */
+      const folded = !(f['no-fold'] || process.env.PARADISE_NO_FOLD === '1');
+      console.log(`Atlas inspect: Executed ${t.executed} out of ${t.total} inspections (${t.reused} reused` +
+        (folded ? '' : ', bail=disabled') + ')');
       if (t.executed + t.reused !== t.total) {
         console.error(`Atlas inspect: 数が閉じない — executed=${t.executed} reused=${t.reused} total=${t.total}。` +
           '総数と実行数が別の数として閉じない走行は、測定ではない (AC-15 / 第22条)');
         process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
       }
     }
-    const dg = res.rows.filter(r => r.profile === 'standard');
+    /**
+     * **同じ量を二つの数として語らない**(review F-15 / 第22条 / requirements §1.2)。
+     *
+     * 以前の綴りは `res.rows.length` を「主題」と呼び(`--all-scales` では 36 行)、
+     * **数は行で数え・名は主題で畳んでいた**(`7 件` と `wiring, dag`(2 個)が同居)。
+     * ゆえに**主題・道・件を別々の語で名乗り、名を数えた個数だけを添える。**
+     */
+    const dgSubjects = [...new Set(res.rows.filter(r => r.profile === 'standard').map(r => r.subject))];
+    const subjects = new Set(res.rows.map(r => r.subject)).size;
+    const scaleCount = res.scales ? res.scales.length : 1;
     console.log(res.ok
-      ? `  ✓ ${res.rows.length} 主題すべてが検査に通る` +
-        (dg.length ? `（うち ${dg.length} 件は平面化不能のため standard: ${[...new Set(dg.map(r => r.subject))].join(', ')}）` : '（全て showcase 9/9）')
+      ? `  ✓ ${subjects} 主題 × ${scaleCount} 道 = ${res.rows.length} 件すべてが検査に通る` +
+        (dgSubjects.length
+          ? `（うち ${dgSubjects.length} 主題は平面化不能のため standard: ${dgSubjects.join(', ')}）`
+          : '（全て showcase 9/9）')
       : '  🔴 図が壊れている — 楽園は己の姿を語れない');
     console.log('════════════════════════════════');
     process.exit(res.ok ? 0 : 1);
