@@ -1,0 +1,55 @@
+129c129
+<   ✓ every phase in every forge scale names an agent that actually exists
+---
+>   · every phase in every forge scale names an agent that actually exists  (skipped: no harness at this path — nothing to verify (mode=global))
+159c159,190
+<   ✓ deploy: the deployed tree matches its declared sources
+---
+>   ✗ deploy: the deployed tree matches its declared sources
+>       ~/.claude is a product — a difference here means someone edited the product instead of the source
+> + actual - expected
+> 
+> + [
+> +   'agents/architect.md: not deployed',
+> +   'agents/code-reviewer.md: not deployed',
+> +   'agents/doc-updater.md: not deployed',
+> +   'agents/security-reviewer.md: not deployed',
+> +   'agents/tdd-guide.md: not deployed',
+> +   'agents/auditor.md: not deployed',
+> +   'agents/cardinal.md: not deployed',
+> +   'agents/creation-judge.md: not deployed',
+> +   'agents/executor.md: not deployed',
+> +   'agents/market-researcher.md: not deployed',
+> +   'agents/requirements-analyst.md: not deployed',
+> +   'agents/reporter.md: not deployed',
+> +   'agents/self-critic.md: not deployed',
+> +   'agents/ux-reviewer.md: not deployed',
+> +   'commands/orchestrate.md: not deployed',
+> +   'commands/forge.md: not deployed',
+> +   'commands/conclave.md: not deployed',
+> +   'commands/graph.md: not deployed',
+> +   'commands/ship.md: not deployed',
+> +   'rules/git-workflow.md: not deployed',
+> +   'rules/hooks.md: not deployed',
+> +   'rules/security.md: not deployed',
+> +   'root/CLAUDE.md: not deployed',
+> +   'settings/settings.json: 教主の座が宣言と違う: 現状 (無統治)/(無統治) ⇒ fable/xhigh'
+> + ]
+> - []
+> 
+193,195c224,226
+<   ✓ hierarchy: believers have bodies, not merely names (Art.25)
+<   ✓ hierarchy: a priest with believers can actually dispatch them (Art.25)
+<   ✓ hierarchy: the gate fires when a believer loses its body (Art.25)
+---
+>   · hierarchy: believers have bodies, not merely names (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+>   · hierarchy: a priest with believers can actually dispatch them (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+>   · hierarchy: the gate fires when a believer loses its body (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+593c624
+<   ✓ conclave: 配備された道は正典と一致する (第29条)
+---
+>   · conclave: 配備された道は正典と一致する (第29条)  (skipped: mode=global (source=env) で未配備: C:\Users\kikus\.claude\commands\conclave.md)
+729c760
+< Paradise self-test: 492 passed, 0 failed
+---
+> Paradise self-test: 486 passed, 1 failed, 5 skipped

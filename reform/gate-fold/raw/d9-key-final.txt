@@ -1,0 +1,25 @@
+derived.js が宣言する生成物(= 鍵に入れてはならない):
+   CONSTITUTION.INDEX.md
+   graph/lessons.json
+   dashboard/state.json
+   dashboard/state.js
+   graph/identity/catalog.json
+   .claude/settings.json
+
+KF (確定案): tests+graph(js/json)+archify+workflows − 生成物
+    材料 135 本 / 4.47 MiB / 鍵 17bef4090f5ae264
+    計算 中央 8.5ms (最小 7.1 / 最大 10.3)
+KF−archify (借り物を鍵から外した場合)
+    材料 67 本 / 2.29 MiB / 鍵 118c8d8b5561a5e8
+    計算 中央 3.4ms (最小 3.2 / 最大 4.0)
+KF+overlay 全部
+    材料 216 本 / 4.80 MiB / 鍵 eec6238e8d7a9cd2
+    計算 中央 10.1ms (最小 9.8 / 最大 10.8)
+
+AC-05 の実測: 素="17bef4090f5ae264" / repo="b7c61f2b13b055cd" / global="3bb9a6fa294a65eb"
+   repo == global ? false  (false でなければ AC-05 は満たせない)
+
+AC-03 の材料: 鍵は git SHA (6641e3b6b2cb…) を一切含まない — 上の算法に SHA は現れない
+   註釈一行の書き換えは tests/paradise.test.js の内容ハッシュを変える ⇒ 鍵が動く(構造的に自明)
+
+鍵の計算の代 ≒ 7ms。P-1 の取り分 843,000ms に対し 0.0008%

@@ -37,6 +37,7 @@ const { execFileSync } = require('child_process');
 const clergy = require('./clergy.js');
 const forge = require('./forge.js');
 const wiring = require('./wiring.js');
+const fold = require('./fold.js');             // reform/gate-fold: 成果物の鍵と写像を知るのは fold.js だけ
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -1403,6 +1404,23 @@ function check(opts = {}) {
    * 門が成果物を消す — 直しが新しい破壊になる。ゆえに住処には触れない。
    */
   if (outdir !== OUTDIR) fs.rmSync(outdir, { recursive: true, force: true });
+  /**
+   * **成果物のバイト列で検査を畳む**(reform/gate-fold / P-2 / FR-06 / AC-11)。
+   *
+   * ⚠️ **`inspected` はこの走行のプロセス内の写像であって、台帳ではない。**
+   * P-2 は台帳を一切使わない —— 使えば requirements §7-6 の禁
+   * (「本改修の台帳は 1 回の CI 走行の中でのみ有効」)を破り、
+   * Atlas の裁定が CI 走行を跨いで写される(第37条違反)。
+   *
+   * ⚠️ **検査の総数は 1 つも減らない。** 減るのは「同じ成果物を二度検める」分だけである
+   * (揟8 / 第37条)。畳んだ件は `(reused: html=<sha16>)` で写し元を名指す(AC-12 / 第21条 b)。
+   *
+   * 呼び手が `inspected` を渡せば、**道をまたいで**畳める(`--all-scales`)。
+   * 実測(design D-7): **道の中には畳める対が 1 つも無い** —— 畳める 20 組はすべて道を跨ぐ。
+   */
+  const seen = opts.inspected || fold.inspected();
+  const folding = !(opts.noFold || process.env.PARADISE_NO_FOLD === '1');
+  const scaleTag = opts.scale || 'standard';
   const rows = [];
   for (const subject of Object.keys(SUBJECTS)) {
     try {
@@ -1416,8 +1434,24 @@ function check(opts = {}) {
       const errorsOk = r.receipt.ok === true && v.checksPassed === v.checkCount && v.errors === 0;
       const warnOk = v.warnings === 0 || impossible;
       const profileOk = r.profile === 'showcase' ? !impossible : impossible;
+      /**
+       * **鍵は成果物のバイト列である。** IR でも主題名でも道名でもない
+       * (第16条 / requirements §0.1 の但し書き: 「IR 種数と HTML 種数が一致したことは
+       *  証拠ではあるが保証ではない —— 次に draw() が変われば含意は壊れうる」)。
+       *
+       * ⚠️ **検査の種別を鍵に混ぜる。** 1 主題あたりの検査は 2 回(`firstScreen` と
+       * `motionAlive`)であり、**別の問いに別の答えを出す**。種別を混ぜずに同じ鍵で
+       * 写せば、2 本目が 1 本目の答えを受け取る —— 実測で踏んだ:
+       * `Executed 16 out of 72` になり、**全主題の動きが `firstScreen` の裁定に化けた**
+       * (`動 0` が並んだ)。**畳みは答えを写すのであって、問いを取り違えてはならない**(第16条)。
+       */
+      const htmlKey = fold.artifactKey(r.html);
+      const by = `${subject}@${scaleTag}`;
       // 実ブラウザで第一画面に収まるか。巻物と宣言した主題だけ免除する。
-      const fs2 = opts.skipBrowser ? { ok: true, kind: 'skipped', overflow: 0, unreadable: 0 } : firstScreen(r.html);
+      const fs2 = opts.skipBrowser ? { ok: true, kind: 'skipped', overflow: 0, unreadable: 0, reusedFrom: null }
+        : folding ? seen.take(`${htmlKey}#first-screen`, by, () => firstScreen(r.html, opts), 1)
+        // **畳まない走行も数を数える**(review F-3 / AC-14)。数えねば名乗りが行ごと落ちる。
+        : (seen.count(1), { ...firstScreen(r.html, opts), reusedFrom: null });
       // 巻物の宣言は「長い」ことだけを許す。読めないことは決して許さない。
       // **測定不能も許さない** — 測らなかったものに巻物の許しを与えれば、
       // 門は「見なかった」を「収まっていた」と言い換えることになる(第16条)。
@@ -1425,12 +1459,20 @@ function check(opts = {}) {
         (fs2.kind === 'overflow' && SUBJECTS[subject].scroll === true && !fs2.unreadable);
       // 動きは名乗らねば宿らない (第50条)。図として正しくとも、静止画なら
       // Live も Signal Flow も Play story も全て死んでいる。
-      const mo = opts.skipBrowser ? { ok: true } : motionAlive(r.html);
+      const mo = opts.skipBrowser ? { ok: true, reusedFrom: null }
+        : folding ? seen.take(`${htmlKey}#motion`, by, () => motionAlive(r.html), 1)
+        : (seen.count(1), { ...motionAlive(r.html), reusedFrom: null });
       rows.push({
         subject, type: r.type, profile: r.profile, minCrossings: r.minCrossings,
+        scale: scaleTag,
         ok: errorsOk && warnOk && profileOk && scrollOk && mo.ok,
         checks: `${v.checksPassed}/${v.checkCount}`, errors: v.errors, warnings: v.warnings,
         screenKind: fs2.kind,
+        htmlKey,
+        // **写した裁定は元を名指す**(AC-12)。`hierarchy@counsel` が赤いとき、
+        // その裁定が `hierarchy@quick` の写しだと判らなければ、直せない(第21条 b)。
+        reusedFrom: fs2.reusedFrom ? String(fs2.reusedFrom).split('#')[0] : null,
+        reusedBy: fs2.reusedBy || null,
         // 語は kind から出す。**`OVERFLOW` は本当に溢れたときにだけ現れる語である。**
         screen: fs2.kind === 'fits' ? 'fits'
               : fs2.kind === 'skipped' ? 'skipped'
@@ -1453,10 +1495,40 @@ function check(opts = {}) {
         ...(scrollOk && !mo.ok ? { error: `${(mo.failures || []).join(' / ')} — 動きは名乗らねば宿らない。meta.animation:"trace" を宣言せよ (第50条)` } : {}),
       });
     } catch (e) {
-      rows.push({ subject, type: SUBJECTS[subject].type, ok: false, checks: '—', error: String(e.diagnostics || e.message).slice(0, 900) });
+      /**
+       * **道ごとに閉じた catch。** `--all-scales` で 1 主題の失敗が 6 道分を
+       * 巻き込まないための錠である(design R-10)。ここが開けば、1 プロセスに
+       * まとめた代償として「1 つの例外が全体を落とす」病が新たに生まれる。
+       */
+      rows.push({ subject, type: SUBJECTS[subject].type, ok: false, checks: '—', scale: scaleTag,
+        error: String(e.diagnostics || e.message).slice(0, 900) });
     }
   }
-  return { ok: rows.every(r => r.ok), rows };
+  return { ok: rows.every(r => r.ok), rows, tally: seen.tally(), inspected: seen };
+}
+
+/**
+ * **6 道を 1 つの走行で見る**(reform/gate-fold / AC-11 / design §6)。
+ *
+ * ⚠️ **これをやらないと AC-11 は実現不能である。** 実測(design D-7):
+ * 道の中に畳める対は **0 件**(quick/standard/full/reform/counsel/cartography の
+ * いずれも 相異なる HTML = 6)。畳める 20 組は**すべて道を跨ぐ** ——
+ * `hierarchy` / `dispatch` / `run` / `wiring` は全道でバイト同一だからである。
+ * ゆえに 6 道を一つの走行で見なければ、**一回も畳めない**。
+ *
+ * ⚠️ **台帳は使わない。** 道をまたぐ写像はこのプロセスの中だけに生きる(§6.4)。
+ */
+const ALL_SCALES = ['quick', 'standard', 'full', 'reform', 'counsel', 'cartography'];
+
+function checkAllScales(opts = {}) {
+  const seen = fold.inspected();
+  const rows = [];
+  for (const scale of (opts.scales || ALL_SCALES)) {
+    const r = check({ ...opts, scale, inspected: seen,
+      outdir: path.join(opts.outdir || path.join(os.tmpdir(), 'paradise-atlas-all'), scale) });
+    rows.push(...r.rows);
+  }
+  return { ok: rows.every(r => r.ok), rows, tally: seen.tally(), scales: opts.scales || ALL_SCALES };
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────
@@ -1465,7 +1537,24 @@ function parse(argv) { const f = {}; const pos = []; for (let i = 0; i < argv.le
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const { f, pos } = parse(rest);
-  const opts = { scale: f.scale, phase: f.phase, out: f.out, outdir: f.outdir, static: !!f.static };
+  /**
+   * **未知の旗を黙って通さない**(reform/gate-fold / AC-19 / 第37条)。
+   * `parse()` は旗を何でも受けるので、綴り違いの `--no-fould` は黙殺され、
+   * **畳みが有効なまま `check` の本体へ進む**。走った後で「切ったはずだ」と
+   * 言う者を、出力は否定できない。強さは `paradise.test.js:55` の `die()` に揃える。
+   */
+  const KNOWN_FLAGS = new Set(['scale', 'phase', 'out', 'outdir', 'static', 'json',
+    'quality', 'no-fold', 'all-scales']);
+  for (const k of Object.keys(f)) {
+    if (!KNOWN_FLAGS.has(k)) {
+      console.error(`Atlas: unknown flag --${k} — 知らない旗を黙って通せば、` +
+        '切ったつもりの機構が走り続ける (AC-19)');
+      process.exit(2);
+    }
+  }
+  const opts = { scale: f.scale, phase: f.phase, out: f.out, outdir: f.outdir, static: !!f.static,
+    // **畳みの出口**(requirements §5)。三者で同じ綴り・同じ意味である。
+    noFold: f['no-fold'] === true };
 
   if (cmd === 'subjects') {
     console.log('═══ 🗺  ATLAS — 描ける主題 ═══');
@@ -1497,28 +1586,80 @@ function main() {
     process.exit(bad ? 1 : 0);
   }
   if (cmd === 'check') {
-    const res = check(opts);
+    /**
+     * **`--all-scales`(reform/gate-fold / AC-11)。**
+     * 旧: CI が `for s in quick standard …; do node graph/atlas.js check --scale "$s"; done` と
+     * 6 プロセスを起こしていた。一つのプロセスは 12 検査しか見えず、
+     * **道の中には畳める対が 1 つも無い**(design D-7 の実測)。
+     */
+    const all = f['all-scales'] === true;
+    const res = all ? checkAllScales(opts) : check(opts);
     console.log('═══ 🗺  ATLAS GATE (第47条) ═══');
+    let lastScale = null;
     for (const r of res.rows) {
+      if (all && r.scale !== lastScale) { console.log(`── scale: ${r.scale} ──`); lastScale = r.scale; }
       const note = r.profile === 'standard' ? `  standard(最小交差 ${r.minCrossings})` : '';
-      console.log(`  ${r.ok ? '✓' : '🔴'} ${r.subject.padEnd(11)} [${r.type.padEnd(12)}] ${String(r.checks).padEnd(4)} ${String(r.screen || '').padEnd(14)}${String(r.motion || '').padEnd(7)}${r.bytes ? r.bytes + 'b' : ''}${note}`);
+      // **写した裁定は元を名指す**(AC-12 / 第21条 b: 辿れない発見は直せない発見である)。
+      const re = r.reusedFrom ? `  (reused: html=${r.reusedFrom}${r.reusedBy ? ` ← ${r.reusedBy}` : ''})` : '';
+      console.log(`  ${r.ok ? '✓' : '🔴'} ${r.subject.padEnd(11)} [${String(r.type).padEnd(12)}] ${String(r.checks).padEnd(4)} ${String(r.screen || '').padEnd(14)}${String(r.motion || '').padEnd(7)}${r.bytes ? r.bytes + 'b' : ''}${note}${re}`);
       if (r.error) console.log(`      ${r.error}`);
     }
     console.log('────────────────────────────────');
-    const dg = res.rows.filter(r => r.profile === 'standard');
+    /**
+     * **総数と実行数は別の数である**(AC-14 / 揟4 / requirements §4.2)。
+     * 恒等式 `E + reused == N` が破れたら**走行が倒れる**(AC-15)——
+     * 錠は畳みの関数の外、すなわちここに在る。
+     */
+    const t = res.tally;
+    /**
+     * ⚠️ **`t.total === 0` で錠ごと飛ばさない**(review F-16 / 第37条)。
+     * `total === 0` は「検めなかった」であって「閉じた」ではない。
+     */
+    if (t) {
+      if (!t.total) {
+        console.error('Atlas inspect: 検査を一件も撃たなかった — 測れなかった (第37条)');
+        process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
+      }
+      /**
+       * **畳みを切った走行も名乗る**(review F-3 / AC-14 / requirements §5)。
+       * 以前は `folding` が偽だと `total` が 0 のままで**行ごと落ちていた** ——
+       * 「切ったつもりの機構が走り続ける」ことを出力が否定できなかった。
+       * 綴りは三者(`paradise.test.js` / `census.js` / `atlas.js`)で同じ意味である。
+       */
+      const folded = !(f['no-fold'] || process.env.PARADISE_NO_FOLD === '1');
+      console.log(`Atlas inspect: Executed ${t.executed} out of ${t.total} inspections (${t.reused} reused` +
+        (folded ? '' : ', bail=disabled') + ')');
+      if (t.executed + t.reused !== t.total) {
+        console.error(`Atlas inspect: 数が閉じない — executed=${t.executed} reused=${t.reused} total=${t.total}。` +
+          '総数と実行数が別の数として閉じない走行は、測定ではない (AC-15 / 第22条)');
+        process.exit(2);   // 2 = 測れなかった。1(測って落ちた)と混ぜない
+      }
+    }
+    /**
+     * **同じ量を二つの数として語らない**(review F-15 / 第22条 / requirements §1.2)。
+     *
+     * 以前の綴りは `res.rows.length` を「主題」と呼び(`--all-scales` では 36 行)、
+     * **数は行で数え・名は主題で畳んでいた**(`7 件` と `wiring, dag`(2 個)が同居)。
+     * ゆえに**主題・道・件を別々の語で名乗り、名を数えた個数だけを添える。**
+     */
+    const dgSubjects = [...new Set(res.rows.filter(r => r.profile === 'standard').map(r => r.subject))];
+    const subjects = new Set(res.rows.map(r => r.subject)).size;
+    const scaleCount = res.scales ? res.scales.length : 1;
     console.log(res.ok
-      ? `  ✓ ${res.rows.length} 主題すべてが検査に通る` +
-        (dg.length ? `（うち ${dg.length} 件は平面化不能のため standard: ${dg.map(r => r.subject).join(', ')}）` : '（全て showcase 9/9）')
+      ? `  ✓ ${subjects} 主題 × ${scaleCount} 道 = ${res.rows.length} 件すべてが検査に通る` +
+        (dgSubjects.length
+          ? `（うち ${dgSubjects.length} 主題は平面化不能のため standard: ${dgSubjects.join(', ')}）`
+          : '（全て showcase 9/9）')
       : '  🔴 図が壊れている — 楽園は己の姿を語れない');
     console.log('════════════════════════════════');
     process.exit(res.ok ? 0 : 1);
   }
   console.error('commands: subjects | ir <subject> [--out f] | draw <subject> [--out f] | all [--outdir d] | check');
-  console.error('  options: --scale quick|standard|full|reform|counsel   --phase <phaseId>');
+  console.error('  options: --scale quick|standard|full|reform|counsel|cartography   --all-scales   --phase <phaseId>   --no-fold');
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { SUBJECTS, buildIr, draw, check, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, archifyPath, DEFAULT_ARCHIFY, firstScreen, FIRST_SCREEN_KINDS };
+module.exports = { SUBJECTS, buildIr, draw, check, checkAllScales, ALL_SCALES, layered, irHierarchy, irConclave, irDispatch, irDag, irRun, irWiring, archifyPath, DEFAULT_ARCHIFY, firstScreen, FIRST_SCREEN_KINDS };
 // `ARCHIFY` は**呼ばれた時の env を映す**取得子である(定数ではない)。
 // 定数のまま輸出すると、門ヘルパーが env を立てても古い写しが現物を掴み続ける。
 Object.defineProperty(module.exports, 'ARCHIFY', ARCHIFY_DESC);

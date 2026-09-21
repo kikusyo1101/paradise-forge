@@ -1,0 +1,59 @@
+run 35384344207 sha=6641e3b6b2cb747c53ab065fe92ba413c0fc9b21 conclusion=success createdAt=2026-09-18T19:09:30Z
+total_step_seconds=2070 steps=56
+
+     841s  [success] #33  🏠 Abode(両居)— repo と global の両方で自己診断が緑か (AC-53)
+     427s  [success] #4   ⚖️ Self-test — 楽園の自己検証
+     423s  [success] #12  🔢 Census — 楽園が己について語る数が真実か (第22条)
+     335s  [success] #17  🗺 Atlas — 楽園が己の姿を図にできるか (第47条)
+      10s  [success] #44  🧹 Motion probe leak — 門が己の残骸で不定に鳴らないか (G-09 / 第50条の裏面)
+       8s  [success] #41  📡 Dashboard SSE — 形式・ポート・接続数 (FR-09 / FR-10 / NFR-03)
+       5s  [success] #29  🏠 Abode — 住処の器と輸出の台帳 (第58条)
+       5s  [success] #45  🧊 Dashboard fallback — file:// で凍結を正直に名乗るか (FR-08 / NFR-06)
+       4s  [success] #3   Run actions/setup-node@v4
+       3s  [success] #42  👀 Dashboard watch — デバウンスと change/rename の等価 (FR-11 / NFR-04)
+       1s  [success] #1   Set up job
+       1s  [success] #2   Run actions/checkout@v4
+       1s  [success] #10  🔒 Secret scan — 秘密情報の混入検査
+       1s  [success] #11  🧩 Engine integrity — 全エンジンが読み込めるか
+       1s  [success] #21  🧭 Route matrix — 6 道 × 6 道の混同行列 (第61条)
+       1s  [success] #27  🔁 Abandoned run — 見捨てられた走行を機構が名指すか (第53条)
+       1s  [success] #34  🔢 Dashboard counts — 画面の数が嘘をつかないか (G-01 / 第22条)
+       1s  [success] #39  🖥 Dashboard states — 5 状態と経路とスピナー禁止 (FR-20 / FR-07 / FR-08)
+       1s  [success] #100 Post Run actions/checkout@v4
+       0s  [success] #5   🏛️ Workspace — 創造物が楽園に紛れていないか (第30条)
+       0s  [success] #6   🔁 Conclave audit — 見捨てられた走行が居ないか (第53条)
+       0s  [success] #7   📜 Constitution — 憲法条文の存在確認
+       0s  [success] #8   🎖️ Model policy — 位階別モデル方針の整合
+       0s  [success] #9   👑 Pontiff seat — 教主の座が機構化されているか (第31条)
+       0s  [success] #13  🔒 Hermetic — 門が己の測る対象を汚していないか (第58条(c))
+       0s  [success] #14  📄 Derived — 生成物の中身を前提にした検査がないか (第29条)
+       0s  [success] #15  ⛪ Agent presence — 神官の実在 / 無主の相 / 階層の実体 (第21・23・25条)
+       0s  [success] #16  🕮 Lexicon — 位階と枢機卿団の名が正典に従うか (第41条)
+       0s  [success] #18  🔗 Wiring — 機構の結線に孤児と宙吊りが無いか (第44条 / 第48条)
+       0s  [success] #19  ⚖️ Guards — 修復が掟を広げていないか (第57条)
+       0s  [success] #20  🏛️ Counsel — 諐問の道と階層の実体 (第25条 / 第32条 / 第37条)
+       0s  [success] #22  💳 Route debt — 未払いの誤着が黙って直っていないか (AC-7 / 第16条)
+       0s  [success] #23  🚪 Reform sign — 弱い印が語中に埋没していないか (PARA-10 / 第60条)
+       0s  [success] #24  🎯 Reform reach — 弱い印の射程が黙って変わっていないか (PARA-10 / 第16条)
+       0s  [success] #25  ⚖️ Ratify guard — 仕事をせずに祝福できないか (PARA-6 / 第37条)
+       0s  [success] #26  📤 Lesson export — 刻んだ教訓が門に届いているか (第61条 / 盲点②)
+       0s  [success] #28  📒 Gauge ledger — 台帳の監査が働くか (第55条 / 第37条)
+       0s  [success] #30  🏠 Abode(撤収)— 実機の hooks が楽園を指していないか (AC-30 / 第20条の鏡像)
+       0s  [success] #31  🏠 Abode(兄弟倉)— 環が起動する場所に神官が居るか (EX-2 / AC-46〜50)
+       0s  [success] #32  🏠 Abode(repo)— リポジトリ内の住処へ実際に配備できるか (AC-5/6/13)
+       0s  [success] #35  🚫 Dashboard deps — 外部依存が再び生えていないか (G-02 / NFR-02)
+       0s  [success] #36  🔗 Dashboard links — 孤児ページが生まれていないか (G-04 / FR-19)
+       0s  [success] #37  🔒 Dashboard hardcode — 固定値が再発していないか (G-06 / FR-02)
+       0s  [success] #38  ⏱ Dashboard perf — 同期経路が遅く/子プロセス化していないか (G-07 + G-10)
+       0s  [success] #40  ⚖️ Dashboard run panel — 点数と起動実績の矛盾が見えるか (FR-13/14/22)
+       0s  [success] #43  🎨 Dashboard surface — visual-verify と critic が画面を見る (G-05 / 第50条)
+       0s  [success] #46  🕊 Vendor — 取り込んだ道具が上流へ電話をかけないか (第20条・第47条d)
+       0s  [success] #47  🗝 Spawn authority — 下位を擁する者が起動の権能を持つか (第25条)
+       0s  [success] #48  👁 Spawn trace — 起動の証跡を裁く機構が働くか (第27条)
+       0s  [success] #49  👁 Tier audit — 序列の門が実在の走行を見る (第42条 / 第52条)
+       0s  [success] #50  🎭 Domains — 役者は担える分野を宣言しているか (第52条)
+       0s  [success] #99  Post Run actions/setup-node@v4
+       0s  [success] #101 Complete job
+       0s  [success] #1   Set up job
+       0s  [success] #2   裁定を組み立てて送る
+       0s  [success] #3   Complete job

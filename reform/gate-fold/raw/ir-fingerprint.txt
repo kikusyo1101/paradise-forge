@@ -1,0 +1,17 @@
+主題\道        quick             standard          full              reform            counsel           cartography       
+hierarchy   d24939a338d4e960  d24939a338d4e960  d24939a338d4e960  d24939a338d4e960  d24939a338d4e960  d24939a338d4e960  
+conclave    292bb4d8c4370eb4  0ce991eee9addcc0  33029b993cda0893  b17d1e4341edabea  0b24ccfa8a25ac48  139e9ed5f9438662  
+dispatch    447b71852003f578  447b71852003f578  447b71852003f578  447b71852003f578  447b71852003f578  447b71852003f578  
+dag         b155e332ff59a483  d03d467e86e331ea  dbc0c30ff52d6e5a  4529c38894f9cfa6  0f09f3083bf9a48f  721b9e155f5c48ba  
+run         744cd93e4c431f7c  744cd93e4c431f7c  744cd93e4c431f7c  744cd93e4c431f7c  744cd93e4c431f7c  744cd93e4c431f7c  
+wiring      15814cbab4beec69  15814cbab4beec69  15814cbab4beec69  15814cbab4beec69  15814cbab4beec69  15814cbab4beec69  
+
+組み合わせ総数: 36
+相異なるIR総数: 16
+
+hierarchy    相異なるIR = 1   ← 全道で同一(畳める)
+conclave     相異なるIR = 6   ← 道ごとに変わる
+dispatch     相異なるIR = 1   ← 全道で同一(畳める)
+dag          相異なるIR = 6   ← 道ごとに変わる
+run          相異なるIR = 1   ← 全道で同一(畳める)
+wiring       相異なるIR = 1   ← 全道で同一(畳める)

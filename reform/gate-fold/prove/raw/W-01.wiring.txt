@@ -1,0 +1,8 @@
+═══ 🔗 WIRING GATE (第44条 / 第48条) ═══
+  engine 39 / 内の辺 76
+  · 門の除外 1 件: tests/_pulse-fixture.js — 門ではなく、pulse の門が読む作り物の的である(先頭の _ が支援ファイルを表す)
+  🔴 孤児の門 1:
+      tests/fold.test.js — 建てられているが、CI も paradise.test.js も走らせない
+      門は走らされて初めて門である。赤いまま誰にも気付かれず住み続ける (第44条)。
+      .github/workflows/*.yml に "node tests/<名>" を足すか、paradise.test.js から起こせ。
+  🔴 結線が破れている

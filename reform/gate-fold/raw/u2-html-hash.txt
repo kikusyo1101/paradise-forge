@@ -1,0 +1,23 @@
+hierarchy   相異なるIR=1  相異なるHTML=1  [一致]
+   IR  : d24939a338d4e960 d24939a338d4e960 d24939a338d4e960 d24939a338d4e960 d24939a338d4e960 d24939a338d4e960
+   HTML: d185c1ff4425b032 d185c1ff4425b032 d185c1ff4425b032 d185c1ff4425b032 d185c1ff4425b032 d185c1ff4425b032
+conclave    相異なるIR=6  相異なるHTML=6  [一致]
+   IR  : 1c1de916695f4158 1037a6cdd3f11157 ea30f399fa642e11 67dd590a714b4786 0b24ccfa8a25ac48 b4faddbca45ed7fe
+   HTML: 9e39a4495e7553f8 28b0a0a91d8ec6ff 08dd2341b9e6b74f 22425ddca6f4b3cc e188e5d042a922e8 4e238972b73b4af9
+dispatch    相異なるIR=1  相異なるHTML=1  [一致]
+   IR  : 447b71852003f578 447b71852003f578 447b71852003f578 447b71852003f578 447b71852003f578 447b71852003f578
+   HTML: fe4450eb25974fc3 fe4450eb25974fc3 fe4450eb25974fc3 fe4450eb25974fc3 fe4450eb25974fc3 fe4450eb25974fc3
+dag         相異なるIR=6  相異なるHTML=6  [一致]
+   IR  : b155e332ff59a483 d03d467e86e331ea dbc0c30ff52d6e5a 4529c38894f9cfa6 0f09f3083bf9a48f 721b9e155f5c48ba
+   HTML: 7b0eb88b1550005e 8cac08d25a58e3ab c6a8b81ae15894cf fc7b3b8a96911041 388e156c0ec5662c 73a83406144568ec
+run         相異なるIR=1  相異なるHTML=1  [一致]
+   IR  : 744cd93e4c431f7c 744cd93e4c431f7c 744cd93e4c431f7c 744cd93e4c431f7c 744cd93e4c431f7c 744cd93e4c431f7c
+   HTML: 3bbe558200dfbdec 3bbe558200dfbdec 3bbe558200dfbdec 3bbe558200dfbdec 3bbe558200dfbdec 3bbe558200dfbdec
+wiring      相異なるIR=1  相異なるHTML=1  [一致]
+   IR  : 15814cbab4beec69 15814cbab4beec69 15814cbab4beec69 15814cbab4beec69 15814cbab4beec69 15814cbab4beec69
+   HTML: e1026ceeac7e8862 e1026ceeac7e8862 e1026ceeac7e8862 e1026ceeac7e8862 e1026ceeac7e8862 e1026ceeac7e8862
+
+組み合わせ総数: 36
+相異なるIR総数:   16
+相異なるHTML総数: 16
+U-2 判定: IR種数 == HTML種数 — IR が同一なら HTML もバイト同一(畳みの鍵に使える)

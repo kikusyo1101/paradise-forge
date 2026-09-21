@@ -1,0 +1,10 @@
+═══ 🗺  ATLAS GATE (第47条) ═══
+  ✓ hierarchy   [architecture] 9/9  fits          動 29   734697b
+  ✓ conclave    [workflow    ] 9/9  fits          動 22   731008b
+  ✓ dispatch    [sequence    ] 9/9  fits          動 14   727484b
+  ✓ dag         [architecture] 9/9  scroll(3944px)動 11   722074b
+  ✓ run         [lifecycle   ] 9/9  fits          動 13   726618b
+  ✓ wiring      [architecture] 9/9  scroll(3211px)動 110  788383b  standard(最小交差 188)
+────────────────────────────────
+  ✓ 6 主題すべてが検査に通る（うち 1 件は平面化不能のため standard: wiring）
+════════════════════════════════

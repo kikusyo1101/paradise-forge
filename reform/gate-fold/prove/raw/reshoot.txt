@@ -1,0 +1,40 @@
+--- M-08 [鳴った] graph/fold.js
+    壊したもの: 成果物の鍵を **HTML の先頭 1KB だけ**から採る(後ろの差を見逃す)
+    期待       : AC-11 の「鍵は成果物のバイト列」を門が振る舞いで検めるか
+    fold: exit=1 鳴った門: fold: 成果物の鍵は成果物の全長から採る (prove M-08)
+    resident: exit=0
+--- M-10 [鳴った] graph/atlas.js
+    壊したもの: `--no-fold` を受け取るが黙殺する(旗は通るが `folding` は常に真)
+    期待       : AC-18「三者で同じ意味」を**振る舞いで**検める門が在るか(ソース grep だけなら無音)
+    fold: exit=1 鳴った門: fold: --no-fold は畳みを完全に切る (揟6)
+    resident: exit=0
+--- M-11 [鳴った] graph/census.js
+    壊したもの: census の畳みを `--no-fold` でも切らない(領収書を必ず読む)
+    期待       : 同上。census 側の出口が振る舞いで検められているか
+    fold: exit=1 鳴った門: fold: --no-fold は畳みを完全に切る (揟6)
+    resident: exit=0
+--- M-13 [鳴った] graph/fold.js
+    壊したもの: 領収書の形の検めを外す(validateReceipt を素通しにする)
+    期待       : 壊れた形の領収書が台帳に入る。門は形の契約を検めるか
+    fold: exit=1 鳴った門: fold: 領収書の形は台帳へ入る前に裁かれる (prove M-13)
+    resident: exit=0
+--- M-14 [鳴った] tests/paradise.test.js
+    壊したもの: **出力行を `process.exit` の後ろへ移す**(死にコード化)。畳んだ走行が写し元を名乗らなくなる
+    期待       : AC-12「写し元を名指す」が全走の畳みについても検められているか
+    fold: exit=1 鳴った門: fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)
+    resident: exit=1 鳴った門: fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコードの後ろへ移らない (prove M-14)
+--- B-02 [注入が当たらなかった] tests/fold.test.js
+    B-02: **注入が当たらなかった** — tests/fold.test.js の変異点の形が変わったか、CRLF のファイルに LF の綴りを当てている。当たらない注入で「鳴らない」と結論してはならない (第37条)
+--- B-03 [鳴った] tests/fold.test.js
+    壊したもの: **負の fixture を問う**: AC-16 の「健全な decide が倒れない」assert を消す
+    期待       : 門の中の「無罪と宣言した形」が消えても誰も気づかないか
+    fold: exit=1 鳴った門: fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)
+--- W-04 [鳴った] .github/workflows/tribunal.yml
+    壊したもの: Self-test 段の `PARADISE_FOLD_LEDGER` を **`..._DISABLED` へ改名**する(綴りは残るが変数は死ぬ)
+    期待       : AC-23 の門は部分一致で読む。改名を捕らえるか、それとも綴りの影で通すか
+    fold: exit=1 鳴った門: fold: 全走が一本も走らない CI は測定ではない (第56条 d) | fold: この門は己の故障注入の骨を持っている (prove B-02 / B-03)
+    resident: exit=0
+
+撃った変異 8 件 / 無音 0 件
+**当たらなかった注入 1 件**(無音と数えない): B-02
+EXIT=0

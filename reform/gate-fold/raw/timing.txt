@@ -1,0 +1,10 @@
+=== RUN A: no PARADISE_ABODE ===
+exit=0
+ELAPSED_NONE=368s
+=== RUN B: PARADISE_ABODE=repo ===
+exit=0
+ELAPSED_REPO=363s
+=== RUN C: PARADISE_ABODE=global ===
+exit=1
+ELAPSED_GLOBAL=364s
+=== ALL DONE ===

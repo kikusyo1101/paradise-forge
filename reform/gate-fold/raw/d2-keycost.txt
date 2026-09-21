@@ -1,0 +1,13 @@
+derived.js が宣言する生成物: ["(derived.js が読めない: (d.DERIVED || d.derived || []).map is not a function)"]
+
+K1: tests/**/*.js + graph/**/*.js のみ
+    ファイル 64 本 / 2.2 MiB / 鍵 56d7bee5f682a5f9 / 中央 4.3ms (4/4/5ms)
+K2: K1 + graph/*.json
+    ファイル 67 本 / 2.3 MiB / 鍵 8d1784db4fb3cec5 / 中央 3.9ms (4/4/4ms)
+K3: K2 + overlay/** 全部
+    ファイル 216 本 / 4.8 MiB / 鍵 fd4a0c30a707f339 / 中央 11.8ms (12/12/15ms)
+K4: 版管理下の全ファイル
+    ファイル 546 本 / 11.4 MiB / 鍵 a8098ec236d7a3df / 中央 32.6ms (31/33/40ms)
+
+K3 の材料に混ざった「宣言された生成物」: (0 件)
+K3 に入る graph/*.json の実名: [ 'graph/abode.json', 'graph/domains.json', 'graph/lessons.json' ]

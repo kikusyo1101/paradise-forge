@@ -1,0 +1,5 @@
+基準(fold.js 無しの複製)exit=1
+   · 除外 1 件: graph/abode.js (住所を作るのが職務 / 資格の裏付け: function resolve+function pathFor+function globalWrite+module.exports を輸出している / homedir 呼び出し 1 箇所)
+   ✗ 兄弟倉の住処が楽園と一致しない (2 件) — 第30条 / EX-2
+   ✗ 門が己の測る対象を汚している (4 件) — 第58条(c)
+   ✓ 逆向き依存は 0 件 — 実機の hooks は楽園の木を指していない (AC-30)

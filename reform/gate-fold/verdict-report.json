@@ -1,0 +1,9 @@
+{
+  "produces": "engine",
+  "build": "pass",
+  "types": { "status": "pass" },
+  "lint": { "status": "pass" },
+  "tests": { "passed": 501, "failed": 0, "total": 501, "coverage": 100 },
+  "security": { "issues": 0, "secrets": 0 },
+  "spec": { "satisfied": true, "unmet": [] }
+}

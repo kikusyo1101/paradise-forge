@@ -135,7 +135,7 @@ node $KG stats                                 # 統計
 
 ## テスト
 ```bash
-node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 492 本
+node ~/Documents/workspace/paradise/tests/paradise.test.js   # 門 502 本
 ```
 > 語るのは**門の総数**であって「通った数」ではない。第3段以降、門は住処や兄弟倉の
 > 不在を**名乗って**飛ばす(第58条(e))ので、`passed` は測る機械の資産で変わる ——
@@ -177,6 +177,45 @@ node tests/paradise.test.js \
 頼る門は、単独で撃つと全走では緑なのに赤くなる（実装が走行のたびに警告を名乗る）。
 偽の赤を見たら前段の門を `--gate` に足して撃ち直せ。
 **「緑」の根拠になるのは引数無しの全走だけである。CI に絞り込みを持ち込むな。**
+
+### 畳み — 同じ入力の走行を二度撃たない（`graph/fold.js`）
+
+**門は一本も減っていない。** 畳みは門を間引く機構ではなく、**同一入力に対する重複した走行**を
+一度に畳む機構である。CI の一回の中で、同じ自己診断が段をまたいで繰り返し撃たれ、
+同じ成果物が繰り返し検められていた —— どれも入力が一字も違わないのに、である。
+**同じ答えを二度買うのは、測定ではなく出費である。**
+
+```bash
+node graph/fold.js fold-key [--explain]   # いま撃とうとしている走行の鍵
+node graph/fold.js fold-status [--json]   # 畳めるか・なぜ畳めないか
+```
+
+**名乗りの読み方**（畳んだことを機械が名乗らない畳みは、測定の放棄である）:
+
+```
+Paradise self-test: Executed 0 out of 1 runs (1 reused, key=…)   ← 畳んだ
+Census self-test:   Executed 1 out of 1 runs (0 reused, bail=…)  ← 畳まなかった
+```
+
+- `Executed E out of N` — 実際に撃った数と、撃つはずだった数。**`E + R = N` は常に閉じる**。
+- `key=…` — 入力の内容ハッシュ。**同じ鍵なら同じ入力**であり、違えば畳まない。
+- `bail=…` — 畳まなかった**理由**。語彙は閉じている（`no-receipt` / `key-miss` /
+  `not-green` / `truncated` / `undeclared-state` / `disabled` / `ledger-unreadable`）。
+  語彙を開けば `bail=whatever` が生まれ、機械は「畳まなかった」と
+  **「畳む機構が壊れていた」を区別できなくなる**。とりわけ `ledger-unreadable` は
+  `no-receipt` と**別の語**である —— **読めないは skip ではなく赤**（第62条・第37条）。
+
+**出口は常に開いている。** 畳みを疑ったら切って撃ち直せ。切った走行は `bail=disabled` を名乗る。
+
+```bash
+node tests/paradise.test.js --no-fold     # この走行だけ畳まない
+PARADISE_NO_FOLD=1 <任意の命令>            # 環境ごと畳まない
+```
+
+**台帳は 1 回の CI 走行の中でのみ有効である。** 走行をまたいで領収書を持ち越せば、
+今日の門が**昨日の緑**を名乗る —— それは第37条（不在は通過ではない）の裏口になる。
+ゆえに畳みは「速くなった」と主張するためではなく、**同じ測定を重ねて買わない**ためだけに在る。
+畳みが何をしたかは、走行の名乗りとして毎回 stdout に出る。出ないなら、それは畳みではない。
 
 ---
 
@@ -237,6 +276,7 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/hermetic.js` | **門の密閉性**。`tests/*.js` を走査し、`ROOT`/`DIR`/`__dirname` 起点の**版管理下**ファイルへの `writeFileSync`/`appendFileSync`/`rmSync`/`unlinkSync` を**行番号で名指す**。除外は「複製(mkdtemp/cpSync 配下)に書いていること」だけ —— **`finally` の復元は除外ではない。復元しても窓は開く**。この門は自分自身にも掛かり、除外の名簿は空である(第58条(c)・第54条(d)) |
 | `graph/abode.js` | **楽園自身の住処を知る唯一の器**。`os.homedir()` も `~/.claude` も `CLAUDE_CONFIG_DIR` も、この engine の外に現れてはならない — 門がソースを走査し**行を名指す**。加えて**輸出の関門**: グローバルへ書く engine は `globalWrite()` を通り、宛先は `graph/abode.json`(神が名指した台帳)に載っていなければ通らない。呼び手は名乗りではなく stack から**実測**する。**engine は台帳へ書く口を持たない**(第58条・第54条(d)) |
 | `graph/pulse.js` | **楽園の断面 (snapshot)**。数・門の合否・走行・台帳・記憶を 1 個の JSON に写す唯一の engine。画面はここしか見ない — 突合点が 1 つだから門が 1 式で書ける(第22条・第16条) |
+| `graph/fold.js` | **同じ入力の走行を二度撃たないための機構**。答える問いは一つ —「いま撃とうとしている走行は、既に撃たれたか」。答えは**鍵**(入力の内容ハッシュ)と**領収書**(台帳の1行)だけで出す。**鍵の住処は一つである** — 二つ在れば鍵が二通りに割れる(第48条・第58条)。二つの機構が同居するが**混ぜない**: 台帳の畳み(CI の段をまたぐ)と、プロセス内の写像(Atlas が同じ成果物を二度検めない。**台帳を一切使わない**)。**畳んだことは必ず名乗る** — `Executed E out of N (R reused, key=…)`、畳まなかった走行は `bail=…` を**閉じた語彙**で名指す(`ledger-unreadable` は `no-receipt` と**別の語**である。読めないは skip ではなく赤 / 第62条)。住所は自分で組まず `abode.pathFor` を通る(第58条(a))。`fold-key` / `fold-status` が名乗り、**台帳は 1 回の CI 走行の中でのみ有効**(第37条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |

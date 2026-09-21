@@ -91,7 +91,7 @@ const OVERRIDE_ENV = [
 /** `pathFor` が答えられる鍵。ここに無い鍵は黙って undefined を返さず throw する(第16条)。 */
 const KEYS = [
   'abode', 'settings', 'agents', 'commands', 'rules', 'skills',
-  'claudeMd', 'kg', 'dailyLedger', 'creationsAbode', 'home',
+  'claudeMd', 'kg', 'dailyLedger', 'foldLedger', 'creationsAbode', 'home',
 ];
 
 /** 「検められなかった」を表す誤り。CLI はこれを exit 2 に写す。 */
@@ -115,7 +115,7 @@ function home(env) {
  * @param {{env?:object, repoRoot?:string}} [opts]
  * @returns {{mode:Mode, source:'env'|'default', abode:string, settings:string,
  *   agents:string, commands:string, rules:string, skills:string, claudeMd:string,
- *   kg:string, dailyLedger:string, creationsAbode:string, home:string,
+ *   kg:string, dailyLedger:string, foldLedger:string, creationsAbode:string, home:string,
  *   overrides:{env:string,key:string,value:string}[],
  *   exists:{abode:boolean, settings:boolean, agents:boolean, kg:boolean}}}
  */
@@ -152,6 +152,14 @@ function resolve(opts = {}) {
     out.skills = path.join(out.abode, 'skills');
     out.claudeMd = path.join(out.abode, 'CLAUDE.md');
     out.dailyLedger = path.join(out.abode, 'paradise-daily.json');
+    /**
+     * 畳みの走行台帳 (reform/gate-fold / FR-01)。**1 回の CI 走行の中でだけ有効**な
+     * 走行状態であって原本ではない —— ゆえに `dailyLedger` と同じく追跡しない
+     * (`.gitignore`)。住所をここに置くのは第58条(a) である: `fold.js` が
+     * `path.join(ROOT, '.claude', …)` と綴れば `HOMEDIR_PATTERNS` の第4項に
+     * 当たり、**行を名指されて赤くなる**(design D-8 の実測)。
+     */
+    out.foldLedger = path.join(out.abode, 'paradise-fold-ledger.jsonl');
   };
   rebase();
 

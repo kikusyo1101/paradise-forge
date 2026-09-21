@@ -1,0 +1,9 @@
+PARADISE_ABODE=(未設定)  →  raw=""  resolve().mode="repo"  source="default"
+PARADISE_ABODE=repo  →  raw="repo"  resolve().mode="repo"  source="env"
+PARADISE_ABODE=global  →  raw="global"  resolve().mode="global"  source="env"
+
+判定:
+  生の env を鍵に入れる  → 素 と repo が別の鍵になる(D-9 実測: 17bef409… vs b7c61f2b…)
+                          ⇒ 素の領収書で repo の走行を畳めず、P-1 の取り分が落ちる
+  resolve().mode を入れる → 素 と repo が同じ鍵になり、global だけ別になる
+                          ⇒ findings §1.2(素≡repo のバイト同一)と AC-05/AC-10 の両方を満たす

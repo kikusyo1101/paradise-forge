@@ -1,0 +1,8 @@
+A) 成果物ごとに起動: 図 2 / 起動 2 回 / 5541ms / プロファイル残 0
+   裁定: [{"図":"run.html","ok":true,"status":"pass","exit":0},{"図":"wiring.html","ok":false,"status":"fail","exit":1}]
+B) browser を持ち回す:  図 2 / 起動 1 回 / 4984ms / プロファイル残 0
+   裁定: [{"図":"run.html","ok":true,"status":"pass","exit":0},{"図":"wiring.html","ok":false,"status":"fail","exit":1}]
+
+判定: 裁定の本数 2 == 2 / 各図の ok と status が一致: true
+削減: 起動 2 → 1 / 時間 5541 → 4984ms (10% 減)
+残骸: A=0 個 / B=0 個 (どちらも 0 でなければ P-3 は採れない)

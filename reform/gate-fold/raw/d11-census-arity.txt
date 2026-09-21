@@ -1,0 +1,18 @@
+── 0: 素の census.js(基準)──
+    exit=0
+    ✓ gate-filter: census は自己診断を素で呼ぶ
+    Paradise gate-filter: 1 of 492 gates matched — 1 green, 0 red
+── A: 呼び口を三項で条件づける(引数 1 個のまま)──
+    exit=0
+    ✓ gate-filter: census は自己診断を素で呼ぶ
+    Paradise gate-filter: 1 of 492 gates matched — 1 green, 0 red
+── B: 自己診断に `--no-fold` を引数で渡す(引数 2 個)──
+    exit=1
+    ✗ gate-filter: census は自己診断を素で呼ぶ
+    Paradise gate-filter: 1 of 492 gates matched — 0 green, 1 red
+      census.js が自己診断に 2 個の引数を渡している — 絞り込みが census に漏れ込んでいる (第22条): path.join(ROOT, 'tests', 'paradise.test.js'), '--no-fold'
+── C: 呼び口を 2 箇所に増やす ──
+    exit=1
+    ✗ gate-filter: census は自己診断を素で呼ぶ
+    Paradise gate-filter: 1 of 492 gates matched — 0 green, 1 red
+      census.js の自己診断呼び口が 2 箇所ある — 一箇所を見張っても意味が無い

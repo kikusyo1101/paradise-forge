@@ -1,0 +1,760 @@
+Graph engine:
+  ✓ schedules a simple diamond into 3 waves
+  ✓ runs independent tasks in the same wave
+  ✓ detects a cycle
+  ✓ detects a missing dependency
+  ✓ verify CLI exits non-zero on invalid DAG
+Knowledge graph:
+  ✓ remembers and queries a node
+  ✓ upserts (last-write-wins) instead of duplicating
+  ✓ links nodes and shows neighbors
+  ✓ snapshot surfaces hubs and survives reload
+  ✓ link is idempotent (no duplicate edges)
+Co-change learning:
+  ✓ observing A,B then A,B,C increments pair counts correctly
+  ✓ predict A returns B ranked appropriately
+  ✓ predict on an unknown id returns no matches gracefully
+  ✓ observe is order-independent (observe A B == observe B A)
+Forge (creation pipeline):
+  ✓ chooses scale from the wish (quick / standard / full)
+  ✓ forges a gated SDLC DAG that graph-engine can schedule
+  ✓ every scale begins with discovery (research precedes specification)
+  ✓ every phase has an agent and gates are marked
+Verdict (judgment):
+  ✓ SHIP when every gate passes and no breach
+  ✓ REWORK on fixable defects (failing tests / low coverage)
+  ✓ BLOCK on constitutional breach (secret or spec unmet)
+  ✓ security breach BLOCKS even when all tests pass
+  ✓ coverage floor is configurable
+Critic (self-critique):
+  ✓ critic flags a flawed creation (no AC, no tests) as gaps
+  ✓ critic recognises a test suite by SUBSTANCE, not by filename convention
+  ✓ critic still flags a creation whose only .js asserts nothing
+  ✓ critic passes a complete creation (AC + tests + config + findings)
+  ✓ critic detects a hardcoded creation (no real config surface)
+  ✓ critic extracts must-haves from findings markdown
+  ✓ lessons become checks: a past-miss recurrence is caught
+  ✓ forge inserts a reflect (self-critique) gate before verdict
+Orchestrator (supervisor):
+  ✓ orchestrator computes the first wave as discover only
+  ✓ orchestrator hands off an upstream artifact to the next phase
+  ✓ orchestrator runs independent phases in the same wave (parallel)
+  ✓ orchestrator: 台帳に虚偽の done を記せない — 住所を名乗るなら実在せよ (第22条 / 第27条)
+  ✓ REWORK resets the target and its downstream closure
+  ✓ loop-guard escalates REWORK to BLOCK after MAX_ATTEMPTS
+  ✓ SHIP finalizes the run
+  ✓ autoStep guides the loop: wave -> verdict -> done
+  ✓ autoStep reports blocked when the loop-guard has tripped
+Subagent contract:
+  ✓ contract rejects a done result with no artifact
+  ✓ contract accepts a well-formed result
+  ✓ reconcile fails a claimed artifact that does not exist (fail-closed)
+  ✓ reconcile accepts a real, non-trivial artifact
+  ✓ reconcile refuses an external handle unless explicitly allowed
+  ✓ checkPayload rejects malformed JSON cleanly (fail-closed, no crash)
+  ✓ checkPayload rejects an empty payload (a silent subagent proves nothing)
+  ✓ checkPayload reconciles a well-formed payload just like reconcile
+Clergy (hierarchy):
+  ✓ clergy maps every forge phase to a cardinal or the tribunal
+  ✓ clergy groups phases into ordered cardinal domains
+Conclave (recursive orchestration):
+  ✓ conclave convenes domains as cardinals with their phases
+  ✓ conclave: 成果物を名乗るなら実在せねばならない — 台帳は虚偽の done を記せない (第22条/第27条)
+  ✓ conclave next() dispatches the active domain's ready phases
+  ✓ conclave advances to ratify when a domain's phases are all done
+  ✓ ratify advances the conclave to the next cardinal
+  ✓ domain-level reject triggers an INNER rework (the small circle)
+  ✓ a review class can send work back ACROSS domains (the great circle)
+  ✓ cross-domain rework also resets DOWNSTREAM phases in later domains
+  ✓ conclave: 中断した running が resume で環に戻る (第51条)
+  ✓ conclave: 中断→復帰→complete まで環が回りきる (第51条a)
+  ✓ conclave: 生きている running を resume は既定で殺さない (第51条b/第45条)
+  ✓ conclave: 時刻を持たぬ古い run は --force を要求する (第51条b)
+  ✓ conclave: markRunning が発令の刻を記す (第51条b)
+  ✓ conclave: resume は reworks を消費せず台帳で区別される (第51条)
+  ✓ conclave: 回復は有限で、尽きたら閉塞して人を呼ぶ (第51条c)
+  ✓ conclave: next --reclaim は opt-in で、既定の next は純粋である (第51条)
+  ✓ conclave: status が running の化石を人に見せる (第51条a)
+  ✓ domain loop-guard blocks a cardinal after MAX_DOMAIN_REWORK
+  ✓ conclave completes when all domains are ratified
+  ✓ clergy marshals a priest without believers — the believer layer is retired (2026-09 harness audit)
+Model policy (rank → model):
+  ✓ every rank that works declares a model
+  ✓ capability descends with rank: judgment ranks outrank workers
+  ✓ the tribunal, security and planner are exempt from thrift
+  ✓ a believer resolves to the cheap fast model, a priest to the balanced one
+  ✓ apply-models resolves each agent to its rank (policy is mechanised)
+  ✓ apply-models rewrites frontmatter without touching the body
+Synod (planning cycle):
+  ✓ synod drafts a convocation of cardinals for a wish
+  ✓ synod plan-critique flags a plan missing the discovery cardinal
+  ✓ synod ratifies a sound plan and records the refinement trail
+  ✓ kg upsert is last-write-wins by id
+  ✓ kg forget removes a node and its edges (memory is correctable)
+Lesson scoping (the fence around a past-miss):
+  ✓ kg normalizes a lesson whose check|applies spec was crammed into the label
+  ✓ lessons export recovers the scope so the lesson is not global
+  ✓ scope matching is strict: "internally" does not satisfy "paradise-internal"
+  ✓ an out-of-scope lesson does not report a regression
+  ✓ an in-scope lesson still catches a real regression
+Self-review scope subject (the engine judging itself):
+  ✓ a self review declares its own scopes instead of an empty subject
+  ✓ a paradise-internal lesson actually FIRES on a self review (no silent skip)
+  ✓ a creation-scoped lesson stays out of scope on a self review
+  ✓ the real engine self-review evaluates its paradise-internal lessons
+  ✓ .paradise-scopes overrides the declared self scopes (a config surface)
+Daily guard (quota + catch-up):
+  ✓ guard does not fire before the daily window opens
+  ✓ guard fires when the window is open and today has not run
+  ✓ guard fires exactly once per day
+  ✓ guard CATCHES UP when the machine was off for days
+  ✓ guard: 22時前に起きた日でも、前日の逃した窓は借金として残る (第43条)
+  ✓ guard: まだ一度も窓が開いていない当日分を先取りしない (第43条)
+  ✓ guard: 定時と監視が同時に問うても、走る権利は一つしか出ない (リース)
+  ✓ guard: 中断した走行はリースを返し、次の監視が拾い直せる
+  ✓ guard: 発令者のリースは、発火した当の走者を締め出さない (第45条)
+  ✓ guard: 継承された後は第三者を締め出す — 排他は失われない (第45条)
+  ✓ guard: 発令者は、継承された走行リースを取り上げられない (第45条)
+  ✓ guard: 発令の橋は走行リースより早く腐る — 走者が来なければ窓は再び開く (第45条)
+  ✓ guard: キャッチアップ走行は「負っていた日」を精算する (当日ではなく)
+  ✓ guard reports JST regardless of the machine timezone
+  ✓ guard: 真夜中を 24 時と綴る実装でも 0..23 に畳む
+  ✓ identity: candidates never repeat a family, and tech_saas gets at most one slot
+  ✓ identity: the same wish does NOT keep returning the same look
+  ✓ identity: selection is deterministic for the same seed and history
+  ✓ identity: the catalog keeps a non-tech majority available
+  ✓ identity: traits stay discriminating (no trait covers most of the catalog)
+  ✓ critic flags a UI creation that defaulted to the generic dev-tool palette
+  ✓ critic does not nag a non-UI creation about visual identity
+  · every phase in every forge scale names an agent that actually exists  (skipped: no harness at this path — nothing to verify (mode=global))
+  ✓ check-agents actually catches a missing priest
+  ✓ check-agents skips silently where no harness is installed
+  ✓ visual: contrast is measured, not assumed (WCAG AA)
+  ✓ visual: a readable palette passes contrast
+  ✓ visual: contrast math matches the WCAG reference values
+  ✓ visual: light and dark themes are measured separately
+  ✓ visual: empty and error states must be visible somewhere
+  ✓ visual: keyboard focus must be visible
+  ✓ visual: animation without prefers-reduced-motion is flagged
+  ✓ visual: a declared identity that never reached the code is called decorative
+  ✓ visual: a non-UI creation is not judged on its looks
+  ✓ critic wires the measured surface into judgment
+  ✓ critic asks a UI creation for its UX intent and a surface judgment
+  ✓ the standard scale designs the surface and judges it
+  ✓ the quality cardinal owns the surface judgment
+  ✓ visual: adjacent ramp steps must stay distinguishable
+  ✓ visual: a well-separated ramp passes
+  ✓ visual: non-text UI boundaries need 3:1 (WCAG 1.4.11)
+  ✓ visual: themed UIs must declare color-scheme
+  ✓ visual: an interactive target under 24px is a gap, not a nicety
+  ✓ visual: an "on-surface" colour is measured against its own surface
+  ✓ visual: tokens survive CSS comments and repeated :root blocks
+  ✓ visual: the evidence plan demands every theme x width x state
+  ✓ upstream: the borrowed tree is treated as read-only
+  ✓ upstream: paradise code is never injected into a borrowed file
+  ✓ upstream: every divergence kind is declared in the overlay
+  ✓ upstream: a transform is not a conflict — it is re-applied, not merged
+  ✓ upstream: adopt refuses to run silently
+  ✓ deploy: every deployed file has a declared source
+  ✗ deploy: the deployed tree matches its declared sources
+      ~/.claude is a product — a difference here means someone edited the product instead of the source
++ actual - expected
+
++ [
++   'agents/architect.md: not deployed',
++   'agents/code-reviewer.md: not deployed',
++   'agents/doc-updater.md: not deployed',
++   'agents/security-reviewer.md: not deployed',
++   'agents/tdd-guide.md: not deployed',
++   'agents/auditor.md: not deployed',
++   'agents/cardinal.md: not deployed',
++   'agents/creation-judge.md: not deployed',
++   'agents/executor.md: not deployed',
++   'agents/market-researcher.md: not deployed',
++   'agents/requirements-analyst.md: not deployed',
++   'agents/reporter.md: not deployed',
++   'agents/self-critic.md: not deployed',
++   'agents/ux-reviewer.md: not deployed',
++   'commands/orchestrate.md: not deployed',
++   'commands/forge.md: not deployed',
++   'commands/conclave.md: not deployed',
++   'commands/graph.md: not deployed',
++   'commands/ship.md: not deployed',
++   'rules/git-workflow.md: not deployed',
++   'rules/hooks.md: not deployed',
++   'rules/security.md: not deployed',
++   'root/CLAUDE.md: not deployed',
++   'settings/settings.json: 教主の座が宣言と違う: 現状 (無統治)/(無統治) ⇒ fable/xhigh'
++ ]
+- []
+
+  ✓ deploy: check skips cleanly where no harness is installed
+  ✓ deploy: line endings alone are not drift, but real edits are
+  ✓ deploy: paradise-owned files come from overlay/, not from the deploy target
+  ✓ the paradise session hook lives outside the borrowed tree
+  ✓ the session hook tells the agent who it is, not just what it knows
+  ✓ CLAUDE.md exists and states the working language and the hard rules
+  ✓ kg snapshot does not print the same sentence twice
+  ✓ kg snapshot carries no test residue into the real memory
+  ✓ independence: paradise carries every asset it needs
+  ✓ independence: nothing points back into a tree paradise does not own
+  ✓ independence: the vendored hooks resolve to files that actually exist
+  ✓ independence: upstream absence is not an error once paradise is vendored
+  ✓ independence: refresh never copies without a human yes
+  ✓ independence: what was borrowed is credited
+  ✓ reference gate: every mouth that names a priest is watched (Art.21)
+  ✓ reference gate: a dangling name is caught AND traced to who named it (Art.21)
+  ✓ reference gate: a healthy paradise passes it (no false alarm)
+  ✓ census: the paradise measures itself from the artifacts, not from prose (Art.22)
+  ✓ census: README が語るテスト数は測る機械で変わらない — 門の総数である (第58条(e) / 第22条)
+  ✓ census: a stale number in the documents is a failing gate (Art.22)
+  ✓ census: every number the paradise currently claims is true (Art.22)
+  ✓ census: 数を複数語る申し立ては、fix の後に読み直して緑になる (第22条 / 第21条 A面)
+  ✓ census: fix が書いた嘘 (336/335) を門が赤で捕らえる (第22条 / 第21条 B面)
+  ✓ census: 全ての申し立ては語る数を残らず捕捉している (嘘を書ける形を許さない)
+  ✓ reform: the paradise has a road to change ITSELF (Art.23)
+  ✓ reform: a wish about the paradise itself routes to reform, before other heuristics (Art.23)
+  ✓ reform: no phase may be masterless (Art.23)
+  ✓ reform: the ungoverned-phase gate actually fires when a phase has no master (Art.23)
+  ✓ branch guard: a stale base is caught, not merely written down (Art.24)
+  ✓ branch guard: it never reports green when it could not look (Art.24)
+  ✓ independence: deployment SOURCES from what paradise owns, not the upstream (Art.19/20)
+  ✓ independence: hiding the upstream does not change the deployment (Art.20)
+  ✓ hierarchy: every cardinal has an actor, not just a label (Art.25)
+  · hierarchy: believers have bodies, not merely names (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+  · hierarchy: a priest with believers can actually dispatch them (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+  · hierarchy: the gate fires when a believer loses its body (Art.25)  (skipped: 階層の実体を検められない (engine が理由を述べていない))
+  ✓ hierarchy: the declared depth fits the runtime (Art.25)
+  ✓ hierarchy: the wave is dispatched TO the cardinal, not past it (Art.25)
+  ✓ parallelism: the runtime ceiling is not the dispatch width (Art.26)
+  ✓ parallelism: work that carries implicit decisions is not split (Art.26)
+  ✓ parallelism: every domain declares the nature of its work (Art.26)
+  ✓ parallelism: an undeclared work type falls back to sequential, never parallel (Art.26)
+  ✓ parallelism: the construction domain runs sequentially (Art.26)
+  ✓ orders: the contract states when it is done and demands evidence (Art.26)
+  ✓ spawn trace: an artifact with no observed dispatch is rejected (Art.27)
+  ✓ spawn trace: a bare claim of dispatch is not evidence (Art.27/Art.5)
+  ✓ spawn trace: an observed dispatch is accepted (Art.27)
+  ✓ spawn trace: the report names which phases bypassed the hierarchy (Art.27)
+  ✓ spawn trace: reconciliation without a run keeps working (backward compatible)
+  ✓ lessons: a lesson declares its kind, defaulting to mechanism (Art.28)
+  ✓ lessons: the kind marker never leaks into the check text (Art.28)
+  ✓ lessons: a conduct lesson is surfaced but never graded red (Art.28)
+  ✓ lessons: the engine review is clean — no permanently-red gate remains (Art.28)
+  ✓ derived: every generated artifact is declared with its source (Art.29)
+  ✓ derived: no test asserts on the CONTENT of a derived file (Art.29)
+  ✓ derived: the gate catches the exact accident that broke CI (Art.29)
+  ✓ derived: the gate does NOT cry wolf on fixtures or negations (Art.29)
+  ✓ abode: 配備の照合は変換を「ファイルまるごと免除」しない (第58条 / AC-7)
+  ✓ abode: 未知の変換 engine に免除を与えない (第54条(d))
+  ✓ abode: 住処の不在を skip と呼べるのは global を名乗ったときだけ (第58条(e) / AC-8)
+  ✓ derived: 住処の settings.json は生成元が engine の定数なので中身を検めてよい (第29条 / AC-14)
+  ✓ derived: 消えた deny 行を名指し、直す命令を示す (AC-15)
+  ✓ census: 総括は位置ではなく名前で読む — 子テストの集計行に騙されない (第22条 / 第29条)
+  ✓ census: 名乗りが無ければ null — 保険経路は死んでいる (第58条(d) / L-26)
+
+密閉性 (第58条(c)):
+  ✓ hermetic: 版管理下への書き込みを行番号で名指す — 復元は除外ではない (第58条(c))
+  ✓ hermetic: 仕込めば赤・外せば緑 — 門が本当に鳴る (第21条 壊して鳴らす)
+  ✓ hermetic: 除外の名簿は空である — 裁かれる側が範囲を決めない (第54条(d))
+  ✓ hermetic: 字句器は見落としを隠さない — 潰した位置を全て申告する (第21条)
+  ✓ hermetic: 楽園の門は今この瞬間、版管理下の現物を汚していない (第58条(c))
+  ✓ hermetic: 門は CI に配線されている — 配線されぬ門は飾りである (第21条)
+
+Workspace (Art.30):
+  ✓ workspace: PARADISE_CREATIONS が住所を決める
+  ✓ workspace: 既定の住所は楽園の兄弟であって内部ではない
+  ✓ workspace: 兄弟が在れば legacy の creations/ より優先される
+  ✓ workspace: 内部 creations/ しか無ければ legacy と明示して返す
+  ✓ workspace: slug は厳しく検める(パス走査を許さない)
+  ✓ workspace: 楽園が創造物を git で抱えていない (第30条の本番の門)
+  ✓ workspace: engine が住所を直書きしていない
+  ✓ workspace: 直書きの門は註釈で吠えず、コードでは吠える
+  ✓ workspace: hardcodedRefs は path.join(ROOT, 'creations') 形も咎める (G-03)
+
+Dashboard gates (Art.22 / G-01..G-10):
+G-01 数の一致 (第22条):
+  ✓ AC-01d/AC-14c: 断面は例外を投げず、errors[] は fatal を持たない
+  ✓ AC-01a/AC-E3: counts.engines == その場で数えた graph/*.js (pulse.js 自身を含む)
+  ✓ AC-01b: counts.creations / workshops == 倉を数え直した数、和は visible と等しい
+  ✓ G-01(D-5): ドット始まりを数えると両辺が割れる(数え方が 1 本であることの証明)
+  ✓ AC-01f: counts.cardinals == Object.keys(clergy.COLLEGE).length
+  ✓ AC-01g: counts.articles == codex が数える条数
+  ✓ AC-17a/17b: counts.kgNodes / kgEdges == JSONL の解釈できた行数
+  ✓ AC-17c: 壊れた行があっても断面は落ちず、解釈できた行数を返す
+  ✓ AC-18b/18d: lessonsByKind の合計 == counts.lessons、鍵に mechanism / conduct を含む
+  ✓ AC-18c: 一時ファイルの屑を残さない
+  ✓ AC-21a/21b: 6 つの道すべての相数が forge.buildDag と一致する
+  ✓ AC-22b: ledger.length == readLedger().length(3 値一致の 2 辺)
+  ✓ AC-01e: PULSE_FAULT で 1 engine を壊しても断面全体は返り、errors に名が載る
+  ✓ AC-02b/02c: 画面に固定メトリクス配列も架空 DAG リテラルも無い
+  ✓ AC-03a: graph/ に旧住所の直書きが 1 件も無い
+dashboard-count: 15 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-count が緑 (G-01/02/04/06)
+G-02 外部依存ゼロ (NFR-02):
+  ✓ AC-10a: pulse.js の require は node 標準か ./ の engine のみ
+  ✓ AC-N07a: pulse.js に子プロセスの語が 1 件も無い(G-10)
+  ✓ AC-N07c: engine が module として読まれている
+  ✓ AC-06a: pulse.js は census を一切呼ばない(G-07)
+  ✓ AC-17d: pulse.js は住処の配下へ書かない(読むだけ)
+  · AC-10b: package.json が無いか、dependencies が 0 件  (skipped: package.json が無い: C:\Users\kikus\Documents\workspace\paradise\package.json — 依存ゼロの証は他の門が握る)
+  ✓ AC-12a/12c: 生成器 template.html が外部書体を取りに行かない(退避は残す)
+  ✓ AC-12e: git が追跡する overlay / dashboard に外部書体参照が 0 件
+  ✓ 画面 2 枚が外部 http(s) を一切参照しない(w3.org の名前空間は除く)
+  ✓ AC-N02c: vendor.verify が緑 — 楽園は己の足で立つ
+dashboard-no-deps: 9 passed, 0 failed, 1 skipped
+  ✓ dashboard-count 系: dashboard-no-deps が緑 (G-01/02/04/06)
+G-04 導線 (FR-19):
+  ✓ AC-19a: 孤児 0 — 実在する全ページが index から 1 ホップで到達できる
+  ✓ AC-19b: リンクの実数 == 実在する画面の数(index を除く)
+  ✓ AC-19c: 死リンク 0 — 描く href はすべて実ファイルを指す
+  ✓ AC-19c(構造): atlas が 1 枚も無いとき、画面は空リンクを描かない
+  ✓ AC-19d: control.html と atlas 各枚に index への戻りリンクが在る
+  ✓ AC-19e: 8 領域すべてが index に存在する
+dashboard-links: 6 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-links が緑 (G-01/02/04/06)
+G-06 ハードコードの根絶 (FR-02 / FR-21):
+  ✓ AC-02a/02b: 固定メトリクス配列 v:<数> が 0 件
+  ✓ AC-02c: 架空の自己 DAG リテラルが 0 件
+  ✓ AC-21c: 相の名を画面に焼き付けていない
+  ✓ AC-21c: 相数のリテラル(6/11/14/17)を画面が持たない
+  ✓ AC-21e: 画面が描く DAG のタスク数は、断面の道の相数のいずれかと一致する
+  ✓ AC-21d: forge の分類器が reform を返し、断面が classifierAvailable を名乗る
+  ✓ 画面の数はすべて断面由来 — 数の看板に固定値が 1 つも無い
+  ✓ AC-02d(F-6): 閾値と経路の出所は 1 つ — 深掘り画面が規則を写経していない (第50条)
+dashboard-no-hardcode: 8 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-no-hardcode が緑 (G-01/02/04/06)
+三層フォールバック (FR-08):
+  ✓ AC-08a: 3 層すべての分岐が画面に実在する
+  ✓ AC-08a: data-transport の取り得る値が sse / poll / frozen の 3 つ
+  ✓ AC-08b/AC-RT-2: 7 定数の定義箇所がそれぞれ 1 箇所のみ
+  ✓ AC-07b: 画面と engine の閾値が一致する(鮮度・降格判定)
+  ✓ AC-RT-1: 降格・昇格の一行ログが画面に在る
+  ✓ AC-N03c: 同時接続の上限に触れる文言が画面に在る
+  ✓ 昇格の経路が在る — 一度落ちた画面が二度と戻らないのは嘘である
+  ✓ 自前の再接続を書いていない(EventSource の既定動作に任せる)
+dashboard-transport: 8 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-transport が緑 (G-01/02/04/06)
+鮮度 (FR-07):
+  ✓ AC-07a: 境界値 5 通り + 第3層 — engine の純関数
+  ✓ AC-07a: CLI も同じ答えを返す(画面と engine の入口を分けない)
+  ✓ AC-07b: 画面と engine が同じ閾値を持つ(二重管理の禁止)
+  ✓ AC-07c: 3 区分すべてが画面に実在する
+  ✓ 経過は相対表記で出る — toISOString() の文字列を画面に出さない
+  ✓ 凍結時の絶対表記は局所時刻である(Intl は外部依存ではない)
+dashboard-freshness: 6 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-freshness が緑 (G-01/02/04/06)
+5 状態 (FR-20):
+  ✓ AC-20a: 5 つの状態すべてに対応する分岐が画面に在る
+  ✓ AC-20a: 全パネルが起動時から data-state を持つ(「どれでもない」を作らない)
+  ✓ AC-20b: スピナー禁止 — loading / disconnected は必ず data-awaiting を持つ
+  ✓ AC-20c: data-awaiting の値がすべて実在する engine の名である
+  ✓ AC-20d: PULSE_FAULT で 1 engine を壊すと、その鍵だけが errors に載る
+  ✓ AC-20e / AC-N06b: 空と 0 を区別する — null は ready にならない
+  ✓ AC-20f(F-7): 深掘り画面も null を数のように描かない — 掟は画面を問わない (第16条)
+  ✓ B-2(XSS): 断面の値は文字として描かれる — 実際に注入して確かめる (第16条)
+  ✓ AC-06d: census 未取得のとき data-state="empty" + data-awaiting="census"
+  ✓ AC-16a/16b/16c: daily は exit code ではなく due 欄で判ずる
+  ✓ AC-16d: lease 欄は status に現れる場合のみ出す(未確認の欄を捏造しない)
+  ✓ error から ready へ直接戻らない(一度 loading を経る)
+dashboard-states: 12 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-states が緑 (G-01/02/04/06)
+走行中の環・点数・起動実績 (FR-13/14/22):
+  ✓ AC-14b: runs.length == 実在する conclave.json の数(取りこぼしを許さない)
+  ✓ AC-14a/14d/14h: 各 run の数が conclave.json 直読みと一致する
+  ✓ AC-14d: phasesTotal は gauge と forge の 2 つの数え方と一致する(3 値一致)
+  ✓ AC-14e: 停止中の run が phasesDone < phasesTotal で名指しされている
+  ✓ AC-14i: 画面が data-run-state の 2 値を持ち、stalled の数が断面と一致する
+  ✓ AC-13a: 点数と起動実績が同一の親要素内に並置される
+  ✓ AC-13b: spawn.noTrace / score が engine の直呼びと一致する
+  ✓ AC-13c: spawn-trace の exit 1 を errors に積まない(事実であって故障ではない)
+  ✓ AC-13d: 軌跡指標 5 種すべてが画面に存在する
+  ✓ AC-13e: 矛盾の規則が断面で成立し、画面に印が在る
+  ✓ D-3(故障注入): report にパスを渡すと total=0 になり、防御が spawn=null を返す
+  ✓ D-3(故障注入): 防御が無ければ矛盾が 0 件に化ける — その差を数で示す
+  ✓ AC-22a: gauge.baseline を呼ばない(時刻を再計算する道を断つ)
+  ✓ AC-22b: ledger.length の 3 値一致(源 / CLI / 断面)
+  ✓ AC-22c: 出所ラベル data-source="gauge-ledger" が画面に在る
+  ✓ FR-22(故障注入): ledger 鍵が断面から消えれば 3 値一致が崩れる
+dashboard-run-panel: 16 passed, 0 failed
+  ✓ dashboard-count 系: dashboard-run-panel が緑 (G-01/02/04/06)
+
+Pontiff seat (Art.31):
+  ✓ seat: 位階の宣言が神の裁可どおりである
+  ✓ seat: 判断の座が神官より安くなることは決してない (第12条)
+  ✓ seat: 効かない effort は宣言しない — Haiku は effort を持たない (第31条)
+  ✓ seat: 全ての位階と例外が、そのモデルが受ける effort だけを宣言している
+  ✓ seat: apply-models は effort:null のときキーを消す(書かない)
+  ✓ seat: apply-seat は宣言を settings.json の二つのキーにだけ書く
+  ✓ seat: 門は「無統治」を乖離として捕らえる — 今回の欠陥そのもの (第31条)
+  ✓ seat: settings.json が無い機では検査は黙って通る(狼少年にしない)
+  ✓ seat: 無人(cron)の座は教主の座と分かれており Fable ではない (第31条)
+  ✓ seat: deploy は教主の座を配備物として数える (第31条)
+
+Gauge (証明の秤, 第38条):
+  ✓ gauge: 健全な走行は満点 — 一発完走に減点は無い
+  ✓ gauge: 決定性 — 同じ走行には常に同じ点 (LLM に尋ねない)
+  ✓ gauge: 荒れた走行は健全な走行より必ず低い (trajectory の分水嶺)
+  ✓ gauge: loop-guard 発動は差し戻しより重い罪
+  ✓ gauge: 未完走は減点 — 途中で消えた走行は完走と同じ点を得ない
+  ✓ gauge: 相の無い run-state は拒否 — 不在は通過ではない (第37条)
+  ✓ gauge: orchestrator 形式 (phases{}) も読める — 形式でなく性質で裁く (第16条)
+  ✓ gauge: 実在の run-state を採点できる — coin は habit より健全 (実測の固定)
+  ✓ gauge: 台帳は追記型で record→compare が前後を語る
+
+Gauge 台帳の冪等性 (第55条):
+  ✓ gauge(番兵): 実台帳の番兵は本体の例外を飲み込まない (D-A / 第16条)
+  ✓ gauge(番兵): 「読めない」は「不在」ではない — 実台帳が読めない機で節ごと死なない (verify S-1 / 第37条)
+  ✓ gauge(番兵): 一度 null を名乗った後に台帳が現れたら鳴る — 永久 skip に固定させない (verify S-2 / security A7)
+  ✓ gauge(番兵): 倒れるとき「どの門が汚したか」を名指す (verify S-3 / 第62条 b の明文)
+  ✓ gauge(番兵): 実台帳が無い機でも番兵は歯を持つ — 不在は通過ではない (D-A / 第37条)
+  ✓ gauge(故障注入): 住所解決を壊す変異(W1)を番兵が名指す — 本走行の実害の再現 (D-A)
+      · 射程: graph/gauge.js / graph/spawn-trace.js の最上位のみ — hermetic.js は git の一覧の memo(:516 TRACKED)を正当に持つため射程外(第57条: 射程を広げるのは別の走行。残債 SM-L = pulse.js:_gateCache / hermetic.js:TRACKED / abode.js:unmeasurable)
+      · 静的の門の深さの射程: 深さを問わない 7 形 [globalThis / module.exports / process.env / require.cache / Object.assign(globalThis) / Reflect.set(globalThis) / Object.defineProperty(globalThis)] / 深さ 0 のみ 1 形 [(分割代入)]
+        └ なぜ (分割代入) だけ深さで切るか: `let {a} = …` は**束縛の宣言**であり、関数の中に書けば局所束縛である。深さ 1 以上を罪と呼べば「関数の中のすべての分割代入」が赤になる —— それは大域の門ではなく文体の門である
+      · 残債 SM-L3(修理後もなお見えない 4 形 / rework 相の実測): ① eval("globalThis.x = 1") — 字句器は文字列の中を影で潰すので原理的に見えない / ② 動的 require した別 module の属性への代入(require("./m").x = 1)— 名が実行時に決まる / ③ 非 strict の関数内 this への代入(this.x = 1)— this の指す先は呼ばれ方で決まる / ④ 関数の中の分割代入(let {a} = …)— **意図して見ない**(局所束縛であり大域ではない)。①②③ は静的字句器の原理的な限界であり、払うには AST か実行時の観測が要る(第62条 c)
+  ✓ gauge(静的): 台帳を書く engine は最上位に可変の大域を持たない (D-L / 第62条 c)
+  ✓ gauge(静的): 大域の門は定数を罪と呼ばない — 偽の赤を出さない境界 (D-L / 第16条)
+  ✓ gauge(静的): 静的の門の射程は外から凍らされている (verify / review【重大 D】/ 第21条)
+  ✓ gauge: 同一 run の二度の record は同じ指紋を名乗る (AC-1a / FR-1)
+  ✓ gauge: 指紋は ts に依存しない (AC-1b / FR-1)
+  ✓ gauge: 冪等化は第二の住所を持ち込まない (AC-1c / 第30条)
+  ✓ gauge: baseline を二度走らせても台帳は増えない (AC-2a / 冪等性の核)
+  ✓ gauge: record の二度打ちも一行 — 人が実際に歩く道 (AC-2b / FR-2)
+  ✓ gauge: 二度目の record は沈黙せず「既記録」を名乗る (AC-2c)
+  ✓ gauge(故障注入): 冪等検査を外すと AC-2a の門が exit 1 で鳴る (AC-2d)
+  ✓ gauge: 実台帳同型の30行が6行に畳まれる (AC-3a / FR-3)
+  ✓ gauge: 畳みは 80→100 の本物の改善を殺さない (AC-3b / 第38条)
+  ✓ gauge: 重複台帳でも compare --last 3 が3つの異なる観測を返す (AC-3c)
+  ✓ gauge(故障注入): 畳みを外すと AC-3c の門が exit 1 で鳴る (AC-3d)
+  ✓ gauge: 行順を入れ替えても畳んだ結果が同一 (AC-4a / FR-4)
+  ✓ gauge: 「最新」は ts の最大であって末尾行ではない (AC-4b / FR-4)
+  ✓ gauge(故障注入): hits[hits.length-1] に戻すと AC-4b の門が exit 1 で鳴る (AC-4c)
+  ✓ gauge: 冪等鍵を持たない旧形式のみの台帳で行が一つも落ちない (AC-5a / FR-5)
+  ✓ gauge: 鍵が無くても再計算で畳める (AC-5b / FR-5)
+  ✓ gauge: 新旧混在(鍵あり/なしの同一観測)は1行に畳まれる (AC-5c / FR-5)
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+  ✓ gauge: 衝突マーカー入り台帳でも生きた3行が読める (AC-6a / FR-6)
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+  ✓ gauge: 破損台帳に畳みを掛けても生きた行が減らない (AC-6b / FR-6)
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+  ✓ gauge: 破損行が在っても record は既存行を失わない (AC-6c / fail-open)
+  ✓ gauge: 同一 slug で metrics が違えば畳まれず2行残る (AC-7a / FR-7)
+  ✓ gauge: 矛盾は判別可能な信号で名指される (AC-7b / NFR-2)
+  ✓ gauge: 掃除後の台帳(改善 80→100 を含む)は exit 0 (R-2 / NFR-2)
+  ✓ gauge: 偽の指紋を載せた行が本物の観測を飲み込まない (S-1 / 第55条 d)
+  ✓ gauge(故障注入): 自己申告の fp を信じる実装に戻すと S-1 の門が exit 1 で鳴る
+⚠️ ledger line skipped (too deep, > 64): {"ts":"2026-01-01T00:00:00.000Z","slug":"deep","scale":"stan…
+  ✓ gauge: 深い入れ子の一行で台帳全体が倒れない (S-2 / 第55条 e)
+  ✓ gauge(故障注入): canonical の深さの底を外すと S-2 の門が exit 1 で鳴る
+  ✓ gauge: 非有限は null であって 0 ではない (R-1/M2 / 第16条)
+  ✓ gauge: -0 は 0 に畳まれ、丸めが浮動小数の揺れを吸う (R-1/M3・M4)
+  ✓ gauge: 同時刻の 2 行でも畳みの列が決定的 (R-1/M6 / FR-4)
+  ✓ gauge: fp は指紋の材料に入らない (R-1/M11 / AC-5c の成立条件)
+  ✓ gauge(故障注入): M2/M3/M4/M6/M11 の各変異で門が exit 1 で鳴る (R-1)
+  ✓ gauge: metrics を持たない行は畳みで落ちない (R-1/M7)
+  ✓ gauge: 深さの底は現実の入れ子を巻き込まない — 底を絞りすぎない (N3)
+  ✓ gauge: 配列の順序は意味である — 並べ替えても同じ鍵にならない (N5)
+  ✓ gauge: 文字列は引用される — 型の違いが鍵に出る (N6)
+  ✓ gauge: object の鍵名は指紋の材料である (N23)
+  ✓ gauge: 真偽値は数に潰されない (N25)
+  ✓ gauge: 指紋の版は黙って動かない — g1: の値を固定する (N18)
+  ✓ gauge: 壊れた ts でも keep-first が決定的 (N7)
+  ✓ gauge: 深すぎる行は畳みで消されず素通しされる (N8)
+  ✓ gauge: record は行の自己申告 fp を信じない (N9 / S-1 の書き側)
+⚠️ ledger unreadable, recording anyway: EISDIR: illegal operation on a directory, read
+  ✓ gauge: 読めない台帳で record は黙って「既記録」を名乗らない (N10 / fail-open)
+  ✓ gauge: audit は深すぎる行を「重複」と数えない (N11 / 第16条)
+  ✓ gauge: 破損行は黙って捨てられず標準エラーで名指される (N14 / 第16条)
+  ✓ gauge: 「最新」は metrics を持つ行の中から選ばれる (N16)
+  ✓ gauge: 門は仮倉の残骸も住所の振替も残さない (門自身の衛生)
+  ✓ gauge(故障注入): prove attempt 2 の新変異 13 種で各門が exit 1 で鳴る
+  ✓ 門ヘルパー: injectGauge は「注入が空振りした」ときに必ず倒れる (P-3 / T1)
+  ✓ 門ヘルパー: runGaugeGate は exit code を捏造しない (P-3 / T2)
+  ✓ 門ヘルパー: withGaugeSandbox は仮倉を必ず片付ける — 例外の道でも (P-3 / T4)
+  ✓ 門ヘルパー: writeGaugeLedger は投入した行を一行も減らさない (P-3 / T7)
+  ✓ 門ヘルパー: 素材の gauge30Rows / gaugeWindowRows は期待どおり汚れている (P-3 / T3・T5)
+⚠️ ledger line skipped (too deep, > 64): {"ts":"2026-01-02T00:00:00.000Z","slug":"deepy","scale":"sta…
+  ✓ gauge: readLedger({raw:true}) は本当に生の全行を返す (P-1 ①)
+  ✓ gauge(CLI): 全行が深すぎる台帳を --audit が「健全」と答えない (P-1 ② / 第16条)
+  ✓ gauge(CLI): 深すぎる行を「畳んだ重複」に混ぜて数えない (P-1 / NFR-1 / 第16条)
+  ✓ gauge: FR-8 の掃除(畳んだ版で置き換える)が深すぎる行を消さない (P-1 ③ / 第55条 e)
+  ✓ gauge(CLI): audit の信号は「掃除できる欠陥」と「人が読むべき事故」を分ける (P-8)
+⚠️ ledger line skipped (corrupt): {"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr…
+⚠️ ledger line skipped (corrupt): {"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr…
+  ✓ gauge(CLI): audit は競合の跡と人の手を要する事故を文面で分ける — exit の規約は動かさない (D-B γ / 第57条)
+⚠️ ledger line skipped (corrupt): {"ts":"2026-01-01T00:00:00.000Z","slug":"coin","metr…
+  ✓ gauge(CLI): healable は exit code と必ず一致する — 同じ問いに二つの答えを持たない (verify S-4 / 第48条)
+⚠️ ledger line skipped (corrupt): {"ts":"2026-01-01T00:00:00.000Z","slug":"leak","secret":"ZZZ…
+  ✓ gauge(CLI): --json は欄を列挙する — 破損行の生バイトを人向けより多く吐かない (verify S-5)
+  ✓ gauge(CLI): 読まれずに消える行を監査が名乗る — 101 行を rows=1 と答えて黙らない (verify S-8)
+  ✓ gauge: keyIndex の鍵は再導出であって自己申告ではない (P-2 / S-1 の再発防止)
+  ✓ gauge: baseline は台帳を創造物の数だけ読み直さない (P-2 / R-3)
+  ✓ gauge: baseline の索引化でも同一走行は二度刻まれない (P-2 が冪等性を壊していない)
+  ✓ gauge: foldLedger は同じ行の鍵を二度導出しない (P-2 のメモ化)
+  ✓ gauge: metrics を持たない行が複数在っても畳みの列は入力順に依存しない (P-4 / AC-4a)
+  ✓ gauge(CLI): ledger は台帳を二度読まない — 破損の警告が二重に出ない (P-6 / R-8)
+  ✓ gauge: 材料の falsy な値は null に潰されない — ?? と || の違い (P-3 / V1)
+  ✓ gauge: undefined の鍵は出力せず落とす — 書く前と読み戻し後で鍵が割れない (P-3 / V2)
+  ✓ gauge: 数の丸めは有効桁ではなく小数桁である — 大きな値が同一鍵にならない (P-3 / V3)
+  ✓ gauge(CLI): compare --last の窓に metrics なし行を載せない (P-3 / V9)
+  ✓ gauge: audit の入口は metrics なし行を数に入れない — 偽の重複を報じない (P-3 / V10)
+  ✓ gauge: 環境変数で畳みや監査を無効化する裏口が無い (P-3 / V11・W8)
+  ✓ gauge: record が刻む ts は辞書順が時刻順になる形式である (P-3 / V12)
+  ✓ gauge: 畳みが倒れても生の行は返る — fail-open が実装されている (P-3 / W3)
+  ✓ gauge(故障注入): 私が新たに発明した 5 変異で門が exit 1 で鳴る (build attempt 3)
+  ✓ gauge(CLI): --audit は旗の位置に依らず効く (P3/C2 — 引数解釈)
+  ✓ gauge(CLI): score --json も旗の位置に依らず効く (P3/C5)
+  ✓ gauge(CLI): compare --last の N は整数でなければ拒む — NaN を窓に通さない (P3/C3)
+  ✓ gauge(CLI): compare --last の窓は台帳の**末尾** N である (P3/C7)
+  ✓ gauge(CLI): record は slug 無しでは一行も書かない (P3/C8)
+  ✓ gauge(CLI): 知らない命令は非ゼロで拒む — 誤字を成功と呼ばない (P3/C6)
+  ✓ gauge(下流): pulse の断面は畳んだ台帳を載せる — 画面の三段重なりは源で治す (P3/D1)
+  ✓ gauge(下流): pulse の断面は metrics なし行で倒れない (P3/D2 / 第55条 e)
+  ✓ gauge(環境): 倉が存在しない機で baseline も ledger も倒れない (P3/E5 / 第20条)
+  ✓ 門ヘルパー: withGaugeSandbox は必ず仮倉へ振り替える — 外の env を尊重しない (P3/T1)
+  ✓ 門ヘルパー: test() の失敗が必ず数に載る — 集計行が嘘をつかない (P3/T2 / 第16条)
+  ✓ gauge: FR-8 の掃除は 30 行を 6 行にし、観測を一つも失わない (AC-8a / AC-8b — 仮倉で模擬)
+  ✓ gauge: 掃除は keep-first — 残るのは各指紋の最古の行である (AC-8b の含意)
+  ✓ gauge(故障注入): prove attempt 3 の無音 11 種のうち engine 側 6 種で各門が鳴る
+
+Gauge 先回りと破損の門 (build attempt 4):
+  ✓ gauge: 先回り毒は正当な観測を刻ませないことができない (F-1 / 第55条 e)
+  ✓ gauge: record は台帳を信じ、プロセスの記憶を信じない (D-D / 第55条 e)
+  ✓ gauge: ts が読めない既存行は正当な先着ではない (D-E / F-1 の回帰)
+  ✓ gauge: 先回りの三つの物差しは独立に効く — 一本でも死ねば鳴る (D-E / 第21条 a)
+  ✓ gauge: 攻撃者が居なくても起きる — 狂った時計と古い台帳のマージ (F-1 の現実の形)
+  ✓ gauge: 正当な先着は今までどおり黙って skip される — 鳴りっぱなしの門にしない (F-1 の裏)
+  ✓ gauge(CLI): 先回りは exit 2 で名乗る — 呼び手が成功と読まない (F-1 / 第16条)
+  ✓ gauge(CLI): 全滅した台帳を --audit が rows=0 exit 0 で健全と答えない (F-2 / 第16条)
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+⚠️ ledger line skipped (corrupt): <<<<<<< HEAD…
+⚠️ ledger line skipped (corrupt): =======…
+⚠️ ledger line skipped (corrupt): >>>>>>> A…
+  ✓ gauge: corrupt の標識は監査だけの権能 — 掃除の素材を汚さない (F-2 の副作用防止)
+  ✓ gauge(CLI): exit code の規約に実装が従う — 2 は台帳の事故に予約する (D-3)
+  ✓ gauge: latestFor は生の配列を渡されても読めない行を「最新」に選ばない (D-4)
+  ✓ gauge(CLI): 壊れた conclave.json 一つで baseline の画面が倒れない (D-5 / 第55条 e)
+  ✓ gauge(CLI): baseline も先回りを exit 2 で名乗る — 呼び手が成功と読まない (prove-4 / F-1)
+  ✓ gauge: 画面は ts / metrics の欠落に耐える — 測れないものを 0 で埋めない (prove-4 / D-5)
+  ✓ gauge: 画面は非オブジェクトの行で倒れない — 一行の破損が全体を殺さない (prove-4 / D-5)
+  ✓ gauge(故障注入): prove attempt 4 で足した 3 門も壊せば鳴る (G9〜G11 / 第21条)
+  ✓ gauge: 非冪等の再発を N 回で撃つ — この改革の本旨 (prove-4 / 回帰)
+  ✓ gauge: 呼び出しを跨いで状態を持たない — 別プロセスで撬つ (D-6)
+      · 競合成立(raw=2 → folded=1)— 畳みが読み手を守った / audit exit=1
+  ✓ gauge(並行): 競合で重複が生まれても畳みが読み手を守る — 治癒に寄りかかると決めた以上、治癒を門にする (D-B / 第55条 b / 第62条 a)
+  ✓ gauge(並行): 競合の裁定は純関数であり、門から呼ばれている (verify / review【重大 C】/ 第44条)
+  ✓ gauge(故障注入): build attempt 4 の新規 8 変異で各門が鳴る (第21条 壊して鳴らす)
+  ✓ gauge: ledger の出力が畳んだ件数を名乗る (NFR-1)
+  ✓ gauge: 門は実台帳を一行も書き換えない (AC-9c / 第30条)
+  ✓ verdict: 低い trajectory score は REWORK — 荒れた走行は改善ではない (第38条)
+  ✓ verdict: loop-guard 発動は tests 全通過でも REWORK (第38条)
+  ✓ verdict: artifact の道で trajectory 不在は REWORK — 測らなかった走行は改善を主張できない (第38条)
+  ✓ verdict: engine/document の道は trajectory を要求されない — 門は消さず分ける (第36条)
+  ✓ verdict: 中身の無い trajectory は欠陥 — 名前だけの証拠は証拠でない (第16条)
+  ✓ gauge→verdict 契約: 秤の実出力がそのまま門に通じる — 欄名の縁は写しでなく直結で試す
+  ✓ gauge: 印を消した走行(stripped)は序列の罰を免れない (D-C / 第52条)
+  ✓ gauge: 紀元の日付は黙って動かない — TIER_EPOCH_AT の値を固定する (D-C / N18 と同じ作法)
+  ✓ gauge: 同一プロセスで N 回採点しても点は動かない — 決定性は秤の第一の約束 (D-F / 第38条)
+  ✓ gauge: 手つかずの走行は拒否 — 召集だけで一度も発令されていない run に点は付かない (第37条)
+
+Diet gate (第39条):
+  ✓ diet: 現物の CLAUDE.md は予算内で数値を持たない (第39条)
+  ✓ diet: 太った CLAUDE.md と数値の再侵入を門が名指しで捕らえる (第21条: 壊して鳴らす)
+  ✓ critic: 創造物の掟 — toISOString と CDN を名指しで捕らえ、清い創造物は通す (第39条)
+  ✓ critic: 空の .paradise-source を置くだけでは免除されない — 門は自己申告を信じない
+  ✓ critic: --self フラグも住所が伴わなければ免除されない (フラグは自己申告である)
+  ✓ critic: 本物の engine (graph/) は免除され続ける — 偽陽性を作らない
+  ✓ critic: 免除の資格は住所が決める — resolveSelf/engineLocation の裁定
+  ✓ critic: 創造物の掟は engine 自身 (--self) には適用されない — 門は消さず分ける (第36条)
+  ✓ critic: 門は tests/ の下も見る — 規約通りに置いたテストを「無い」と裁かない (第21条)
+warning: in the working copy of 'graph/thing.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/findings.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/requirements.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'graph/thing.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/findings.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/requirements.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/design.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'graph/thing.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/design.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/findings.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/requirements.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/thing.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'graph/thing.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/findings.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reform/demo/requirements.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/unrelated.test.js', LF will be replaced by CRLF the next time Git touches it
+  ✓ critic: reform は三箇所を束ねて裁く — 散文だけを見て「門が無い」と言わない (D-2 / 第23条)
+  ✓ critic: 工程の教訓は成果物の実在で裁く — 単語の出現で裁かない (第21条)
+  ✓ critic: 掟は振る舞いを裁く — 掟を説明したコメントを違反と数えない (第42条)
+  ✓ critic: 抽出可能性は綴りでなく実質で裁く — 独自の一対マーカを認める (第42条)
+
+Harness diet gate (第40条):
+  ✓ diet: 現物の global CLAUDE.md と rules は予算内 (第40条)
+  ✓ diet: ファイル種の掟 3本は paths: スコープを持ち、写経の病巣は再発しない (第40条)
+  ✓ diet: /ship command は手順の全文を引き受けている (第40条)
+  ✓ diet: 太った global CLAUDE.md と無スコープ rules の総量超過を門が名指しで捕らえる (第21条: 壊して鳴らす)
+
+Lexicon gate (第41条):
+  ✓ lexicon: 神が定めた位階と枢機卿団の名がそのまま辞書に住む (第41条)
+  ✓ lexicon: 現物の散文に異名は住んでいない (第41条)
+  ✓ lexicon: 異名を門が行番号まで名指しで捕らえる (第21条: 壊して鳴らす)
+  ✓ lexicon: 門は CI に配線されている — 配線されぬ門は飾りである (第21条)
+  ✓ lexicon: 門は己の作業場の残骸で鳴らないが、版管理下の散文では鳴る (教訓 gate-own-debris / 第21条)
+日次の営み (第43条):
+  ✓ watchdog: 監視スクリプトは正典に住み、配備された実物と一致する (第43条)
+  ✓ tools: 呼ぶ者の居ない道具は住み続けない (第44条)
+  ✓ tools: 配備は産物であり、手編集する道具を飼わない (第19条b / 第44条)
+日次の営みは道を歩く (第46条):
+  ✓ conclave: 道は reform の住所を知っている (第23条 / 第30条)
+  · conclave: 配備された道は正典と一致する (第29条)  (skipped: mode=global (source=env) で未配備: C:\Users\kikus\.claude\commands\conclave.md)
+  ✓ conclave: 道は執行官が裁く宛先を知っている (第37条)
+  ✓ cron: 日次の発火は道を写経せず、道を指す (第46条)
+
+Atlas (自画像):
+  ✓ atlas: 描画器が取り込まれ、電話をかけずに動く (第20条)
+  ✓ atlas: 事実を写経せず、位階の engine から読む (第29条)
+  ✓ atlas: 5つの主題すべてに IR が在り、種別が宣言と一致する
+  ✓ atlas: 同じ入力は同じ図を生む — 乱択は決定的である (第29条)
+  ✓ atlas: 全ての道が図になる — 描画器が実際に受理する (第47条)
+  ✓ atlas: 描画器の子は自らの名乗りを切らない — 出力は最後まで届く (第37条)
+  ✓ atlas: 出力が限度を越えたことを「JSON の壊れ」と混同しない (第34条)
+  ✓ atlas: 交差を隠さない — 平面化不能なら standard を名乗り理由を書く (第47条)
+  ✓ atlas: 門は己の残骸で落ちない — 同じ作業場で二度走る (第21条)
+  ✓ atlas: 門は他プロセスと作業場を共有しない — 並走で転ばない (第21条c)
+  ✓ atlas: 自画像は生成物であり追跡されない (第29条)
+  ✓ atlas: 巻物の許しは長さにだけ効く — 読めない字は免除しない (第48条e)
+  ✓ atlas: 全ての主題が動きを名乗る — 黙秘は静止画への同意である (第50条a)
+  ✓ atlas: 静止を選んだ走行は、黙るのではなく断る (第50条a)
+  ✓ atlas: 動きの検器が実在し、門がそれを見ている (第50条c)
+  ✓ atlas: 版元の既定値を記憶ではなく正典から引く (第50条d)
+
+結線 (第48条):
+  ✓ wiring: engine の一覧を写経せず、ディスクを走査する (第29条)
+  ✓ wiring: 楽園の結線に孤児も宙吊りも無い (第44条 / 第48条)
+  ✓ wiring: 自分で自分を呼んでも呼ばれたことにならない (第48条c)
+  ✓ wiring: 呼び方の綴りで裁かない — path 結合も「呼んだ」である (第48条b)
+  ✓ wiring: 結線の図は engine から生まれ、写経しない (第29条 / 第47条)
+
+作図の道 (第49条):
+  ✓ cartography: 「図にせよ」は作図の道へ着く — reform に攫われない (第49条)
+  ✓ cartography: 「図」の一字に紛れる語を攫わない (第49条)
+  ✓ cartography: 道は実装物でなく図を産むと宣言する (第36条)
+  ✓ cartography: 図の断罪は測ったかで立ち、壊せば鳴る (第47条 / 第48条e)
+  ✓ cartography: 作図の全相に主が居て、発令が宣言通りに届く (第25条)
+  ✓ 発令の宛先ずれを門が全ての道で捕らえる (第25条)
+  ✓ cartography: 環が最後まで回り、作図の結びに着く (第11条)
+
+序列 (第52条):
+  ✓ 第52条: 教主の職務は一文の文字列ではなく三段の序列である
+  ✓ 第52条: 閾値は一箇所に住み、機械が読める (第41条)
+  ✓ 第52条: 環を回すことは仕事ではない — 統治は序列の外にある
+  ✓ 第52条: 序列の宣言なき done は通らず、台帳も書き換わらない (AC-A1)
+  ✓ 第52条: 序列1/2 は起動の証跡を要求する (AC-A2 / AC-A3)
+  ✓ 第52条: 序列1の緑の側 — 起動を観測したら通る (AC-A4)
+  ✓ 第52条: 門相は序列3を名乗れない — 量が小さくても許さない (AC-A7 / 第9条)
+  ✓ 第52条: 序列3を名乗りながら起動していれば食い違いが鳴る (AC-A8)
+  ✓ 第52条: 序列3の緑と赤 — 判定は実測が下し、名乗りが下さない (AC-A5 / AC-A6)
+  ✓ 第52条: 環と器は同じ run に同じ判定を下す (第27条)
+  ✓ 第52条: 移行 — legacy は黄で通り、verify は黄を緑にしない (AC-A10 / AC-A13)
+  ✓ 第52条: 五値の集計 — 序列3と unobservable は別の数である (AC-A12)
+  ✓ 第52条: audit は何も見ずに緑を出さない (AC-A11)
+  ✓ 第52条: 秤は序列を測り、過去の台帳を書き換えない (AC-H1〜H4)
+  ✓ 第52条: 前後比較に教主の手の割合が含まれる (AC-H5)
+  ✓ 役者の居ない仕事は道に入れない (第49条)
+  ✓ 第52条: 実在だけでは足りない — 二つの門が違う答えを出す (AC-C7)
+  ✓ 鍛造器は原本に書き、配備器だけが実機に書く (第29条)
+  ✓ 鍛造器は不完全な要求を鍛造の時点で拒む (第52条 / AC-D5)
+  ✓ 鍛造器は既存の門を撃つ — 増やせば図が壊れるなら増やせていない (AC-D4 / 第47条)
+  ✓ atlas: 測定できなかったことを「溢れた」と呼ばない (第16条 / 第42条)
+  ✓ 鍛造器が実際に産んだ役者は既存の発令を乗っ取らない (AC-D4 / AC-D7)
+  ✓ atlas: 本当に溢れる図は OVERFLOW と画素数で鳴る (§8.4 #1)
+  ✓ atlas: 描画器の実行時故障を「溢れた」と呼ばない — 実経路で撃つ (§8.4 #2)
+  ✓ 第52条: 序列3の例外は**実測経路**で通る — 合成した数ではなく (AC-A5 / 完了条件⑦)
+  ✓ 第52条: 序列3の閾値は「以下」である — 境界ちょうどは通り、1つ超えれば鳴る
+  ✓ CI の序列の門は実在の走行を見る (第42条)
+
+rework (審査の差し戻しを塞ぐ):
+  ✓ B-1: 序列3の門は git の失敗で fail-open しない — 非gitディレクトリの実経路で撃つ
+  ✓ B-1: git が居ない環境 (ENOENT) でも緑を出さない — 別の故障、同じ原則
+  ✓ B-1: 測定不能は audit / tier でも赤である — 刻まれた黄と混ぜない
+  ✓ M-4: 序列3の state は機械の鍵として ASCII である — 旧い台帳も読める
+  ✓ S-1 [HIGH]: --description の frontmatter インジェクションを鍛造の時点で拒む
+  ✓ S-2 [HIGH]: prototype の鍵で validate を素通りできない
+  ✓ S-3 [MEDIUM]: 途中で落ちた鍛造は孤児を残さない — 全か無かである
+  ✓ S-4 [MEDIUM]: 巨大な未追跡ファイルで measure が死なない — 上限で足切りする
+  ✓ S-5 [MEDIUM]: verify --only の綴り違いは 0門を撃って緑にならない (第37条)
+  ✓ M-3: --scale を明示したら admit は**その道の名簿**を裁く
+
+rework2 (reflect の差し戻しを塞ぐ):
+  ✓ C-1 [BLOCK]: 成果物を測れなかったら緑を出さない — artifact 不在の実経路で撃つ
+  ✓ C-1 [BLOCK]: dirBytes は読めない中身とサブディレクトリを 0 に潰さない
+  ✓ C-2 [BLOCK]: critic は教訓 0 件/読めない帳で「何も見つからなかった」と述べない
+  ✓ C-2 [BLOCK]: lessons export は空の KG で既存の教訓帳を消さない
+  ✓ C-2 [BLOCK]: CI の断罪段は `|| true` で自らを無効化していない
+  ✓ C-3 [HIGH]: epoch を消すだけでは第52条の門を回避できない
+  ✓ C-5 [HIGH]: status --json が dispatchedAt と滞留を運ぶ — 機械が沈黙を名指しできる
+
+第53条 走行の門 (abandoned-run):
+
+第53条 見捨てられた走行の門 (欠陥A/B):
+  ✓ A-1: 閾値は 1 箇所にだけ住み、他の二つの境と別物である
+  ✓ A-2: 閾値は実測に基づく — 閉じた走行の最長間隔を超えている
+  ✓ A-3 [故障注入]: 未完のまま無音の走行を名指しする
+  ✓ A-4: 境の直前/直後で振る舞いが変わる(境が実在する)
+  ✓ A-5 [第16条]: 測れなかった走行はゼロで埋めず null のまま名指しする
+  ✓ A-6 [故障注入]: auditRuns が二つの倉を横断して名指しし、CLI が exit 1 で鳴る
+  ✓ A-7: 相の目 (phaseSilence) では欠陥A を捉えられない — だから別の目が要る
+  ✓ B-1 [故障注入]: 創造物の倉に居る reform の走行帳を名指しする
+  ✓ B-2: strayRuns は strayCreations の逆向きであり、両方が生きている
+  ✓ B-3: 倉が無い環境でも壊れない — 見に行けなかったを 0 件と偽らない
+  ✓ B-4: 走行帳の住所を知るのは workspace.js だけである (第30条)
+  ✓ B-5: isCreationsVault は場所そのものを見る — 名でも指され方でも裁かない (FR-08)
+  ✓ B-6: isCreationsVault は例外を一つも外へ出さない (NFR-02 / AC-26)
+  ✓ B-7: resolve() は vault を足すだけ — 既存の 4 キーを一つも変えない (FR-07 / AC-25)
+  ✓ B-8 [故障注入]: 仮倉を指した check は緑だが、**黙らない** (FR-09 / AC-18・19)
+  ✓ B-9: 倉が「無い」と「倉ではない」を別の言葉で言う (第21条 / CI の checkout)
+  ✓ B-10 [逆]: 本物の倉では今まで通り裁く — 片側だけの修理は壁である (第37条 / AC-20・22)
+  ✓ B-11: init は倉の根に目印を置く — 読む側だけを作らない (FR-11 / 第57条)
+  ✓ B-12 [HIGH-1]: 倉の**子**を指しても倉と名乗らない — git は .git を親へ遡る
+  ✓ B-12b [HIGH-1・実物]: 本物の倉でも根と子を取り違えない
+  ✓ B-15 [LOW-1]: 緑は「どの倉を検めたか」を名乗る — 別の場所の緑を本物と誤読させない
+  ✓ B-13 [MED-2]: git remote の印だけでも倉と認める — 目印を消して黙らせられない
+  ✓ B-14 [MED-1]: PARADISE_CREATIONS の細工した値で例外を出さない (注入面)
+  ✓ B-16 [V-1]: 壊れた形の走行帳で走査が死なない — 壊れた JSON 一つで門を無力化できない
+  ✓ C-1 [錬1・故障注入]: 実在しない証拠・空の証拠・空白だけの証拠を拒む
+  ✓ C-2 [錬2・故障注入]: 同じ証拠で二度は鼓動できない — 古い一枚で門を永久に黙らせられない
+  ✓ C-3 [錬3]: running でない相には鼓動を刻めない
+  ✓ C-4 [錬4]: 鼓動は相の status も domain の status も一切変えない
+  ✓ C-5 [錬5]: 空・短すぎる・プレースホルダの註釈を拒む
+  ✓ C-6 [故障注入]: 鼓動した走行は abandoned でなくなる — 鼓動が確かに数えられている
+  ✓ C-7 [逆の門・第21条]: 鼓動の無い未完の走行は今まで通り赤い — 門を殺していない
+  ✓ C-8 [第54条(c)]: 鼓動を持つ走行は「進んでいる」を **証拠付きで** 語る — 黙って緑にしない
+  ✓ C-9: 鼓動の CLI が実在し、錬が throw したら走行帳を書き換えない
+abandoned-run: 33 passed, 0 failed
+  ✓ abandoned-run: 見捨てられた走行と迷子の走行帳の門が緑 (第53条)
+  ✓ 第53条: 鼓動 (beat) の口と五つの錬が engine に実在する
+
+門の絞り込み (gate-filter / 第22条):
+  ✓ gate-filter: 絞り込みは環境変数を読まない
+  ✓ gate-filter: census は自己診断を素で呼ぶ
+  ✓ gate-filter: マッチ 0 件は緑ではない — exit 2 で鳴る (AC-11 / 第16条)
+  ✓ gate-filter: 絞り込んだ走行は Paradise self-test: を名乗らない (AC-13 / 第22条)
+  ✓ gate-filter: 絞り込み走行の最終行は census / tribunal の双方に読まれない (AC-14 / 第22条)
+  ✓ gate-filter: 名指した門を走らせない走行は測定ではない — 数が閉じる (reflect F-1/F-2)
+
+Paradise self-test: 486 passed, 1 failed, 5 skipped
