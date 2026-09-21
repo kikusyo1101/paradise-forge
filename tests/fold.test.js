@@ -1742,6 +1742,72 @@ async function main() {
       });
   });
 
+  await test('fold: 鍵の走査は黙って底を打たない (F-4 回帰)', () => {
+    /**
+     * **review F-4 (HIGH) の回帰の門。**
+     *
+     * 旧い綴り `if (depth > 6) return;` は**黙って返った**。本相で再現した実測:
+     *
+     *     階層+7 (8 slash): 採られた=false  n=278  **鍵が動いた=false**
+     *
+     * —— 現物が生まれたのに**鍵は 1 ビットも動かない**。畳みは古い領収書を採り続ける
+     * (**prove M-02 と同型**)。`materials()` の註釈が誇る
+     * 「次に増えた 1 本も自動で鍵に入る」が**深さ 7 で破れていた**。
+     *
+     * 門は二つを測る:
+     *   ① **現物の最深から底までに余裕が在る**(底に触れていない)
+     *   ② **深い現物を生やすと鍵が動く**(実際に生やして撃つ)
+     *   ③ **底に触れたら黙らず倒れる**(壊して鳴らす)
+     */
+    // ① 現物の深さ分布を測り、底との距離を名乗る
+    const mats = fold.materials();
+    const deepest = Math.max(...mats.map(r => r.split('/').length - 1));
+    const cap = Number(fs.readFileSync(FOLD_JS, 'utf8').match(/const WALK_MAX_DEPTH = (\d+);/)[1]);
+    assert.ok(deepest + 3 <= cap,
+      `**現物の最深 ${deepest} が底 ${cap} に近すぎる** — ` +
+      'あと 3 階層で鍵が現物を取りこぼす。底を上げるか木を浅くせよ (review F-4)');
+
+    // ② **深い現物を生やすと鍵が動く。**
+    //    ⚠️ **現物の木には書かない**(第58条 c / 門『hermetic: 楽園の門は今この瞬間、
+    //    版管理下の現物を汚していない』が実測で名指す —— **復元は除外ではない**)。
+    //    `materials(root)` は根を受け取るので、**砂場に合成の木を建てて撃つ**。
+    const fake = fs.mkdtempSync(path.join(SAND, 'f4-tree-'));
+    const segs = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'];   // tools/ から 7 階層 = 8 slash
+    fs.mkdirSync(path.join(fake, 'tools'), { recursive: true });
+    fs.writeFileSync(path.join(fake, 'tools', 'shallow.js'), '// 浅い現物\n');
+    const before = fold.materials(fake);
+    assert.deepStrictEqual(before, ['tools/shallow.js'], `合成の木の素が違う: ${JSON.stringify(before)}`);
+    fs.mkdirSync(path.join(fake, 'tools', ...segs), { recursive: true });
+    fs.writeFileSync(path.join(fake, 'tools', ...segs, 'victim.js'), '// 深さ 7 の現物\n');
+    const after = fold.materials(fake);
+    assert.ok(after.includes(`tools/${segs.join('/')}/victim.js`),
+      `**深さ 7 の現物が鍵の材料に入らない** — 走査が底を打っている (review F-4): ${JSON.stringify(after)}`);
+    // **鍵が動くことまで測る。** 材料に入っても鍵が動かねば畳みは古い領収書を採り続ける
+    const kBefore = require('crypto').createHash('sha256')
+      .update(before.join('\n')).digest('hex');
+    const kAfter = require('crypto').createHash('sha256')
+      .update(after.join('\n')).digest('hex');
+    assert.notStrictEqual(kAfter, kBefore,
+      '**深い現物を生やしたのに材料の指紋が動かない** (AC-05 / prove M-02 と同型)');
+
+    // ③ **壊して鳴らす**: 底を 1 に潰すと、黙らずに倒れる
+    withMutant(
+      s => s.replace('const WALK_MAX_DEPTH = 12;', 'const WALK_MAX_DEPTH = 1;'),
+      (mut) => {
+        const r = runNode(`const f=require(${JSON.stringify(mut)});
+          try { f.materials(); console.log('黙って通った'); }
+          catch (e) { console.log('倒れた:' + e.message.slice(0, 80)); }`);
+        assert.match(String(r.stdout), /倒れた:.*深さの上限/,
+          `**底に触れたのに黙って通った** — 黙る打ち切りは prove M-02 の偽の緑を生む: ${r.stdout}${r.stderr}`);
+      });
+    // ④ **底が二つ在ってはならない**(第58条)。`walkJs` と `walkAll` が同じ定数を使う
+    const code = fs.readFileSync(FOLD_JS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.strictEqual((code.match(/depth > WALK_MAX_DEPTH/g) || []).length, 2,
+      '**走査の底が二つの綴りに割れている** — 片方だけ直した日に真が二通りに割れる (第58条)');
+    assert.ok(!/depth > \d/.test(code),
+      '**生の数字の底が戻ってきた** — 底は名を持たねば次の者が片方だけ直す (review F-4)');
+  });
+
   await test('fold: この門は現物の台帳を汚していない', () => {
     const after = realLedgerFingerprint();
     assert.strictEqual(after, REAL_BEFORE,

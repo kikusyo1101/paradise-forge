@@ -156,12 +156,58 @@ function bail(code, extra = {}) {
  */
 const DOT = (name) => name.startsWith('.');
 
+/**
+ * 走査の深さの上限。**これは打ち切りではなく暴走止めである**(review F-4 / 第37条)。
+ *
+ * 実測(review F-4 / 本相で再現):材料 278 本の深さ分布は
+ * `{0:4, 1:75, 2:69, 3:40, 4:62, 5:28}` ——**最深は 5 であり、底は 28 本が触れていた**。
+ * 旧い綴り `if (depth > 6) return;` は**黙って返った**ので、
+ * `tools/d0/…/d6/victim.js`(8 slash)を生やして撃つと:
+ *
+ *     階層+7 (8 slash): 採られた=false  n=278  **鍵が動いた=false**
+ *
+ * —— 現物が生まれたのに**鍵は 1 ビットも動かない**。畳みは古い領収書を採り続ける。
+ * **prove M-02(鍵の覆いが門の読む現物より狭い)と完全に同型**であり、
+ * `materials()` の註釈が誇る「次に増えた 1 本も自動で鍵に入る」を**深さ 7 で破る**。
+ *
+ * ゆえに二つを同時に直す:
+ *   ① 上限を**現物の最深(5)から遠い**ところへ置く。12 は暴走(環)を止めるに足り、
+ *      現物の木が 2 倍に深くなっても届かない。
+ *   ② **届いたら黙って返らず、名乗って倒れる。** 鍵が算べない走行は
+ *      **畳まない**(揟7「疑わしきは畳まない」)—— 偽の緑ではなく、赤い名乗りになる。
+ */
+const WALK_MAX_DEPTH = 12;
+
+/**
+ * 材料の木を歩く。
+ *
+ * ⚠️ **`DOT()` は名で落とすので、ファイルにも「ディレクトリ」にも効く**(review F-4)。
+ * 旧い註釈はファイル(走行中の一時的な写し)を落とす理由しか書いておらず、
+ * **木ごと落ちることを一言も書いていなかった** —— 実測:
+ *
+ *     DOT ディレクトリ tools/.hooks/hook.js: 採られた=false  鍵が動いた=false
+ *
+ * これは**意図された除外である**(`.git` / `.claude` / `node_modules` の類が
+ * 鍵に入れば、走行のたびに鍵が動き機構が無言で死ぬ)。
+ * だが**意図は書かれて初めて意図である** —— 将来 `overlay/.config/` や
+ * `tools/.hooks/` を「門が読む現物」として建てる者は、
+ * **それが鍵の外に在ることを知らねばならない**。
+ * その時は DOT ではなく `derived.js` の除外表で名指して除くこと(第29条)。
+ * この振る舞いは門『fold: 鍵の走査は黙って底を打たない (F-4 回帰)』が凍らせる。
+ */
 function walkJs(root, rel, out, depth = 0) {
-  if (depth > 6) return;
+  if (depth > WALK_MAX_DEPTH) {
+    // **黙って返らない。** 深さの底に触れた事実は、鍵が語らねば誰も知らない
+    throw new Error(
+      `鍵の材料の走査が深さの上限 ${WALK_MAX_DEPTH} に触れた: ${rel} — ` +
+      'この底より深い現物は鍵の外に落ちる。落ちれば**現物が変わっても鍵が動かず**、' +
+      '畳みが古い領収書を採り続ける (review F-4 / prove M-02 と同型)。' +
+      'graph/fold.js の WALK_MAX_DEPTH を上げるか、木を浅くせよ');
+  }
   let ents = [];
   try { ents = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return; }
   for (const e of ents.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (DOT(e.name)) continue;
+    if (DOT(e.name)) continue;   // **名で落とす — ファイルにも木にも効く**(上の註釈)
     const r = rel + '/' + e.name;
     if (e.isDirectory()) walkJs(root, r, out, depth + 1);
     // **`.mjs` も engine の本体である**(prove 相 M-02)。`graph/motion-probe.mjs` は
@@ -170,12 +216,23 @@ function walkJs(root, rel, out, depth = 0) {
     else if (e.name.endsWith('.js') || e.name.endsWith('.mjs')) out.push(r);
   }
 }
+/**
+ * 木を種類を問わず歩く(`overlay/**` / `dashboard/**` / `tools/**`)。
+ * **`walkJs` と同じ底・同じ名乗りである**(review F-4)——
+ * 底が二つ在れば、片方だけ直した日に真が二通りに割れる(第58条)。
+ */
 function walkAll(root, rel, out, depth = 0) {
-  if (depth > 6) return;
+  if (depth > WALK_MAX_DEPTH) {
+    throw new Error(
+      `鍵の材料の走査が深さの上限 ${WALK_MAX_DEPTH} に触れた: ${rel} — ` +
+      'この底より深い現物は鍵の外に落ちる。落ちれば**現物が変わっても鍵が動かず**、' +
+      '畳みが古い領収書を採り続ける (review F-4 / prove M-02 と同型)。' +
+      'graph/fold.js の WALK_MAX_DEPTH を上げるか、木を浅くせよ');
+  }
   let ents = [];
   try { ents = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch { return; }
   for (const e of ents.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (DOT(e.name)) continue;
+    if (DOT(e.name)) continue;   // **名で落とす — ファイルにも木にも効く**(`walkJs` の註釈)
     const r = rel + '/' + e.name;
     if (e.isDirectory()) walkAll(root, r, out, depth + 1);
     else out.push(r);
