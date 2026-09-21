@@ -108,8 +108,8 @@
       "seq": 3,
       "cardinal": "construction",
       "domain": "Construction (建造)",
-      "status": "active",
-      "reworks": 0,
+      "status": "ratified",
+      "reworks": 2,
       "phases": [
         {
           "id": "build",
@@ -122,7 +122,7 @@
           "artifact": "implementation",
           "status": "done",
           "attempts": 0,
-          "artifactPath": "reform/gate-fold/build.md",
+          "artifactPath": "reform/gate-fold/rework2.md",
           "dispatchedAt": null,
           "resumes": 0
         },
@@ -135,9 +135,9 @@
           ],
           "gate": true,
           "artifact": "tests",
-          "status": "running",
+          "status": "done",
           "attempts": 1,
-          "artifactPath": null,
+          "artifactPath": "reform/gate-fold/prove.md",
           "dispatchedAt": "2026-09-20T23:28:24.229Z",
           "resumes": 0
         }
@@ -149,7 +149,7 @@
       "seq": 4,
       "cardinal": "quality",
       "domain": "Quality (品質)",
-      "status": "pending",
+      "status": "ratified",
       "reworks": 0,
       "phases": [
         {
@@ -162,10 +162,10 @@
           ],
           "gate": false,
           "artifact": "review.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/gate-fold/review.md",
+          "dispatchedAt": "2026-09-21T06:29:05.325Z",
           "resumes": 0
         },
         {
@@ -177,10 +177,10 @@
           ],
           "gate": false,
           "artifact": "security-report.md",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/gate-fold/security.md",
+          "dispatchedAt": "2026-09-21T06:29:05.325Z",
           "resumes": 0
         },
         {
@@ -192,10 +192,10 @@
           ],
           "gate": false,
           "artifact": "docs",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/gate-fold/docs.md",
+          "dispatchedAt": "2026-09-21T06:29:05.326Z",
           "resumes": 0
         },
         {
@@ -209,10 +209,10 @@
           ],
           "gate": true,
           "artifact": "verification-report",
-          "status": "pending",
-          "attempts": 0,
-          "artifactPath": null,
-          "dispatchedAt": null,
+          "status": "done",
+          "attempts": 1,
+          "artifactPath": "reform/gate-fold/verify.md",
+          "dispatchedAt": "2026-09-21T08:30:22.424Z",
           "resumes": 0
         }
       ],
@@ -223,7 +223,7 @@
       "seq": 5,
       "cardinal": "tribunal",
       "domain": "Tribunal (断罪機関)",
-      "status": "pending",
+      "status": "active",
       "reworks": 0,
       "phases": [
         {
@@ -236,7 +236,7 @@
           ],
           "gate": true,
           "artifact": "critique.md",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null,
           "dispatchedAt": null,
@@ -251,7 +251,7 @@
           ],
           "gate": true,
           "artifact": "verdict",
-          "status": "pending",
+          "status": "rework",
           "attempts": 0,
           "artifactPath": null,
           "dispatchedAt": null,
@@ -317,6 +317,126 @@
       "ts": "2026-09-20T23:28:24.229Z",
       "event": "dispatch",
       "detail": "prove"
+    },
+    {
+      "ts": "2026-09-21T06:29:01.427Z",
+      "event": "done",
+      "detail": "prove → reform/gate-fold/prove.md"
+    },
+    {
+      "ts": "2026-09-21T06:29:01.486Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-21T06:29:05.326Z",
+      "event": "dispatch",
+      "detail": "review, security, docs"
+    },
+    {
+      "ts": "2026-09-21T07:00:23.816Z",
+      "event": "done",
+      "detail": "review → reform/gate-fold/review.md"
+    },
+    {
+      "ts": "2026-09-21T07:00:23.969Z",
+      "event": "done",
+      "detail": "security → reform/gate-fold/security.md"
+    },
+    {
+      "ts": "2026-09-21T07:00:24.127Z",
+      "event": "done",
+      "detail": "docs → reform/gate-fold/docs.md"
+    },
+    {
+      "ts": "2026-09-21T07:00:28.429Z",
+      "event": "domain-rework",
+      "detail": "Quality (品質) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 1); un-ratified construction"
+    },
+    {
+      "ts": "2026-09-21T08:30:14.630Z",
+      "event": "done",
+      "detail": "build → reform/gate-fold/rework.md"
+    },
+    {
+      "ts": "2026-09-21T08:30:14.754Z",
+      "event": "done",
+      "detail": "prove → reform/gate-fold/prove.md"
+    },
+    {
+      "ts": "2026-09-21T08:30:14.815Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-21T08:30:22.143Z",
+      "event": "done",
+      "detail": "review → reform/gate-fold/review.md"
+    },
+    {
+      "ts": "2026-09-21T08:30:22.255Z",
+      "event": "done",
+      "detail": "security → reform/gate-fold/security.md"
+    },
+    {
+      "ts": "2026-09-21T08:30:22.362Z",
+      "event": "done",
+      "detail": "docs → reform/gate-fold/docs.md"
+    },
+    {
+      "ts": "2026-09-21T08:30:22.424Z",
+      "event": "dispatch",
+      "detail": "verify"
+    },
+    {
+      "ts": "2026-09-21T09:35:49.646Z",
+      "event": "done",
+      "detail": "verify → reform/gate-fold/verify.md"
+    },
+    {
+      "ts": "2026-09-21T09:35:49.707Z",
+      "event": "domain-rework",
+      "detail": "Quality (品質) → Construction (建造): reset build, prove, review, security, docs, verify, reflect, verdict (rework 2); un-ratified construction"
+    },
+    {
+      "ts": "2026-09-21T10:30:42.596Z",
+      "event": "done",
+      "detail": "build → reform/gate-fold/rework2.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:42.726Z",
+      "event": "done",
+      "detail": "prove → reform/gate-fold/prove.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:42.785Z",
+      "event": "ratify",
+      "detail": "Construction (建造) ratified by cardinal:quality"
+    },
+    {
+      "ts": "2026-09-21T10:30:49.418Z",
+      "event": "done",
+      "detail": "review → reform/gate-fold/review.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:49.525Z",
+      "event": "done",
+      "detail": "security → reform/gate-fold/security.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:49.632Z",
+      "event": "done",
+      "detail": "docs → reform/gate-fold/docs.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:49.739Z",
+      "event": "done",
+      "detail": "verify → reform/gate-fold/verify.md"
+    },
+    {
+      "ts": "2026-09-21T10:30:49.792Z",
+      "event": "ratify",
+      "detail": "Quality (品質) ratified by executor"
     }
   ],
   "spawnTrace": {
@@ -362,6 +482,160 @@
         "rank": null,
         "at": "2026-09-20T23:28:24.108Z",
         "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-96cca2f3",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T08:30:14.563Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "build",
+        "agent": "architect",
+        "toolUseId": "sa-0-6ad9f2c0",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:42.533Z",
+        "kind": "observed"
+      }
+    ],
+    "prove": [
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-9f398992",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T06:29:01.369Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-96cca2f3",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T08:30:14.688Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "prove",
+        "agent": "tdd-guide",
+        "toolUseId": "sa-0-9f398992",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:42.670Z",
+        "kind": "observed"
+      }
+    ],
+    "review": [
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-eb56c95b",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T07:00:23.758Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-eb56c95b",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T08:30:22.087Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "review",
+        "agent": "code-reviewer",
+        "toolUseId": "sa-0-eb56c95b",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:49.364Z",
+        "kind": "observed"
+      }
+    ],
+    "security": [
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-1f29c2e6",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T07:00:23.887Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-1f29c2e6",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T08:30:22.201Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "security",
+        "agent": "security-reviewer",
+        "toolUseId": "sa-1-1f29c2e6",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:49.468Z",
+        "kind": "observed"
+      }
+    ],
+    "docs": [
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-2-ec3b39e1",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T07:00:24.046Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-2-ec3b39e1",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T08:30:22.308Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "docs",
+        "agent": "doc-updater",
+        "toolUseId": "sa-2-ec3b39e1",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:49.575Z",
+        "kind": "observed"
+      }
+    ],
+    "verify": [
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-51aa4a03",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T09:35:49.564Z",
+        "kind": "observed"
+      },
+      {
+        "phase": "verify",
+        "agent": "verification-loop",
+        "toolUseId": "sa-0-51aa4a03",
+        "parentToolUseId": null,
+        "rank": null,
+        "at": "2026-09-21T10:30:49.682Z",
+        "kind": "observed"
       }
     ]
   },
@@ -394,9 +668,49 @@
       "declared": 1,
       "state": "observed",
       "lines": [
-        "序列1: 1 件の起動を観測: architect"
+        "序列1: 3 件の起動を観測: architect, architect, architect"
       ],
-      "at": "2026-09-20T23:28:24.169Z"
+      "at": "2026-09-21T10:30:42.596Z"
+    },
+    "prove": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 3 件の起動を観測: tdd-guide, tdd-guide, tdd-guide"
+      ],
+      "at": "2026-09-21T10:30:42.725Z"
+    },
+    "review": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 3 件の起動を観測: code-reviewer, code-reviewer, code-reviewer"
+      ],
+      "at": "2026-09-21T10:30:49.418Z"
+    },
+    "security": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 3 件の起動を観測: security-reviewer, security-reviewer, security-reviewer"
+      ],
+      "at": "2026-09-21T10:30:49.525Z"
+    },
+    "docs": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 3 件の起動を観測: doc-updater, doc-updater, doc-updater"
+      ],
+      "at": "2026-09-21T10:30:49.631Z"
+    },
+    "verify": {
+      "declared": 1,
+      "state": "observed",
+      "lines": [
+        "序列1: 2 件の起動を観測: verification-loop, verification-loop"
+      ],
+      "at": "2026-09-21T10:30:49.738Z"
     }
   }
 }

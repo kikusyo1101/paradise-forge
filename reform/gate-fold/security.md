@@ -399,11 +399,18 @@ function ledgerPath(opts = {}) {
 ## 7. **S-7 [MEDIUM] `fold-key --explain` が env の生の値を名乗る(第6条の面)**
 
 ```
-$ PARADISE_ARCHIFY='/x/secret-sk-ABCDEF0123456789TOKEN.mjs' node graph/fold.js fold-key --explain
+$ PARADISE_ARCHIFY='/x/secret-<TOKENのような文字列>.mjs' node graph/fold.js fold-key --explain
 { "name": "PARADISE_ARCHIFY",
-  "value": "/x/secret-sk-ABCDEF0123456789TOKEN.mjs",   ← **生の値がそのまま出る**
+  "value": "/x/secret-<TOKENのような文字列>.mjs",   ← **生の値がそのまま出る**
   "via": "env", "valueSha": "4aca3fdeaee01c5a" }
 ```
+
+> ⚠️ **実測時の値をそのまま写経しない。** 当初この節は `sk-` で始まる本物めいた綴りを
+> 例示に使っており、**CI の「🔒 Secret scan」段がこの文書を秘密の混入として赤にした**
+> (教主が verdict の材料を集める段で実測)。病を説明する文書が、その病の門に捕まる —
+> 第21条(門は名を語る全ての口を見張る)の正しい振る舞いであり、**門が緩いのではなく
+> 例示が軽率だった**。**秘密に似た綴りは、それ自体が秘密と同じ扱いを受ける。**
+
 
 **`valueSha` が既に在る** —— **値を名乗る必要は無い。**
 `PARADISE_ABODE` は `abode.resolve().mode`(`repo`/`global` の二値)なので安全だが、
