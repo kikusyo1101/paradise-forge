@@ -10947,9 +10947,35 @@ const foldLedger = (tag) => path.join(foldSand, tag + '.jsonl');
  * `PARADISE_NO_FOLD` は `fold.key()` の材料ではない(`fold.js:297-322` が読むのは
  * `PARADISE_ABODE` と `PARADISE_ARCHIFY` のみ)ので、落としても鍵は動かない。
  */
+/**
+ * **門が自分の走行に与える名**(BLOCK-V2 の塞ぎ)。
+ * `tests/fold.test.js:75` が `'fold-gate-' + process.pid` を自ら立てているのと同じ作法である
+ * (`graph/fold.js:69-70` の註釈が明記する「門は自分の走行を自分で宣言する」)。
+ */
+const FOLD_RESIDENT_RUN = 'fold-resident-' + process.pid;
 const foldEnv = (mode, extra) => {
   const e = { ...process.env, PARADISE_ABODE: mode };
   delete e.PARADISE_NO_FOLD;          // ← この一行が verify BLOCK-V1 の塞ぎである
+  /**
+   * ← **この一行が BLOCK-V2 の塞ぎである**(CI 実走 run 35589783555 / 段 `🏠 Abode(global 自己診断)`)。
+   *
+   * `graph/fold.js:76` は **`CI=true` なら `PARADISE_FOLD_RUN` が無い限り `runId()` に
+   * `null` を返させる**(fail-closed / security S-1 / 揟7)。`:556` の
+   * `const mine = run === null ? [] : …` がそれを受けて**領収書を一本も採らない** ——
+   * ゆえに門が自分で作った台帳さえ `bail='no-receipt'` になり、
+   * **畳みを見張る門が測りたい枝へ一度も到達しない。**
+   *
+   * ⚠️ **住処(`PARADISE_ABODE`)は原因ではない。** 実測で切り分けた:
+   *   `=global` 単体 → `fold=true` / `=global` + `CI=true` → `fold=false bail=no-receipt`。
+   *   門の作り物の台帳は `os.tmpdir()` に住み、`abode.guardWrite` は
+   *   それを `caller-named` として**通している**(`abode.js` guardWrite 註 (4) / AC-55)。
+   *
+   * ⚠️ **器を緩める道は採らない。** `CI` の枝を外せば S-1 が runner 上で再演し、
+   *    走行を跨いだ領収書で CI が畳まれる(第57条: 修理は掟を広げるな)。
+   * ⚠️ **`PARADISE_FOLD_RUN` は鍵の材料ではない**(`fold.js` の `keyExplain` が読むのは
+   *    `PARADISE_ABODE` と `PARADISE_ARCHIFY` のみ)ので、宣言しても**門が測る世界は動かない。**
+   */
+  e.PARADISE_FOLD_RUN = FOLD_RESIDENT_RUN;
   return extra ? Object.assign(e, extra) : e;
 };
 /** 現物の台帳の指紋。**番兵がこれを前後で照合する**(AC-24)。 */
@@ -10980,7 +11006,10 @@ test('fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条
   const file = foldLedger('ac10');
   // **global の緑の領収書が在る状態を作る。** それでも畳まれてはならない。
   const gkey = fld.key({ env: foldEnv('global') });
-  fld.append({ key: gkey, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
+  fld.append({ key: gkey, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' },
+    // **刻む側にも同じ宣言を渡す**(BLOCK-V2)。渡さねば `runId()` が `process.env` を読み、
+    // CI(`CI=true`)では `run: null` の領収書が刻まれて、宣言した走行の読み手と永久に食い違う。
+    { file, env: foldEnv('global') });
   assert.strictEqual(fld.read({ file }).length, 1, '前提が作れていない — 領収書が台帳に無い');
 
   // ① 器の裁定: 鍵も見ずに undeclared-state
@@ -11029,7 +11058,7 @@ test('fold: 総数と実行数は別の数である (第22条 / 揟4)', () => {
    */
   const asRepo = foldEnv('repo');
   const k = fld.key({ env: asRepo });
-  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
+  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file, env: asRepo });
   const folded = fld.decide({ file, env: asRepo });
   assert.strictEqual(folded.fold, true, '前提が崩れた — 畳める状態を作れていない');
   // **畳んだ走行が `Executed 1 out of 1` と名乗ったら赤である**(AC-14)
@@ -11125,9 +11154,9 @@ test('fold: 何もかも畳む機構は測定ではない', () => {
     fs.writeFileSync(mut, broken);
     // 台帳には**別の鍵の**領収書しか無い。健全なら key-miss、壊れていれば畳む。
     const fld = require(FOLD_JS);
-    fld.append({ key: '0'.repeat(16), exit: 0, summary: 'x' }, { file });
-    // **住処を宣言して撃つ**(上の AC-14 と同じ理由。環境差の偽の赤を避ける)
     const asRepo = foldEnv('repo');
+    fld.append({ key: '0'.repeat(16), exit: 0, summary: 'x' }, { file, env: asRepo });
+    // **住処を宣言して撃つ**(上の AC-14 と同じ理由。環境差の偽の赤を避ける)
     assert.strictEqual(fld.decide({ file, env: asRepo }).bail, 'key-miss', '前提が崩れた — 健全な器が key-miss を返さない');
     const rr = require('child_process').spawnSync(process.execPath, ['-e',
       `const f=require(${JSON.stringify(mut)});` +
@@ -11161,7 +11190,11 @@ test('fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコー
   const file = foldLedger('m14');
   const asRepo = foldEnv('repo');
   const k = fld.key({ env: asRepo });
-  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 499 passed, 0 failed' }, { file });
+  fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 499 passed, 0 failed' },
+    // **刻む側にも同じ宣言を渡す**(BLOCK-V2)。下で撃つ子は `asRepo` を継ぐので
+    // 子の `runId()` は `FOLD_RESIDENT_RUN` を読む —— 領収書の `run` 欄がそれと
+    // 一致していなければ、子は `bail=no-receipt` を名乗って畳まない(`fold.js` の `selectRows`)。
+    { file, env: asRepo });
   const r = require('child_process').spawnSync(process.execPath, [__filename],
     { encoding: 'utf8', cwd: path.join(DIR, '..'), timeout: 120000,
       env: { ...asRepo, PARADISE_FOLD_LEDGER: file } });
@@ -11229,11 +11262,15 @@ test('fold: 外の PARADISE_NO_FOLD に常駐の門は黙らされない (verify
    * ⚠️ **この門自身を子から外す**(`--gate-not`)。外さねば子が孫を生み、
    * **再帰して終わらない**(実測: 写しが自分を撃ち直して赤になった)。
    * 外して失う歯は無い —— 子で測るのは**旗に黙らされる 4 門**であって、この門ではない。
+   *
+   * ⚠️ **BLOCK-V2 の門も併せて外す**(rework3 で実測して踏んだ)。あれも自分の写しを
+   * 子として撃つ門なので、外さねば**この門の子があれを走らせ、その孫がさらに走る** ——
+   * 入れ子が二段重なる。**互いに互いの測る対象ではない**ので、失う歯は無い。
    */
-  const SELF = '^fold: 外の PARADISE_NO_FOLD';
+  const SELF = ['^fold: 外の PARADISE_NO_FOLD', '^fold: CI の走行の絞り'];
   const runCopy = (p) => {
     const r = require('child_process').spawnSync(process.execPath,
-      [p, '--gate', '^fold:', '--gate-not', SELF],
+      [p, '--gate', '^fold:', ...SELF.flatMap((s) => ['--gate-not', s])],
       { encoding: 'utf8', cwd: path.join(DIR, '..'), timeout: 180000, env: CI_ENV });
     const out = String(r.stdout);
     const m = out.match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
@@ -11276,6 +11313,110 @@ test('fold: 外の PARADISE_NO_FOLD に常駐の門は黙らされない (verify
       `${bad.out.split('\n').filter(l => /^ {2}✗/.test(l)).join(' / ').slice(0, 400)}`);
     assert.ok(bad.red >= ok.red + 4,
       `壊した写しの赤が ${bad.red} 本 — BLOCK-V1 は 4 門を落とすのが実測である (verify §3.2)`);
+  } finally {
+    for (const p of [sane, broken]) { try { fs.rmSync(p, { force: true }); } catch {} }
+  }
+});
+
+test('fold: CI の走行の絞りに常駐の門は黙らされない (BLOCK-V2 回帰)', () => {
+  /**
+   * **CI 実走 run 35589783555 の BLOCK-V2 の回帰の門。**
+   *
+   * `🏠 Abode(global 自己診断)` 段(`tribunal.yml`)は `PARADISE_FOLD_RUN` を**渡さない** ——
+   * security S-2 の塞ぎであり、**正しい**(台帳への経路が物理的に無いことを段が名乗る)。
+   * だが GitHub Actions は `CI=true` を常に立てる。`graph/fold.js` の `runId()` は
+   * **`CI=true` かつ `PARADISE_FOLD_RUN` が無ければ `null` を返す**(fail-closed / S-1 / 揟7)。
+   * `selectRows()` の `const mine = run === null ? [] : …` がそれを受けて
+   * **領収書を一本も採らない** —— ゆえに門が自分で作った作り物の台帳さえ
+   * `bail='no-receipt'` になり、**畳みを見張る門が測りたい枝へ一度も到達しなかった**
+   * (実測: `✗` 3 本 / 段は 621s で failure)。
+   *
+   * **BLOCK-V1 と同型の病の第三の面である。** 門は住処(`PARADISE_ABODE`)と
+   * 旗(`PARADISE_NO_FOLD`)を宣言していたが、**走行(`PARADISE_FOLD_RUN`)を宣言していなかった。**
+   * `tests/fold.test.js:75` は最初からそれを立てており(`'fold-gate-' + process.pid`)、
+   * `graph/fold.js` の註釈も「**門は自分の走行を自分で宣言する**」と明記していた。
+   *
+   * ⚠️ **器を緩めるのは答えではない**(第57条)。`CI` の枝を外せば S-1 が runner 上で
+   * 再演する。**直すのは門の側である。**
+   * ⚠️ **skip で逃げるのも答えではない**(第56条 b の選び落とし)。
+   *
+   * ⚠️ **設定ではなく走行を読む**(第16条)。`FOLD_RESIDENT_RUN` の綴りを `grep` するだけでは
+   * 「宣言する定数が在るが誰も使っていない」実装を素通しする(prove M-10 / M-11 の無音)。
+   * ゆえに**自分自身の写しを CI と同じ env(`CI=true`)で子として撃ち**、数で受け取る。
+   *
+   * 盲点(第62条 a): 子で撃つのは畳みの門束だけである。全 501 門が CI の env で緑であることは
+   * この門ではなく CI そのものが示す。
+   */
+  const src = fs.readFileSync(__filename, 'utf8');
+  /**
+   * **CI の `🏠 Abode(global 自己診断)` 段と同じ env。**
+   * `PARADISE_FOLD_RUN` も `PARADISE_FOLD_LEDGER` も**渡さない**(段がそうだからである)。
+   * 台帳は門が自分で `foldSand` に作る —— **現物には触れない**(第58条 c)。
+   */
+  const CI_ENV = { ...process.env, CI: 'true', GITHUB_ACTIONS: 'true', PARADISE_ABODE: 'global' };
+  delete CI_ENV.PARADISE_FOLD_RUN;
+  delete CI_ENV.PARADISE_FOLD_LEDGER;
+  const mkCopy = (tag, mutate) => {
+    let s = src;
+    if (mutate) {
+      s = mutate(src);
+      assert.notStrictEqual(s, src, `故障注入が当たらなかった (${tag}) — 変異点の形が変わった (第37条)`);
+    }
+    const p = path.join(DIR, `.paradise-blockv2-${tag}-${process.pid}.js`);
+    fs.writeFileSync(p, s);
+    return p;
+  };
+  /**
+   * **この門自身と BLOCK-V1 の門を子から外す。**
+   * 外さねば子が孫を生んで再帰する(BLOCK-V1 の門と同じ理由。実測で踏んだ)。
+   * どちらも「畳みの門が外の env に黙らされないか」を測る門であり、
+   * **互いに互いの測る対象ではない**ので、失う歯は無い。
+   */
+  const SELF = ['^fold: CI の走行の絞り', '^fold: 外の PARADISE_NO_FOLD'];
+  const runCopy = (p) => {
+    const r = require('child_process').spawnSync(process.execPath,
+      [p, '--gate', '^fold:', ...SELF.flatMap((s) => ['--gate-not', s])],
+      { encoding: 'utf8', cwd: path.join(DIR, '..'), timeout: 300000, env: CI_ENV });
+    const out = String(r.stdout);
+    const m = out.match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
+    return { r, out, matched: m && Number(m[1]), green: m && Number(m[2]), red: m && Number(m[3]) };
+  };
+  const sane = mkCopy('sane');
+  /**
+   * ⚠️ **綴りが自分に当たらないようにする**(BLOCK-V1 の門と同じ作法)。
+   * 変異点の綴りはこの門の本文にも註釈として現れるので、綴りを割って組み立て、
+   * **置換先が `foldEnv` の中であること**を検める。
+   */
+  const NEEDLE = 'e.PARADISE_FOLD_RUN = ' + 'FOLD_RESIDENT_RUN;';
+  const broken = mkCopy('broken', (s) => {
+    const i = s.indexOf(NEEDLE);
+    assert.ok(i > 0 && i < s.indexOf('const foldReal ='),
+      '変異点が foldEnv の中に見つからない — 走行を宣言する行が動いた (第37条)');
+    return s.slice(0, i) + '/* 走行の宣言を抜いた */' + s.slice(i + NEEDLE.length);
+  });
+  try {
+    // ① 健全な写しは、**CI の走行の絞りが効く世界でも**畳みの門を全部通す
+    const ok = runCopy(sane);
+    assert.ok(ok.matched >= 4,
+      `畳みの門が ${ok.matched} 本しか当たらない — 測っていないものを緑と呼ぶな (第37条): ` +
+      `${ok.out.trim().split('\n').slice(-2).join(' / ')}`);
+    assert.strictEqual(ok.red, 0,
+      `CI の env(CI=true / PARADISE_FOLD_RUN 無し)で常駐の門が ${ok.red} 本赤くなった — ` +
+      `畳みを見張る門が走行の絞りで黙らされている (BLOCK-V2 / 第56条 b / 第62条 b): ` +
+      `${ok.out.split('\n').filter(l => /^ {2}✗/.test(l)).join(' / ').slice(0, 400)}`);
+    assert.strictEqual(ok.r.status, 0, `健全な写しが exit ${ok.r.status}: ${String(ok.r.stderr).slice(0, 200)}`);
+
+    // ② **壊して鳴らす**: 走行を宣言する一行を抜くと、CI 実走と同じ病が再現する
+    const bad = runCopy(broken);
+    assert.ok(bad.red > 0,
+      `走行の宣言を抜いた写しが CI の env で通った — **この門は鳴っていない**(第48条 c): ` +
+      `${bad.out.trim().split('\n').slice(-2).join(' / ')}`);
+    assert.notStrictEqual(bad.r.status, 0, `壊した写しが exit 0 で通った: ${bad.out.slice(-300)}`);
+    assert.match(bad.out, /no-receipt/,
+      `鳴った理由が BLOCK-V2(bail=no-receipt)でない — 別の病を測っている (第37条): ` +
+      `${bad.out.split('\n').filter(l => /^ {2}✗/.test(l)).join(' / ').slice(0, 400)}`);
+    assert.ok(bad.red >= ok.red + 3,
+      `壊した写しの赤が ${bad.red} 本 — BLOCK-V2 は 3 門を落とすのが CI と手元の実測である`);
   } finally {
     for (const p of [sane, broken]) { try { fs.rmSync(p, { force: true }); } catch {} }
   }
