@@ -10922,6 +10922,36 @@ console.log('\n畳みの機構 (fold / reform/gate-fold):');
 /** 畳みの門が使う作り物の台帳。**現物は一度も触らない**(第58条 c / AC-24)。 */
 const foldSand = fs.mkdtempSync(path.join(os.tmpdir(), 'paradise-fold-resident-'));
 const foldLedger = (tag) => path.join(foldSand, tag + '.jsonl');
+/**
+ * **門は自分の測る世界を自分で宣言する**(review F-1 / verify BLOCK-V1 / 第48条 c)。
+ *
+ * 上の常駐の門は `{ ...process.env, PARADISE_ABODE: … }` を `decide()` へ流していた ——
+ * **住処は宣言し直すが `PARADISE_NO_FOLD` は継いでいた**。`fold.js:610` の
+ * `const off = opts.off === true || env.PARADISE_NO_FOLD === '1'` は**何より先に効く**
+ * (AC-18「出口は常に開いている」)ので、外から旗を立てられた走行では `decide()` が
+ * 鍵も台帳も見ずに `bail='disabled'` を返し、**畳みを見張る門が測りたい枝へ一度も到達しない。**
+ *
+ * 実測(verify §3 / 自走で再現): `PARADISE_NO_FOLD=1 node tests/paradise.test.js`
+ * → `496 passed, 4 failed`。落ちたのは 10934 / 10988 / 11064 / 11116 の 4 本。
+ * 旗を落とすだけで `500 passed, 0 failed`。**旗一点で結果が割れていた。**
+ *
+ * ⚠️ **旗を無視する opts を `decide()` に足す道は採らなかった** —— それは AC-18 が
+ * 保証する出口に穴を開け、**掟を広げる修理**になる(第57条)。
+ * ⚠️ **`delete process.env.PARADISE_NO_FOLD` を門束の入口に置く道も採らなかった** ——
+ * この走行は自己診断**そのもの**であり、:152 の `FOLD.off` が同じ旗を読む。
+ * 走行の途中で大域を書き換えれば、以後の 300 余本の門と子プロセスの env が
+ * **遠隔で変わる**(第56条 b: 門番の足場を門が動かしてはならない)。
+ *
+ * ゆえに**各門が自分の env を組む**。旗の中和はこの一関数に集まり、
+ * 門『fold: 外の PARADISE_NO_FOLD に常駐の門は黙らされない (verify BLOCK-V1 回帰)』が見張る。
+ * `PARADISE_NO_FOLD` は `fold.key()` の材料ではない(`fold.js:297-322` が読むのは
+ * `PARADISE_ABODE` と `PARADISE_ARCHIFY` のみ)ので、落としても鍵は動かない。
+ */
+const foldEnv = (mode, extra) => {
+  const e = { ...process.env, PARADISE_ABODE: mode };
+  delete e.PARADISE_NO_FOLD;          // ← この一行が verify BLOCK-V1 の塞ぎである
+  return extra ? Object.assign(e, extra) : e;
+};
 /** 現物の台帳の指紋。**番兵がこれを前後で照合する**(AC-24)。 */
 const foldReal = () => {
   const abode = require(path.join(DIR, '..', 'graph', 'abode.js'));
@@ -10949,12 +10979,12 @@ test('fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条
   const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
   const file = foldLedger('ac10');
   // **global の緑の領収書が在る状態を作る。** それでも畳まれてはならない。
-  const gkey = fld.key({ env: { ...process.env, PARADISE_ABODE: 'global' } });
+  const gkey = fld.key({ env: foldEnv('global') });
   fld.append({ key: gkey, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
   assert.strictEqual(fld.read({ file }).length, 1, '前提が作れていない — 領収書が台帳に無い');
 
   // ① 器の裁定: 鍵も見ずに undeclared-state
-  const d = fld.decide({ file, env: { ...process.env, PARADISE_ABODE: 'global' } });
+  const d = fld.decide({ file, env: foldEnv('global') });
   assert.strictEqual(d.fold, false, '=global を畳んだ — 宣言外の状態に依る走行である (揟2)');
   assert.strictEqual(d.bail, 'undeclared-state', `=global の bail が ${d.bail}`);
   assert.strictEqual(d.key, null,
@@ -10963,7 +10993,7 @@ test('fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条
   // ② **走行を読む**: 子プロセスで実際に撃ち、reused の語が出ないことを見る
   const r = require('child_process').spawnSync(process.execPath, [__filename, '--gate-list'],
     { encoding: 'utf8', cwd: path.join(DIR, '..'),
-      env: { ...process.env, PARADISE_ABODE: 'global', PARADISE_FOLD_LEDGER: file } });
+      env: foldEnv('global', { PARADISE_FOLD_LEDGER: file }) });
   assert.strictEqual((String(r.stdout).match(/reused/g) || []).length, 0,
     `=global の走行が reused を名乗った: ${String(r.stdout).split('\n').slice(-3).join(' / ')}`);
 
@@ -10979,7 +11009,7 @@ test('fold: 宣言外の状態に依る走行は畳まれない (揟2 / 第37条
       `const f=require(${JSON.stringify(mut)});` +
       `const d=f.decide({file:${JSON.stringify(file)},env:{...process.env,PARADISE_ABODE:'global'}});` +
       'console.log("fold="+d.fold+" bail="+d.bail);'],
-      { encoding: 'utf8', cwd: path.join(DIR, '..') });
+      { encoding: 'utf8', cwd: path.join(DIR, '..'), env: foldEnv('global') });
     assert.match(String(rr.stdout), /fold=true/,
       `global の禁を外した写しがまだ畳まなかった — 注入が当たっていない: ${rr.stdout}${rr.stderr}`);
   } finally { try { fs.rmSync(mut, { force: true }); } catch {} }
@@ -10997,7 +11027,7 @@ test('fold: 総数と実行数は別の数である (第22条 / 揟4)', () => {
    * ⚠️ **鍵も同じ宣言で採る。** 領収書を周囲の env の鍵で刻めば、
    * 宣言した住処の鍵と食い違って `key-miss` になる —— 前提が作れない。
    */
-  const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+  const asRepo = foldEnv('repo');
   const k = fld.key({ env: asRepo });
   fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 492 passed, 0 failed' }, { file });
   const folded = fld.decide({ file, env: asRepo });
@@ -11097,13 +11127,13 @@ test('fold: 何もかも畳む機構は測定ではない', () => {
     const fld = require(FOLD_JS);
     fld.append({ key: '0'.repeat(16), exit: 0, summary: 'x' }, { file });
     // **住処を宣言して撃つ**(上の AC-14 と同じ理由。環境差の偽の赤を避ける)
-    const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+    const asRepo = foldEnv('repo');
     assert.strictEqual(fld.decide({ file, env: asRepo }).bail, 'key-miss', '前提が崩れた — 健全な器が key-miss を返さない');
     const rr = require('child_process').spawnSync(process.execPath, ['-e',
       `const f=require(${JSON.stringify(mut)});` +
       `const d=f.decide({file:${JSON.stringify(file)},env:{...process.env,PARADISE_ABODE:'repo'}});` +
       'console.log("fold="+d.fold+" key="+d.key+" receiptKey="+(d.receipt&&d.receipt.key));'],
-      { encoding: 'utf8', cwd: path.join(DIR, '..') });
+      { encoding: 'utf8', cwd: path.join(DIR, '..'), env: foldEnv('repo') });
     assert.match(String(rr.stdout), /fold=true/,
       `鍵の比較を潰した写しがまだ畳まなかった — 注入が当たっていない: ${rr.stdout}${rr.stderr}`);
     const m = String(rr.stdout).match(/receiptKey=(\S+)/);
@@ -11129,7 +11159,7 @@ test('fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコー
    */
   const fld = require(path.join(DIR, '..', 'graph', 'fold.js'));
   const file = foldLedger('m14');
-  const asRepo = { ...process.env, PARADISE_ABODE: 'repo' };
+  const asRepo = foldEnv('repo');
   const k = fld.key({ env: asRepo });
   fld.append({ key: k, exit: 0, summary: 'Paradise self-test: 499 passed, 0 failed' }, { file });
   const r = require('child_process').spawnSync(process.execPath, [__filename],
@@ -11152,6 +11182,103 @@ test('fold: 畳んだ走行は写し元を名乗る — 名乗りは死にコー
   // ④ **綴りの衝突を作っていない**(requirements §4.1 / census.js:57 の保険経路)
   assert.strictEqual((out.match(/passed/g) || []).length, 0,
     '畳んだ走行が passed の語を出した — census.js:57 が拾い、偽の数になる');
+});
+
+test('fold: 外の PARADISE_NO_FOLD に常駐の門は黙らされない (verify BLOCK-V1 回帰)', () => {
+  /**
+   * **verify 相 BLOCK-V1 の回帰の門。**
+   *
+   * `PARADISE_NO_FOLD=1` は **AC-18 が保証する公の逃げ道**である —— 神が立ててよい旗である。
+   * だがその旗を立てて全走すると、**畳みを見張る常駐の門 4 本が偽の赤を出していた**
+   * (実測: `Paradise self-test: 496 passed, 4 failed` / 旗を落とすだけで `500 passed, 0 failed`)。
+   * 門が `{ ...process.env, … }` を `decide()` へ流し、住処だけ宣言し直して
+   * **旗を継いでいた**からである。`fold.js` の `off` は何より先に効くので
+   * `bail='disabled'` が返り、**門は測りたい枝へ一度も到達しなかった。**
+   *
+   * 第56条(b):「畳みを見張る門が、畳みを切る旗で黙らされるなら、それは門番ではない」。
+   * 第62条(b):「偽の赤は真の赤より有害である」。
+   *
+   * ⚠️ **skip で逃げるのは答えではない**(第57条 / 第56条 b の選び落とし)。
+   * 門は **`NO_FOLD` の下でも自分の測りたい振る舞いを測れなければならない** ——
+   * ゆえにこの門は「旗の下で 4 門が実際に緑になること」を**走行で読む**(第16条)。
+   *
+   * ⚠️ **設定を読むのではなく走行を読む。** `foldEnv` の綴りを `grep` するだけでは
+   * 「旗を落とす関数が在るが誰も使っていない」実装を素通しする(prove M-10 / M-11 の無音)。
+   *
+   * 盲点(第62条 a): この門は**畳みの門束だけ**を子で撃つ(`--gate '^fold:'`)。
+   * 「全 500 門が旗の下で緑」であることは全走そのものが示す(rework2.md §3)。
+   */
+  const src = fs.readFileSync(__filename, 'utf8');
+  /** CI の `📒 Fold` 段と同じ env。**台帳は作り物へ振り替える**(第58条 c)。 */
+  const CI_ENV = { ...process.env, PARADISE_NO_FOLD: '1',
+    PARADISE_FOLD_LEDGER: foldLedger('blockv1-ci') };
+  /** 写しは倉の中に置く。相対の `require` が `__dirname` に依るからである。 */
+  const mkCopy = (tag, mutate) => {
+    let s = src;
+    if (mutate) {
+      s = mutate(src);
+      assert.notStrictEqual(s, src, `故障注入が当たらなかった (${tag}) — 変異点の形が変わった (第37条)`);
+    }
+    const p = path.join(DIR, `.paradise-blockv1-${tag}-${process.pid}.js`);
+    fs.writeFileSync(p, s);
+    return p;
+  };
+  /**
+   * 子の名乗りを読む。`R green, R red` の対を数で受け取る。
+   *
+   * ⚠️ **この門自身を子から外す**(`--gate-not`)。外さねば子が孫を生み、
+   * **再帰して終わらない**(実測: 写しが自分を撃ち直して赤になった)。
+   * 外して失う歯は無い —— 子で測るのは**旗に黙らされる 4 門**であって、この門ではない。
+   */
+  const SELF = '^fold: 外の PARADISE_NO_FOLD';
+  const runCopy = (p) => {
+    const r = require('child_process').spawnSync(process.execPath,
+      [p, '--gate', '^fold:', '--gate-not', SELF],
+      { encoding: 'utf8', cwd: path.join(DIR, '..'), timeout: 180000, env: CI_ENV });
+    const out = String(r.stdout);
+    const m = out.match(/(\d+) of \d+ gates matched — (\d+) green, (\d+) red/);
+    return { r, out, matched: m && Number(m[1]), green: m && Number(m[2]), red: m && Number(m[3]) };
+  };
+  const sane = mkCopy('sane');
+  /**
+   * ⚠️ **綴りが自分に当たらないようにする**(`fold.test.js` の塊マーカーと同じ作法)。
+   * この門の本文は変異点の綴りをそのまま含むので、素朴な `replace` は
+   * **自分の文字列リテラルに当たる**(実測: 同じ綴りが 2 箇所に出る)。
+   * ゆえに綴りを二つに割って組み立て、**置換が当たった先が `foldEnv` の中であること**を検める。
+   */
+  const NEEDLE = 'delete e.' + 'PARADISE_NO_FOLD;';
+  const broken = mkCopy('broken', (s) => {
+    const i = s.indexOf(NEEDLE);
+    assert.ok(i > 0 && i < s.indexOf('const foldReal ='),
+      '変異点が foldEnv の中に見つからない — 旗を落とす宣言が動いた (第37条)');
+    return s.slice(0, i) + '/* 旗を落とす宣言を抜いた */' + s.slice(i + NEEDLE.length);
+  });
+  try {
+    // ① 健全な写しは、**AC-18 の旗が立った世界でも**畳みの門を全部通す
+    const ok = runCopy(sane);
+    assert.ok(ok.matched >= 4,
+      `畳みの門が ${ok.matched} 本しか当たらない — 測っていないものを緑と呼ぶな (第37条): ` +
+      `${ok.out.trim().split('\n').slice(-2).join(' / ')}`);
+    assert.strictEqual(ok.red, 0,
+      `PARADISE_NO_FOLD=1(AC-18 の公の逃げ道)で常駐の門が ${ok.red} 本赤くなった — ` +
+      `畳みを見張る門が畳みを切る旗で黙らされている (verify BLOCK-V1 / 第56条 b / 第62条 b): ` +
+      `${ok.out.split('\n').filter(l => /^ {2}✗/.test(l)).join(' / ').slice(0, 400)}`);
+    assert.strictEqual(ok.r.status, 0, `健全な写しが exit ${ok.r.status}: ${String(ok.r.stderr).slice(0, 200)}`);
+
+    // ② **壊して鳴らす**: 旗を落とす一行を抜くと、同じ 4 門が `disabled` で落ちる
+    const bad = runCopy(broken);
+    assert.ok(bad.red > 0,
+      `旗を落とす宣言を抜いた写しが旗の下で通った — **この門は鳴っていない**(第48条 c): ` +
+      `${bad.out.trim().split('\n').slice(-2).join(' / ')}`);
+    assert.notStrictEqual(bad.r.status, 0, `壊した写しが exit 0 で通った: ${bad.out.slice(-300)}`);
+    assert.match(bad.out, /disabled/,
+      `鳴った理由が BLOCK-V1(bail=disabled)でない — 別の病を測っている (第37条): ` +
+      `${bad.out.split('\n').filter(l => /^ {2}✗/.test(l)).join(' / ').slice(0, 400)}`);
+    assert.ok(bad.red >= ok.red + 4,
+      `壊した写しの赤が ${bad.red} 本 — BLOCK-V1 は 4 門を落とすのが実測である (verify §3.2)`);
+  } finally {
+    for (const p of [sane, broken]) { try { fs.rmSync(p, { force: true }); } catch {} }
+  }
 });
 
 test('fold: 改修は門を減らしていない — 本数が基準を下回らない', () => {
