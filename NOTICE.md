@@ -8,22 +8,30 @@
 ## everything-claude-code
 
 - **出典**: https://github.com/WorldFlowAI/everything-claude-code
+  - 同じハーネスは https://github.com/affaan-m/everything-claude-code としても公開されていた
+    (README の「ソース」節が指す URL)。後者は現在 `affaan-m/ECC` へ転送される。
+    楽園が取り込んだ commit は前者の履歴に在る。
 - **取り込んだ版**: `432485ba6b92c14fb357276a98957f348bcff9ee` (2026-01-23)
 - **ライセンス**: MIT
   - 上流リポジトリに `LICENSE` ファイルは存在しないが、`README.md` が
     「MIT - Use freely, modify as needed, contribute back if you can.」と明記している。
     バッジも MIT を指す。この事実に基づき MIT として取り扱う。
   - 取り込み時に LICENSE ファイルが不在であったことを、事実としてここに記録する。
-- **取り込んだもの**: `overlay/vendor/` 配下
-  - `agents/` (9) — 汎用の専門家定義
-  - `commands/` (15) — スラッシュコマンド
-  - `skills/` (14) — 手順書
-  - `rules/` (8) — コーディング規約
+- **取り込んだもの**: `overlay/vendor/` 配下（数は `node graph/vendor.js status` が語る）
+  - `agents/` — 汎用の専門家定義
+  - `commands/` — スラッシュコマンド
+  - `skills/` — 手順書
+  - `rules/` — コーディング規約
+  - `contexts/` — 文脈の雛形
   - `hooks/` — ライフサイクルフックの定義
   - `scripts/` — フックの実体と補助ライブラリ (Node標準ライブラリのみに依存)
 - **楽園による改変**: `overlay/overlay.json` が宣言する範囲に限る。
-  改変は原則として配備時の変換 (`graph/apply-models.js` によるモデル方針の適用) として行い、
-  取り込んだファイル自体は上流の状態を保つ。
+  改変は原則として配備時の変換 (`graph/apply-models.js` / `graph/apply-spawn.js` による
+  位階の規則の適用) として行い、取り込んだファイル自体は上流の状態を保つ。
+- **配備しないもの (`drop`)**: 楽園で起動が観測されなかった agents / commands / rules は
+  vendor に素材として残すが配備しない。一覧と実測の根拠は `overlay/overlay.json` の `drop`。
+  上流由来の hooks / scripts はこの機で実効 0 と実測され、`settings.json` へは配備しない
+  (`graph/apply-guards.js FORBIDDEN_HOOKS`)。素材としては vendor に残る。
 
 ### MIT License (everything-claude-code)
 

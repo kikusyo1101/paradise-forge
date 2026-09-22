@@ -116,7 +116,8 @@ It returns one of:
   that **cardinal**:
   1. Dispatch each phase to its **priest** (large subagent, via delegate_task),
      IN PARALLEL when independent. Give each priest ONLY its `context_from`
-     artifacts. A priest may marshal **believers** (small subagents) for fine work.
+     artifacts. (The believer layer is retired — 0/108 spawns observed — so a
+     priest does its fine work in sequence, not via sub-subagents.)
      Require the contract return: `{phase,status,artifact,evidence,summary}`.
   2. **Reconcile** each result (`contract.js check`) — reject a claim whose
      artifact isn't real. Re-dispatch a failed phase.

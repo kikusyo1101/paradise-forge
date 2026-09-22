@@ -19,15 +19,15 @@ hilyfux のgit-native memory、LangGraph のtyped state graph）を吸収して�
                     └─────────────────────────────────────────┘
                                      ▲
                     ┌─────────────────────────────────────────┐
-   ② LOOP   ───────▶│  verification-loop / eval-harness         │
-   (ループ)          │  continuous-learning (Stop hook)          │
-                    │  memory-persistence (Session lifecycle)   │
+   ② LOOP   ───────▶│  critic → verdict → lesson (Reflexion)    │
+   (ループ)          │  gauge (前後の数値) · census (数の真実)    │
+                    │  SessionStart hook が前回の状態を注ぐ      │
                     └─────────────────────────────────────────┘
                                      ▲
                     ┌─────────────────────────────────────────┐
-   ① HARNESS ──────▶│  16 agents · 19 commands · vendored assets │
-   (ハーネス)         │  8 rules · hooks (6 lifecycle events)      │
-                    │  wired into ~/.claude                     │
+   ① HARNESS ──────▶│  vendor + overlay → deploy.js が建てる    │
+   (ハーネス)         │  agents · commands · rules · hooks       │
+                    │  住処は <repo>/.claude (第58条)           │
                     └─────────────────────────────────────────┘
 ```
 
@@ -45,42 +45,49 @@ node graph/vendor.js refresh --yes # 上流が在れば取り込み直す（人�
 
 取り込んだもの（130ファイル / MIT・出自は `NOTICE.md`）は二つの出自を持つ。
 
-上流 `everything-claude-code` の資産:
+上流 `everything-claude-code` の資産（各 kind 直下の項目数 — `census.js` が数え直す。全ファイル数は `vendor.js status`）:
 `agents 9` / `commands 15` / `skills 11` / `rules 8` / `hooks 3` / `scripts 3` / `contexts 3`
 
 **描画器 `archify` v2.16.0**（`overlay/vendor/archify`、tt-a1i、MIT）:
 `graph/atlas.js` が JSON IR を渡す先。上流へ電話をかけないよう更新チェッカーを
 削いである（第20条: vendored 資産は供給線であってはならない）。
 
-**`~/.claude` は原本ではなく成果物**である。vendor + `overlay/` から常に再生成できる。
-手で `~/.claude` を編集しない — 編集は `overlay/` へ書く。
+**配備先は `<repo>/.claude` であり、原本ではなく成果物**である（第58条: 住処を知る器は
+`graph/abode.js` 一つ）。vendor + `overlay/` から常に再生成できる。
+手で `.claude/` を編集しない — 編集は `overlay/` へ書く。神の住処 `~/.claude` へ出すのは
+`graph/abode.json` に神が名指した物だけ（現在は `settings.json` の permissions のみ）。
 
 ```bash
+node graph/abode.js resolve      # 住処の解決 (mode=repo が既定)
 node graph/upstream.js impact    # 上流が在れば差分を裁定、無ければ黙る
-node graph/deploy.js --write     # vendor + overlay から ~/.claude を建て直す
+node graph/deploy.js --write     # vendor + overlay から <repo>/.claude を建て直す
 node graph/deploy.js check       # 配備物が定義と一致しているか (CI用)
 node graph/check-agents.js       # forge.js が名指しする神官が実在するか
 ```
 
-**乖離の四分類**（`overlay/overlay.json` が宣言する）:
+**乖離の五分類**（`overlay/overlay.json` が宣言する）:
 
 | 関係 | 例 | 取り込み時の扱い |
 |---|---|---|
-| **transform** | agents 9件の `model:` | 上流を常に採用し、**規則を再適用**。衝突ではない |
-| **replace** | `orchestrate.md` | 楽園が勝つ。ただし上流の変更は必ず提示 |
-| **own** | `/forge` `/conclave` `/graph`、神官7名 | 楽園固有。`overlay/` が原本 |
+| **transform** | agents の `model:` / `tools:` | 上流を常に採用し、**規則を再適用**（apply-models + apply-spawn）。衝突ではない |
+| **replace** | `orchestrate.md`、rules 3 本 | 楽園が勝つ。ただし上流の変更は必ず提示 |
+| **own** | `/forge` `/conclave` `/graph` `/ship`、神官（overlay/agents） | 楽園固有。`overlay/` が原本 |
 | **adopted** | （現在なし） | 上流が削除したが楽園が拾ったもの |
+| **drop** | 起動 0 の agents / commands / rules | vendor に素材として残すが**配備しない**。根拠は実測で `overlay.json` に書く |
 
 - **独立は決別ではない。** 上流が在るときだけ見に行き、無ければ黙る
-- **取り込みは人の承認を要する。** cron（毎朝9時）は fetch と影響報告まで
+- **取り込みは人の承認を要する。** `vendor.js refresh --yes` は人が撃つ（自動の cron は無い）
 - **借りたものは必ず credit する。** 出自・コミット・ライセンスは `NOTICE.md`
-- **commands (15)**: `/plan` `/tdd` `/verify` `/code-review` `/build-fix` `/refactor-clean` `/learn` `/checkpoint` `/eval` `/orchestrate` … + **`/graph`**（新規・楽園の核）
-- **skills (12)**, **rules (8)**, **hooks (14)** — settings.json に6ライフサイクルイベントで統合
+- **何が配備されているかは `node graph/deploy.js plan` が語る** — 数を散文に写経しない（第22条）。
+  vendor の command 15 本のうち楽園で起動が観測されたものは無く、大半は `drop` である（`reform/harness-diet/findings.md`）
+- **hooks は SessionStart と PreToolUse だけ**（`<repo>/.claude/settings.json`）: 前者が前回の状態（branch・未コミット・開いた走行帳）を注ぎ、
+  後者が main 上の commit を拒む。上流の hook はこの機で実効 0 と実測され退役した（`apply-guards.js FORBIDDEN_HOOKS`）
 
 ### ② ループエンジニアリング — 自己改善の閉ループ
-- **verification-loop / eval-harness**: build→type→lint→test→security→diff の検証ゲート、pass@k メトリクス
-- **continuous-learning**: セッション終了時に再利用パターンを自動抽出 → 学習スキル化
-- **memory-persistence**: SessionStart/PreCompact/SessionEnd でコンテキストを永続化。`/clear` `/compact` を越えて記憶が生き残る
+- **critic → verdict → lesson**: reflect 相の敵対的自己批評（第9条）が verdict の前に走り、見逃した欠陥は `kg.js remember lesson` で永久記録され、以後の全創造で `critic.js` が自動チェックする（Reflexion）
+- **gauge**: 走行を決定的に採点し台帳に刻む。「改善した」は前後の数値で証明する（第38条）
+- **census**: 楽園が己について語る数を数え直す（第22条）— 散文が腐る前に CI が鳴る
+- **SessionStart hook**: 前回の状態（branch・未コミット・開いた走行帳・KG snapshot）を注ぐ。役割と掟は `CLAUDE.md` が担い、hook は写経しない（第39条）
 
 ### ③ グラフエンジニアリング — 楽園の核（`paradise/graph/`）
 | ツール | 役割 |
@@ -235,12 +242,15 @@ node graph/orchestrator.js auto --run <run.json>   # 次アクション(wave/ver
 
 ## 聖職位階（The Conclave）— 再帰的階層オーケストレーション
 ```
-神(あなた) → 教主(私) → 枢機卿(分野指揮) → 神官(大subagent) → 信徒(小subagent)
+神(あなた) → 教主(私) → 枢機卿(分野指揮) → 神官(subagent)
                           ↕ 各層PDCA           執行官(独立断罪機関) ⟂
 ```
+> 信徒(小 subagent)の層は位階としては残るが、実体は **2026-09 のハーネス審査で退役**した —
+> 追跡 7 走行 / 108 起動に信徒の起動は 0 件。名前だけの階層を置かない（第25条）。
+
 | ツール | 役割 |
 |--------|------|
-| `graph/clergy.js` | **組織モデル** — 5枢機卿（discovery/requirements/architecture/construction/quality）＋独立執行官。各枢機卿に担当フェーズ・神官・信徒・レビュークラス・内部PDCA |
+| `graph/clergy.js` | **組織モデル** — 7枢機卿（discovery/requirements/architecture/construction/quality/counsel/cartography）＋独立執行官。各枢機卿に担当フェーズ・神官・レビュークラス・内部PDCA。`lexicon-check` が散文の異名を裁く(第41条) |
 | `graph/conclave.js` | **再帰オーケストレーター**（supervisor-of-supervisors）。大きな円=ドメイン間PDCA、小さな円=枢機卿内フェーズPDCA。ratify（適切クラス承認）・ドメイン内rework・各層loop-guard。`audit` が全走行帳を横断して**見捨てられた環**を名指しする(第53条) |
 | `graph/synod.js` | **計画サイクル** — 神託→枢機卿編成を計画→plan自己批評→改善してから conclave へ |
 | `/conclave` コマンド | 聖職位階を招集し神託を創造物に変える玉座 |
@@ -278,6 +288,15 @@ wish → 🔍discover → specify → design → detail → build → verify →
 | `graph/pulse.js` | **楽園の断面 (snapshot)**。数・門の合否・走行・台帳・記憶を 1 個の JSON に写す唯一の engine。画面はここしか見ない — 突合点が 1 つだから門が 1 式で書ける(第22条・第16条) |
 | `graph/fold.js` | **同じ入力の走行を二度撃たないための機構**。答える問いは一つ —「いま撃とうとしている走行は、既に撃たれたか」。答えは**鍵**(入力の内容ハッシュ)と**領収書**(台帳の1行)だけで出す。**鍵の住処は一つである** — 二つ在れば鍵が二通りに割れる(第48条・第58条)。二つの機構が同居するが**混ぜない**: 台帳の畳み(CI の段をまたぐ)と、プロセス内の写像(Atlas が同じ成果物を二度検めない。**台帳を一切使わない**)。**畳んだことは必ず名乗る** — `Executed E out of N (R reused, key=…)`、畳まなかった走行は `bail=…` を**閉じた語彙**で名指す(`ledger-unreadable` は `no-receipt` と**別の語**である。読めないは skip ではなく赤 / 第62条)。住所は自分で組まず `abode.pathFor` を通る(第58条(a))。`fold-key` / `fold-status` が名乗り、**台帳は 1 回の CI 走行の中でのみ有効**(第37条) |
 | `graph/export-state.js` | 楽園の生きた状態を dashboard/state.json に出力 |
+| `graph/workspace.js` | **創造物の住所を決める唯一の場所**（第30条）。`PARADISE_CREATIONS` → 兄弟倉 `../paradise-creations` の一本道。`check` が楽園に紛れた創造物と、兄弟倉に迷い込んだ reform 走行帳（`strayRuns`）を名指す |
+| `graph/branch-guard.js` | **古い main の上で働いていないか**（第24条）。`ON_MAIN` / 未 fetch / origin より古い main を門として裁く。`tools/hooks/paradise-commit-guard.js` が PreToolUse でこれを機構にする |
+| `graph/apply-guards.js` | **掟を機構に落とす**（第3・6・19条）。`settings.json` の permissions（deny/ask/allow）と hooks を建てる唯一の writer（`abode.json` EX-1）。実効 0 の hook は `FORBIDDEN_HOOKS` が除く。神の住処へ書くときは教主の座（model/effortLevel）を引く。`verify` が証拠 — 数は写経しない |
+| `graph/apply-models.js` / `apply-spawn.js` | **位階の規則を agent frontmatter に機械適用**。`model:`/`effort:`（第12条）と起動の権能 `Task`（第25条）。`deploy.js` が配備後に必ず再適用する transform |
+| `graph/apply-seat.js` | **教主の座を機構にする**（第31条）。`<repo>/.claude/settings.json` の `model` / `effortLevel` を clergy の宣言どおりに書く |
+| `graph/derived.js` | **生成物と原本を区別する**（第29条）。`lessons.json` のような derived file の中身を前提にした検査が無いかを CI で裁く |
+| `graph/daily-guard.js` | **日次ノルマの番人**。22:00 JST の自律改善を機械が起きていなくても取りこぼさない claim 機構。呼び手の cron 2 本は現在**神の意志で停止中**（2026-09-02〜） |
+| `graph/build-identity-catalog.js` | `identity.js` が読む視覚語彙カタログ（`graph/identity/catalog.json`）を一度だけ鍛造する。実行時に外へ取りに行かない（依存ゼロ） |
+| `graph/motion-probe.mjs` | **動きが実際に宿っているかを実ブラウザで測る**（第50条）。`animatedEls` / `beatAdvanced` を数で持ち帰る — 「押せる」は「動く」ではない |
 | `CONSTITUTION.md` | **楽園憲法** (条数は `codex.js index` が語る)（spec is truth・research first・self-doubt・durable orchestration・ecclesiastical hierarchy・cross-domain rework・evidence by substance・declared visual identity・**surface judged as strictly as substance**…） |
 | `/forge` コマンド | 小さき声を受ける玉座 |
 | agents | market-researcher（調査）・requirements-analyst（仕様）・**ux-reviewer（表層の裁き）**・self-critic（批評）・creation-judge（裁き） |
@@ -390,25 +409,31 @@ node tests/motion-probe-leak.test.js      # 門が己の残骸で不定に鳴ら
 教主(Pontiff) が実装しPRを出す
       ↓
 機械ゲート (CI: verify job)        ← self-test・憲法条文・位階別モデル方針・秘密スキャン・全エンジン読込
-      ↓                              序列の監査・分野の適合も同 job（第52条）
-      ↓
+      ↓                              census・fold・hermetic・derived・wiring・atlas・abode・
+      ↓                              序列の監査・分野の適合・ダッシュボードの門 … 全て同 job（第52条）
 執行官 (CI: tribunal job)          ← critic の敵対的自己批評 → verdict.js の裁定を PR に掲示
-      ↓                              どの枢機卿にも従属しない（憲法第9・11条）
+      ↓                              どの枢機卿にも従属しない（憲法第9・11条）。**PR のときだけ走る**
+発報 (CI: herald job)              ← 裁定(緑/赤)を Discord へ運ぶ。緑かつ PR でなければ黙る
+      ↓
 神 (@kikusyo1101) が最終承認        ← CODEOWNERS + Branch Protection。main へのマージは神のみ
 ```
 
 | 承認者 | 役割 | 機構 |
 |--------|------|------|
 | **機械ゲート** | 事実を証明する（テスト・方針・秘密） | `.github/workflows/tribunal.yml` verify job。**落ちればマージ不能** |
-| **執行官 (Executor)** | 独立した裁定 SHIP / REWORK / BLOCK | 同 tribunal job。裁きが値切られていないか（`self-critic`/`creation-judge`/`security-reviewer`/`planner` が opus か）も検問 |
+| **執行官 (Executor)** | 独立した裁定 SHIP / REWORK / BLOCK | 同 tribunal job。裁きが値切られていないか（`self-critic`/`creation-judge`/`security-reviewer`/`planner`/`ux-reviewer` が opus 級以上か）も検問 |
 | **神 (God)** | 最終承認 | `.github/CODEOWNERS` + Branch Protection（force push禁止・main直push禁止） |
 
 **教主は自らを承認しない。** すべての変更はPRを経由し、執行官の裁定を受け、神が承認する。
 
+> **CI の前後比較は job 同士で。** `push` 走行は tribunal job を飛ばし、`pull_request` 走行は飛ばさない。
+> 全体の所要を比べれば「遅くなった」と読み違える — verify job は verify job と比べよ。
+
 ---
 
 ## ソース（世界中の天才への敬意）
-- [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) — 土台のハーネス
+- [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) — 土台のハーネス（元 URL は現在 `affaan-m/ECC` へ転送される。楽園が取り込んだのは `WorldFlowAI/everything-claude-code` の版 — commit と出自は `NOTICE.md`）
+- [tt-a1i/archify](https://github.com/tt-a1i/archify) — 楽園の自画像を描く描画器（第47条）
 - [barkain/claude-code-workflow-orchestration](https://github.com/barkain/claude-code-workflow-orchestration) — wave scheduling
 - [open-multi-agent/open-multi-agent](https://github.com/open-multi-agent/open-multi-agent) — runtime DAG思想
 - [hilyfux/knowledge-graph](https://github.com/hilyfux/knowledge-graph) — git-native memory
