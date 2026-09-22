@@ -69,7 +69,7 @@ jobs:
             // 能力は序列で検める。モデル名を直書きすると、神が方針を変えた瞬間に
             // 門が偽の赤を出す — 守るべきは名前ではなく『判断は安く上げない』という順序。
             const TIER = { haiku:1, 'claude-haiku-4-5':1, sonnet:2, 'claude-sonnet-5':2,
-                           opus:3, 'claude-opus-5':3, fable:4, 'claude-fable-5':4 };
+                           opus:3, 'claude-opus-5':3, 'claude-opus-5-5':3, fable:4, 'claude-fable-5':4 };
             const t = m => { if (!TIER[m]) { console.error('::error::unknown model tier: ' + m); process.exit(1); } return TIER[m]; };
             const priest = t(c.RANKS.priest.model);
             for (const rank of ['pontiff','cardinal','executor']) {
