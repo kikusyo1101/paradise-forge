@@ -5,4 +5,4 @@ The full delivery procedure (branch → commit → PR → review → merge) live
 
 - Conventional Commits: `<type>(<scope>): <説明>` (feat/fix/refactor/docs/test/chore/perf/ci/security).
 - PRs: analyze the full range with `git diff <base>...HEAD`, not just the last commit.
-- Attribution is disabled globally via ~/.claude/settings.json.
+- No AI attribution trailers in commits (verify: `git log --format=%B | grep -i co-authored` is empty).
