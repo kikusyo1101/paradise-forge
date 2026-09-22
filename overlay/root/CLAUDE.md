@@ -14,7 +14,7 @@
 セッション終了・`/compact` 前は WIP でも commit + push して退避する。
 
 > force-push 禁止・main 直接コミット禁止などの安全側は
-> `~/.claude/settings.json` の permissions/hooks が機械強制している。
+> `settings.json` の permissions(神の住処)と hooks(`<repo>/.claude`)が機械強制している。
 > 建てるのは `graph/apply-guards.js` — settings.json を手で編集しない。
 > 強制の有無は主張でなく `node graph/apply-guards.js verify` の出力で確かめる。
 
