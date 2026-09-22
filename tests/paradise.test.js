@@ -1072,12 +1072,12 @@ test('every rank that works declares a model', () => {
 });
 
 // 位階と能力の関係は「順序」であって特定のモデル名ではない。
-// モデル名を直に書くと、神が方針を変えるたびに門が偽の赤を出す(第29条の精神)。
-const TIER = { haiku: 1, 'claude-haiku-4-5': 1, sonnet: 2, 'claude-sonnet-5': 2,
-               opus: 3, 'claude-opus-5': 3, 'claude-opus-5-5': 3, fable: 4, 'claude-fable-5': 4 };
+// 序列表は graph/clergy.js の MODELS ただ一か所 —— 門はそれを引く。写経すれば
+// 神が方針を変えるたびに写しだけが古くなり偽の赤を出す(PR #65 で実測)。
+const TIER = clergy.MODEL_TIER;
 
 test('capability descends with rank: judgment ranks outrank workers', () => {
-  const t = m => { assert.ok(TIER[m], `unknown model tier: ${m}`); return TIER[m]; };
+  const t = clergy.tierOf;
   const priest = t(clergy.RANKS.priest.model);
   assert.ok(t(clergy.RANKS.cardinal.model) >= priest, 'cardinals decide → never below a priest');
   assert.ok(t(clergy.RANKS.executor.model) >= priest, 'the judge is never cheapened');
@@ -3315,15 +3315,55 @@ test('seat: 位階の宣言が神の裁可どおりである', () => {
 
 test('seat: 判断の座が神官より安くなることは決してない (第12条)', () => {
   const c = require('../graph/clergy.js');
-  const tier = { 'haiku': 1, 'claude-haiku-4-5': 1, 'claude-sonnet-5': 2, 'sonnet': 2, 'claude-opus-5': 3, 'claude-opus-5-5': 3, 'opus': 3, 'fable': 4 };
-  const priest = tier[c.RANKS.priest.model];
+  const tier = c.tierOf;   // 序列は MODELS 一か所から引く(写経しない)
+  const priest = tier(c.RANKS.priest.model);
   for (const r of ['pontiff', 'cardinal', 'executor']) {
-    assert.ok(tier[c.RANKS[r].model] >= priest, `${r} は神官より安くあってはならない`);
+    assert.ok(tier(c.RANKS[r].model) >= priest, `${r} は神官より安くあってはならない`);
   }
-  assert.ok(tier[c.RANKS.believer.model] <= priest, '信徒が神官より高いのは位階の転倒');
+  assert.ok(tier(c.RANKS.believer.model) <= priest, '信徒が神官より高いのは位階の転倒');
   for (const n of ['self-critic', 'creation-judge', 'security-reviewer', 'planner', 'ux-reviewer']) {
-    assert.ok(tier[c.modelFor(n, 'priest').model] >= 3, `${n} は決して安く上げない`);
+    assert.ok(tier(c.modelFor(n, 'priest').model) >= 3, `${n} は決して安く上げない`);
   }
+});
+
+test('models: 位階と例外が名指す全てのモデルが MODELS に在る — 知らぬ名は throw (第12条)', () => {
+  const c = require('../graph/clergy.js');
+  const named = [
+    ...Object.values(c.RANKS).map(r => r.model).filter(Boolean),
+    ...Object.values(c.MODEL_EXCEPTIONS).map(e => e.model),
+  ];
+  for (const m of named) assert.doesNotThrow(() => c.tierOf(m), `${m} が MODELS に無い`);
+  assert.throws(() => c.tierOf('claude-opus-9-9'), /unknown model tier/,
+    '未知の名を 0 や undefined で通せば、序列の比較そのものが嘘になる');
+  // 射影は実体と一致する(二つの答えを持たない)
+  for (const [m, v] of Object.entries(c.MODELS)) {
+    assert.strictEqual(c.MODEL_TIER[m], v.tier);
+    assert.deepStrictEqual(c.EFFORT_SUPPORT[m], v.effort);
+  }
+});
+
+test('models: 序列表を clergy.js の外に写経しない — tests と workflow を走査する (第12条 / PR #65)', () => {
+  // 「モデル名: 数字」の対が clergy.js 以外に現れたら、それは写しである。
+  const pat = /['"]?\b(?:claude-[a-z0-9-]+|haiku|sonnet|opus|fable)\b['"]?\s*:\s*\d/;
+  const roots = ['tests', '.github/workflows'];
+  const hits = [];
+  for (const r of roots) {
+    const dir = path.join(__dirname, '..', r);
+    for (const f of fs.readdirSync(dir)) {
+      if (!/\.(js|ya?ml)$/.test(f)) continue;
+      const lines = fs.readFileSync(path.join(dir, f), 'utf8').split(/\r?\n/);
+      lines.forEach((l, i) => {
+        if (/^\s*(\/\/|#|\*)/.test(l)) return;           // 註釈は写しではない
+        if (l.includes('MODELS_COPY_PROBE')) return;        // この門自身の撃ち弾
+        if (pat.test(l)) hits.push(`${r}/${f}:${i + 1}`);
+      });
+    }
+  }
+  assert.deepStrictEqual(hits, [], '序列表の写しが在る — clergy.MODEL_TIER / tierOf を引け');
+  // 門が本当に鳴るか(第21条 壊して鳴らす): 写しの形を撃つ
+  assert.ok(pat.test("const TIER = { haiku:1, 'claude-opus-5':3 }; // MODELS_COPY_PROBE"));
+  assert.ok(pat.test("opus: 3, 'claude-opus-5-5': 3"));  // MODELS_COPY_PROBE
+  assert.ok(!pat.test("model: 'claude-opus-5-5', effort: 'xhigh'"), 'モデル名の単なる宣言は写しではない');
 });
 
 test('seat: 効かない effort は宣言しない — Haiku は effort を持たない (第31条)', () => {
