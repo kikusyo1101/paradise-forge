@@ -26,7 +26,8 @@
 
 /**
  * 効力を持つ effort の段(公式表, 2026-08 実測)。
- *   Fable 5 / Opus 5 / Sonnet 5 / Opus 4.8 / 4.7 : low medium high xhigh max
+ *   Fable 5 / Opus 5.5 / Opus 5 / Sonnet 5 / Opus 4.8 / 4.7 : low medium high xhigh max
+ *   (Opus 5.5 の既定 effort は medium — 他は high。ゆえに位階は effort を必ず明示する)
  *   Opus 4.6 / Sonnet 4.6                       : low medium high max
  *   Haiku 4.5                                   : **effort を持たない**
  * 持たないモデルに effort を書くと黙って捨てられる。捨てられる宣言は
@@ -38,6 +39,7 @@ const EFFORT_SUPPORT = {
   'claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
   'opus': ['low', 'medium', 'high', 'xhigh', 'max'],
   'claude-opus-5': ['low', 'medium', 'high', 'xhigh', 'max'],
+  'claude-opus-5-5': ['low', 'medium', 'high', 'xhigh', 'max'],
   'sonnet': ['low', 'medium', 'high', 'xhigh', 'max'],
   'claude-sonnet-5': ['low', 'medium', 'high', 'xhigh', 'max'],
   'haiku': [],   // Haiku 4.5 は effort を受けない
@@ -88,7 +90,7 @@ const RANKS = {
                  commune:     '神と会話する',
                } },
   cardinal:  { level: 2, title: 'Cardinal 枢機卿', role: 'domain supervisor; owns a sub-DAG + inner PDCA',
-               model: 'claude-opus-5', effort: 'xhigh',
+               model: 'claude-opus-5-5', effort: 'xhigh',
                why: '批准と差戻しが品質を決める。量は少なく賭金は高い — 上げても総額はほぼ動かない' },
   priest:    { level: 3, title: 'Priest 神官',    role: 'large subagent dispatched by a cardinal',
                model: 'claude-sonnet-5', effort: 'high',
@@ -97,7 +99,7 @@ const RANKS = {
                model: 'haiku', effort: null,
                why: '機械的・大量・判断の要らぬ仕事(探索, lint, 走査)。Haiku 4.5 は effort を持たない' },
   executor:  { level: -1, title: 'Executor 執行官', role: 'independent tribunal; judges on demand',
-               model: 'claude-opus-5', effort: 'xhigh',
+               model: 'claude-opus-5-5', effort: 'xhigh',
                why: '見逃した断罪は壊れた創造物を出荷する。裁く者は決して安く上げない' },
 };
 
@@ -109,17 +111,17 @@ const RANKS = {
  */
 const MODEL_EXCEPTIONS = {
   // A security miss is a constitutional BLOCK-level breach — never run it cheap.
-  'security-reviewer': { model: 'claude-opus-5', effort: 'xhigh', why: '秘密の見逃しは回復不能(BLOCK級の違憲)' },
+  'security-reviewer': { model: 'claude-opus-5-5', effort: 'xhigh', why: '秘密の見逃しは回復不能(BLOCK級の違憲)' },
   // A bad plan poisons every downstream phase — planning is judgment, not generation.
-  'planner': { model: 'claude-opus-5', effort: 'xhigh', why: '誤った計画は下流の全相を汚染する。計画は生成ではなく判断である' },
+  'planner': { model: 'claude-opus-5-5', effort: 'xhigh', why: '誤った計画は下流の全相を汚染する。計画は生成ではなく判断である' },
   // Tribunal officers inherit the executor rank, not the priest rank.
-  'self-critic':    { model: 'claude-opus-5', effort: 'xhigh', why: '執行官 — 敵対的批評は断罪に先立つ' },
-  'creation-judge': { model: 'claude-opus-5', effort: 'xhigh', why: '執行官 — 拘束力ある裁定を下す' },
+  'self-critic':    { model: 'claude-opus-5-5', effort: 'xhigh', why: '執行官 — 敵対的批評は断罪に先立つ' },
+  'creation-judge': { model: 'claude-opus-5-5', effort: 'xhigh', why: '執行官 — 拘束力ある裁定を下す' },
   // 見た目の審査は「判断」であって量産ではない。何が醜いか・何が使いにくいかは
   // 規則の照合では決まらず、人が見て嫌がるかどうかで決まる(憲法 第18条)。
-  'ux-reviewer': { model: 'claude-opus-5', effort: 'xhigh', why: '趣味は判断である: 表層の欠陥は全ての利用者に届き、規則だけでは見えない' },
-  'cardinal':       { model: 'claude-opus-5', effort: 'xhigh', why: '枢機卿の位階そのもの' },
-  'executor':       { model: 'claude-opus-5', effort: 'xhigh', why: '執行官の位階そのもの' },
+  'ux-reviewer': { model: 'claude-opus-5-5', effort: 'xhigh', why: '趣味は判断である: 表層の欠陥は全ての利用者に届き、規則だけでは見えない' },
+  'cardinal':       { model: 'claude-opus-5-5', effort: 'xhigh', why: '枢機卿の位階そのもの' },
+  'executor':       { model: 'claude-opus-5-5', effort: 'xhigh', why: '執行官の位階そのもの' },
 };
 
 /** Resolve the model+effort for an agent by name, using rank defaults + exceptions. */

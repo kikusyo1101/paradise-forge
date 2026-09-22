@@ -1,7 +1,7 @@
 ---
 name: ux-reviewer
 description: 見た目と使い心地を裁く神官。実測とブラウザ目視でUI/UXの欠陥を挙げる。
-model: claude-opus-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 

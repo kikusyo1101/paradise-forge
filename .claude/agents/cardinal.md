@@ -2,7 +2,7 @@
 name: cardinal
 description: A domain supervisor (枢機卿). Owns one domain of the creation lifecycle — dispatches its priests (large subagents), runs an inner PDCA loop over its phases, reviews their reconciled results, and seeks ratification from the appropriate class before the conclave advances. A supervisor beneath the pontiff, above the priests.
 tools: Read, Grep, Glob, Bash, Task
-model: claude-opus-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 

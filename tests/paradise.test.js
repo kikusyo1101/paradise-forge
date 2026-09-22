@@ -1074,7 +1074,7 @@ test('every rank that works declares a model', () => {
 // 位階と能力の関係は「順序」であって特定のモデル名ではない。
 // モデル名を直に書くと、神が方針を変えるたびに門が偽の赤を出す(第29条の精神)。
 const TIER = { haiku: 1, 'claude-haiku-4-5': 1, sonnet: 2, 'claude-sonnet-5': 2,
-               opus: 3, 'claude-opus-5': 3, fable: 4, 'claude-fable-5': 4 };
+               opus: 3, 'claude-opus-5': 3, 'claude-opus-5-5': 3, fable: 4, 'claude-fable-5': 4 };
 
 test('capability descends with rank: judgment ranks outrank workers', () => {
   const t = m => { assert.ok(TIER[m], `unknown model tier: ${m}`); return TIER[m]; };
@@ -3306,8 +3306,8 @@ test('seat: 位階の宣言が神の裁可どおりである', () => {
   const c = require('../graph/clergy.js');
   assert.strictEqual(c.RANKS.pontiff.model, 'fable', '教主は長丁場の座');
   assert.strictEqual(c.RANKS.pontiff.effort, 'xhigh');
-  assert.strictEqual(c.RANKS.cardinal.model, 'claude-opus-5');
-  assert.strictEqual(c.RANKS.executor.model, 'claude-opus-5');
+  assert.strictEqual(c.RANKS.cardinal.model, 'claude-opus-5-5');
+  assert.strictEqual(c.RANKS.executor.model, 'claude-opus-5-5');
   assert.strictEqual(c.RANKS.priest.model, 'claude-sonnet-5', '生成の本体は据え置く — ここを上げると全てが高くつく');
   assert.strictEqual(c.RANKS.priest.effort, 'high');
   assert.strictEqual(c.RANKS.believer.model, 'haiku');
@@ -3315,7 +3315,7 @@ test('seat: 位階の宣言が神の裁可どおりである', () => {
 
 test('seat: 判断の座が神官より安くなることは決してない (第12条)', () => {
   const c = require('../graph/clergy.js');
-  const tier = { 'haiku': 1, 'claude-haiku-4-5': 1, 'claude-sonnet-5': 2, 'sonnet': 2, 'claude-opus-5': 3, 'opus': 3, 'fable': 4 };
+  const tier = { 'haiku': 1, 'claude-haiku-4-5': 1, 'claude-sonnet-5': 2, 'sonnet': 2, 'claude-opus-5': 3, 'claude-opus-5-5': 3, 'opus': 3, 'fable': 4 };
   const priest = tier[c.RANKS.priest.model];
   for (const r of ['pontiff', 'cardinal', 'executor']) {
     assert.ok(tier[c.RANKS[r].model] >= priest, `${r} は神官より安くあってはならない`);
@@ -3333,6 +3333,7 @@ test('seat: 効かない effort は宣言しない — Haiku は effort を持�
   assert.ok(!c.supportsEffort('haiku', 'low'), '受けないものを受けると答えてはならない');
   assert.ok(c.supportsEffort('haiku', null), 'null は常に許される');
   assert.ok(c.supportsEffort('claude-opus-5', 'xhigh'));
+  assert.ok(c.supportsEffort('claude-opus-5-5', 'xhigh'), 'Opus 5.5 は xhigh を受ける(公式 effort 表)');
   assert.ok(c.supportsEffort('未知のモデル', 'xhigh'), '門は名を知らぬものに吠えない(第21条)');
 });
 
@@ -3404,7 +3405,7 @@ test('seat: 無人(cron)の座は教主の座と分かれており Fable では�
   const u = seatMod.UNATTENDED_SEAT;
   assert.ok(!/fable/i.test(u.model),
     '非対話では課金同意が出ない — 無人の座に Fable を置いてはならない');
-  assert.strictEqual(u.model, 'claude-opus-5');
+  assert.strictEqual(u.model, 'claude-opus-5-5');
   assert.ok(u.why && u.why.length > 20, 'なぜ分けたのかを機構自身が語らねばならない');
   // 教主が Fable である限り、無人の座は必ず別物でなければならない
   if (/fable/i.test(c.RANKS.pontiff.model)) {

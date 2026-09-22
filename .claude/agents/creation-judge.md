@@ -2,7 +2,7 @@
 name: creation-judge
 description: The gate of judgment. Reads verification evidence and the spec, then renders SHIP / REWORK / BLOCK against the Paradise constitution. Nothing ships without passing judgment.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 
