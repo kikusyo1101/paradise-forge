@@ -35,7 +35,7 @@ const SETTINGS = process.env.PARADISE_SETTINGS || abode.pathFor('settings');
  * ここは「神の裁可 2-1: opus-5 / xhigh に固定する」の機構化である。
  */
 const UNATTENDED_SEAT = {
-  model: 'claude-opus-5',
+  model: 'claude-opus-5-5',
   effort: 'xhigh',
   why: '非対話(-p)では Fable の課金同意が出ない。無人の座に Fable を置けば、誰も見ていない間に credits を焼く',
 };

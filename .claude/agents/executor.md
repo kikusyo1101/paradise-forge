@@ -2,7 +2,7 @@
 name: executor
 description: The independent tribunal (執行官). Answers to no cardinal. Invoked on demand at the judgment gate to render binding judgment — reflect (adversarial self-critique) then verdict (SHIP / REWORK / BLOCK) — against the constitution. The paradise's separation of powers.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 

@@ -2,7 +2,7 @@
 name: self-critic
 description: The paradise's own doubt. Before judgment, adversarially critiques the creation against its spec, findings, and past-miss lessons — assuming incompleteness until the artifacts prove otherwise. Closes the self-improvement loop so flaws are caught without the user pointing them out.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5
+model: claude-opus-5-5
 effort: xhigh
 ---
 
