@@ -34,17 +34,43 @@
  * 宣言ではない(第10条) — ゆえに信徒の effort は null であり、
  * apply-models はキーそのものを書かない。
  */
-const EFFORT_SUPPORT = {
-  'fable': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'claude-fable-5': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'opus': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'claude-opus-5': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'claude-opus-5-5': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'sonnet': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'claude-sonnet-5': ['low', 'medium', 'high', 'xhigh', 'max'],
-  'haiku': [],   // Haiku 4.5 は effort を受けない
-  'claude-haiku-4-5': [],
+const FULL = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+/**
+ * **モデル台帳 —— 楽園がモデル名を知る唯一の場所 (第12条 / 第31条)。**
+ *
+ * tier は「能力の序列」(1 信徒の速さ … 4 長丁場)、effort はそのモデルが受ける段。
+ * かつて序列表は clergy.js・tests・tribunal.yml の三か所に写経されており、
+ * Opus 5.5 への移行で CI の写しだけが古く、'unknown model tier' で赤になった
+ * (PR #65, run 35761581912)。**写しは必ず腐る** —— 門も CI も、ここを require して引け。
+ * 新しいモデルを位階に置くときは、この表に一行足すだけでよい。
+ */
+const MODELS = {
+  'fable':            { tier: 4, effort: FULL },
+  'claude-fable-5':   { tier: 4, effort: FULL },
+  'opus':             { tier: 3, effort: FULL },
+  'claude-opus-5':    { tier: 3, effort: FULL },
+  'claude-opus-5-5':  { tier: 3, effort: FULL },   // 既定 effort は medium — 位階は明示する
+  'sonnet':           { tier: 2, effort: FULL },
+  'claude-sonnet-5':  { tier: 2, effort: FULL },
+  'haiku':            { tier: 1, effort: [] },     // Haiku 4.5 は effort を受けない
+  'claude-haiku-4-5': { tier: 1, effort: [] },
 };
+
+/** 後方互換の射影。実体は MODELS。 */
+const EFFORT_SUPPORT = Object.fromEntries(Object.entries(MODELS).map(([m, v]) => [m, v.effort]));
+const MODEL_TIER = Object.fromEntries(Object.entries(MODELS).map(([m, v]) => [m, v.tier]));
+
+/**
+ * そのモデルの能力の序列。**知らぬ名には throw する** ——
+ * 序列を問う門が未知のモデルを 0 や undefined で黙って通せば、
+ * 「判断は安く上げない」の比較そのものが嘘になる(第21条)。
+ */
+function tierOf(model) {
+  const e = MODELS[model];
+  if (!e) throw new Error(`unknown model tier: ${model} — graph/clergy.js の MODELS に一行足せ`);
+  return e.tier;
+}
 
 /** そのモデルはその effort を受けるか。受けないなら書いてはならない。 */
 function supportsEffort(model, effort) {
@@ -717,4 +743,4 @@ function main() {
   process.exit(2);
 }
 if (require.main === module) main();
-module.exports = { RANKS, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart, LEXICON, title, lexiconCheck, isGateDebris };
+module.exports = { RANKS, MODELS, MODEL_TIER, tierOf, EFFORT_SUPPORT, supportsEffort, COLLEGE, TRIBUNAL, MODEL_EXCEPTIONS, SPAWN_TOOL, MAX_SPAWN_DEPTH, MAX_CONCURRENT, RUNTIME_CONCURRENT, EFFECTIVE_CONCURRENT, PARALLEL_SAFE, cardinalFor, modelFor, allPriests, allBelievers, marshalPlan, believerRole, groupByCardinal, orgChart, LEXICON, title, lexiconCheck, isGateDebris };
